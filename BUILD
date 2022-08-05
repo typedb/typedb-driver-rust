@@ -44,8 +44,8 @@ rust_library(
 assemble_crate(
     name = "assemble",
     target = "typedb_client",
-    description = "Nice crate",
-    homepage = "https://vaticle.com",
+    description = "TypeDB Client API for Rust",
+    homepage = "https://github.com/vaticle/typedb-client-rust",
     license = "apache",
     repository = "https://github.com/vaticle/typedb-client-rust",
 )
