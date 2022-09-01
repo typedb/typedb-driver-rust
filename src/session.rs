@@ -25,9 +25,9 @@ use std::time::{Duration, Instant};
 use futures::executor;
 use log::warn;
 use typedb_protocol::options::Options;
-use crate::common::error::MESSAGES;
 
 use crate::common::Result;
+use crate::common::error::{ErrorMessage, SESSION_IS_CLOSED, SESSION_CLOSE_FAILED};
 use crate::rpc::builder::session::{close_req, open_req};
 use crate::rpc::client::RpcClient;
 use crate::transaction;
@@ -79,7 +79,7 @@ impl Session {
     pub async fn transaction(&self, transaction_type: transaction::Type) -> Result<Transaction> {
         match self.is_open() {
             true => Transaction::new(&self.id, transaction_type, self.network_latency, &self.rpc_client).await,
-            false => Err(MESSAGES.client.session_is_closed.to_err(vec![]))
+            false => Err(SESSION_IS_CLOSED.to_err(&[]))
         }
     }
 
@@ -99,7 +99,7 @@ impl Session {
             );
             // TODO: the request errors harmlessly if the session is already closed. Protocol should
             //       expose the cause of the error and we can use that to decide whether to warn here.
-            if res.is_err() { warn!("{}", MESSAGES.client.session_close_failed.to_err(vec![])) }
+            if res.is_err() { warn!("{}", SESSION_CLOSE_FAILED.to_err(&[])) }
         }
     }
 

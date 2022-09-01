@@ -36,8 +36,8 @@ use typedb_protocol::transaction::{Transaction_Client, Transaction_Req, Transact
 use typedb_protocol::transaction::Transaction_Stream_State::{CONTINUE, DONE};
 use uuid::Uuid;
 
-use crate::common::error::{Error, MESSAGES};
 use crate::common::{Executor, Result};
+use crate::common::error::{Error, ErrorMessage, MISSING_RESPONSE_FIELD, TRANSACTION_IS_CLOSED, TRANSACTION_IS_CLOSED_WITH_ERRORS, UNKNOWN_REQUEST_ID};
 use crate::rpc::builder::transaction::{client_msg, stream_req};
 use crate::rpc::client::RpcClient;
 
@@ -252,8 +252,8 @@ impl Receiver {
                 collector.send(Ok(res)).unwrap()
             }
             None => {
-                println!("{}", MESSAGES.client.unknown_request_id.to_err(
-                    vec![std::str::from_utf8(res.get_req_id()).unwrap()])
+                println!("{}", UNKNOWN_REQUEST_ID.to_err(
+                    &[std::str::from_utf8(res.get_req_id()).unwrap()])
                 )
             }
         }
@@ -270,12 +270,12 @@ impl Receiver {
             }
             None => {
                 // TODO: why does str::from_utf8 always fail here?
-                // println!("{}", MESSAGES.client.unknown_request_id.to_err(
-                //     vec![std::str::from_utf8(res_part.get_req_id()).unwrap()])
+                // println!("{}", UNKNOWN_REQUEST_ID.to_err(
+                //     &[std::str::from_utf8(res_part.get_req_id()).unwrap()])
                 // )
                 let req_id_str = format!("{:?}", res_part.get_req_id());
                 let res_part_str = format!("{:?}", res_part);
-                println!("{}", MESSAGES.client.unknown_request_id.to_err(vec![req_id_str.as_str(), res_part_str.as_str()]))
+                println!("{}", UNKNOWN_REQUEST_ID.to_err(&[req_id_str.as_str(), res_part_str.as_str()]))
             }
         }
     }
@@ -304,7 +304,7 @@ impl Receiver {
             Some(Transaction_Server_oneof_server::res_part(res_part)) => {
                 Self::collect_res_part(res_part, state).await;
             }
-            None => { println!("{}", MESSAGES.client.missing_response_field.to_err(vec!["server"]).to_string()) }
+            None => { println!("{}", MISSING_RESPONSE_FIELD.to_err(&["server"]).to_string()) }
         }
     }
 
@@ -331,8 +331,8 @@ impl Receiver {
 
     fn close_reason(error_str: &Option<String>) -> Error {
         match error_str {
-            None => { MESSAGES.client.transaction_is_closed.to_err(vec![]) }
-            Some(value) => { MESSAGES.client.transaction_is_closed_with_errors.to_err(vec![value.as_str()]) }
+            None => { TRANSACTION_IS_CLOSED.to_err(&[]) }
+            Some(value) => { TRANSACTION_IS_CLOSED_WITH_ERRORS.to_err(&[value.as_str()]) }
         }
     }
 }
@@ -375,7 +375,7 @@ impl Stream for ResPartStream {
                     }
                     Some(_other) => { poll }
                     None => {
-                        panic!("{}", MESSAGES.client.missing_response_field.to_err(vec!["res_part.res"]).to_string())
+                        panic!("{}", MISSING_RESPONSE_FIELD.to_err(&["res_part.res"]).to_string())
                     }
                 }
             }

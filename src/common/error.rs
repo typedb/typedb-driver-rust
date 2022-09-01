@@ -23,133 +23,104 @@ use grpc::{Error as GrpcError, GrpcMessageError, GrpcStatus};
 use std::error::Error as StdError;
 use std::fmt::{Debug, Display, Formatter};
 
-// TODO: try refactoring out the lifetime by storing String instead of &str
-struct MessageTemplate<'a> {
-    code_prefix: &'a str,
-    msg_prefix: &'a str,
-}
+pub trait ErrorMessage {
+    const CODE_PREFIX: &'static str;
+    const MESSAGE_PREFIX: &'static str;
+    const CODE_DIGITS: usize;
 
-impl MessageTemplate<'_> {
-    const fn new<'a>(code_prefix: &'a str, msg_prefix: &'a str) -> MessageTemplate<'a> {
-        MessageTemplate {
-            code_prefix,
-            msg_prefix
-        }
-    }
-}
+    fn code_number(&self) -> usize;
+    fn message_body(&self) -> &'static str;
 
-// TODO: try introducing generic type parameter representing the template variable list
-pub struct Message<'a> {
-    code_prefix: &'a str,
-    code_number: u8,
-    msg_prefix: &'a str,
-    msg_body: &'a str
-}
-
-impl Message<'_> {
-    const fn new<'a>(template: MessageTemplate<'a>, code_number: u8, msg_body: &'a str) -> Message<'a> {
-        Message {
-            code_prefix: template.code_prefix,
-            code_number,
-            msg_prefix: template.msg_prefix,
-            msg_body
-        }
+    fn template(&self) -> String {
+        format!(
+            "[{}{}{}] {}: {}",
+            Self::CODE_PREFIX,
+            "0".repeat(Self::CODE_DIGITS - num_digits(self.code_number())),
+            self.code_number(),
+            Self::MESSAGE_PREFIX,
+            self.message_body()
+        )
     }
 
-    fn format(&self, args: Vec<&str>) -> String {
-        let expected_arg_count = self.msg_body.matches("{}").count();
+    fn format(&self, args: &[&str]) -> String {
+        let expected_arg_count = self.message_body().matches("{}").count();
         assert_eq!(
             expected_arg_count, args.len(),
             "Message template `{}` takes `{}` args but `{}` were provided",
-            self.msg_body, expected_arg_count, args.len()
+            self.message_body(), expected_arg_count, args.len()
         );
-        format!("[{}{:0>2}] {}: {}", self.code_prefix, self.code_number, self.msg_prefix, self.expand_msg(args))
+        let mut buffer = String::new();
+        for (i, fragment) in self.template().split("{}").enumerate() {
+            if i > 0 {
+                buffer += args.get(i - 1).unwrap_or(&"{}");
+            }
+            buffer += fragment;
+        }
+        buffer
     }
 
-    pub(crate) fn to_err(&self, args: Vec<&str>) -> Error {
+    fn to_err(&self, args: &[&str]) -> Error {
         Error::new(self.format(args))
     }
+}
 
-    fn expand_msg(&self, args: Vec<&str>) -> String {
-        let arg_count = args.len();
-        let msg_split_indexed = self.msg_body.split("{}").enumerate();
-        let mut formatted_msg = String::new();
-        for (idx, fragment) in msg_split_indexed {
-            formatted_msg.push_str(fragment);
-            if idx < arg_count { formatted_msg.push_str(args[idx]) }
+const fn num_digits(x: usize) -> usize {
+    if x < 10 {
+        1
+    } else {
+        1 + num_digits(x / 10)
+    }
+}
+
+macro_rules! last {
+    ($x:tt) => ($x);
+    ($x:tt $($xs:tt)*) => (last!($($xs)*));
+}
+
+macro_rules! error_message {
+    ($name:ident, $code_pfx:literal, $message_pfx:literal, $(($error_name:ident, $code:literal, $body:literal)),*) => {
+        pub struct $name {
+            code_number: usize,
+            message_body: &'static str,
         }
-        formatted_msg
-    }
-}
+        impl ErrorMessage for $name {
+            const CODE_PREFIX: &'static str = $code_pfx;
+            const MESSAGE_PREFIX: &'static str = $message_pfx;
+            const CODE_DIGITS: usize = num_digits(last!($($code),*));
 
-impl From<Message<'_>> for String {
-    fn from(msg: Message) -> Self {
-        assert!(!msg.msg_body.contains("{}"));
-        String::from(msg.msg_body)
-    }
-}
-
-struct MessageTemplates<'a> {
-    client: MessageTemplate<'a>,
-    concept: MessageTemplate<'a>
-}
-
-impl MessageTemplates<'_> {
-    const fn new() -> MessageTemplates<'static> {
-        MessageTemplates {
-            client: MessageTemplate::new("CLI", "Client Error"),
-            concept: MessageTemplate::new("CON", "Concept Error")
+            fn code_number(&self) -> usize {
+                self.code_number
+            }
+            fn message_body(&self) -> &'static str {
+                self.message_body
+            }
         }
+        $(
+            pub const $error_name: $name = $name { code_number: $code, message_body: $body };
+        )*
     }
 }
 
-const TEMPLATES: MessageTemplates = MessageTemplates::new();
+error_message!(
+    ClientMessage, "CLI", "Client Error",
+    (SESSION_IS_CLOSED, 2, "The session is closed and no further operation is allowed."),
+    (TRANSACTION_IS_CLOSED, 3, "The transaction is closed and no further operation is allowed."),
+    (TRANSACTION_IS_CLOSED_WITH_ERRORS, 4, "The transaction is closed because of the error(s):\n{}"),
+    (UNABLE_TO_CONNECT, 5, "Unable to connect to TypeDB server."),
+    (DB_DOES_NOT_EXIST, 8, "The database '{}' does not exist."),
+    (MISSING_RESPONSE_FIELD, 9, "Missing field in message received from server: '{}'."),
+    (UNKNOWN_REQUEST_ID, 10, "Received a response with unknown request id '{}':\n{}"),
+    (CLUSTER_REPLICA_NOT_PRIMARY, 13, "The replica is not the primary replica."),
+    (CLUSTER_TOKEN_CREDENTIAL_INVALID, 16, "Invalid token credential."),
+    (SESSION_CLOSE_FAILED, 17, "Failed to close session. It may still be open on the server, or it may already have been closed previously.")
+);
 
-pub struct ClientMessages<'a> {
-    pub session_is_closed: Message<'a>,
-    pub transaction_is_closed: Message<'a>,
-    pub transaction_is_closed_with_errors: Message<'a>,
-    pub unable_to_connect: Message<'a>,
-    pub db_does_not_exist: Message<'a>,
-    pub missing_response_field: Message<'a>,
-    pub unknown_request_id: Message<'a>,
-    pub cluster_replica_not_primary: Message<'a>,
-    pub cluster_token_credential_invalid: Message<'a>,
-    pub session_close_failed: Message<'a>,
-}
+error_message!(
+    ConceptMessage, "CON", "Concept Error",
+    (INVALID_CONCEPT_CASTING, 1, "invalid concept conversion from '{}' to '{}'")
+);
 
-pub struct ConceptMessages<'a> {
-    pub invalid_concept_casting: Message<'a>,
-}
-
-pub struct Messages<'a> {
-    pub client: ClientMessages<'a>,
-    pub concept: ConceptMessages<'a>,
-}
-
-impl Messages<'_> {
-    const fn new() -> Messages<'static> {
-        Messages {
-            client: ClientMessages {
-                session_is_closed: Message::new(TEMPLATES.client, 2, "The session is closed and no further operation is allowed."),
-                transaction_is_closed: Message::new(TEMPLATES.client, 3, "The transaction is closed and no further operation is allowed."),
-                transaction_is_closed_with_errors: Message::new(TEMPLATES.client, 4, "The transaction is closed because of the error(s):\n{}"),
-                unable_to_connect: Message::new(TEMPLATES.client, 5, "Unable to connect to TypeDB server."),
-                db_does_not_exist: Message::new(TEMPLATES.client, 8, "The database '{}' does not exist."),
-                missing_response_field: Message::new(TEMPLATES.client, 9, "Missing field in message received from server: '{}'."),
-                unknown_request_id: Message::new(TEMPLATES.client, 10, "Received a response with unknown request id '{}':\n{}"),
-                cluster_replica_not_primary: Message::new(TEMPLATES.client, 13, "The replica is not the primary replica."),
-                cluster_token_credential_invalid: Message::new(TEMPLATES.client, 16, "Invalid token credential."),
-                session_close_failed: Message::new(TEMPLATES.client, 17, "Failed to close session. It may still be open on the server, or it may already have been closed previously.")
-            },
-            concept: ConceptMessages {
-                invalid_concept_casting: Message::new(TEMPLATES.concept, 1, "Invalid concept conversion from '{}' to '{}'"),
-            },
-        }
-    }
-}
-
-pub const MESSAGES: Messages = Messages::new();
+//////////////////////////////////////
 
 #[derive(Debug)]
 pub enum Error {
@@ -161,7 +132,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let message = match self {
             Error::GrpcError(msg, _) => msg,
-            Error::Other(msg) => msg
+            Error::Other(msg) => msg,
         };
         write!(f, "{}", message)
     }
@@ -171,7 +142,7 @@ impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             Error::GrpcError(_, source) => Some(source),
-            Error::Other(_) => None
+            Error::Other(_) => None,
         }
     }
 }
@@ -183,14 +154,21 @@ impl Error {
 
     pub(crate) fn from_grpc(source: GrpcError) -> Self {
         match source {
-            GrpcError::Http(_) => Error::GrpcError(String::from(MESSAGES.client.unable_to_connect), source),
+            GrpcError::Http(_) => Error::GrpcError(UNABLE_TO_CONNECT.format(&[]), source),
             GrpcError::GrpcMessage(ref err) => {
                 // TODO: this is awkward because we use gRPC errors to represent some user errors too
-                if Error::is_replica_not_primary(err) { Error::new(MESSAGES.client.cluster_replica_not_primary.format(vec![])) }
-                else if Error::is_token_credential_invalid(err) { Error::new(MESSAGES.client.cluster_token_credential_invalid.format(vec![])) }
-                else { Error::GrpcError(source.to_string().replacen("grpc message error: ", "", 1), source) }
-            },
-            _ => Error::GrpcError(source.to_string(), source)
+                if Error::is_replica_not_primary(err) {
+                    Error::new(CLUSTER_REPLICA_NOT_PRIMARY.format(&[]))
+                } else if Error::is_token_credential_invalid(err) {
+                    Error::new(CLUSTER_TOKEN_CREDENTIAL_INVALID.format(&[]))
+                } else {
+                    Error::GrpcError(
+                        source.to_string().replacen("grpc message error: ", "", 1),
+                        source,
+                    )
+                }
+            }
+            _ => Error::GrpcError(source.to_string(), source),
         }
     }
 
@@ -199,6 +177,7 @@ impl Error {
     }
 
     fn is_token_credential_invalid(err: &GrpcMessageError) -> bool {
-        err.grpc_status == GrpcStatus::Unauthenticated as i32 && err.grpc_message.contains("[CLS08]")
+        err.grpc_status == GrpcStatus::Unauthenticated as i32
+            && err.grpc_message.contains("[CLS08]")
     }
 }

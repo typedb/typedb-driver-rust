@@ -24,4 +24,4 @@ pub mod error;
 pub type Result<T = ()> = core::result::Result<T, Error>;
 pub(crate) type Executor = futures::executor::ThreadPool;
 
-pub use error::Error;
+use error::Error;

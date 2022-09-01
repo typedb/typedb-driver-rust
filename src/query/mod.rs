@@ -29,7 +29,7 @@ use typedb_protocol::transaction::{Transaction_Req, Transaction_ResPart, Transac
 use typedb_protocol::transaction::Transaction_Res_oneof_res::query_manager_res;
 use crate::answer::ConceptMap;
 
-use crate::common::error::MESSAGES;
+use crate::common::error::{MISSING_RESPONSE_FIELD, ErrorMessage};
 use crate::common::Result;
 use crate::rpc::builder::query_manager::{define_req, delete_req, insert_req, match_req, update_req, undefine_req};
 use crate::rpc::transaction::TransactionRpc;
@@ -44,8 +44,8 @@ macro_rules! stream_concept_maps {
                             stream::iter(x.answers.into_iter().map(|cm| { ConceptMap::from_proto(cm) })).left_stream()
                         }
                         _ => {
-                            stream::iter(once(Err(MESSAGES.client.missing_response_field.to_err(
-                                vec![format!("query_manager_res_part.{}_res_part", $query_type_str).as_str()]
+                            stream::iter(once(Err(MISSING_RESPONSE_FIELD.to_err(
+                                &[format!("query_manager_res_part.{}_res_part", $query_type_str).as_str()]
                             )))).right_stream()
                         }
                     }
@@ -97,9 +97,9 @@ impl QueryManager {
     async fn single_call(&self, req: Transaction_Req) -> Result<QueryManager_Res_oneof_res> {
         match self.tx.lock().unwrap().single(req).await?.res {
             Some(query_manager_res(res)) => {
-                res.res.ok_or_else(|| MESSAGES.client.missing_response_field.to_err(vec!["res.query_manager_res"]))
+                res.res.ok_or_else(|| MISSING_RESPONSE_FIELD.to_err(&["res.query_manager_res"]))
             }
-            _ => { Err(MESSAGES.client.missing_response_field.to_err(vec!["res.query_manager_res"])) }
+            _ => { Err(MISSING_RESPONSE_FIELD.to_err(&["res.query_manager_res"])) }
         }
     }
 
@@ -109,9 +109,9 @@ impl QueryManager {
                 Ok(tx_res_part) => {
                     match tx_res_part.res {
                         Some(query_manager_res_part(res_part)) => {
-                            res_part.res.ok_or_else(|| MESSAGES.client.missing_response_field.to_err(vec!["res_part.query_manager_res_part"]))
+                            res_part.res.ok_or_else(|| MISSING_RESPONSE_FIELD.to_err(&["res_part.query_manager_res_part"]))
                         }
-                        _ => { Err(MESSAGES.client.missing_response_field.to_err(vec!["res_part.query_manager_res_part"])) }
+                        _ => { Err(MISSING_RESPONSE_FIELD.to_err(&["res_part.query_manager_res_part"])) }
                     }
                 }
                 Err(err) => { Err(err) }

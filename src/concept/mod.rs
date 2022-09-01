@@ -34,8 +34,8 @@ use typedb_protocol::concept::Thing_ResPart_oneof_res::attribute_get_owners_res_
 use typedb_protocol::transaction::{Transaction_Req, Transaction_ResPart};
 use typedb_protocol::transaction::Transaction_ResPart_oneof_res::thing_res_part;
 use uuid::Uuid;
-use crate::common::error::MESSAGES;
-use crate::common::{Error, Result};
+use crate::common::Result;
+use crate::common::error::{Error, ErrorMessage, MISSING_RESPONSE_FIELD};
 use crate::rpc::builder::thing::attribute_get_owners_req;
 use crate::transaction::Transaction;
 
@@ -79,9 +79,9 @@ fn stream_things(tx: &Transaction, req: Transaction_Req) -> impl Stream<Item = R
             Ok(tx_res_part) => {
                 match tx_res_part.res {
                     Some(thing_res_part(res_part)) => {
-                        res_part.res.ok_or_else(|| MESSAGES.client.missing_response_field.to_err(vec!["res_part.thing_res_part"]))
+                        res_part.res.ok_or_else(|| MISSING_RESPONSE_FIELD.to_err(&["res_part.thing_res_part"]))
                     }
-                    _ => { Err(MESSAGES.client.missing_response_field.to_err(vec!["res_part.thing_res_part"])) }
+                    _ => { Err(MISSING_RESPONSE_FIELD.to_err(&["res_part.thing_res_part"])) }
                 }
             }
             Err(err) => { Err(err) }
@@ -97,7 +97,7 @@ pub enum Concept {
 
 impl Concept {
     pub(crate) fn from_proto(mut proto: typedb_protocol::concept::Concept) -> Result<Concept> {
-        let concept = proto.concept.ok_or_else(|| MESSAGES.client.missing_response_field.to_err(vec!["concept"]))?;
+        let concept = proto.concept.ok_or_else(|| MISSING_RESPONSE_FIELD.to_err(&["concept"]))?;
         match concept {
             Concept_oneof_concept::thing(thing) => { Ok(Self::Thing(Thing::from_proto(thing)?)) }
             Concept_oneof_concept::field_type(type_concept) => Ok(Self::Type(Type::from_proto(type_concept)?))
@@ -416,7 +416,7 @@ impl Attribute {
                         attribute_get_owners_res_part(x) => {
                             stream::iter(x.things.into_iter().map(|thing| Thing::from_proto(thing))).left_stream()
                         }
-                        _ => { stream::iter(once(Err(MESSAGES.client.missing_response_field.to_err(vec!["query_manager_res_part.match_res_part"])))).right_stream() }
+                        _ => { stream::iter(once(Err(MISSING_RESPONSE_FIELD.to_err(&["query_manager_res_part.match_res_part"])))).right_stream() }
                     }
                 }
                 Err(err) => { stream::iter(once(Err(err))).right_stream() }

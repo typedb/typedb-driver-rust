@@ -21,8 +21,8 @@
 
 use std::fmt::{Display, Formatter};
 use std::sync::Arc;
-use crate::common::error::MESSAGES;
 use crate::common::Result;
+use crate::common::error::{DB_DOES_NOT_EXIST, ErrorMessage};
 use crate::rpc::client::RpcClient;
 use crate::rpc::builder::core::database::{delete_req, schema_req};
 use crate::rpc::builder::core::database_manager::{all_req, contains_req, create_req};
@@ -52,7 +52,7 @@ impl DatabaseManager {
     pub async fn get(&self, name: &str) -> Result<Database> {
         match self.contains(name).await? {
             true => { Ok(Database::new(name, Arc::clone(&self.rpc_client))) }
-            false => { Err(MESSAGES.client.db_does_not_exist.to_err(vec![name])) }
+            false => { Err(DB_DOES_NOT_EXIST.to_err(&[name])) }
         }
     }
 
