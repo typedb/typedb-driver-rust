@@ -23,6 +23,7 @@ package(default_visibility = ["//visibility:public"])
 
 load("@rules_rust//rust:defs.bzl", "rust_library")
 load("@vaticle_bazel_distribution//crates:rules.bzl", "assemble_crate", "deploy_crate")
+load("@vaticle_bazel_distribution//github:rules.bzl", "deploy_github")
 load("@vaticle_dependencies//distribution:deployment.bzl", "deployment")
 
 rust_library(
@@ -60,6 +61,16 @@ deploy_crate(
     target = ":assemble_crate",
     snapshot = deployment["crate.snapshot"],
     release = deployment["crate.release"]
+)
+
+deploy_github(
+    name = "deploy_github",
+    draft = True,
+    title = "TypeDB Client Rust",
+    release_description = "//:RELEASE_TEMPLATE.md",
+    organisation = github_deployment["github.organisation"],
+    repository = github_deployment["github.repository"],
+    title_append_version = True,
 )
 
 # CI targets that are not declared in any BUILD file, but are called externally
