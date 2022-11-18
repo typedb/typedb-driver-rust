@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2021 Vaticle
+# Copyright (C) 2022 Vaticle
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -25,6 +25,7 @@ load("@rules_rust//rust:defs.bzl", "rust_library")
 load("@vaticle_bazel_distribution//crates:rules.bzl", "assemble_crate", "deploy_crate")
 load("@vaticle_bazel_distribution//github:rules.bzl", "deploy_github")
 load("@vaticle_dependencies//distribution:deployment.bzl", "deployment")
+load("@vaticle_dependencies//tool/checkstyle:rules.bzl", "checkstyle_test")
 load("//:deployment.bzl", deployment_github = "deployment")
 
 rust_library(
@@ -72,6 +73,30 @@ deploy_github(
     organisation = deployment_github["github.organisation"],
     repository = deployment_github["github.repository"],
     title_append_version = True,
+)
+
+checkstyle_test(
+    name = "checkstyle",
+    size = "small",
+    include = glob([
+        "*",
+        "src/**/*",
+        ".factory/*",
+    ]),
+    exclude = glob([
+        "*.md",
+        ".bazelversion",
+        "LICENSE",
+        "VERSION",
+    ]),
+    license_type = "apache-header",
+)
+
+checkstyle_test(
+    name = "checkstyle-license",
+    size = "small",
+    include = ["LICENSE"],
+    license_type = "apache-fulltext",
 )
 
 # CI targets that are not declared in any BUILD file, but are called externally
