@@ -75,6 +75,10 @@ vaticle_dependencies_ci_pip()
 load("@vaticle_dependencies//distribution:deps.bzl", "vaticle_bazel_distribution")
 vaticle_bazel_distribution()
 
+# Load //github
+load("@vaticle_bazel_distribution//github:deps.bzl", github_deps = "deps")
+github_deps()
+
 ################################
 # Load @vaticle dependencies #
 ################################
