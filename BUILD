@@ -25,6 +25,7 @@ load("@rules_rust//rust:defs.bzl", "rust_library")
 load("@vaticle_bazel_distribution//crates:rules.bzl", "assemble_crate", "deploy_crate")
 load("@vaticle_bazel_distribution//github:rules.bzl", "deploy_github")
 load("@vaticle_dependencies//distribution:deployment.bzl", "deployment")
+load("//:deployment.bzl", deployment_github = "deployment")
 
 rust_library(
     name = "typedb_client",
@@ -68,8 +69,8 @@ deploy_github(
     draft = True,
     title = "TypeDB Client Rust",
     release_description = "//:RELEASE_TEMPLATE.md",
-    organisation = github_deployment["github.organisation"],
-    repository = github_deployment["github.repository"],
+    organisation = deployment_github["github.organisation"],
+    repository = deployment_github["github.repository"],
     title_append_version = True,
 )
 
