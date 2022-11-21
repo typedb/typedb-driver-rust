@@ -111,7 +111,6 @@ impl RpcClient {
     }
 
     async fn bidi_stream<T, U>(req_sink: mpsc::Sender<T>, res: impl Future<Output = ::core::result::Result<Response<Streaming<U>>, Status>>) -> Result<(mpsc::Sender<T>, Streaming<U>)> {
-        // TODO: this mapping should be exposed as a "Result::from"-like function
         res.await
             .map(|resp| (req_sink, resp.into_inner()))
             .map_err(|status| status.into())
