@@ -41,7 +41,6 @@ pub(crate) struct RpcClient {
 
 impl RpcClient {
     pub(crate) async fn new(address: &str) -> Result<Self> {
-        // TODO: test performance using TCP_NODELAY in client conf (if applicable in 'tonic')
         match typedb_protocol::type_db_client::TypeDbClient::connect(address.to_string()).await {
             Ok(mut client) => {
                 // TODO: temporary hack to validate connection until we have client pulse
