@@ -46,7 +46,6 @@ rust_library(
     tags = [
         "crate-name=typedb-client",
     ],
-    version = "0.1.2",
 )
 
 assemble_crate(
