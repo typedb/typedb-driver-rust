@@ -22,24 +22,27 @@
 #![allow(dead_code)]
 #![allow(unused)]
 
+use crate::common::error::MESSAGES;
+use crate::common::{Error, Result};
+use crate::rpc::builder::thing::attribute_get_owners_req;
+use crate::transaction::Transaction;
+use chrono::NaiveDateTime;
+use futures::stream::FuturesUnordered;
+use futures::{stream, FutureExt, Stream, StreamExt};
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 use std::iter::once;
 use std::time::Instant;
-use chrono::NaiveDateTime;
-use futures::{FutureExt, Stream, stream, StreamExt};
-use futures::stream::FuturesUnordered;
-use typedb_protocol::{attribute as attribute_proto, attribute_type as attribute_type_proto, concept as concept_proto, r#type as type_proto, thing as thing_proto};
 use typedb_protocol::attribute_type::ValueType;
 use typedb_protocol::r#type::Encoding;
 use typedb_protocol::thing::res_part::Res;
 use typedb_protocol::transaction;
+use typedb_protocol::{
+    attribute as attribute_proto, attribute_type as attribute_type_proto, concept as concept_proto,
+    r#type as type_proto, thing as thing_proto,
+};
 use uuid::Uuid;
-use crate::common::error::MESSAGES;
-use crate::common::{Error, Result};
-use crate::rpc::builder::thing::attribute_get_owners_req;
-use crate::transaction::Transaction;
 
 #[derive(Clone, Debug)]
 pub enum Concept {
@@ -49,10 +52,15 @@ pub enum Concept {
 
 impl Concept {
     pub(crate) fn from_proto(mut proto: typedb_protocol::Concept) -> Result<Concept> {
-        let concept = proto.concept.ok_or_else(|| MESSAGES.client.missing_response_field.to_err(vec!["concept"]))?;
+        let concept = proto.concept.ok_or_else(|| {
+            MESSAGES
+                .client
+                .missing_response_field
+                .to_err(vec!["concept"])
+        })?;
         match concept {
-            concept_proto::Concept::Thing(thing) => { Ok(Self::Thing(Thing::from_proto(thing)?)) }
-            concept_proto::Concept::Type(type_) => { Ok(Self::Type(Type::from_proto(type_)?)) }
+            concept_proto::Concept::Thing(thing) => Ok(Self::Thing(Thing::from_proto(thing)?)),
+            concept_proto::Concept::Type(type_) => Ok(Self::Type(Type::from_proto(type_)?)),
         }
     }
 }
@@ -67,11 +75,17 @@ impl Type {
     pub(crate) fn from_proto(proto: typedb_protocol::Type) -> Result<Type> {
         // TODO: replace unwrap() with ok_or(custom_error) throughout the module
         match type_proto::Encoding::from_i32(proto.encoding).unwrap() {
-            Encoding::ThingType => { Ok(Self::Thing(ThingType::Root(RootThingType::default()))) },
-            Encoding::EntityType => { Ok(Self::Thing(ThingType::Entity(EntityType::from_proto(proto)))) },
-            Encoding::RelationType => { Ok(Self::Thing(ThingType::Relation(RelationType::from_proto(proto)))) },
-            Encoding::AttributeType => { Ok(Self::Thing(ThingType::Attribute(AttributeType::from_proto(proto)?))) },
-            Encoding::RoleType => { Ok(Self::Role(RoleType::from_proto(proto))) }
+            Encoding::ThingType => Ok(Self::Thing(ThingType::Root(RootThingType::default()))),
+            Encoding::EntityType => Ok(Self::Thing(ThingType::Entity(EntityType::from_proto(
+                proto,
+            )))),
+            Encoding::RelationType => Ok(Self::Thing(ThingType::Relation(
+                RelationType::from_proto(proto),
+            ))),
+            Encoding::AttributeType => Ok(Self::Thing(ThingType::Attribute(
+                AttributeType::from_proto(proto)?,
+            ))),
+            Encoding::RoleType => Ok(Self::Role(RoleType::from_proto(proto))),
         }
     }
 }
@@ -81,25 +95,27 @@ pub enum ThingType {
     Root(RootThingType),
     Entity(EntityType),
     Relation(RelationType),
-    Attribute(AttributeType)
+    Attribute(AttributeType),
 }
 
 #[derive(Debug)]
 pub enum EntityOrThingType {
     EntityType(EntityType),
-    RootThingType(RootThingType)
+    RootThingType(RootThingType),
 }
 
 #[derive(Clone, Debug)]
 pub struct RootThingType {
-    pub label: String
+    pub label: String,
 }
 
 impl RootThingType {
     const LABEL: &'static str = "thing";
 
     pub fn new() -> Self {
-        Self { label: String::from(Self::LABEL) }
+        Self {
+            label: String::from(Self::LABEL),
+        }
     }
 }
 
@@ -111,7 +127,7 @@ impl Default for RootThingType {
 
 #[derive(Clone, Debug)]
 pub struct EntityType {
-    pub label: String
+    pub label: String,
 }
 
 impl EntityType {
@@ -126,7 +142,7 @@ impl EntityType {
 
 #[derive(Clone, Debug)]
 pub struct RelationType {
-    pub label: String
+    pub label: String,
 }
 
 impl RelationType {
@@ -146,32 +162,34 @@ pub enum AttributeType {
     Long(LongAttributeType),
     Double(DoubleAttributeType),
     String(StringAttributeType),
-    DateTime(DateTimeAttributeType)
+    DateTime(DateTimeAttributeType),
 }
 
 impl AttributeType {
     pub(crate) fn from_proto(mut proto: typedb_protocol::Type) -> Result<AttributeType> {
         match attribute_type_proto::ValueType::from_i32(proto.value_type).unwrap() {
-            ValueType::Object => { Ok(Self::Root(RootAttributeType::default())) }
-            ValueType::Boolean => { Ok(Self::Boolean(BooleanAttributeType { label: proto.label })) }
-            ValueType::Long => { Ok(Self::Long(LongAttributeType { label: proto.label })) }
-            ValueType::Double => { Ok(Self::Double(DoubleAttributeType { label: proto.label })) }
-            ValueType::String => { Ok(Self::String(StringAttributeType { label: proto.label })) }
-            ValueType::Datetime => { Ok(Self::DateTime(DateTimeAttributeType { label: proto.label })) }
+            ValueType::Object => Ok(Self::Root(RootAttributeType::default())),
+            ValueType::Boolean => Ok(Self::Boolean(BooleanAttributeType { label: proto.label })),
+            ValueType::Long => Ok(Self::Long(LongAttributeType { label: proto.label })),
+            ValueType::Double => Ok(Self::Double(DoubleAttributeType { label: proto.label })),
+            ValueType::String => Ok(Self::String(StringAttributeType { label: proto.label })),
+            ValueType::Datetime => Ok(Self::DateTime(DateTimeAttributeType { label: proto.label })),
         }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct RootAttributeType {
-    pub label: String
+    pub label: String,
 }
 
 impl RootAttributeType {
     const LABEL: &'static str = "attribute";
 
     pub fn new() -> Self {
-        Self { label: String::from(Self::LABEL) }
+        Self {
+            label: String::from(Self::LABEL),
+        }
     }
 }
 
@@ -183,47 +201,57 @@ impl Default for RootAttributeType {
 
 #[derive(Clone, Debug)]
 pub struct BooleanAttributeType {
-    pub label: String
+    pub label: String,
 }
 
 impl BooleanAttributeType {
-    pub fn new(label: String) -> Self { Self { label } }
+    pub fn new(label: String) -> Self {
+        Self { label }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct LongAttributeType {
-    pub label: String
+    pub label: String,
 }
 
 impl LongAttributeType {
-    pub fn new(label: String) -> Self { Self { label } }
+    pub fn new(label: String) -> Self {
+        Self { label }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct DoubleAttributeType {
-    pub label: String
+    pub label: String,
 }
 
 impl DoubleAttributeType {
-    pub fn new(label: String) -> Self { Self { label } }
+    pub fn new(label: String) -> Self {
+        Self { label }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct StringAttributeType {
-    pub label: String
+    pub label: String,
 }
 
 impl StringAttributeType {
-    pub fn new(label: String) -> Self { Self { label } }
+    pub fn new(label: String) -> Self {
+        Self { label }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub struct DateTimeAttributeType {
-    pub label: String
+    pub label: String,
 }
 
 impl DateTimeAttributeType {
-    pub fn new(label: String) -> Self { Self { label } }
+    pub fn new(label: String) -> Self {
+        Self { label }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -236,7 +264,9 @@ impl RoleType {
         Self::new(ScopedLabel::new(proto.scope, proto.label))
     }
 
-    pub fn new(label: ScopedLabel) -> Self { Self { label } }
+    pub fn new(label: ScopedLabel) -> Self {
+        Self { label }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -249,11 +279,17 @@ pub enum Thing {
 
 impl Thing {
     pub(crate) fn from_proto(mut proto: typedb_protocol::Thing) -> Result<Thing> {
-        match typedb_protocol::r#type::Encoding::from_i32(proto.r#type.clone().unwrap().encoding).unwrap() {
-            type_proto::Encoding::EntityType => { Ok(Self::Entity(Entity::from_proto(proto)?)) },
-            type_proto::Encoding::RelationType => { Ok(Self::Relation(Relation::from_proto(proto)?)) }
-            type_proto::Encoding::AttributeType => { Ok(Self::Attribute(Attribute::from_proto(proto)?)) },
-            _ => { todo!() }
+        match typedb_protocol::r#type::Encoding::from_i32(proto.r#type.clone().unwrap().encoding)
+            .unwrap()
+        {
+            type_proto::Encoding::EntityType => Ok(Self::Entity(Entity::from_proto(proto)?)),
+            type_proto::Encoding::RelationType => Ok(Self::Relation(Relation::from_proto(proto)?)),
+            type_proto::Encoding::AttributeType => {
+                Ok(Self::Attribute(Attribute::from_proto(proto)?))
+            }
+            _ => {
+                todo!()
+            }
         }
     }
 }
@@ -275,12 +311,15 @@ impl Thing {
 #[derive(Clone, Debug)]
 pub struct Entity {
     pub iid: Vec<u8>,
-    pub type_: EntityType
+    pub type_: EntityType,
 }
 
 impl Entity {
     pub(crate) fn from_proto(mut proto: typedb_protocol::Thing) -> Result<Entity> {
-        Ok(Self { type_: EntityType::from_proto(proto.r#type.unwrap()), iid: proto.iid })
+        Ok(Self {
+            type_: EntityType::from_proto(proto.r#type.unwrap()),
+            iid: proto.iid,
+        })
     }
 }
 
@@ -298,12 +337,15 @@ impl Entity {
 #[derive(Clone, Debug)]
 pub struct Relation {
     pub iid: Vec<u8>,
-    pub type_: RelationType
+    pub type_: RelationType,
 }
 
 impl Relation {
     pub(crate) fn from_proto(mut proto: typedb_protocol::Thing) -> Result<Relation> {
-        Ok(Self { type_: RelationType::from_proto(proto.r#type.unwrap()), iid: proto.iid })
+        Ok(Self {
+            type_: RelationType::from_proto(proto.r#type.unwrap()),
+            iid: proto.iid,
+        })
     }
 }
 
@@ -331,45 +373,65 @@ pub enum Attribute {
     Long(LongAttribute),
     Double(DoubleAttribute),
     String(StringAttribute),
-    DateTime(DateTimeAttribute)
+    DateTime(DateTimeAttribute),
 }
 
 impl Attribute {
     pub(crate) fn from_proto(mut proto: typedb_protocol::Thing) -> Result<Attribute> {
         match attribute_type_proto::ValueType::from_i32(proto.r#type.unwrap().value_type).unwrap() {
-            ValueType::Object => { todo!() }
-            ValueType::Boolean => {
-                Ok(Self::Boolean(BooleanAttribute {
-                    value: if let attribute_proto::value::Value::Boolean(value) = proto.value.unwrap().value.unwrap() { value } else { todo!() },
-                    iid: proto.iid
-                }))
+            ValueType::Object => {
+                todo!()
             }
-            ValueType::Long => {
-                Ok(Self::Long(LongAttribute {
-                    value: if let attribute_proto::value::Value::Long(value) = proto.value.unwrap().value.unwrap() { value } else { todo!() },
-                    iid: proto.iid
-                }))
-            }
-            ValueType::Double => {
-                Ok(Self::Double(DoubleAttribute {
-                    value: if let attribute_proto::value::Value::Double(value) = proto.value.unwrap().value.unwrap() { value } else { todo!() },
-                    iid: proto.iid
-                }))
-            }
-            ValueType::String => {
-                Ok(Self::String(StringAttribute {
-                    value: if let attribute_proto::value::Value::String(value) = proto.value.unwrap().value.unwrap() { value } else { todo!() },
-                    iid: proto.iid
-                }))
-            }
-            ValueType::Datetime => {
-                Ok(Self::DateTime(DateTimeAttribute {
-                    value: if let attribute_proto::value::Value::DateTime(value) = proto.value.unwrap().value.unwrap() {
-                        NaiveDateTime::from_timestamp(value / 1000, (value % 1000) as u32)
-                    } else { todo!() },
-                    iid: proto.iid
-                }))
-            }
+            ValueType::Boolean => Ok(Self::Boolean(BooleanAttribute {
+                value: if let attribute_proto::value::Value::Boolean(value) =
+                    proto.value.unwrap().value.unwrap()
+                {
+                    value
+                } else {
+                    todo!()
+                },
+                iid: proto.iid,
+            })),
+            ValueType::Long => Ok(Self::Long(LongAttribute {
+                value: if let attribute_proto::value::Value::Long(value) =
+                    proto.value.unwrap().value.unwrap()
+                {
+                    value
+                } else {
+                    todo!()
+                },
+                iid: proto.iid,
+            })),
+            ValueType::Double => Ok(Self::Double(DoubleAttribute {
+                value: if let attribute_proto::value::Value::Double(value) =
+                    proto.value.unwrap().value.unwrap()
+                {
+                    value
+                } else {
+                    todo!()
+                },
+                iid: proto.iid,
+            })),
+            ValueType::String => Ok(Self::String(StringAttribute {
+                value: if let attribute_proto::value::Value::String(value) =
+                    proto.value.unwrap().value.unwrap()
+                {
+                    value
+                } else {
+                    todo!()
+                },
+                iid: proto.iid,
+            })),
+            ValueType::Datetime => Ok(Self::DateTime(DateTimeAttribute {
+                value: if let attribute_proto::value::Value::DateTime(value) =
+                    proto.value.unwrap().value.unwrap()
+                {
+                    NaiveDateTime::from_timestamp(value / 1000, (value % 1000) as u32)
+                } else {
+                    todo!()
+                },
+                iid: proto.iid,
+            })),
         }
     }
 }
@@ -377,37 +439,35 @@ impl Attribute {
 #[derive(Clone, Debug)]
 pub struct BooleanAttribute {
     pub iid: Vec<u8>,
-    pub value: bool
+    pub value: bool,
 }
 
 #[derive(Clone, Debug)]
 pub struct LongAttribute {
     pub iid: Vec<u8>,
-    pub value: i64
+    pub value: i64,
 }
 
-impl LongAttribute {
-}
+impl LongAttribute {}
 
 #[derive(Clone, Debug)]
 pub struct DoubleAttribute {
     pub iid: Vec<u8>,
-    pub value: f64
+    pub value: f64,
 }
 
 #[derive(Clone, Debug)]
 pub struct StringAttribute {
     pub iid: Vec<u8>,
-    pub value: String
+    pub value: String,
 }
 
-impl StringAttribute {
-}
+impl StringAttribute {}
 
 #[derive(Clone, Debug)]
 pub struct DateTimeAttribute {
     pub iid: Vec<u8>,
-    pub value: NaiveDateTime
+    pub value: NaiveDateTime,
 }
 
 pub mod attribute {
@@ -418,14 +478,14 @@ pub mod attribute {
         Long = 2,
         Double = 3,
         String = 4,
-        DateTime = 5
+        DateTime = 5,
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct ScopedLabel {
     pub scope: String,
-    pub name: String
+    pub name: String,
 }
 
 impl ScopedLabel {

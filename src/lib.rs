@@ -64,10 +64,16 @@ impl TypeDBClient {
     }
 
     pub async fn session(&mut self, db_name: &str, type_: session::Type) -> Result<Session> {
-        self.session_with_options(db_name, type_, Options::default()).await
+        self.session_with_options(db_name, type_, Options::default())
+            .await
     }
 
-    pub async fn session_with_options(&mut self, db_name: &str, type_: session::Type, options: Options) -> Result<Session> {
+    pub async fn session_with_options(
+        &mut self,
+        db_name: &str,
+        type_: session::Type,
+        options: Options,
+    ) -> Result<Session> {
         Session::new(db_name, type_, options, &self.rpc_client).await
     }
 }
