@@ -19,19 +19,15 @@
  * under the License.
  */
 
-use futures::channel::mpsc;
-use futures::SinkExt;
-use std::fmt::Debug;
-use std::future::Future;
-use std::sync::Arc;
-use tonic::transport::Channel;
-use tonic::{Response, Status, Streaming};
+use futures::{channel::mpsc, SinkExt};
+use std::{fmt::Debug, future::Future, sync::Arc};
+use tonic::{transport::Channel, Response, Status, Streaming};
 use typedb_protocol::{core_database, core_database_manager, session, transaction};
 
-use crate::common::error::Error;
-use crate::common::{Executor, Result};
-use crate::rpc::builder::core;
-use crate::rpc::builder::transaction::client_msg;
+use crate::{
+    common::{error::Error, Executor, Result},
+    rpc::builder::{core, transaction::client_msg},
+};
 
 #[derive(Clone, Debug)]
 pub(crate) struct RpcClient {
@@ -137,10 +133,7 @@ impl RpcClient {
     pub(crate) async fn transaction(
         &mut self,
         open_req: transaction::Req,
-    ) -> Result<(
-        mpsc::Sender<transaction::Client>,
-        Streaming<transaction::Server>,
-    )> {
+    ) -> Result<(mpsc::Sender<transaction::Client>, Streaming<transaction::Server>)> {
         // TODO: refactor to crossbeam channel
         let (mut sender, receiver) = mpsc::channel::<transaction::Client>(256);
         sender.send(client_msg(vec![open_req])).await.unwrap();
@@ -151,17 +144,13 @@ impl RpcClient {
         res: impl Future<Output = ::core::result::Result<Response<T>, Status>>,
     ) -> Result<T> {
         // TODO: check if we need ensureConnected() from client-java
-        res.await
-            .map(|res| res.into_inner())
-            .map_err(|status| status.into())
+        res.await.map(|res| res.into_inner()).map_err(|status| status.into())
     }
 
     async fn bidi_stream<T, U>(
         req_sink: mpsc::Sender<T>,
         res: impl Future<Output = ::core::result::Result<Response<Streaming<U>>, Status>>,
     ) -> Result<(mpsc::Sender<T>, Streaming<U>)> {
-        res.await
-            .map(|resp| (req_sink, resp.into_inner()))
-            .map_err(|status| status.into())
+        res.await.map(|resp| (req_sink, resp.into_inner())).map_err(|status| status.into())
     }
 }

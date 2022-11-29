@@ -20,8 +20,10 @@
  */
 
 // use grpc::{Error as GrpcError, GrpcMessageError, GrpcStatus};
-use std::error::Error as StdError;
-use std::fmt::{Debug, Display, Formatter};
+use std::{
+    error::Error as StdError,
+    fmt::{Debug, Display, Formatter},
+};
 use tonic::Status;
 
 // TODO: try refactoring out the lifetime by storing String instead of &str
@@ -32,10 +34,7 @@ struct MessageTemplate<'a> {
 
 impl MessageTemplate<'_> {
     const fn new<'a>(code_prefix: &'a str, msg_prefix: &'a str) -> MessageTemplate<'a> {
-        MessageTemplate {
-            code_prefix,
-            msg_prefix,
-        }
+        MessageTemplate { code_prefix, msg_prefix }
     }
 }
 

@@ -20,16 +20,19 @@
  */
 
 use futures::Stream;
-use std::fmt::Debug;
-use std::time::Duration;
+use std::{fmt::Debug, time::Duration};
 use typedb_protocol::transaction as transaction_proto;
 
-use crate::common::Result;
-use crate::query::QueryManager;
-use crate::rpc::builder::transaction::{commit_req, open_req, rollback_req};
-use crate::rpc::client::RpcClient;
-use crate::rpc::transaction::TransactionRpc;
-use crate::Options;
+use crate::{
+    common::Result,
+    query::QueryManager,
+    rpc::{
+        builder::transaction::{commit_req, open_req, rollback_req},
+        client::RpcClient,
+        transaction::TransactionRpc,
+    },
+    Options,
+};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Type {
@@ -69,12 +72,7 @@ impl Transaction {
             network_latency.as_millis() as i32,
         );
         let rpc = TransactionRpc::new(rpc_client, open_req).await?;
-        Ok(Transaction {
-            type_,
-            options,
-            query: QueryManager::new(&rpc),
-            rpc,
-        })
+        Ok(Transaction { type_, options, query: QueryManager::new(&rpc), rpc })
     }
 
     pub async fn commit(&mut self) -> Result {

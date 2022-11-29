@@ -20,27 +20,36 @@
  */
 
 use crossbeam::atomic::AtomicCell;
-use futures::channel::{mpsc, oneshot};
-use futures::{executor, SinkExt, Stream, StreamExt};
-use std::collections::HashMap;
-use std::mem;
-use std::pin::Pin;
-use std::sync::{Arc, Mutex};
-use std::task::{Context, Poll};
-use std::thread::sleep;
-use std::time::Duration;
+use futures::{
+    channel::{mpsc, oneshot},
+    executor, SinkExt, Stream, StreamExt,
+};
+use std::{
+    collections::HashMap,
+    mem,
+    pin::Pin,
+    sync::{Arc, Mutex},
+    task::{Context, Poll},
+    thread::sleep,
+    time::Duration,
+};
 use tonic::Streaming;
-use typedb_protocol::transaction;
-use typedb_protocol::transaction::res::Res;
-use typedb_protocol::transaction::res_part;
-use typedb_protocol::transaction::server::Server;
-use typedb_protocol::transaction::stream::State;
+use typedb_protocol::{
+    transaction,
+    transaction::{res::Res, res_part, server::Server, stream::State},
+};
 // use uuid::Uuid;
 
-use crate::common::error::{Error, MESSAGES};
-use crate::common::{Executor, Result};
-use crate::rpc::builder::transaction::{client_msg, stream_req};
-use crate::rpc::client::RpcClient;
+use crate::{
+    common::{
+        error::{Error, MESSAGES},
+        Executor, Result,
+    },
+    rpc::{
+        builder::transaction::{client_msg, stream_req},
+        client::RpcClient,
+    },
+};
 
 // TODO: This structure has become pretty messy - review
 #[derive(Clone, Debug)]
@@ -154,10 +163,7 @@ impl Sender {
         executor.spawn_ok(async move {
             Self::dispatch_loop(state3).await;
         });
-        Sender {
-            state,
-            executor: executor.clone(),
-        }
+        Sender { state, executor: executor.clone() }
     }
 
     fn submit_message(req: transaction::Req, sender: Arc<SenderState>) {
@@ -190,12 +196,7 @@ impl Sender {
         let msgs = mem::take(&mut *sender.queued_messages.lock().unwrap());
         if !msgs.is_empty() {
             // let len = msgs.len();
-            sender
-                .req_sink
-                .clone()
-                .send(client_msg(msgs))
-                .await
-                .unwrap();
+            sender.req_sink.clone().send(client_msg(msgs)).await.unwrap();
         }
         sender.ongoing_task_count.fetch_sub(1);
     }
@@ -266,9 +267,7 @@ impl Receiver {
         close_signal_sink: CloseSignalSink,
     ) -> Self {
         let state = Arc::new(ReceiverState::new());
-        let receiver = Receiver {
-            state: Arc::clone(&state),
-        };
+        let receiver = Receiver { state: Arc::clone(&state) };
         executor.spawn_ok(async move {
             Self::listen(grpc_stream, state, close_signal_sink).await;
         });
@@ -276,19 +275,11 @@ impl Receiver {
     }
 
     fn add_single(&mut self, req_id: &ReqId, res_collector: ResCollector) {
-        self.state
-            .res_collectors
-            .lock()
-            .unwrap()
-            .insert(req_id.clone(), res_collector);
+        self.state.res_collectors.lock().unwrap().insert(req_id.clone(), res_collector);
     }
 
     fn add_stream(&mut self, req_id: &ReqId, res_part_sink: ResPartCollector) {
-        self.state
-            .res_part_collectors
-            .lock()
-            .unwrap()
-            .insert(req_id.clone(), res_part_sink);
+        self.state.res_part_collectors.lock().unwrap().insert(req_id.clone(), res_part_sink);
     }
 
     fn collect_res(res: transaction::Res, state: Arc<ReceiverState>) {
@@ -315,20 +306,12 @@ impl Receiver {
     }
 
     async fn collect_res_part(res_part: transaction::ResPart, state: Arc<ReceiverState>) {
-        let value = state
-            .res_part_collectors
-            .lock()
-            .unwrap()
-            .remove(&res_part.req_id);
+        let value = state.res_part_collectors.lock().unwrap().remove(&res_part.req_id);
         match value {
             Some(mut collector) => {
                 let req_id = res_part.req_id.clone();
                 if let Ok(_) = collector.send(Ok(res_part)).await {
-                    state
-                        .res_part_collectors
-                        .lock()
-                        .unwrap()
-                        .insert(req_id, collector);
+                    state.res_part_collectors.lock().unwrap().insert(req_id, collector);
                 }
             }
             None => {
@@ -337,13 +320,7 @@ impl Receiver {
                 //     vec![std::str::from_utf8(res_part.get_req_id()).unwrap()])
                 // )
                 let req_id_str = format!("{:?}", res_part.req_id);
-                println!(
-                    "{}",
-                    MESSAGES
-                        .client
-                        .unknown_request_id
-                        .to_err(vec![req_id_str.as_str()])
-                )
+                println!("{}", MESSAGES.client.unknown_request_id.to_err(vec![req_id_str.as_str()]))
             }
         }
     }
@@ -381,11 +358,7 @@ impl Receiver {
             None => {
                 println!(
                     "{}",
-                    MESSAGES
-                        .client
-                        .missing_response_field
-                        .to_err(vec!["server"])
-                        .to_string()
+                    MESSAGES.client.missing_response_field.to_err(vec!["server"]).to_string()
                 )
             }
         }
@@ -410,24 +383,18 @@ impl Receiver {
                 res_part_collectors.push(res_part_collector)
             }
             for mut collector in res_part_collectors {
-                collector
-                    .send(Err(Self::close_reason(&error_str)))
-                    .await
-                    .ok();
+                collector.send(Err(Self::close_reason(&error_str))).await.ok();
             }
-            close_signal_sink
-                .send(Some(Self::close_reason(&error_str)))
-                .unwrap();
+            close_signal_sink.send(Some(Self::close_reason(&error_str))).unwrap();
         }
     }
 
     fn close_reason(error_str: &Option<String>) -> Error {
         match error_str {
             None => MESSAGES.client.transaction_is_closed.to_err(vec![]),
-            Some(value) => MESSAGES
-                .client
-                .transaction_is_closed_with_errors
-                .to_err(vec![value.as_str()]),
+            Some(value) => {
+                MESSAGES.client.transaction_is_closed_with_errors.to_err(vec![value.as_str()])
+            }
         }
     }
 }
@@ -450,11 +417,7 @@ impl ResPartStream {
         stream_req_sink: std::sync::mpsc::Sender<transaction::Req>,
         req_id: ReqId,
     ) -> Self {
-        ResPartStream {
-            source,
-            stream_req_sink,
-            req_id,
-        }
+        ResPartStream { source, stream_req_sink, req_id }
     }
 }
 

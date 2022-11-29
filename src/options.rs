@@ -20,17 +20,16 @@
  */
 
 use std::time::Duration;
-use typedb_protocol::options::ExplainOpt::Explain;
-use typedb_protocol::options::InferOpt::Infer;
-use typedb_protocol::options::ParallelOpt::Parallel;
-use typedb_protocol::options::PrefetchOpt::Prefetch;
-use typedb_protocol::options::PrefetchSizeOpt::PrefetchSize;
-use typedb_protocol::options::ReadAnyReplicaOpt::ReadAnyReplica;
-use typedb_protocol::options::SchemaLockAcquireTimeoutOpt::SchemaLockAcquireTimeoutMillis;
-use typedb_protocol::options::SessionIdleTimeoutOpt::SessionIdleTimeoutMillis;
-use typedb_protocol::options::TraceInferenceOpt::TraceInference;
-use typedb_protocol::options::TransactionTimeoutOpt::TransactionTimeoutMillis;
-use typedb_protocol::Options as OptionsProto;
+use typedb_protocol::{
+    options::{
+        ExplainOpt::Explain, InferOpt::Infer, ParallelOpt::Parallel, PrefetchOpt::Prefetch,
+        PrefetchSizeOpt::PrefetchSize, ReadAnyReplicaOpt::ReadAnyReplica,
+        SchemaLockAcquireTimeoutOpt::SchemaLockAcquireTimeoutMillis,
+        SessionIdleTimeoutOpt::SessionIdleTimeoutMillis, TraceInferenceOpt::TraceInference,
+        TransactionTimeoutOpt::TransactionTimeoutMillis,
+    },
+    Options as OptionsProto,
+};
 
 macro_rules! options {
     {pub struct $name:ident { $(pub $field_name:ident : Option<$field_type:ty>),* $(,)? }} => {

@@ -22,25 +22,24 @@
 #![allow(dead_code)]
 #![allow(unused)]
 
-use crate::common::error::MESSAGES;
-use crate::common::{Error, Result};
-use crate::rpc::builder::thing::attribute_get_owners_req;
-use crate::transaction::Transaction;
+use crate::{
+    common::{error::MESSAGES, Error, Result},
+    rpc::builder::thing::attribute_get_owners_req,
+    transaction::Transaction,
+};
 use chrono::NaiveDateTime;
-use futures::stream::FuturesUnordered;
-use futures::{stream, FutureExt, Stream, StreamExt};
-use std::convert::TryFrom;
-use std::fmt;
-use std::fmt::{Debug, Display, Formatter};
-use std::iter::once;
-use std::time::Instant;
-use typedb_protocol::attribute_type::ValueType;
-use typedb_protocol::r#type::Encoding;
-use typedb_protocol::thing::res_part::Res;
-use typedb_protocol::transaction;
+use futures::{stream, stream::FuturesUnordered, FutureExt, Stream, StreamExt};
+use std::{
+    convert::TryFrom,
+    fmt,
+    fmt::{Debug, Display, Formatter},
+    iter::once,
+    time::Instant,
+};
 use typedb_protocol::{
-    attribute as attribute_proto, attribute_type as attribute_type_proto, concept as concept_proto,
-    r#type as type_proto, thing as thing_proto,
+    attribute as attribute_proto, attribute_type as attribute_type_proto,
+    attribute_type::ValueType, concept as concept_proto, r#type as type_proto, r#type::Encoding,
+    thing as thing_proto, thing::res_part::Res, transaction,
 };
 use uuid::Uuid;
 
@@ -52,12 +51,9 @@ pub enum Concept {
 
 impl Concept {
     pub(crate) fn from_proto(mut proto: typedb_protocol::Concept) -> Result<Concept> {
-        let concept = proto.concept.ok_or_else(|| {
-            MESSAGES
-                .client
-                .missing_response_field
-                .to_err(vec!["concept"])
-        })?;
+        let concept = proto
+            .concept
+            .ok_or_else(|| MESSAGES.client.missing_response_field.to_err(vec!["concept"]))?;
         match concept {
             concept_proto::Concept::Thing(thing) => Ok(Self::Thing(Thing::from_proto(thing)?)),
             concept_proto::Concept::Type(type_) => Ok(Self::Type(Type::from_proto(type_)?)),
@@ -76,15 +72,15 @@ impl Type {
         // TODO: replace unwrap() with ok_or(custom_error) throughout the module
         match type_proto::Encoding::from_i32(proto.encoding).unwrap() {
             Encoding::ThingType => Ok(Self::Thing(ThingType::Root(RootThingType::default()))),
-            Encoding::EntityType => Ok(Self::Thing(ThingType::Entity(EntityType::from_proto(
-                proto,
-            )))),
-            Encoding::RelationType => Ok(Self::Thing(ThingType::Relation(
-                RelationType::from_proto(proto),
-            ))),
-            Encoding::AttributeType => Ok(Self::Thing(ThingType::Attribute(
-                AttributeType::from_proto(proto)?,
-            ))),
+            Encoding::EntityType => {
+                Ok(Self::Thing(ThingType::Entity(EntityType::from_proto(proto))))
+            }
+            Encoding::RelationType => {
+                Ok(Self::Thing(ThingType::Relation(RelationType::from_proto(proto))))
+            }
+            Encoding::AttributeType => {
+                Ok(Self::Thing(ThingType::Attribute(AttributeType::from_proto(proto)?)))
+            }
             Encoding::RoleType => Ok(Self::Role(RoleType::from_proto(proto))),
         }
     }
@@ -113,9 +109,7 @@ impl RootThingType {
     const LABEL: &'static str = "thing";
 
     pub fn new() -> Self {
-        Self {
-            label: String::from(Self::LABEL),
-        }
+        Self { label: String::from(Self::LABEL) }
     }
 }
 
@@ -187,9 +181,7 @@ impl RootAttributeType {
     const LABEL: &'static str = "attribute";
 
     pub fn new() -> Self {
-        Self {
-            label: String::from(Self::LABEL),
-        }
+        Self { label: String::from(Self::LABEL) }
     }
 }
 
@@ -316,10 +308,7 @@ pub struct Entity {
 
 impl Entity {
     pub(crate) fn from_proto(mut proto: typedb_protocol::Thing) -> Result<Entity> {
-        Ok(Self {
-            type_: EntityType::from_proto(proto.r#type.unwrap()),
-            iid: proto.iid,
-        })
+        Ok(Self { type_: EntityType::from_proto(proto.r#type.unwrap()), iid: proto.iid })
     }
 }
 
@@ -342,10 +331,7 @@ pub struct Relation {
 
 impl Relation {
     pub(crate) fn from_proto(mut proto: typedb_protocol::Thing) -> Result<Relation> {
-        Ok(Self {
-            type_: RelationType::from_proto(proto.r#type.unwrap()),
-            iid: proto.iid,
-        })
+        Ok(Self { type_: RelationType::from_proto(proto.r#type.unwrap()), iid: proto.iid })
     }
 }
 

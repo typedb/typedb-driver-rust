@@ -19,19 +19,24 @@
  * under the License.
  */
 
-use futures::StreamExt;
-use futures::TryFutureExt;
-use std::sync::mpsc;
-use std::thread::sleep;
-use std::time::{Duration, Instant};
-use typedb_client::answer::Numeric;
-use typedb_client::concept::{
-    Attribute, Concept, Entity, LongAttribute, StringAttribute, Thing, ThingType, Type,
+use futures::{StreamExt, TryFutureExt};
+use std::{
+    sync::mpsc,
+    thread::sleep,
+    time::{Duration, Instant},
 };
-use typedb_client::session::Type::{Data, Schema};
-use typedb_client::transaction::Transaction;
-use typedb_client::transaction::Type::{Read, Write};
-use typedb_client::{session, transaction, Session, TypeDBClient};
+use typedb_client::{
+    answer::Numeric,
+    concept::{Attribute, Concept, Entity, LongAttribute, StringAttribute, Thing, ThingType, Type},
+    session,
+    session::Type::{Data, Schema},
+    transaction,
+    transaction::{
+        Transaction,
+        Type::{Read, Write},
+    },
+    Session, TypeDBClient,
+};
 
 const GRAKN: &str = "grakn";
 
@@ -52,10 +57,7 @@ async fn create_db_grakn(client: &mut TypeDBClient) {
             })
         }
         Err(err) => {
-            panic!(
-                "An error occurred checking if the database '{}' exists: {}",
-                GRAKN, err
-            )
+            panic!("An error occurred checking if the database '{}' exists: {}", GRAKN, err)
         }
         _ => {}
     }
@@ -130,18 +132,14 @@ async fn basic() {
     );
     let mut session = new_session(&mut client, Data).await;
     let mut tx = new_tx(&session, Write).await;
-    let mut answer_stream = tx
-        .query
-        .match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
+    let mut answer_stream =
+        tx.query.match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
     while let Some(result) = answer_stream.next().await {
         match result {
             Ok(concept_map) => {
                 println!("{:#?}", concept_map)
             }
-            Err(err) => panic!(
-                "An error occurred fetching answers of a Match query: {}",
-                err
-            ),
+            Err(err) => panic!("An error occurred fetching answers of a Match query: {}", err),
         }
     }
     commit_tx(&mut tx).await;
@@ -160,9 +158,7 @@ async fn concurrent_db_ops() {
         for _ in 0..5 {
             match databases1.all().await {
                 Ok(dbs) => {
-                    sender1
-                        .send(Ok(format!("got databases {:?} from thread 1", dbs)))
-                        .unwrap();
+                    sender1.send(Ok(format!("got databases {:?} from thread 1", dbs))).unwrap();
                 }
                 Err(err) => {
                     sender1.send(Err(err)).unwrap();
@@ -175,9 +171,7 @@ async fn concurrent_db_ops() {
         for _ in 0..5 {
             match client.databases.all().await {
                 Ok(dbs) => {
-                    sender
-                        .send(Ok(format!("got databases {:?} from thread 2", dbs)))
-                        .unwrap();
+                    sender.send(Ok(format!("got databases {:?} from thread 2", dbs))).unwrap();
                 }
                 Err(err) => {
                     sender.send(Err(err)).unwrap();
@@ -217,15 +211,12 @@ async fn concurrent_queries() {
     let mut tx2 = tx.clone();
     let handle = tokio::spawn(async move {
         for _ in 0..5 {
-            let mut answer_stream = tx
-                .query
-                .match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
+            let mut answer_stream =
+                tx.query.match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
             while let Some(result) = answer_stream.next().await {
                 match result {
                     Ok(res) => {
-                        sender
-                            .send(Ok(format!("got answer {:?} from thread 1", res)))
-                            .unwrap();
+                        sender.send(Ok(format!("got answer {:?} from thread 1", res))).unwrap();
                     }
                     Err(err) => {
                         sender.send(Err(err)).unwrap();
@@ -237,15 +228,12 @@ async fn concurrent_queries() {
     });
     let handle2 = tokio::spawn(async move {
         for _ in 0..5 {
-            let mut answer_stream = tx2
-                .query
-                .match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
+            let mut answer_stream =
+                tx2.query.match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
             while let Some(result) = answer_stream.next().await {
                 match result {
                     Ok(res) => {
-                        sender2
-                            .send(Ok(format!("got answer {:?} from thread 2", res)))
-                            .unwrap();
+                        sender2.send(Ok(format!("got answer {:?} from thread 2", res))).unwrap();
                     }
                     Err(err) => {
                         sender2.send(Err(err)).unwrap();
@@ -299,28 +287,15 @@ async fn query_options() {
         }
         {
             let mut tx = new_tx(&session, Read).await;
-            let material_age_count = tx
-                .query
-                .match_aggregate("match $x isa age; count;")
-                .await
-                .unwrap();
-            println!(
-                "Ages (excluding inferred): {}",
-                material_age_count.into_i64()
-            );
+            let material_age_count =
+                tx.query.match_aggregate("match $x isa age; count;").await.unwrap();
+            println!("Ages (excluding inferred): {}", material_age_count.into_i64());
         }
         {
-            let mut tx = new_tx_with_options(
-                &session,
-                Read,
-                typedb_client::Options::new_core().infer(true),
-            )
-            .await;
-            let all_age_count = tx
-                .query
-                .match_aggregate("match $x isa age; count;")
-                .await
-                .unwrap();
+            let mut tx =
+                new_tx_with_options(&session, Read, typedb_client::Options::new_core().infer(true))
+                    .await;
+            let all_age_count = tx.query.match_aggregate("match $x isa age; count;").await.unwrap();
             println!("Ages (including inferred): {}", all_age_count.into_i64());
         }
     }
@@ -370,10 +345,9 @@ async fn many_concept_types() {
                             describe_concept(&concept).await;
                         }
                     }
-                    Err(err) => panic!(
-                        "An error occurred fetching answers of a Match query: {}",
-                        err
-                    ),
+                    Err(err) => {
+                        panic!("An error occurred fetching answers of a Match query: {}", err)
+                    }
                 }
             }
         }
@@ -423,10 +397,9 @@ async fn streaming_perf() {
                             }
                         }
                     }
-                    Err(err) => panic!(
-                        "An error occurred fetching answers of a Match query: {}",
-                        err
-                    ),
+                    Err(err) => {
+                        panic!("An error occurred fetching answers of a Match query: {}", err)
+                    }
                 }
                 idx = idx + 1;
                 if idx == 100_000 {

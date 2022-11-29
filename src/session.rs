@@ -22,16 +22,22 @@
 use crossbeam::atomic::AtomicCell;
 use futures::executor;
 use log::warn;
-use std::sync::{mpsc, Arc};
-use std::time::{Duration, Instant};
+use std::{
+    sync::{mpsc, Arc},
+    time::{Duration, Instant},
+};
 use typedb_protocol::session as session_proto;
 
-use crate::common::error::MESSAGES;
-use crate::common::Result;
-use crate::rpc::builder::session::{close_req, open_req};
-use crate::rpc::client::RpcClient;
-use crate::transaction::Transaction;
-use crate::{transaction, Options};
+use crate::{
+    common::{error::MESSAGES, Result},
+    rpc::{
+        builder::session::{close_req, open_req},
+        client::RpcClient,
+    },
+    transaction,
+    transaction::Transaction,
+    Options,
+};
 
 #[derive(Copy, Clone, Debug)]
 pub enum Type {
@@ -83,8 +89,7 @@ impl Session {
     }
 
     pub async fn transaction(&self, type_: transaction::Type) -> Result<Transaction> {
-        self.transaction_with_options(type_, Options::default())
-            .await
+        self.transaction_with_options(type_, Options::default()).await
     }
 
     pub async fn transaction_with_options(
@@ -94,14 +99,8 @@ impl Session {
     ) -> Result<Transaction> {
         match self.is_open() {
             true => {
-                Transaction::new(
-                    &self.id,
-                    type_,
-                    options,
-                    self.network_latency,
-                    &self.rpc_client,
-                )
-                .await
+                Transaction::new(&self.id, type_, options, self.network_latency, &self.rpc_client)
+                    .await
             }
             false => Err(MESSAGES.client.session_is_closed.to_err(vec![])),
         }
@@ -114,10 +113,7 @@ impl Session {
     pub async fn close(&mut self) {
         if let Ok(true) = self.is_open_atomic.compare_exchange(true, false) {
             // let res = self.session_close_sink.send(self.id.clone());
-            let res = self
-                .rpc_client
-                .session_close(close_req(self.id.clone()))
-                .await;
+            let res = self.rpc_client.session_close(close_req(self.id.clone())).await;
             // TODO: the request errors harmlessly if the session is already closed. Protocol should
             //       expose the cause of the error and we can use that to decide whether to warn here.
             if res.is_err() {
