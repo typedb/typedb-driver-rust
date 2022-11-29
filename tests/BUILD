@@ -21,7 +21,7 @@
 
 package(default_visibility = ["//visibility:public"])
 
-load("@rules_rust//rust:defs.bzl", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_test", "rustfmt_test")
 load("@vaticle_dependencies//tool/checkstyle:rules.bzl", "checkstyle_test")
 
 rust_test(
@@ -34,6 +34,8 @@ rust_test(
         "@vaticle_dependencies//library/crates:tokio",
     ],
 )
+
+rustfmt_test(name = "queries_rustfmt_test", targets = ["queries"])
 
 checkstyle_test(
     name = "checkstyle",

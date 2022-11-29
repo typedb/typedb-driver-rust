@@ -53,7 +53,7 @@ filegroup(
     srcs = ["rustfmt.toml"],
 )
 
-rustfmt_test(name = "rustfmt_test", targets = ["typedb_client"])
+rustfmt_test(name = "client_rustfmt_test", targets = ["typedb_client"])
 
 assemble_crate(
     name = "assemble_crate",
