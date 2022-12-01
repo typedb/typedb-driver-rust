@@ -19,11 +19,6 @@
  * under the License.
  */
 
-use crossbeam::atomic::AtomicCell;
-use futures::{
-    channel::{mpsc, oneshot},
-    executor, SinkExt, Stream, StreamExt,
-};
 use std::{
     collections::HashMap,
     mem,
@@ -33,13 +28,19 @@ use std::{
     thread::sleep,
     time::Duration,
 };
+
+use crossbeam::atomic::AtomicCell;
+use futures::{
+    channel::{mpsc, oneshot},
+    executor, SinkExt, Stream, StreamExt,
+};
 use tonic::Streaming;
 use typedb_protocol::{
     transaction,
     transaction::{res::Res, res_part, server::Server, stream::State},
 };
-// use uuid::Uuid;
 
+// use uuid::Uuid;
 use crate::{
     common::{
         error::{Error, MESSAGES},

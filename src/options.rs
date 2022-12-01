@@ -20,6 +20,7 @@
  */
 
 use std::time::Duration;
+
 use typedb_protocol::{
     options::{
         ExplainOpt::Explain, InferOpt::Infer, ParallelOpt::Parallel, PrefetchOpt::Prefetch,

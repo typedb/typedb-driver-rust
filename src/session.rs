@@ -19,13 +19,11 @@
  * under the License.
  */
 
+use std::time::{Duration, Instant};
+
 use crossbeam::atomic::AtomicCell;
 use futures::executor;
 use log::warn;
-use std::{
-    sync::{mpsc, Arc},
-    time::{Duration, Instant},
-};
 use typedb_protocol::session as session_proto;
 
 use crate::{

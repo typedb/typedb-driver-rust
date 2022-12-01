@@ -22,13 +22,6 @@
 #![allow(dead_code)]
 #![allow(unused)]
 
-use crate::{
-    common::{error::MESSAGES, Error, Result},
-    rpc::builder::thing::attribute_get_owners_req,
-    transaction::Transaction,
-};
-use chrono::NaiveDateTime;
-use futures::{stream, stream::FuturesUnordered, FutureExt, Stream, StreamExt};
 use std::{
     convert::TryFrom,
     fmt,
@@ -36,12 +29,21 @@ use std::{
     iter::once,
     time::Instant,
 };
+
+use chrono::NaiveDateTime;
+use futures::{stream, stream::FuturesUnordered, FutureExt, Stream, StreamExt};
 use typedb_protocol::{
     attribute as attribute_proto, attribute_type as attribute_type_proto,
     attribute_type::ValueType, concept as concept_proto, r#type as type_proto, r#type::Encoding,
     thing as thing_proto, thing::res_part::Res, transaction,
 };
 use uuid::Uuid;
+
+use crate::{
+    common::{error::MESSAGES, Error, Result},
+    rpc::builder::thing::attribute_get_owners_req,
+    transaction::Transaction,
+};
 
 #[derive(Clone, Debug)]
 pub enum Concept {

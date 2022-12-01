@@ -19,6 +19,8 @@
  * under the License.
  */
 
+use std::fmt::{Display, Formatter};
+
 use crate::{
     common::{error::MESSAGES, Result},
     rpc::{
@@ -29,7 +31,6 @@ use crate::{
         client::RpcClient,
     },
 };
-use std::fmt::{Display, Formatter};
 
 /// An interface for performing database-level operations against the connected server.
 /// These operations include:

@@ -19,8 +19,9 @@
  * under the License.
  */
 
-use crate::common::Error;
 use typedb_protocol::numeric::Value;
+
+use crate::common::Error;
 
 #[derive(Clone, Debug)]
 pub enum Numeric {

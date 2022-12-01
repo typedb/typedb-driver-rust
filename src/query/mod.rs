@@ -19,10 +19,10 @@
  * under the License.
  */
 
-use crate::answer::{ConceptMap, Numeric};
+use std::iter::once;
+
 use futures::{stream, Stream, StreamExt};
 use query_manager::res::Res::MatchAggregateRes;
-use std::iter::once;
 use typedb_protocol::{
     query_manager,
     query_manager::res_part::Res::{InsertResPart, MatchResPart, UpdateResPart},
@@ -30,6 +30,7 @@ use typedb_protocol::{
 };
 
 use crate::{
+    answer::{ConceptMap, Numeric},
     common::{error::MESSAGES, Result},
     rpc::{
         builder::query_manager::{

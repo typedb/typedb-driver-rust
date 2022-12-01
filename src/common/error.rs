@@ -24,6 +24,7 @@ use std::{
     error::Error as StdError,
     fmt::{Debug, Display, Formatter},
 };
+
 use tonic::Status;
 
 // TODO: try refactoring out the lifetime by storing String instead of &str

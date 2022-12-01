@@ -19,8 +19,9 @@
  * under the License.
  */
 
-use futures::Stream;
 use std::{fmt::Debug, time::Duration};
+
+use futures::Stream;
 use typedb_protocol::transaction as transaction_proto;
 
 use crate::{
