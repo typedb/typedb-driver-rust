@@ -32,8 +32,8 @@ use crate::{
         client::RpcClient,
         transaction::TransactionRpc,
     },
-    Options,
 };
+use crate::connection::core::options::Options;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Type {

@@ -39,8 +39,8 @@ use crate::{
         },
         transaction::TransactionRpc,
     },
-    Options,
 };
+use crate::connection::core::options::Options;
 
 macro_rules! stream_concept_maps {
     ($self:ident, $req:ident, $res_part_kind:ident, $query_type_str:tt) => {

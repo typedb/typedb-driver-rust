@@ -19,88 +19,82 @@
  * under the License.
  */
 
-use futures::{StreamExt, TryFutureExt};
-use std::{
-    sync::mpsc,
-    thread::sleep,
-    time::{Duration, Instant},
-};
+use std::{collections::HashSet, sync::mpsc, time::Instant};
+
+use futures::StreamExt;
+use serial_test::serial;
 use typedb_client::{
-    answer::Numeric,
-    concept::{Attribute, Concept, Entity, LongAttribute, StringAttribute, Thing, ThingType, Type},
-    session,
-    session::Type::{Data, Schema},
-    transaction,
-    transaction::{
-        Transaction,
-        Type::{Read, Write},
+    connection::cluster,
+    connection::cluster::Credential,
+    concept::{Attribute, Concept, Thing, ThingType, Type},
+    connection::core::{
+        session,
+        session::Type::{Data, Schema},
+        transaction,
+        transaction::{
+            Transaction,
+            Type::{Read, Write},
+        },
+        options::Options
     },
-    Session, TypeDBClient,
 };
+use typedb_client::connection::core::session::Session;
+use typedb_client::connection::core::TypeDBClient;
 
 const GRAKN: &str = "grakn";
 
 async fn new_typedb_client() -> TypeDBClient {
     TypeDBClient::with_default_address()
         .await
-        .unwrap_or_else(|err| panic!("An error occurred connecting to TypeDB Server: {}", err))
+        .expect("An error occurred connecting to TypeDB Server")
 }
 
 async fn create_db_grakn(client: &mut TypeDBClient) {
-    match client.databases.contains(GRAKN).await {
-        Ok(true) => {
-            let mut grakn = client.databases.get(GRAKN).await.unwrap_or_else(|err| {
-                panic!("An error occurred getting database '{}': {}", GRAKN, err)
-            });
-            grakn.delete().await.unwrap_or_else(|err| {
-                panic!("An error occurred deleting database '{}': {}", GRAKN, err)
-            })
-        }
-        Err(err) => {
-            panic!("An error occurred checking if the database '{}' exists: {}", GRAKN, err)
-        }
-        _ => {}
+    if client
+        .databases
+        .contains(GRAKN)
+        .await
+        .expect(&format!("An error occurred checking if the database '{GRAKN}' exists"))
+    {
+        let mut grakn = client
+            .databases
+            .get(GRAKN)
+            .await
+            .expect(&format!("An error occurred getting database '{GRAKN}'"));
+        grakn.delete().await.expect(&format!("An error occurred deleting database '{GRAKN}'"))
     }
     client
         .databases
         .create(GRAKN)
         .await
-        .unwrap_or_else(|err| panic!("An error occurred creating database '{}': {}", GRAKN, err));
+        .expect(&format!("An error occurred creating database '{GRAKN}'"));
 }
 
 async fn new_session(client: &mut TypeDBClient, session_type: session::Type) -> Session {
-    client
-        .session(GRAKN, session_type)
-        .await
-        .unwrap_or_else(|err| panic!("An error occurred opening a session: {}", err))
+    client.session(GRAKN, session_type).await.expect("An error occurred opening a session")
 }
 
 async fn new_tx(session: &Session, tx_type: transaction::Type) -> Transaction {
-    new_tx_with_options(session, tx_type, typedb_client::Options::default()).await
+    new_tx_with_options(session, tx_type, Options::default()).await
 }
 
 async fn new_tx_with_options(
     session: &Session,
     tx_type: transaction::Type,
-    options: typedb_client::Options,
+    options: Options,
 ) -> Transaction {
     session
         .transaction_with_options(tx_type, options)
         .await
-        .unwrap_or_else(|err| panic!("An error occurred opening a transaction: {}", err))
+        .expect("An error occurred opening a transaction")
 }
 
 async fn commit_tx(tx: &mut Transaction) {
-    tx.commit()
-        .await
-        .unwrap_or_else(|err| panic!("An error occurred committing a transaction: {}", err))
+    tx.commit().await.expect("An error occurred committing a transaction")
 }
 
 async fn run_define_query(tx: &mut Transaction, query: &str) {
-    tx.query
-        .define(query)
-        .await
-        .unwrap_or_else(|err| panic!("An error occurred running a Define query: {}", err));
+    tx.query.define(query).await.expect("An error occurred running a Define query");
 }
 
 #[allow(unused_must_use)]
@@ -108,15 +102,29 @@ fn run_insert_query(tx: &mut Transaction, query: &str) {
     tx.query.insert(query);
 }
 
-async fn run_match_aggregate_query(tx: &mut Transaction, query: &str) -> Numeric {
-    tx.query
-        .match_aggregate(query)
-        .await
-        .unwrap_or_else(|err| panic!("An error occurred running a Match Aggregate query: {}", err))
+#[tokio::test(flavor = "multi_thread")]
+#[serial(cluster)]
+async fn basic_cluster() {
+    let client = cluster::Client::new(
+        &HashSet::from([
+            "127.0.0.1:11729".to_string(),
+            "127.0.0.1:21729".to_string(),
+            "127.0.0.1:31729".to_string(),
+        ]),
+        Credential::new_without_tls("admin", "password"),
+        16,
+    )
+    .await
+    .expect("An error occurred connecting to TypeDB Cluster");
+
+    if client.databases.contains(GRAKN).await.unwrap() {
+        client.databases.get(GRAKN).await.unwrap().delete().await.unwrap();
+    }
+    client.databases.create(GRAKN).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore]
+#[serial(core)]
 async fn basic() {
     let mut client = new_typedb_client().await;
     create_db_grakn(&mut client).await;
@@ -126,11 +134,11 @@ async fn basic() {
             .databases
             .all()
             .await
-            .unwrap_or_else(|err| panic!("An error occurred listing databases: {}", err))
+            .expect("An error occurred listing databases")
             .iter()
             .fold(String::new(), |acc, db| acc + db.name.as_str() + ",")
     );
-    let mut session = new_session(&mut client, Data).await;
+    let session = new_session(&mut client, Data).await;
     let mut tx = new_tx(&session, Write).await;
     let mut answer_stream =
         tx.query.match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
@@ -146,7 +154,7 @@ async fn basic() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore]
+#[serial(core)]
 async fn concurrent_db_ops() {
     let mut client = new_typedb_client().await;
     let (sender, receiver) = mpsc::channel();
@@ -195,19 +203,14 @@ async fn concurrent_db_ops() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore]
+#[serial(core)]
 async fn concurrent_queries() {
     let mut client = new_typedb_client().await;
     let (sender, receiver) = mpsc::channel();
     let sender2 = sender.clone();
-    let session = client
-        .session(GRAKN, Data)
-        .await
-        .unwrap_or_else(|err| panic!("An error occurred opening a session: {}", err));
-    let mut tx: Transaction = session
-        .transaction(Write)
-        .await
-        .unwrap_or_else(|err| panic!("An error occurred opening a transaction: {}", err));
+    let session = client.session(GRAKN, Data).await.expect("An error occurred opening a session");
+    let mut tx: Transaction =
+        session.transaction(Write).await.expect("An error occurred opening a transaction");
     let mut tx2 = tx.clone();
     let handle = tokio::spawn(async move {
         for _ in 0..5 {
@@ -258,7 +261,7 @@ async fn concurrent_queries() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore]
+#[serial(core)]
 async fn query_options() {
     let mut client = new_typedb_client().await;
     create_db_grakn(&mut client).await;
@@ -293,7 +296,7 @@ async fn query_options() {
         }
         {
             let mut tx =
-                new_tx_with_options(&session, Read, typedb_client::Options::new_core().infer(true))
+                new_tx_with_options(&session, Read, Options::new_core().infer(true))
                     .await;
             let all_age_count = tx.query.match_aggregate("match $x isa age; count;").await.unwrap();
             println!("Ages (including inferred): {}", all_age_count.into_i64());
@@ -302,7 +305,7 @@ async fn query_options() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore]
+#[serial(core)]
 async fn many_concept_types() {
     let mut client = new_typedb_client().await;
     create_db_grakn(&mut client).await;
@@ -355,6 +358,8 @@ async fn many_concept_types() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[serial(core)]
+#[ignore]
 async fn streaming_perf() {
     let mut client = new_typedb_client().await;
     for iteration in 0..5 {
@@ -362,7 +367,15 @@ async fn streaming_perf() {
         {
             let session = new_session(&mut client, Schema).await;
             let mut tx = new_tx(&session, Write).await;
-            run_define_query(&mut tx, "define person sub entity, owns name, owns age; name sub attribute, value string; age sub attribute, value long;").await;
+            run_define_query(
+                &mut tx,
+                concat!(
+                    "define person sub entity, owns name, owns age; ",
+                    "name sub attribute, value string; ",
+                    "age sub attribute, value long;"
+                ),
+            )
+            .await;
             commit_tx(&mut tx).await;
         }
         {

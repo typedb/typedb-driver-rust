@@ -169,7 +169,7 @@ impl Messages<'_> {
 
 pub const MESSAGES: Messages = Messages::new();
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     // GrpcError(String, GrpcError),
     Other(String),
@@ -236,6 +236,18 @@ impl From<futures::channel::mpsc::SendError> for Error {
 
 impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
     fn from(err: tokio::sync::mpsc::error::SendError<T>) -> Self {
+        Error::Other(err.to_string())
+    }
+}
+
+impl From<tonic::transport::Error> for Error {
+    fn from(err: tonic::transport::Error) -> Self {
+        Error::Other(err.to_string())
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
         Error::Other(err.to_string())
     }
 }

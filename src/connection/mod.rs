@@ -19,15 +19,5 @@
  * under the License.
  */
 
-pub mod answer;
-
-pub mod connection;
-
-pub mod concept;
-
-pub mod common;
-pub use common::Result;
-
-pub mod query;
-
-mod rpc;
+pub mod cluster;
+pub mod core;

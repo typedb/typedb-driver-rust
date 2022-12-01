@@ -28,14 +28,13 @@ use typedb_protocol::session as session_proto;
 
 use crate::{
     common::{error::MESSAGES, Result},
+    connection::core::{transaction, transaction::Transaction},
     rpc::{
         builder::session::{close_req, open_req},
         client::RpcClient,
     },
-    transaction,
-    transaction::Transaction,
-    Options,
 };
+use crate::connection::core::options::Options;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Type {
@@ -52,7 +51,7 @@ impl Type {
     }
 }
 
-pub(super) type SessionId = Vec<u8>;
+pub(crate) type SessionId = Vec<u8>;
 
 #[derive(Debug)]
 pub struct Session {
