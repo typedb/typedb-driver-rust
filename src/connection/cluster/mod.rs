@@ -19,91 +19,94 @@
  * under the License.
  */
 
+mod database;
 use std::{
     collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
+    future::Future,
+    pin::Pin,
 };
 
-use futures::future::join_all;
-use tonic::transport::{Certificate, Channel, ClientTlsConfig};
+use futures::{future::join_all, StreamExt};
+use tonic::{
+    transport::{Channel},
+    Code,
+};
 
-use crate::{common::error::MESSAGES, rpc::client::RpcClusterClient, Result};
-
-#[derive(Clone, Debug)]
-pub struct Credential {
-    username: String,
-    password: String,
-    is_tls_enabled: bool,
-    tls_root_ca: Option<PathBuf>,
-}
-
-impl Credential {
-    pub fn new_with_tls(username: &str, password: &str, tls_root_ca: Option<&Path>) -> Self {
-        Credential {
-            username: username.to_owned(),
-            password: password.to_owned(),
-            is_tls_enabled: true,
-            tls_root_ca: tls_root_ca.map(Path::to_owned),
-        }
-    }
-
-    pub fn new_without_tls(username: &str, password: &str) -> Self {
-        Credential {
-            username: username.to_owned(),
-            password: password.to_owned(),
-            is_tls_enabled: false,
-            tls_root_ca: None,
-        }
-    }
-
-    pub fn username(&self) -> &str {
-        &self.username
-    }
-
-    pub fn password(&self) -> &str {
-        &self.password
-    }
-
-    pub fn is_tls_enabled(&self) -> bool {
-        self.is_tls_enabled
-    }
-
-    pub fn tls_config(&self) -> Result<ClientTlsConfig> {
-        if self.tls_root_ca.is_some() {
-            Ok(ClientTlsConfig::new().ca_certificate(Certificate::from_pem(
-                std::fs::read_to_string(self.tls_root_ca.as_ref().unwrap())?,
-            )))
-        } else {
-            Ok(ClientTlsConfig::new())
-        }
-    }
-}
+use self::database::{Database, DatabaseManager, Replica};
+use crate::{
+    common::{
+        error::MESSAGES,
+        rpc,
+        rpc::{builder::cluster::database_manager::get_req, cluster_client::TonicResult},
+    },
+    Result,
+};
+use crate::common::Credential;
 
 pub struct Client {
-    clients: HashMap<String, ServerClient>,
-    parallelisation: u64,
+    server_clients: HashMap<String, ServerClient>,
+    databases: DatabaseManager,
+    cluster_databases: HashMap<String, Database>,
 }
 
 impl Client {
-    pub async fn new(
-        init_addresses: &HashSet<String>,
-        credential: Credential,
-        parallelisation: u64,
-    ) -> Result<Self> {
+    pub async fn new(init_addresses: &HashSet<String>, credential: Credential) -> Result<Self> {
         Ok(Self {
-            clients: create_clients(init_addresses, credential, parallelisation).await?,
-            parallelisation,
+            server_clients: create_clients(init_addresses, credential).await?,
+            databases: DatabaseManager::new().await?,
+            cluster_databases: HashMap::new(),
         })
+    }
+
+    async fn run_failsafe_any_replica<C, F, R>(
+        &mut self,
+        caller: &mut C,
+        database_name: &str,
+        fun: F,
+    ) -> Result<R>
+    where
+        F: for<'a> Fn(
+            &'a mut C,
+            &mut ServerClient,
+            &Replica,
+        ) -> Pin<Box<dyn Future<Output = TonicResult<R>> + 'a>>,
+    {
+        if !self.cluster_databases.contains_key(database_name) {
+            self.fetch_database_replicas(database_name).await?;
+        }
+        let database = self.cluster_databases.get(database_name).unwrap();
+
+        let mut replicas = Vec::with_capacity(database.replicas.len());
+        replicas.push(database.preferred_replica.clone());
+        replicas.extend(database.replicas.iter().filter(|r| !r.is_preferred).cloned());
+
+        for (n, replica) in replicas.iter().enumerate() {
+            let f = if n == 0 { &fun } else { &fun };
+            match f(caller, self.server_clients.get_mut(&replica.address).unwrap(), &replica).await
+            {
+                Err(err) if err.code() == Code::Unavailable => (),
+                res => return Ok(res?.into_inner()),
+            }
+        }
+        Err(MESSAGES.client.unable_to_connect.to_err(vec![]))
+    }
+
+    async fn fetch_database_replicas(&mut self, database_name: &str) -> Result {
+        for (address, server_client) in self.server_clients.iter_mut() {
+            match server_client.cluster_client.databases_get(get_req(database_name)).await {
+                _ => todo!(),
+            }
+        }
+        Ok(())
     }
 }
 
 async fn fetch_current_addresses(
     addresses: &HashSet<String>,
     credential: &Credential,
-    parallelisation: u64,
 ) -> Result<HashSet<String>> {
     for address in addresses {
-        match ServerClient::new(address, credential.clone(), parallelisation).await {
+        match ServerClient::new(address, credential.clone()).await {
             Ok(mut client) => return client.servers().await,
             Err(err) if err == MESSAGES.client.unable_to_connect.to_err(vec![]) => (),
             Err(err) => return Err(err),
@@ -115,15 +118,13 @@ async fn fetch_current_addresses(
 async fn create_clients(
     init_addresses: &HashSet<String>,
     credential: Credential,
-    parallelisation: u64,
 ) -> Result<HashMap<String, ServerClient>> {
-    let addresses = fetch_current_addresses(init_addresses, &credential, parallelisation).await?;
-    let mut clients = join_all(
-        addresses.iter().map(|addr| ServerClient::new(&addr, credential.clone(), parallelisation)),
-    )
-    .await
-    .into_iter()
-    .collect::<Result<Vec<_>>>()?;
+    let addresses = fetch_current_addresses(init_addresses, &credential).await?;
+    let mut clients =
+        join_all(addresses.iter().map(|addr| ServerClient::new(&addr, credential.clone())))
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>>>()?;
 
     if join_all(clients.iter_mut().map(ServerClient::validate)).await.iter().all(Result::is_err) {
         Err(MESSAGES.client.unable_to_connect.to_err(vec![]))?;
@@ -133,13 +134,12 @@ async fn create_clients(
 }
 
 pub struct ServerClient {
-    // client: TypeDBClient,
     address: String,
-    stub: ServerStub,
+    cluster_client: rpc::ClusterClient,
 }
 
 impl ServerClient {
-    async fn new(address: &str, credential: Credential, _parallelisation: u64) -> Result<Self> {
+    async fn new(address: &str, credential: Credential) -> Result<Self> {
         let uri = if address.contains("://") {
             address.parse().unwrap()
         } else {
@@ -152,35 +152,20 @@ impl ServerClient {
             Channel::builder(uri).connect().await.expect("")
         };
         Ok(Self {
-            // client: TypeDBClient::new(address).await?,
             address: address.to_owned(),
-            stub: ServerStub::new(channel, credential).await?,
+            cluster_client: rpc::ClusterClient::new(channel, credential).await?,
         })
     }
 
     async fn servers(&mut self) -> Result<HashSet<String>> {
-        self.stub.servers_all().await
+        self.cluster_client
+            .servers_all()
+            .await
+            .map(|res| res.servers.into_iter().map(|server| server.address).collect())
     }
 
     async fn validate(&mut self) -> Result<()> {
         // self.client.validate().await
         Ok(())
-    }
-}
-
-struct ServerStub {
-    cluster_client: RpcClusterClient,
-}
-
-impl ServerStub {
-    async fn new(channel: Channel, credential: Credential) -> Result<Self> {
-        Ok(Self { cluster_client: RpcClusterClient::new(channel, credential).await? })
-    }
-
-    async fn servers_all(&mut self) -> Result<HashSet<String>> {
-        self.cluster_client
-            .servers_all()
-            .await
-            .map(|res| res.servers.into_iter().map(|server| server.address).collect())
     }
 }

@@ -22,37 +22,25 @@
 use std::{fmt::Debug, time::Duration};
 
 use futures::Stream;
+use tonic::transport::Channel;
 use typedb_protocol::transaction as transaction_proto;
 
 use crate::{
-    common::Result,
-    query::QueryManager,
-    rpc::{
-        builder::transaction::{commit_req, open_req, rollback_req},
-        client::RpcClient,
-        transaction::TransactionRpc,
+    common::{
+        rpc,
+        rpc::{
+            builder::transaction::{commit_req, open_req, rollback_req},
+            transaction::TransactionRpc,
+        },
+        Result, TransactionType,
     },
+    connection::core::options::Options,
+    query::QueryManager,
 };
-use crate::connection::core::options::Options;
-
-#[derive(Copy, Clone, Debug)]
-pub enum Type {
-    Read = 0,
-    Write = 1,
-}
-
-impl Type {
-    fn to_proto(&self) -> transaction_proto::Type {
-        match self {
-            Type::Read => transaction_proto::Type::Read,
-            Type::Write => transaction_proto::Type::Write,
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct Transaction {
-    pub type_: Type,
+    pub type_: TransactionType,
     pub options: Options,
     pub query: QueryManager,
     rpc: TransactionRpc,
@@ -61,19 +49,19 @@ pub struct Transaction {
 impl Transaction {
     pub(crate) async fn new(
         session_id: &Vec<u8>,
-        type_: Type,
+        transaction_type: TransactionType,
         options: Options,
         network_latency: Duration,
-        rpc_client: &RpcClient,
+        rpc_client: &rpc::Client<Channel>,
     ) -> Result<Self> {
         let open_req = open_req(
             session_id.clone(),
-            type_.to_proto(),
+            transaction_type.to_proto(),
             options.to_proto(),
             network_latency.as_millis() as i32,
         );
         let rpc = TransactionRpc::new(rpc_client, open_req).await?;
-        Ok(Transaction { type_, options, query: QueryManager::new(&rpc), rpc })
+        Ok(Transaction { type_: transaction_type, options, query: QueryManager::new(&rpc), rpc })
     }
 
     pub async fn commit(&mut self) -> Result {

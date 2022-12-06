@@ -19,39 +19,37 @@
  * under the License.
  */
 
-pub mod options;
-
 use tonic::transport::Channel;
 
 use crate::{
     common::{rpc, Result, SessionType},
-    connection::{core::options::Options, node, node::DatabaseManager},
+    connection::{
+        core::options::Options,
+        node::{DatabaseManager, Session},
+    },
 };
 
-pub struct TypeDBClient {
-    node_client: node::Client<Channel>,
+pub(crate) struct Client<T> {
+    pub databases: DatabaseManager,
+    pub(crate) rpc_client: rpc::Client<T>,
 }
 
-impl TypeDBClient {
-    pub fn databases(&mut self) -> &mut DatabaseManager {
-        &mut self.node_client.databases
-    }
-
-    pub async fn new(address: &str) -> Result<Self> {
-        let rpc_client = rpc::Client::<Channel>::connect(address).await?;
-        Ok(Self { node_client: node::Client::new(rpc_client).await? })
+impl Client<Channel> {
+    pub async fn new(rpc_client: rpc::Client<Channel>) -> Result<Self> {
+        Ok(Self { databases: DatabaseManager::new(rpc_client.clone()), rpc_client })
     }
 
     pub async fn with_default_address() -> Result<Self> {
-        Ok(Self { node_client: node::Client::with_default_address().await? })
+        let rpc_client = rpc::Client::connect("http://0.0.0.0:1729").await?;
+        Self::new(rpc_client).await
     }
 
     pub async fn session(
         &mut self,
         database_name: &str,
         session_type: SessionType,
-    ) -> Result<node::Session> {
-        self.node_client.session(database_name, session_type).await
+    ) -> Result<Session> {
+        self.session_with_options(database_name, session_type, Options::default()).await
     }
 
     pub async fn session_with_options(
@@ -59,7 +57,7 @@ impl TypeDBClient {
         database_name: &str,
         session_type: SessionType,
         options: Options,
-    ) -> Result<node::Session> {
-        self.node_client.session_with_options(database_name, session_type, options).await
+    ) -> Result<Session> {
+        Session::new(database_name, session_type, options, &self.rpc_client).await
     }
 }

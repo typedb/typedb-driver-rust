@@ -19,9 +19,44 @@
  * under the License.
  */
 
+pub mod credential;
 pub mod error;
+pub(crate) mod rpc;
+
+pub use error::Error;
+pub use credential::Credential;
 
 pub type Result<T = ()> = core::result::Result<T, Error>;
 pub(crate) type Executor = futures::executor::ThreadPool;
 
-pub use error::Error;
+use typedb_protocol::{session as session_proto, transaction as transaction_proto};
+
+#[derive(Copy, Clone, Debug)]
+pub enum SessionType {
+    Data = 0,
+    Schema = 1,
+}
+
+impl SessionType {
+    pub(crate) fn to_proto(&self) -> session_proto::Type {
+        match self {
+            SessionType::Data => session_proto::Type::Data,
+            SessionType::Schema => session_proto::Type::Schema,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum TransactionType {
+    Read = 0,
+    Write = 1,
+}
+
+impl TransactionType {
+    pub(crate) fn to_proto(&self) -> transaction_proto::Type {
+        match self {
+            TransactionType::Read => transaction_proto::Type::Read,
+            TransactionType::Write => transaction_proto::Type::Write,
+        }
+    }
+}

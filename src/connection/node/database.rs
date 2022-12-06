@@ -21,15 +21,16 @@
 
 use std::fmt::{Display, Formatter};
 
-use crate::{
-    common::{error::MESSAGES, Result},
-    rpc::{
-        builder::core::{
-            database::{delete_req, rule_schema_req, schema_req, type_schema_req},
-            database_manager::{all_req, contains_req, create_req},
-        },
-        client::RpcClient,
+use tonic::transport::Channel;
+
+use crate::common::{
+    error::MESSAGES,
+    rpc,
+    rpc::builder::core::{
+        database::{delete_req, rule_schema_req, schema_req, type_schema_req},
+        database_manager::{all_req, contains_req, create_req},
     },
+    Result,
 };
 
 /// An interface for performing database-level operations against the connected server.
@@ -42,14 +43,14 @@ use crate::{
 ///
 /// These operations all connect to the server to retrieve results. In the event of a connection
 /// failure or other problem executing the operation, they will return an [`Err`][Err] result.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DatabaseManager {
-    pub(crate) rpc_client: RpcClient,
+    pub(crate) rpc_client: rpc::Client<Channel>,
 }
 
 impl DatabaseManager {
-    pub(crate) fn new(rpc_client: &RpcClient) -> Self {
-        DatabaseManager { rpc_client: rpc_client.clone() }
+    pub(crate) fn new(rpc_client: rpc::Client<Channel>) -> Self {
+        DatabaseManager { rpc_client }
     }
 
     /// Retrieves a single [`Database`][Database] by name. Returns an [`Err`][Err] if there does not
@@ -80,11 +81,11 @@ impl DatabaseManager {
 #[derive(Debug)]
 pub struct Database {
     pub name: String,
-    rpc_client: RpcClient,
+    rpc_client: rpc::Client<Channel>,
 }
 
 impl Database {
-    pub(crate) fn new(name: &str, rpc_client: &RpcClient) -> Self {
+    pub(crate) fn new(name: &str, rpc_client: &rpc::Client<Channel>) -> Self {
         Database { name: name.into(), rpc_client: rpc_client.clone() }
     }
 

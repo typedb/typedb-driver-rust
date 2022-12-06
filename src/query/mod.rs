@@ -31,16 +31,19 @@ use typedb_protocol::{
 
 use crate::{
     answer::{ConceptMap, Numeric},
-    common::{error::MESSAGES, Result},
-    rpc::{
-        builder::query_manager::{
-            define_req, delete_req, insert_req, match_aggregate_req, match_req, undefine_req,
-            update_req,
+    common::{
+        error::MESSAGES,
+        rpc::{
+            builder::query_manager::{
+                define_req, delete_req, insert_req, match_aggregate_req, match_req, undefine_req,
+                update_req,
+            },
+            transaction::TransactionRpc,
         },
-        transaction::TransactionRpc,
+        Result,
     },
+    connection::core::options::Options,
 };
-use crate::connection::core::options::Options;
 
 macro_rules! stream_concept_maps {
     ($self:ident, $req:ident, $res_part_kind:ident, $query_type_str:tt) => {

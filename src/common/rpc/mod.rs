@@ -19,13 +19,10 @@
  * under the License.
  */
 
-pub mod answer;
+pub(crate) mod builder;
+pub(crate) mod client;
+pub(crate) mod cluster_client;
+pub(crate) mod transaction;
 
-pub mod connection;
-
-pub mod concept;
-
-pub mod common;
-pub use common::Result;
-
-pub mod query;
+pub(crate) use client::Client;
+pub(crate) use cluster_client::ClusterClient;

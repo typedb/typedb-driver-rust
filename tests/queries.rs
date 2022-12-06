@@ -24,22 +24,20 @@ use std::{collections::HashSet, sync::mpsc, time::Instant};
 use futures::StreamExt;
 use serial_test::serial;
 use typedb_client::{
-    connection::cluster,
-    connection::cluster::Credential,
+    common::{
+        SessionType,
+        SessionType::{Data, Schema},
+        TransactionType,
+        TransactionType::{Read, Write},
+    },
     concept::{Attribute, Concept, Thing, ThingType, Type},
-    connection::core::{
-        session,
-        session::Type::{Data, Schema},
-        transaction,
-        transaction::{
-            Transaction,
-            Type::{Read, Write},
-        },
-        options::Options
+    connection::{
+        cluster,
+        core::{options::Options, TypeDBClient},
+        node::{session::Session, transaction::Transaction},
     },
 };
-use typedb_client::connection::core::session::Session;
-use typedb_client::connection::core::TypeDBClient;
+use typedb_client::common::Credential;
 
 const GRAKN: &str = "grakn";
 
@@ -51,36 +49,36 @@ async fn new_typedb_client() -> TypeDBClient {
 
 async fn create_db_grakn(client: &mut TypeDBClient) {
     if client
-        .databases
+        .databases()
         .contains(GRAKN)
         .await
         .expect(&format!("An error occurred checking if the database '{GRAKN}' exists"))
     {
         let mut grakn = client
-            .databases
+            .databases()
             .get(GRAKN)
             .await
             .expect(&format!("An error occurred getting database '{GRAKN}'"));
         grakn.delete().await.expect(&format!("An error occurred deleting database '{GRAKN}'"))
     }
     client
-        .databases
+        .databases()
         .create(GRAKN)
         .await
         .expect(&format!("An error occurred creating database '{GRAKN}'"));
 }
 
-async fn new_session(client: &mut TypeDBClient, session_type: session::Type) -> Session {
+async fn new_session(client: &mut TypeDBClient, session_type: SessionType) -> Session {
     client.session(GRAKN, session_type).await.expect("An error occurred opening a session")
 }
 
-async fn new_tx(session: &Session, tx_type: transaction::Type) -> Transaction {
+async fn new_tx(session: &Session, tx_type: TransactionType) -> Transaction {
     new_tx_with_options(session, tx_type, Options::default()).await
 }
 
 async fn new_tx_with_options(
     session: &Session,
-    tx_type: transaction::Type,
+    tx_type: TransactionType,
     options: Options,
 ) -> Transaction {
     session
@@ -112,7 +110,6 @@ async fn basic_cluster() {
             "127.0.0.1:31729".to_string(),
         ]),
         Credential::new_without_tls("admin", "password"),
-        16,
     )
     .await
     .expect("An error occurred connecting to TypeDB Cluster");
@@ -131,7 +128,7 @@ async fn basic() {
     println!(
         "{}",
         client
-            .databases
+            .databases()
             .all()
             .await
             .expect("An error occurred listing databases")
@@ -161,7 +158,7 @@ async fn concurrent_db_ops() {
     // This example shows that our counted refs to our gRPC client must be atomic (Arc)
     // Replacing Arc with Rc results in the error: 'Rc<...> cannot be sent between threads safely'
     let sender1 = sender.clone();
-    let mut databases1 = client.databases.clone();
+    let mut databases1 = client.databases().clone();
     let handle1 = tokio::spawn(async move {
         for _ in 0..5 {
             match databases1.all().await {
@@ -177,7 +174,7 @@ async fn concurrent_db_ops() {
     });
     let handle2 = tokio::spawn(async move {
         for _ in 0..5 {
-            match client.databases.all().await {
+            match client.databases().all().await {
                 Ok(dbs) => {
                     sender.send(Ok(format!("got databases {:?} from thread 2", dbs))).unwrap();
                 }
@@ -295,9 +292,7 @@ async fn query_options() {
             println!("Ages (excluding inferred): {}", material_age_count.into_i64());
         }
         {
-            let mut tx =
-                new_tx_with_options(&session, Read, Options::new_core().infer(true))
-                    .await;
+            let mut tx = new_tx_with_options(&session, Read, Options::new_core().infer(true)).await;
             let all_age_count = tx.query.match_aggregate("match $x isa age; count;").await.unwrap();
             println!("Ages (including inferred): {}", all_age_count.into_i64());
         }

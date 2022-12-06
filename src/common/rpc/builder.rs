@@ -83,28 +83,21 @@ pub(crate) mod cluster {
         }
     }
 
-    // pub(crate) mod user {
-    //     use typedb_protocol::cluster_user::{ClusterUser_Delete_Req, ClusterUser_Password_Req, ClusterUser_Token_Req};
-    //
-    //     pub(crate) fn password_req(username: &str, password: &str) -> ClusterUser_Password_Req {
-    //         let mut req = ClusterUser_Password_Req::new();
-    //         req.username = String::from(username);
-    //         req.password = String::from(password);
-    //         req
-    //     }
-    //
-    //     pub(crate) fn token_req(username: &str) -> ClusterUser_Token_Req {
-    //         let mut req = ClusterUser_Token_Req::new();
-    //         req.username = String::from(username);
-    //         req
-    //     }
-    //
-    //     pub(crate) fn delete_req(username: &str) -> ClusterUser_Delete_Req {
-    //         let mut req = ClusterUser_Delete_Req::new();
-    //         req.username = String::from(username);
-    //         req
-    //     }
-    // }
+    pub(crate) mod user {
+        use typedb_protocol::cluster_user::{delete, password, token};
+
+        pub(crate) fn password_req(username: &str, password: &str) -> password::Req {
+            password::Req { username: username.into(), password: password.into() }
+        }
+
+        pub(crate) fn token_req(username: &str) -> token::Req {
+            token::Req { username: username.into() }
+        }
+
+        pub(crate) fn delete_req(username: &str) -> delete::Req {
+            delete::Req { username: username.into() }
+        }
+    }
 
     pub(crate) mod database_manager {
         use typedb_protocol::cluster_database_manager::{all, get};
@@ -181,11 +174,11 @@ pub(crate) mod transaction {
         req(transaction::req::Req::RollbackReq(rollback::Req {}))
     }
 
-    pub(super) fn req(req: transaction::req::Req) -> transaction::Req {
+    pub(crate) fn req(req: transaction::req::Req) -> transaction::Req {
         transaction::Req { req_id: new_req_id(), metadata: Default::default(), req: req.into() }
     }
 
-    pub(super) fn req_with_id(req: transaction::req::Req, req_id: Vec<u8>) -> transaction::Req {
+    pub(crate) fn req_with_id(req: transaction::req::Req, req_id: Vec<u8>) -> transaction::Req {
         transaction::Req { req_id, metadata: Default::default(), req: req.into() }
     }
 
