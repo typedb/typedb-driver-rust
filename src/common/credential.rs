@@ -68,10 +68,9 @@ impl Credential {
     }
 
     pub fn tls_config(&self) -> Result<ClientTlsConfig> {
-        if self.tls_root_ca.is_some() {
-            Ok(ClientTlsConfig::new().ca_certificate(Certificate::from_pem(
-                std::fs::read_to_string(self.tls_root_ca.as_ref().unwrap())?,
-            )))
+        if let Some(ref tls_root_ca) = self.tls_root_ca {
+            Ok(ClientTlsConfig::new()
+                .ca_certificate(Certificate::from_pem(std::fs::read_to_string(tls_root_ca)?)))
         } else {
             Ok(ClientTlsConfig::new())
         }
