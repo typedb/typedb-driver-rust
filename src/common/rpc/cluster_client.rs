@@ -30,8 +30,8 @@ use std::{
 use futures::{channel::mpsc, future::try_join_all};
 use tonic::{Code, Response, Status, Streaming};
 use typedb_protocol::{
-    cluster_user, core_database, core_database_manager, session, transaction,
-    type_db_cluster_client::TypeDbClusterClient as ProtoTypeDBClusterClient,
+    cluster_database_manager, cluster_user, core_database, core_database_manager, session,
+    transaction, type_db_cluster_client::TypeDbClusterClient as ProtoTypeDBClusterClient,
 };
 
 use crate::common::{
@@ -174,9 +174,16 @@ impl ClusterClient {
 
     pub(crate) async fn databases_get(
         &mut self,
-        req: typedb_protocol::cluster_database_manager::get::Req,
-    ) -> Result<typedb_protocol::cluster_database_manager::get::Res> {
+        req: cluster_database_manager::get::Req,
+    ) -> Result<cluster_database_manager::get::Res> {
         self.may_renew_token(|this| Box::pin(this.cluster_client.databases_get(req.clone()))).await
+    }
+
+    pub(crate) async fn databases_all(
+        &mut self,
+        req: cluster_database_manager::all::Req,
+    ) -> Result<cluster_database_manager::all::Res> {
+        self.may_renew_token(|this| Box::pin(this.cluster_client.databases_all(req.clone()))).await
     }
 
     // core stub dispatch
@@ -192,13 +199,6 @@ impl ClusterClient {
         req: core_database_manager::create::Req,
     ) -> Result<core_database_manager::create::Res> {
         self.core_client.databases_create(req).await
-    }
-
-    pub(crate) async fn databases_all(
-        &mut self,
-        req: core_database_manager::all::Req,
-    ) -> Result<core_database_manager::all::Res> {
-        self.core_client.databases_all(req).await
     }
 
     pub(crate) async fn database_delete(

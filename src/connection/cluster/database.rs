@@ -21,6 +21,7 @@
 
 use std::{future::Future, result::Result as StdResult, sync::Arc};
 
+use futures::future::try_join_all;
 use tonic::{Response, Status};
 
 use crate::{
@@ -28,7 +29,7 @@ use crate::{
         error::MESSAGES,
         rpc,
         rpc::builder::{
-            cluster::database_manager::get_req,
+            cluster::database_manager::{all_req, get_req},
             core::database_manager::{contains_req, create_req},
         },
         Result,
@@ -65,7 +66,7 @@ impl Replica {
 
 #[derive(Clone, Debug)]
 pub struct Database {
-    name: String,
+    pub name: String,
     replicas: Vec<Replica>,
 }
 
@@ -148,6 +149,19 @@ impl DatabaseManager {
         })
         .await?;
         Ok(())
+    }
+
+    pub async fn all(&mut self) -> Result<Vec<Database>> {
+        try_join_all(
+            self.run_failsafe(|mut server_client| async move {
+                server_client.databases_all(all_req()).await
+            })
+            .await?
+            .databases
+            .into_iter()
+            .map(|proto_db| Database::new(proto_db, self.rpc_cluster_manager.clone())),
+        )
+        .await
     }
 
     async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>

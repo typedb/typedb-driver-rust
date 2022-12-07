@@ -116,6 +116,17 @@ async fn basic_cluster() {
         client.databases().get(GRAKN).await.unwrap().delete().await.unwrap();
     }
     client.databases().create(GRAKN).await.unwrap();
+
+    println!(
+        "{}",
+        client
+            .databases()
+            .all()
+            .await
+            .expect("An error occurred listing databases")
+            .iter()
+            .fold(String::new(), |acc, db| acc + db.name.as_str() + ",")
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
