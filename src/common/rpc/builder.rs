@@ -57,7 +57,6 @@ pub(crate) mod core {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) mod cluster {
     pub(crate) mod server_manager {
         use typedb_protocol::server_manager::all;
@@ -174,11 +173,11 @@ pub(crate) mod transaction {
         req(transaction::req::Req::RollbackReq(rollback::Req {}))
     }
 
-    pub(crate) fn req(req: transaction::req::Req) -> transaction::Req {
+    pub(super) fn req(req: transaction::req::Req) -> transaction::Req {
         transaction::Req { req_id: new_req_id(), metadata: Default::default(), req: req.into() }
     }
 
-    pub(crate) fn req_with_id(req: transaction::req::Req, req_id: Vec<u8>) -> transaction::Req {
+    pub(super) fn req_with_id(req: transaction::req::Req, req_id: Vec<u8>) -> transaction::Req {
         transaction::Req { req_id, metadata: Default::default(), req: req.into() }
     }
 

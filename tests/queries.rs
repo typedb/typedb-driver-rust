@@ -32,21 +32,20 @@ use typedb_client::{
     },
     concept::{Attribute, Concept, Thing, ThingType, Type},
     connection::{
-        cluster,
-        core::{options::Options, TypeDBClient},
+        cluster, core,
         server::{session::Session, transaction::Transaction},
     },
 };
 
 const GRAKN: &str = "grakn";
 
-async fn new_typedb_client() -> TypeDBClient {
-    TypeDBClient::with_default_address()
+async fn new_typedb_client() -> core::Client {
+    core::Client::with_default_address()
         .await
         .expect("An error occurred connecting to TypeDB Server")
 }
 
-async fn create_db_grakn(client: &mut TypeDBClient) {
+async fn create_db_grakn(client: &mut core::Client) {
     if client
         .databases()
         .contains(GRAKN)
@@ -67,18 +66,18 @@ async fn create_db_grakn(client: &mut TypeDBClient) {
         .expect(&format!("An error occurred creating database '{GRAKN}'"));
 }
 
-async fn new_session(client: &mut TypeDBClient, session_type: SessionType) -> Session {
+async fn new_session(client: &mut core::Client, session_type: SessionType) -> Session {
     client.session(GRAKN, session_type).await.expect("An error occurred opening a session")
 }
 
 async fn new_tx(session: &Session, tx_type: TransactionType) -> Transaction {
-    new_tx_with_options(session, tx_type, Options::default()).await
+    new_tx_with_options(session, tx_type, core::Options::default()).await
 }
 
 async fn new_tx_with_options(
     session: &Session,
     tx_type: TransactionType,
-    options: Options,
+    options: core::Options,
 ) -> Transaction {
     session
         .transaction_with_options(tx_type, options)
@@ -291,7 +290,8 @@ async fn query_options() {
             println!("Ages (excluding inferred): {}", material_age_count.into_i64());
         }
         {
-            let mut tx = new_tx_with_options(&session, Read, Options::new_core().infer(true)).await;
+            let mut tx =
+                new_tx_with_options(&session, Read, core::Options::new_core().infer(true)).await;
             let all_age_count = tx.query.match_aggregate("match $x isa age; count;").await.unwrap();
             println!("Ages (including inferred): {}", all_age_count.into_i64());
         }

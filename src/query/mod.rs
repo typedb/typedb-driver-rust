@@ -42,7 +42,7 @@ use crate::{
         },
         Result,
     },
-    connection::core::options::Options,
+    connection::core,
 };
 
 macro_rules! stream_concept_maps {
@@ -81,7 +81,7 @@ impl QueryManager {
         self.single_call(define_req(query, None)).await.map(|_| ())
     }
 
-    pub async fn define_with_options(&mut self, query: &str, options: &Options) -> Result {
+    pub async fn define_with_options(&mut self, query: &str, options: &core::Options) -> Result {
         self.single_call(define_req(query, Some(options.to_proto()))).await.map(|_| ())
     }
 
@@ -89,7 +89,7 @@ impl QueryManager {
         self.single_call(delete_req(query, None)).await.map(|_| ())
     }
 
-    pub async fn delete_with_options(&mut self, query: &str, options: &Options) -> Result {
+    pub async fn delete_with_options(&mut self, query: &str, options: &core::Options) -> Result {
         self.single_call(delete_req(query, Some(options.to_proto()))).await.map(|_| ())
     }
 
@@ -101,7 +101,7 @@ impl QueryManager {
     pub fn insert_with_options(
         &mut self,
         query: &str,
-        options: &Options,
+        options: &core::Options,
     ) -> impl Stream<Item = Result<ConceptMap>> {
         let req = insert_req(query, Some(options.to_proto()));
         stream_concept_maps!(self, req, InsertResPart, "insert")
@@ -116,7 +116,7 @@ impl QueryManager {
     pub fn match_with_options(
         &mut self,
         query: &str,
-        options: &Options,
+        options: &core::Options,
     ) -> impl Stream<Item = Result<ConceptMap>> {
         let req = match_req(query, Some(options.to_proto()));
         stream_concept_maps!(self, req, MatchResPart, "match")
@@ -132,7 +132,7 @@ impl QueryManager {
     pub async fn match_aggregate_with_options(
         &mut self,
         query: &str,
-        options: Options,
+        options: core::Options,
     ) -> Result<Numeric> {
         match self.single_call(match_aggregate_req(query, Some(options.to_proto()))).await? {
             MatchAggregateRes(res) => res.answer.unwrap().try_into(),
@@ -144,7 +144,7 @@ impl QueryManager {
         self.single_call(undefine_req(query, None)).await.map(|_| ())
     }
 
-    pub async fn undefine_with_options(&mut self, query: &str, options: &Options) -> Result {
+    pub async fn undefine_with_options(&mut self, query: &str, options: &core::Options) -> Result {
         self.single_call(undefine_req(query, Some(options.to_proto()))).await.map(|_| ())
     }
 
@@ -156,7 +156,7 @@ impl QueryManager {
     pub fn update_with_options(
         &mut self,
         query: &str,
-        options: &Options,
+        options: &core::Options,
     ) -> impl Stream<Item = Result<ConceptMap>> {
         let req = update_req(query, Some(options.to_proto()));
         stream_concept_maps!(self, req, UpdateResPart, "update")

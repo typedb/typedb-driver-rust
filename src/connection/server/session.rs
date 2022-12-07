@@ -32,7 +32,7 @@ use crate::{
         rpc::builder::session::{close_req, open_req},
         Result, SessionType, TransactionType,
     },
-    connection::{core::options::Options, server::Transaction},
+    connection::{core, server::Transaction},
 };
 
 pub(crate) type SessionId = Vec<u8>;
@@ -51,7 +51,7 @@ impl Session {
     pub(crate) async fn new(
         db_name: &str,
         session_type: SessionType,
-        options: Options,
+        options: core::Options,
         rpc_client: &rpc::Client,
     ) -> Result<Self> {
         let start_time = Instant::now();
@@ -70,13 +70,13 @@ impl Session {
     }
 
     pub async fn transaction(&self, transaction_type: TransactionType) -> Result<Transaction> {
-        self.transaction_with_options(transaction_type, Options::default()).await
+        self.transaction_with_options(transaction_type, core::Options::default()).await
     }
 
     pub async fn transaction_with_options(
         &self,
         transaction_type: TransactionType,
-        options: Options,
+        options: core::Options,
     ) -> Result<Transaction> {
         match self.is_open() {
             true => {

@@ -33,14 +33,14 @@ use crate::{
         },
         Result, TransactionType,
     },
-    connection::core::options::Options,
+    connection::core,
     query::QueryManager,
 };
 
 #[derive(Clone, Debug)]
 pub struct Transaction {
     pub type_: TransactionType,
-    pub options: Options,
+    pub options: core::Options,
     pub query: QueryManager,
     rpc: TransactionRpc,
 }
@@ -49,7 +49,7 @@ impl Transaction {
     pub(crate) async fn new(
         session_id: &Vec<u8>,
         transaction_type: TransactionType,
-        options: Options,
+        options: core::Options,
         network_latency: Duration,
         rpc_client: &rpc::Client,
     ) -> Result<Self> {
