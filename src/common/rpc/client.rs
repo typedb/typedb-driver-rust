@@ -22,48 +22,136 @@
 use std::{future::Future, result::Result as StdResult, sync::Arc};
 
 use futures::{channel::mpsc, SinkExt};
-use tonic::{transport::Channel, Response, Status, Streaming};
+use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
-    core_database, core_database_manager, session, transaction,
-    type_db_client::TypeDbClient as ProtoTypeDBClient,
+    core_database, core_database_manager, session, transaction, type_db_client::TypeDbClient,
 };
 
 use crate::common::{
-    rpc::builder::{core, transaction::client_msg},
-    Executor, Result,
+    rpc::{
+        builder::{core, transaction::client_msg},
+        channel::CallCredChannel,
+        Channel,
+    },
+    Executor, Result, TonicChannel,
 };
 
 #[derive(Clone, Debug)]
-pub(crate) struct Client<T> {
-    client: ProtoTypeDBClient<T>,
+enum ProtoTypeDBClient {
+    Plaintext(TypeDbClient<TonicChannel>),
+    Encrypted(TypeDbClient<CallCredChannel>),
+}
+
+macro_rules! dispatch {
+    {$(pub async fn $name:ident(&mut self, request : $req_type:ty $(,)?) -> $res:ty);+ $(;)?} => {
+        $(pub async fn $name(&mut self, request: $req_type) -> $res {
+            match self {
+                Self::Plaintext(client) => client.$name(request).await,
+                Self::Encrypted(client) => client.$name(request).await,
+            }
+        })+
+    };
+}
+
+impl ProtoTypeDBClient {
+    pub async fn connect(address: &str) -> StdResult<Self, tonic::transport::Error> {
+        Ok(Self::Plaintext(TypeDbClient::connect(address.to_string()).await?))
+    }
+
+    pub fn new(channel: Channel) -> Self {
+        match channel {
+            Channel::Plaintext(channel) => Self::Plaintext(TypeDbClient::new(channel)),
+            Channel::Encrypted(channel) => Self::Encrypted(TypeDbClient::new(channel)),
+        }
+    }
+
+    dispatch! {
+        pub async fn databases_contains(
+            &mut self,
+            request: core_database_manager::contains::Req,
+        ) -> StdResult<Response<core_database_manager::contains::Res>, Status>;
+
+        pub async fn databases_create(
+            &mut self,
+            request: core_database_manager::create::Req,
+        ) -> StdResult<Response<core_database_manager::create::Res>, Status>;
+
+        pub async fn databases_all(
+            &mut self,
+            request: core_database_manager::all::Req,
+        ) -> StdResult<Response<core_database_manager::all::Res>, Status>;
+
+        pub async fn database_schema(
+            &mut self,
+            request: core_database::schema::Req,
+        ) -> StdResult<Response<core_database::schema::Res>, Status>;
+
+        pub async fn database_type_schema(
+            &mut self,
+            request: core_database::type_schema::Req,
+        ) -> StdResult<Response<core_database::type_schema::Res>, Status>;
+
+        pub async fn database_rule_schema(
+            &mut self,
+            request: core_database::rule_schema::Req,
+        ) -> StdResult<Response<core_database::rule_schema::Res>, Status>;
+
+        pub async fn database_delete(
+            &mut self,
+            request: core_database::delete::Req,
+        ) -> StdResult<Response<core_database::delete::Res>, Status>;
+
+        pub async fn session_open(
+            &mut self,
+            request: session::open::Req,
+        ) -> StdResult<Response<session::open::Res>, Status>;
+
+        pub async fn session_close(
+            &mut self,
+            request: session::close::Req,
+        ) -> StdResult<Response<session::close::Res>, Status>;
+
+        pub async fn session_pulse(
+            &mut self,
+            request: session::pulse::Req,
+        ) -> StdResult<Response<session::pulse::Res>, Status>;
+
+        pub async fn transaction(
+            &mut self,
+            request: impl tonic::IntoStreamingRequest<Message = transaction::Client>,
+        ) -> StdResult<Response<Streaming<transaction::Server>>, Status>;
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Client {
+    client: ProtoTypeDBClient,
     pub(crate) executor: Arc<Executor>,
 }
 
-impl Client<Channel> {
+impl Client {
     pub(crate) async fn connect(address: &str) -> Result<Self> {
-        Self::construct(ProtoTypeDBClient::connect(address.to_string()).await?).await
+        Self::construct(ProtoTypeDBClient::connect(address).await?).await
     }
 }
 
-impl<T> Client<T>
-where
-    T: tonic::client::GrpcService<tonic::body::BoxBody>,
-    T::Error: Into<tonic::codegen::StdError>,
-    T::ResponseBody: tonic::codegen::Body<Data = tonic::codegen::Bytes> + Send + 'static,
-    <T::ResponseBody as tonic::codegen::Body>::Error: Into<tonic::codegen::StdError> + Send,
-{
-    pub(crate) async fn new(channel: T) -> Result<Self> {
+impl Client {
+    pub(crate) async fn new(channel: Channel) -> Result<Self> {
         Self::construct(ProtoTypeDBClient::new(channel)).await
     }
 
-    async fn construct(mut client: ProtoTypeDBClient<T>) -> Result<Self> {
-        // TODO: temporary hack to validate connection until we have client pulse
-        Self::check_connection(&mut client).await?;
-        Ok(Self { client, executor: Arc::new(Executor::new().expect("Failed to create Executor")) })
+    async fn construct(client: ProtoTypeDBClient) -> Result<Self> {
+        let mut this = Self {
+            client,
+            executor: Arc::new(Executor::new().expect("Failed to create Executor")),
+        };
+        this.check_connection().await?;
+        Ok(this)
     }
 
-    async fn check_connection(client: &mut ProtoTypeDBClient<T>) -> Result<()> {
-        client.databases_all(core::database_manager::all_req()).await?;
+    async fn check_connection(&mut self) -> Result<()> {
+        // TODO: temporary hack to validate connection until we have client pulse
+        self.client.databases_all(core::database_manager::all_req()).await?;
         Ok(())
     }
 

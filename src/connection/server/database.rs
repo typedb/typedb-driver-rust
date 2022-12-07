@@ -21,8 +21,6 @@
 
 use std::fmt::{Display, Formatter};
 
-use tonic::transport::Channel;
-
 use crate::common::{
     error::MESSAGES,
     rpc,
@@ -45,11 +43,11 @@ use crate::common::{
 /// failure or other problem executing the operation, they will return an [`Err`][Err] result.
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {
-    pub(crate) rpc_client: rpc::Client<Channel>,
+    pub(crate) rpc_client: rpc::Client,
 }
 
 impl DatabaseManager {
-    pub(crate) fn new(rpc_client: rpc::Client<Channel>) -> Self {
+    pub(crate) fn new(rpc_client: rpc::Client) -> Self {
         DatabaseManager { rpc_client }
     }
 
@@ -57,7 +55,7 @@ impl DatabaseManager {
     /// exist a database with the provided name.
     pub async fn get(&mut self, name: &str) -> Result<Database> {
         match self.contains(name).await? {
-            true => Ok(Database::new(name, &self.rpc_client)),
+            true => Ok(Database::new(name, self.rpc_client.clone())),
             false => Err(MESSAGES.client.db_does_not_exist.to_err(vec![name])),
         }
     }
@@ -71,25 +69,24 @@ impl DatabaseManager {
     }
 
     pub async fn all(&mut self) -> Result<Vec<Database>> {
-        self.rpc_client
-            .databases_all(all_req())
-            .await
-            .map(|res| res.names.iter().map(|name| Database::new(name, &self.rpc_client)).collect())
+        self.rpc_client.databases_all(all_req()).await.map(|res| {
+            res.names.iter().map(|name| Database::new(name, self.rpc_client.clone())).collect()
+        })
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Database {
     pub name: String,
-    rpc_client: rpc::Client<Channel>,
+    rpc_client: rpc::Client,
 }
 
 impl Database {
-    pub(crate) fn new(name: &str, rpc_client: &rpc::Client<Channel>) -> Self {
-        Database { name: name.into(), rpc_client: rpc_client.clone() }
+    pub(crate) fn new(name: &str, rpc_client: rpc::Client) -> Self {
+        Database { name: name.into(), rpc_client }
     }
 
-    pub async fn delete(&mut self) -> Result {
+    pub async fn delete(mut self) -> Result {
         self.rpc_client.database_delete(delete_req(self.name.as_str())).await.map(|_| ())
     }
 

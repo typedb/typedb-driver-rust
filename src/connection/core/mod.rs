@@ -21,15 +21,13 @@
 
 pub mod options;
 
-use tonic::transport::Channel;
-
 use crate::{
     common::{rpc, Result, SessionType},
-    connection::{core::options::Options, node, node::DatabaseManager},
+    connection::{core::options::Options, server, server::DatabaseManager},
 };
 
 pub struct TypeDBClient {
-    node_client: node::Client<Channel>,
+    node_client: server::Client,
 }
 
 impl TypeDBClient {
@@ -38,19 +36,19 @@ impl TypeDBClient {
     }
 
     pub async fn new(address: &str) -> Result<Self> {
-        let rpc_client = rpc::Client::<Channel>::connect(address).await?;
-        Ok(Self { node_client: node::Client::new(rpc_client).await? })
+        let rpc_client = rpc::Client::connect(address).await?;
+        Ok(Self { node_client: server::Client::new(rpc_client).await? })
     }
 
     pub async fn with_default_address() -> Result<Self> {
-        Ok(Self { node_client: node::Client::with_default_address().await? })
+        Ok(Self { node_client: server::Client::with_default_address().await? })
     }
 
     pub async fn session(
         &mut self,
         database_name: &str,
         session_type: SessionType,
-    ) -> Result<node::Session> {
+    ) -> Result<server::Session> {
         self.node_client.session(database_name, session_type).await
     }
 
@@ -59,7 +57,7 @@ impl TypeDBClient {
         database_name: &str,
         session_type: SessionType,
         options: Options,
-    ) -> Result<node::Session> {
+    ) -> Result<server::Session> {
         self.node_client.session_with_options(database_name, session_type, options).await
     }
 }

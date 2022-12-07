@@ -23,9 +23,10 @@ pub mod credential;
 pub mod error;
 pub(crate) mod rpc;
 
-pub use error::Error;
 pub use credential::Credential;
+pub use error::Error;
 
+pub(crate) type TonicChannel = tonic::transport::Channel;
 pub type Result<T = ()> = core::result::Result<T, Error>;
 pub(crate) type Executor = futures::executor::ThreadPool;
 

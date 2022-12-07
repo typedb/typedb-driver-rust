@@ -23,6 +23,7 @@ pub(crate) mod client;
 pub(crate) use client::Client;
 
 pub(crate) mod database;
+pub(crate) use database::Database;
 pub(crate) use database::DatabaseManager;
 
 pub mod session;

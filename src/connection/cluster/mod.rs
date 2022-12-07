@@ -19,7 +19,16 @@
  * under the License.
  */
 
+mod client;
+pub use client::Client;
+
 mod database;
+pub use database::{Database, DatabaseManager};
+
+mod session;
+pub use session::Session;
+
+/*
 use std::{
     collections::{HashMap, HashSet},
     future::Future,
@@ -163,9 +172,5 @@ impl ServerClient {
             .await
             .map(|res| res.servers.into_iter().map(|server| server.address).collect())
     }
-
-    async fn validate(&mut self) -> Result<()> {
-        // self.client.validate().await
-        Ok(())
-    }
 }
+ */

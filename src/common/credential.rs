@@ -19,19 +19,15 @@
  * under the License.
  */
 
-use std::{
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
-use futures::{StreamExt};
+use futures::StreamExt;
 use tonic::{
     transport::{Certificate, ClientTlsConfig},
-
+    Request,
 };
 
-use crate::{
-    Result,
-};
+use crate::Result;
 
 #[derive(Clone, Debug)]
 pub struct Credential {
@@ -80,5 +76,44 @@ impl Credential {
         } else {
             Ok(ClientTlsConfig::new())
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct CallCredentials {
+    credential: Credential,
+    token: Option<String>,
+}
+
+impl CallCredentials {
+    pub(super) fn new(credential: Credential) -> Self {
+        Self { credential, token: None }
+    }
+
+    pub(super) fn username(&self) -> &str {
+        self.credential.username()
+    }
+
+    pub(super) fn password(&self) -> &str {
+        self.credential.password()
+    }
+
+    pub(super) fn set_token(&mut self, token: String) {
+        self.token = Some(token);
+    }
+
+    pub(super) fn reset_token(&mut self) {
+        self.token = None;
+    }
+
+    pub(super) fn inject(&self, mut request: Request<()>) -> Request<()> {
+        request.metadata_mut().insert("username", self.credential.username().try_into().unwrap());
+        match &self.token {
+            Some(token) => request.metadata_mut().insert("token", token.try_into().unwrap()),
+            None => request
+                .metadata_mut()
+                .insert("password", self.credential.password().try_into().unwrap()),
+        };
+        request
     }
 }

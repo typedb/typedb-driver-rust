@@ -19,23 +19,21 @@
  * under the License.
  */
 
-use tonic::transport::Channel;
-
 use crate::{
     common::{rpc, Result, SessionType},
     connection::{
         core::options::Options,
-        node::{DatabaseManager, Session},
+        server::{DatabaseManager, Session},
     },
 };
 
-pub(crate) struct Client<T> {
+pub(crate) struct Client {
     pub databases: DatabaseManager,
-    pub(crate) rpc_client: rpc::Client<T>,
+    pub(crate) rpc_client: rpc::Client,
 }
 
-impl Client<Channel> {
-    pub async fn new(rpc_client: rpc::Client<Channel>) -> Result<Self> {
+impl Client {
+    pub async fn new(rpc_client: rpc::Client) -> Result<Self> {
         Ok(Self { databases: DatabaseManager::new(rpc_client.clone()), rpc_client })
     }
 

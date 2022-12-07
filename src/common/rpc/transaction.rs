@@ -34,7 +34,7 @@ use futures::{
     channel::{mpsc, oneshot},
     executor, SinkExt, Stream, StreamExt,
 };
-use tonic::{transport::Channel, Streaming};
+use tonic::Streaming;
 use typedb_protocol::{
     transaction,
     transaction::{res::Res, res_part, server::Server, stream::State},
@@ -50,16 +50,13 @@ use crate::common::{
 // TODO: This structure has become pretty messy - review
 #[derive(Clone, Debug)]
 pub(crate) struct TransactionRpc {
-    rpc_client: rpc::Client<Channel>,
+    rpc_client: rpc::Client,
     sender: Sender,
     receiver: Receiver,
 }
 
 impl TransactionRpc {
-    pub(crate) async fn new(
-        rpc_client: &rpc::Client<Channel>,
-        open_req: transaction::Req,
-    ) -> Result<Self> {
+    pub(crate) async fn new(rpc_client: &rpc::Client, open_req: transaction::Req) -> Result<Self> {
         let mut rpc_client_clone = rpc_client.clone();
         let (req_sink, streaming_res): (
             mpsc::Sender<transaction::Client>,

@@ -20,113 +20,121 @@
  */
 
 use std::{
+    collections::{HashMap, HashSet},
     future::Future,
     pin::Pin,
     result::Result as StdResult,
     sync::{Arc, Mutex},
 };
 
-use tonic::{
-    codegen::InterceptedService, service::Interceptor, transport::Channel, Code, Request, Response,
-    Status,
-};
+use futures::{channel::mpsc, future::try_join_all, TryFutureExt};
+use tonic::{Code, Response, Status, Streaming};
 use typedb_protocol::{
-    cluster_user, type_db_cluster_client::TypeDbClusterClient as ProtoTypeDBClusterClient,
+    cluster_user, core_database, core_database_manager, session, transaction,
+    type_db_cluster_client::TypeDbClusterClient as ProtoTypeDBClusterClient,
 };
 
-use crate::{
-    common::{
-        rpc::builder::{cluster, cluster::user::token_req},
-        Executor, Result,
+use crate::common::{
+    credential::CallCredentials,
+    error::MESSAGES,
+    rpc,
+    rpc::{
+        builder::{cluster, cluster::user::token_req},
+        channel::CallCredChannel,
+        Channel,
     },
+    Credential, Executor, Result,
 };
-use crate::common::Credential;
 
-#[derive(Clone, Debug)]
-struct CallCredentials {
-    credential: Credential,
-    token: Option<String>,
+#[derive(Debug, Clone)]
+pub(crate) struct ClusterClientManager {
+    cluster_clients: HashMap<String, ClusterClient>,
 }
 
-impl CallCredentials {
-    fn new(credential: Credential) -> Self {
-        Self { credential, token: None }
+impl ClusterClientManager {
+    pub(crate) async fn fetch_current_addresses(
+        addresses: &HashSet<String>,
+        credential: &Credential,
+    ) -> Result<HashSet<String>> {
+        for address in addresses {
+            match ClusterClient::new_checked(address, credential.clone()).await {
+                Ok(mut client) => {
+                    let servers = client.servers_all().await?.servers;
+                    return Ok(servers.into_iter().map(|server| server.address).collect());
+                }
+                Err(err) if err == MESSAGES.client.unable_to_connect.to_err(vec![]) => (),
+                Err(err) => return Err(err),
+            }
+        }
+        Err(MESSAGES.client.unable_to_connect.to_err(vec![]))
     }
 
-    fn set_token(&mut self, token: String) {
-        self.token = Some(token);
+    pub(crate) async fn new(
+        addresses: HashSet<String>,
+        credential: Credential,
+    ) -> Result<Arc<Self>> {
+        let cluster_clients = try_join_all(addresses.iter().map(|address| async {
+            ClusterClient::new_unchecked(address, credential.clone()).await
+        }))
+        .await?;
+        let cluster_clients = addresses.into_iter().zip(cluster_clients.into_iter()).collect();
+        Ok(Arc::new(Self { cluster_clients }))
     }
 
-    fn reset_token(&mut self) {
-        self.token = None;
+    pub(crate) fn get(&self, address: &str) -> ClusterClient {
+        self.cluster_clients.get(address).unwrap().clone()
     }
 
-    fn inject(&self, mut request: Request<()>) -> Request<()> {
-        dbg!(self);
-        request.metadata_mut().insert("username", self.credential.username().try_into().unwrap());
-        match &self.token {
-            Some(token) => request.metadata_mut().insert("token", token.try_into().unwrap()),
-            None => request
-                .metadata_mut()
-                .insert("password", self.credential.password().try_into().unwrap()),
-        };
-        request
+    pub(crate) fn get_any(&self) -> ClusterClient {
+        // TODO round robin?
+        self.cluster_clients.values().next().unwrap().clone()
+    }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = ClusterClient> + '_ {
+        self.cluster_clients.values().cloned()
     }
 }
 
-#[derive(Clone, Debug)]
-struct CredentialInjector {
-    call_credentials: Arc<Mutex<CallCredentials>>,
-}
-
-impl CredentialInjector {
-    fn new(credential_handler: Arc<Mutex<CallCredentials>>) -> Self {
-        Self { call_credentials: credential_handler }
-    }
-}
-
-impl Interceptor for CredentialInjector {
-    fn call(&mut self, mut request: Request<()>) -> std::result::Result<Request<()>, Status> {
-        Ok(self.call_credentials.lock().unwrap().inject(request))
-    }
-}
-
-pub(crate) type CallCredChannel = InterceptedService<Channel, CredentialInjector>;
 pub(crate) type TonicResult<R> = StdResult<Response<R>, Status>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ClusterClient {
+    core_client: rpc::Client,
     cluster_client: ProtoTypeDBClusterClient<CallCredChannel>,
     pub(crate) executor: Arc<Executor>,
     credential_handler: Arc<Mutex<CallCredentials>>,
 }
 
 impl ClusterClient {
-    pub(crate) async fn new(channel: Channel, credential: Credential) -> Result<Self> {
-        let shared_cred = Arc::new(Mutex::new(CallCredentials::new(credential)));
-        Self::construct(
-            ProtoTypeDBClusterClient::with_interceptor(
-                channel,
-                CredentialInjector::new(shared_cred.clone()),
-            ),
-            shared_cred,
-        )
-        .await
+    pub(crate) async fn new_unchecked(address: &str, credential: Credential) -> Result<Self> {
+        let (channel, shared_cred) = Channel::open_encrypted(address, credential)?;
+        let mut this = Self {
+            core_client: rpc::Client::new(channel.clone()).await?,
+            cluster_client: ProtoTypeDBClusterClient::new(channel.into()),
+            executor: Arc::new(Executor::new().expect("Failed to create Executor")),
+            credential_handler: shared_cred,
+        };
+        let _ = this.renew_token().await; // try to renew token, do nothing on failure
+                                          // FIXME token would never be renewed if this fails
+        Ok(this)
     }
 
-    async fn construct(
-        cluster_client: ProtoTypeDBClusterClient<CallCredChannel>,
-        credential_handler: Arc<Mutex<CallCredentials>>,
-    ) -> Result<Self> {
-        // TODO: temporary hack to validate connection until we have client pulse
-        let mut this = Self {
-            cluster_client,
-            executor: Arc::new(Executor::new().expect("Failed to create Executor")),
-            credential_handler,
-        };
-        this.renew_token().await?;
+    pub(crate) async fn new_checked(address: &str, credential: Credential) -> Result<Self> {
+        let mut this = Self::new_unchecked(address, credential).await?;
         this.check_connection().await?;
         Ok(this)
+    }
+
+    pub(crate) fn into_core(self) -> rpc::Client {
+        self.core_client
+    }
+
+    async fn renew_token(&mut self) -> Result {
+        self.credential_handler.lock().unwrap().reset_token();
+        let req = token_req(self.credential_handler.lock().unwrap().username());
+        let token = self.user_token(req).await?.token;
+        self.credential_handler.lock().unwrap().set_token(token);
+        Ok(())
     }
 
     async fn check_connection(&mut self) -> Result<()> {
@@ -134,16 +142,7 @@ impl ClusterClient {
         Ok(())
     }
 
-    async fn renew_token(&mut self) -> Result {
-        self.credential_handler.lock().unwrap().reset_token();
-        let req = token_req(self.credential_handler.lock().unwrap().credential.username());
-        let token = self.user_token(req).await?.token;
-        dbg!(&token);
-        self.credential_handler.lock().unwrap().set_token(token);
-        Ok(())
-    }
-
-    async fn may_renew_token<'me, F, R>(&'me mut self, call: F) -> Result<R>
+    async fn may_renew_token<F, R>(&mut self, call: F) -> Result<R>
     where
         for<'a> F: Fn(&'a mut Self) -> Pin<Box<dyn Future<Output = TonicResult<R>> + 'a>>,
     {
@@ -178,5 +177,76 @@ impl ClusterClient {
         req: typedb_protocol::cluster_database_manager::get::Req,
     ) -> Result<typedb_protocol::cluster_database_manager::get::Res> {
         self.may_renew_token(|this| Box::pin(this.cluster_client.databases_get(req.clone()))).await
+    }
+
+    // core stub dispatch
+    pub(crate) async fn databases_contains(
+        &mut self,
+        req: core_database_manager::contains::Req,
+    ) -> Result<core_database_manager::contains::Res> {
+        self.core_client.databases_contains(req).await
+    }
+
+    pub(crate) async fn databases_create(
+        &mut self,
+        req: core_database_manager::create::Req,
+    ) -> Result<core_database_manager::create::Res> {
+        self.core_client.databases_create(req).await
+    }
+
+    pub(crate) async fn databases_all(
+        &mut self,
+        req: core_database_manager::all::Req,
+    ) -> Result<core_database_manager::all::Res> {
+        self.core_client.databases_all(req).await
+    }
+
+    pub(crate) async fn database_delete(
+        &mut self,
+        req: core_database::delete::Req,
+    ) -> Result<core_database::delete::Res> {
+        self.core_client.database_delete(req).await
+    }
+
+    pub(crate) async fn database_rule_schema(
+        &mut self,
+        req: core_database::rule_schema::Req,
+    ) -> Result<core_database::rule_schema::Res> {
+        self.core_client.database_rule_schema(req).await
+    }
+
+    pub(crate) async fn database_schema(
+        &mut self,
+        req: core_database::schema::Req,
+    ) -> Result<core_database::schema::Res> {
+        self.core_client.database_schema(req).await
+    }
+
+    pub(crate) async fn database_type_schema(
+        &mut self,
+        req: core_database::type_schema::Req,
+    ) -> Result<core_database::type_schema::Res> {
+        self.core_client.database_type_schema(req).await
+    }
+
+    pub(crate) async fn session_open(
+        &mut self,
+        req: session::open::Req,
+    ) -> Result<session::open::Res> {
+        self.core_client.session_open(req).await
+    }
+
+    pub(crate) async fn session_close(
+        &mut self,
+        req: session::close::Req,
+    ) -> Result<session::close::Res> {
+        self.core_client.session_close(req).await
+    }
+
+    pub(crate) async fn transaction(
+        &mut self,
+        open_req: transaction::Req,
+    ) -> Result<(mpsc::Sender<transaction::Client>, Streaming<transaction::Server>)> {
+        self.core_client.transaction(open_req).await
     }
 }

@@ -25,7 +25,7 @@ use futures::StreamExt;
 use serial_test::serial;
 use typedb_client::{
     common::{
-        SessionType,
+        Credential, SessionType,
         SessionType::{Data, Schema},
         TransactionType,
         TransactionType::{Read, Write},
@@ -34,10 +34,9 @@ use typedb_client::{
     connection::{
         cluster,
         core::{options::Options, TypeDBClient},
-        node::{session::Session, transaction::Transaction},
+        server::{session::Session, transaction::Transaction},
     },
 };
-use typedb_client::common::Credential;
 
 const GRAKN: &str = "grakn";
 
@@ -54,7 +53,7 @@ async fn create_db_grakn(client: &mut TypeDBClient) {
         .await
         .expect(&format!("An error occurred checking if the database '{GRAKN}' exists"))
     {
-        let mut grakn = client
+        let grakn = client
             .databases()
             .get(GRAKN)
             .await
@@ -103,7 +102,7 @@ fn run_insert_query(tx: &mut Transaction, query: &str) {
 #[tokio::test(flavor = "multi_thread")]
 #[serial(cluster)]
 async fn basic_cluster() {
-    let client = cluster::Client::new(
+    let mut client = cluster::Client::new(
         &HashSet::from([
             "127.0.0.1:11729".to_string(),
             "127.0.0.1:21729".to_string(),
@@ -114,10 +113,10 @@ async fn basic_cluster() {
     .await
     .expect("An error occurred connecting to TypeDB Cluster");
 
-    if client.databases.contains(GRAKN).await.unwrap() {
-        client.databases.get(GRAKN).await.unwrap().delete().await.unwrap();
+    if client.databases().contains(GRAKN).await.unwrap() {
+        client.databases().get(GRAKN).await.unwrap().delete().await.unwrap();
     }
-    client.databases.create(GRAKN).await.unwrap();
+    client.databases().create(GRAKN).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread")]

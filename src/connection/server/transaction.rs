@@ -22,7 +22,6 @@
 use std::{fmt::Debug, time::Duration};
 
 use futures::Stream;
-use tonic::transport::Channel;
 use typedb_protocol::transaction as transaction_proto;
 
 use crate::{
@@ -52,7 +51,7 @@ impl Transaction {
         transaction_type: TransactionType,
         options: Options,
         network_latency: Duration,
-        rpc_client: &rpc::Client<Channel>,
+        rpc_client: &rpc::Client,
     ) -> Result<Self> {
         let open_req = open_req(
             session_id.clone(),

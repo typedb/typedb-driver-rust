@@ -240,6 +240,12 @@ impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
     }
 }
 
+impl From<tonic::codegen::http::uri::InvalidUri> for Error {
+    fn from(err: tonic::codegen::http::uri::InvalidUri) -> Self {
+        Error::Other(err.to_string())
+    }
+}
+
 impl From<tonic::transport::Error> for Error {
     fn from(err: tonic::transport::Error) -> Self {
         Error::Other(err.to_string())

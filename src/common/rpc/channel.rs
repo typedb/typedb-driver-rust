@@ -1,0 +1,91 @@
+/*
+ * Copyright (C) 2022 Vaticle
+ *
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+use std::sync::{Arc, Mutex};
+
+use tonic::{codegen::InterceptedService, service::Interceptor, Request, Status};
+
+use crate::{
+    common::{credential::CallCredentials, Credential, TonicChannel},
+    Result,
+};
+
+pub(crate) type CallCredChannel = InterceptedService<TonicChannel, CredentialInjector>;
+
+#[derive(Clone, Debug)]
+pub(crate) enum Channel {
+    Plaintext(TonicChannel),
+    Encrypted(CallCredChannel),
+}
+
+impl Channel {
+    pub(crate) fn open_encrypted(
+        address: &str,
+        credential: Credential,
+    ) -> Result<(Self, Arc<Mutex<CallCredentials>>)> {
+        let uri = if address.contains("://") {
+            address.parse()?
+        } else {
+            format!("http://{}", address).parse()?
+        };
+
+        let mut builder = TonicChannel::builder(uri);
+        if credential.is_tls_enabled() {
+            builder = builder.tls_config(credential.tls_config()?)?;
+        }
+
+        let channel = builder.connect_lazy();
+        let shared_cred = Arc::new(Mutex::new(CallCredentials::new(credential)));
+        Ok((
+            Self::Encrypted(InterceptedService::new(
+                channel,
+                CredentialInjector::new(shared_cred.clone()),
+            )),
+            shared_cred,
+        ))
+    }
+}
+
+impl Into<CallCredChannel> for Channel {
+    fn into(self) -> CallCredChannel {
+        match self {
+            Self::Encrypted(channel) => channel,
+            _ => panic!(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct CredentialInjector {
+    call_credentials: Arc<Mutex<CallCredentials>>,
+}
+
+impl CredentialInjector {
+    fn new(credential_handler: Arc<Mutex<CallCredentials>>) -> Self {
+        Self { call_credentials: credential_handler }
+    }
+}
+
+impl Interceptor for CredentialInjector {
+    fn call(&mut self, request: Request<()>) -> std::result::Result<Request<()>, Status> {
+        Ok(self.call_credentials.lock().unwrap().inject(request))
+    }
+}

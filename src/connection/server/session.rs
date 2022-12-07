@@ -24,7 +24,6 @@ use std::time::{Duration, Instant};
 use crossbeam::atomic::AtomicCell;
 use futures::executor;
 use log::warn;
-use tonic::transport::Channel;
 
 use crate::{
     common::{
@@ -33,7 +32,7 @@ use crate::{
         rpc::builder::session::{close_req, open_req},
         Result, SessionType, TransactionType,
     },
-    connection::{core::options::Options, node::Transaction},
+    connection::{core::options::Options, server::Transaction},
 };
 
 pub(crate) type SessionId = Vec<u8>;
@@ -43,7 +42,7 @@ pub struct Session {
     pub db_name: String,
     pub session_type: SessionType,
     pub(crate) id: SessionId,
-    pub(crate) rpc_client: rpc::Client<Channel>,
+    pub(crate) rpc_client: rpc::Client,
     is_open_atomic: AtomicCell<bool>,
     network_latency: Duration,
 }
@@ -53,7 +52,7 @@ impl Session {
         db_name: &str,
         session_type: SessionType,
         options: Options,
-        rpc_client: &rpc::Client<Channel>,
+        rpc_client: &rpc::Client,
     ) -> Result<Self> {
         let start_time = Instant::now();
         let open_req = open_req(db_name, session_type.to_proto(), options.to_proto());

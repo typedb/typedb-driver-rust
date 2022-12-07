@@ -19,6 +19,9 @@
  * under the License.
  */
 
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 pub mod answer;
 
 pub mod connection;

@@ -19,12 +19,4 @@
  * under the License.
  */
 
-pub(crate) mod builder;
-pub(crate) mod channel;
-pub(crate) mod client;
-pub(crate) mod cluster_client;
-pub(crate) mod transaction;
-
-pub(crate) use channel::Channel;
-pub(crate) use client::Client;
-pub(crate) use cluster_client::{ClusterClient, ClusterClientManager};
+pub struct Session {}
