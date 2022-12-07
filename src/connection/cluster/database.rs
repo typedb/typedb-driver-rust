@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{future::Future, pin::Pin, result::Result as StdResult, sync::Arc};
+use std::{future::Future, result::Result as StdResult, sync::Arc};
 
 use tonic::{Response, Status};
 

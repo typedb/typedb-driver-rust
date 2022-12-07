@@ -19,28 +19,24 @@
  * under the License.
  */
 
-use super::Options;
 use crate::{
     common::{rpc, Result, SessionType},
-    connection::{
-        core, server,
-        server::{DatabaseManager, Session},
-    },
+    connection::{core, server},
 };
 
 pub struct Client {
-    pub databases: DatabaseManager,
+    pub databases: server::DatabaseManager,
     pub(crate) rpc_client: rpc::Client,
 }
 
 impl Client {
-    pub fn databases(&mut self) -> &mut DatabaseManager {
+    pub fn databases(&mut self) -> &mut server::DatabaseManager {
         &mut self.databases
     }
 
     pub async fn new(address: &str) -> Result<Self> {
         let rpc_client = rpc::Client::connect(address).await?;
-        Ok(Self { databases: DatabaseManager::new(rpc_client.clone()), rpc_client })
+        Ok(Self { databases: server::DatabaseManager::new(rpc_client.clone()), rpc_client })
     }
 
     pub async fn with_default_address() -> Result<Self> {
@@ -51,7 +47,7 @@ impl Client {
         &mut self,
         database_name: &str,
         session_type: SessionType,
-    ) -> Result<Session> {
+    ) -> Result<server::Session> {
         self.session_with_options(database_name, session_type, core::Options::default()).await
     }
 
@@ -60,7 +56,7 @@ impl Client {
         database_name: &str,
         session_type: SessionType,
         options: core::Options,
-    ) -> Result<Session> {
-        Session::new(database_name, session_type, options, &self.rpc_client).await
+    ) -> Result<server::Session> {
+        server::Session::new(database_name, session_type, options, &self.rpc_client).await
     }
 }

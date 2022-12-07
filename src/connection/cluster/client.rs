@@ -19,18 +19,10 @@
  * under the License.
  */
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
-
-use futures::future::join_all;
+use std::{collections::HashSet, sync::Arc};
 
 use super::{DatabaseManager, Session};
-use crate::{
-    common::{error::MESSAGES, rpc, Credential, Result},
-    connection::server,
-};
+use crate::common::{rpc, Credential, Result};
 
 pub struct Client {
     rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,

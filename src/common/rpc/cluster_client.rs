@@ -27,7 +27,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use futures::{channel::mpsc, future::try_join_all, TryFutureExt};
+use futures::{channel::mpsc, future::try_join_all};
 use tonic::{Code, Response, Status, Streaming};
 use typedb_protocol::{
     cluster_user, core_database, core_database_manager, session, transaction,

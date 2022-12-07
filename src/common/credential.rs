@@ -21,7 +21,6 @@
 
 use std::path::{Path, PathBuf};
 
-use futures::StreamExt;
 use tonic::{
     transport::{Certificate, ClientTlsConfig},
     Request,
