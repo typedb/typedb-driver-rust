@@ -22,7 +22,7 @@
 use std::{collections::HashSet, sync::Arc};
 
 use super::{DatabaseManager, Session};
-use crate::common::{rpc, Credential, Result};
+use crate::common::{rpc, Credential, Result, SessionType};
 
 pub struct Client {
     rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
@@ -44,5 +44,18 @@ impl Client {
 
     pub fn databases(&mut self) -> &mut DatabaseManager {
         &mut self.databases
+    }
+
+    pub async fn session(
+        &mut self,
+        database_name: &str,
+        session_type: SessionType,
+    ) -> Result<Session> {
+        Session::new(
+            self.databases.get(database_name).await?,
+            session_type,
+            self.rpc_cluster_client_manager.clone(),
+        )
+        .await
     }
 }

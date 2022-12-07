@@ -52,19 +52,18 @@ impl Session {
         db_name: &str,
         session_type: SessionType,
         options: core::Options,
-        rpc_client: &rpc::Client,
+        mut rpc_client: rpc::Client,
     ) -> Result<Self> {
         let start_time = Instant::now();
         let open_req = open_req(db_name, session_type.to_proto(), options.to_proto());
-        let mut rpc_client_clone = rpc_client.clone();
-        let res = rpc_client_clone.session_open(open_req).await?;
+        let res = rpc_client.session_open(open_req).await?;
         // TODO: pulse task
         Ok(Session {
             db_name: String::from(db_name),
             session_type,
             network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
             id: res.session_id,
-            rpc_client: rpc_client_clone,
+            rpc_client,
             is_open_atomic: AtomicCell::new(true),
         })
     }

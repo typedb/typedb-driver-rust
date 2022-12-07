@@ -127,6 +127,20 @@ async fn basic_cluster() {
             .iter()
             .fold(String::new(), |acc, db| acc + db.name.as_str() + ",")
     );
+
+    let session = client.session(GRAKN, Data).await.expect("An error occurred opening a session");
+    let mut transaction = session.transaction(Write).await.expect("An error occurred opening a transaction");
+    let mut answer_stream =
+        transaction.query.match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
+    while let Some(result) = answer_stream.next().await {
+        match result {
+            Ok(concept_map) => {
+                println!("{:#?}", concept_map)
+            }
+            Err(err) => panic!("An error occurred fetching answers of a Match query: {}", err),
+        }
+    }
+    transaction.commit().await.expect("An error occurred committing a transaction");
 }
 
 #[tokio::test(flavor = "multi_thread")]

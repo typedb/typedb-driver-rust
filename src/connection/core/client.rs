@@ -57,6 +57,6 @@ impl Client {
         session_type: SessionType,
         options: core::Options,
     ) -> Result<server::Session> {
-        server::Session::new(database_name, session_type, options, &self.rpc_client).await
+        server::Session::new(database_name, session_type, options, self.rpc_client.clone()).await
     }
 }

@@ -19,9 +19,11 @@
  * under the License.
  */
 
-use std::{future::Future, result::Result as StdResult, sync::Arc};
+use std::{fmt, fmt::Debug, future::Future, result::Result as StdResult, sync::Arc};
+use std::time::Duration;
 
 use futures::future::try_join_all;
+use tokio::time::sleep;
 use tonic::{Response, Status};
 
 use crate::{
@@ -39,13 +41,24 @@ use crate::{
 
 type TonicResult<R> = StdResult<Response<R>, Status>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Replica {
     pub(crate) address: String,
     pub(crate) database_name: String,
     pub(crate) is_primary: bool,
     pub(crate) is_preferred: bool,
     database: server::Database,
+}
+
+impl Debug for Replica {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Replica")
+            .field("address", &self.address)
+            .field("database_name", &self.database_name)
+            .field("is_primary", &self.is_primary)
+            .field("is_preferred", &self.is_preferred)
+            .finish()
+    }
 }
 
 impl Replica {
@@ -64,10 +77,20 @@ impl Replica {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Database {
     pub name: String,
     replicas: Vec<Replica>,
+    rpc_cluster_manager: Arc<rpc::ClusterClientManager>,
+}
+
+impl Debug for Database {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("cluster::Database")
+            .field("name", &self.name)
+            .field("replicas", &self.replicas)
+            .finish()
+    }
 }
 
 impl Database {
@@ -83,27 +106,49 @@ impl Database {
                 Replica::new(&proto.name, replica, rpc_client)
             })
             .collect();
-        Ok(Self { name: proto.name, replicas })
+        Ok(Self { name: proto.name, replicas, rpc_cluster_manager })
     }
 
-    fn primary_replica(&self) -> Replica {
+    async fn refresh_replicas(&mut self) {
+        let proto = self
+            .rpc_cluster_manager
+            .get_any()
+            .databases_get(get_req(&self.name))
+            .await
+            .unwrap()
+            .database
+            .unwrap();
+        self.replicas = proto
+            .replicas
+            .into_iter()
+            .map(|replica| {
+                let rpc_client = self.rpc_cluster_manager.get(&replica.address).into_core();
+                Replica::new(&proto.name, replica, rpc_client)
+            })
+            .collect();
+    }
+
+    pub(crate) async fn primary_replica(&mut self) -> Replica {
+        // FIXME REMOVE
+        let _ = sleep(Duration::from_secs(2)).await;
+        self.refresh_replicas().await;
         self.replicas.iter().find(|replica| replica.is_primary).unwrap().clone()
     }
 
-    pub async fn delete(self) -> Result {
-        self.primary_replica().database.delete().await
+    pub async fn delete(mut self) -> Result {
+        self.primary_replica().await.database.delete().await
     }
 
     pub async fn rule_schema(&mut self) -> Result<String> {
-        self.primary_replica().database.rule_schema().await
+        self.primary_replica().await.database.rule_schema().await
     }
 
     pub async fn schema(&mut self) -> Result<String> {
-        self.primary_replica().database.schema().await
+        self.primary_replica().await.database.schema().await
     }
 
     pub async fn type_schema(&mut self) -> Result<String> {
-        self.primary_replica().database.type_schema().await
+        self.primary_replica().await.database.type_schema().await
     }
 }
 

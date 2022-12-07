@@ -19,4 +19,44 @@
  * under the License.
  */
 
-pub struct Session {}
+use std::sync::Arc;
+
+use super::Database;
+use crate::{
+    common::{rpc, Result, SessionType},
+    connection::{core, server},
+};
+use crate::common::TransactionType;
+use crate::connection::server::Transaction;
+
+pub struct Session {
+    pub database: Database,
+    pub session_type: SessionType,
+
+    server_session: server::Session,
+    rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
+}
+
+impl Session {
+    // TODO options
+    pub(crate) async fn new(
+        mut database: Database,
+        session_type: SessionType,
+        rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
+    ) -> Result<Self> {
+        let primary_address = &database.primary_replica().await.address;
+        let server_session = server::Session::new(
+            &database.name,
+            session_type,
+            core::Options::default(),
+            rpc_cluster_client_manager.get(primary_address).into_core(),
+        )
+        .await?;
+        Ok(Self { database, session_type, server_session, rpc_cluster_client_manager })
+    }
+
+    //TODO options
+    pub async fn transaction(&self, transaction_type: TransactionType) -> Result<Transaction> {
+        self.server_session.transaction(transaction_type).await
+    }
+}
