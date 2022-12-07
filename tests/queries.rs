@@ -33,7 +33,7 @@ use typedb_client::{
     concept::{Attribute, Concept, Thing, ThingType, Type},
     connection::{
         cluster, core,
-        server::{session::Session, transaction::Transaction},
+        server::{Session, Transaction},
     },
 };
 

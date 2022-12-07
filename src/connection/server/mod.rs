@@ -19,14 +19,10 @@
  * under the License.
  */
 
-pub(crate) mod client;
-pub(crate) use client::Client;
+mod database;
+mod session;
+mod transaction;
 
-pub(crate) mod database;
 pub(crate) use database::{Database, DatabaseManager};
-
-pub mod session;
 pub use session::Session;
-
-pub mod transaction;
 pub use transaction::Transaction;
