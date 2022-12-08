@@ -19,11 +19,11 @@
  * under the License.
  */
 
-use std::{fmt, result::Result as StdResult, str::FromStr};
+use std::{fmt, str::FromStr};
 
 use tonic::transport::Uri;
 
-use crate::common::Error;
+use crate::common::{Error, StdResult};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Address {

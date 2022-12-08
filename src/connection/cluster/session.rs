@@ -42,7 +42,7 @@ impl Session {
         session_type: SessionType,
         rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
     ) -> Result<Self> {
-        let primary_address = &database.primary_replica().await.address;
+        let primary_address = &database.primary_replica().await.unwrap().address;
         let server_session = server::Session::new(
             &database.name,
             session_type,

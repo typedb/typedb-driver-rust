@@ -19,13 +19,10 @@
  * under the License.
  */
 
-use std::{
-    fmt, fmt::Debug, future::Future, result::Result as StdResult, sync::Arc, time::Duration,
-};
+use std::{fmt, fmt::Debug, future::Future, sync::Arc, time::Duration};
 
 use futures::future::try_join_all;
 use tokio::time::sleep;
-use tonic::{Response, Status};
 
 use crate::{
     common::{
@@ -40,14 +37,13 @@ use crate::{
     connection::server,
 };
 
-type TonicResult<R> = StdResult<Response<R>, Status>;
-
 #[derive(Clone)]
 pub struct Replica {
     pub(crate) address: Address,
-    pub(crate) database_name: String,
-    pub(crate) is_primary: bool,
-    pub(crate) is_preferred: bool,
+    database_name: String,
+    is_primary: bool,
+    term: i64,
+    is_preferred: bool,
     database: server::Database,
 }
 
@@ -57,6 +53,7 @@ impl Debug for Replica {
             .field("address", &self.address)
             .field("database_name", &self.database_name)
             .field("is_primary", &self.is_primary)
+            .field("term", &self.term)
             .field("is_preferred", &self.is_preferred)
             .finish()
     }
@@ -72,6 +69,7 @@ impl Replica {
             address: metadata.address.parse().expect("Invalid URI received from the server"),
             database_name: name.to_owned(),
             is_primary: metadata.primary,
+            term: metadata.term,
             is_preferred: metadata.preferred,
             database: server::Database::new(name, rpc_client),
         }
@@ -112,46 +110,39 @@ impl Database {
     }
 
     async fn refresh_replicas(&mut self) {
-        let proto = self
-            .rpc_cluster_manager
-            .get_any()
-            .databases_get(get_req(&self.name))
-            .await
-            .unwrap()
-            .database
-            .unwrap();
-        self.replicas = proto
-            .replicas
+        let res = self.rpc_cluster_manager.get_any().databases_get(get_req(&self.name)).await;
+        let proto_replicas = res.unwrap().database.unwrap().replicas;
+        self.replicas = proto_replicas
             .into_iter()
             .map(|replica| {
                 let rpc_client =
                     self.rpc_cluster_manager.get(&replica.address.parse().unwrap()).into_core();
-                Replica::new(&proto.name, replica, rpc_client)
+                Replica::new(&self.name, replica, rpc_client)
             })
             .collect();
     }
 
-    pub(crate) async fn primary_replica(&mut self) -> Replica {
+    pub(crate) async fn primary_replica(&mut self) -> Option<Replica> {
         // FIXME REMOVE
         let _ = sleep(Duration::from_secs(2)).await;
         self.refresh_replicas().await;
-        self.replicas.iter().find(|replica| replica.is_primary).unwrap().clone()
+        self.replicas.iter().filter(|r| r.is_primary).max_by_key(|r| r.term).cloned()
     }
 
     pub async fn delete(mut self) -> Result {
-        self.primary_replica().await.database.delete().await
+        self.primary_replica().await.unwrap().database.delete().await
     }
 
     pub async fn rule_schema(&mut self) -> Result<String> {
-        self.primary_replica().await.database.rule_schema().await
+        self.primary_replica().await.unwrap().database.rule_schema().await
     }
 
     pub async fn schema(&mut self) -> Result<String> {
-        self.primary_replica().await.database.schema().await
+        self.primary_replica().await.unwrap().database.schema().await
     }
 
     pub async fn type_schema(&mut self) -> Result<String> {
-        self.primary_replica().await.database.type_schema().await
+        self.primary_replica().await.unwrap().database.type_schema().await
     }
 }
 

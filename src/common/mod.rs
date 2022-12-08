@@ -27,12 +27,15 @@ pub(crate) mod rpc;
 pub use address::Address;
 pub use credential::Credential;
 pub use error::Error;
+use tonic::{Response, Status};
+use typedb_protocol::{session as session_proto, transaction as transaction_proto};
+
+pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
+pub type Result<T = ()> = StdResult<T, Error>;
+pub(crate) type TonicResult<R> = StdResult<Response<R>, Status>;
 
 pub(crate) type TonicChannel = tonic::transport::Channel;
-pub type Result<T = ()> = core::result::Result<T, Error>;
 pub(crate) type Executor = futures::executor::ThreadPool;
-
-use typedb_protocol::{session as session_proto, transaction as transaction_proto};
 
 #[derive(Copy, Clone, Debug)]
 pub enum SessionType {

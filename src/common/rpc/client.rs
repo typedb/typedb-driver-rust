@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{future::Future, result::Result as StdResult, sync::Arc};
+use std::{future::Future, sync::Arc};
 
 use futures::{channel::mpsc, SinkExt};
 use tonic::{Response, Status, Streaming};
@@ -33,7 +33,7 @@ use crate::common::{
         channel::CallCredChannel,
         Channel,
     },
-    Address, Executor, Result, TonicChannel,
+    Address, Executor, Result, StdResult, TonicChannel,
 };
 
 #[derive(Clone, Debug)]

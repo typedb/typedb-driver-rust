@@ -23,12 +23,11 @@ use std::{
     collections::{HashMap, HashSet},
     future::Future,
     pin::Pin,
-    result::Result as StdResult,
     sync::{Arc, Mutex},
 };
 
 use futures::{channel::mpsc, future::try_join_all};
-use tonic::{Code, Response, Status, Streaming};
+use tonic::{Code, Streaming};
 use typedb_protocol::{
     cluster_database_manager, cluster_user, core_database, core_database_manager, session,
     transaction, type_db_cluster_client::TypeDbClusterClient as ProtoTypeDBClusterClient,
@@ -43,7 +42,7 @@ use crate::common::{
         channel::CallCredChannel,
         Channel,
     },
-    Address, Credential, Executor, Result,
+    Address, Credential, Executor, Result, TonicResult,
 };
 
 #[derive(Debug, Clone)]
@@ -94,8 +93,6 @@ impl ClusterClientManager {
         self.cluster_clients.values().cloned()
     }
 }
-
-pub(crate) type TonicResult<R> = StdResult<Response<R>, Status>;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ClusterClient {
