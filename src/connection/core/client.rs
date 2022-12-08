@@ -35,7 +35,7 @@ impl Client {
     }
 
     pub async fn new(address: &str) -> Result<Self> {
-        let rpc_client = rpc::Client::connect(address).await?;
+        let rpc_client = rpc::Client::connect(address.parse()?).await?;
         Ok(Self { databases: server::DatabaseManager::new(rpc_client.clone()), rpc_client })
     }
 

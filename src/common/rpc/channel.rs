@@ -24,7 +24,7 @@ use std::sync::{Arc, Mutex};
 use tonic::{codegen::InterceptedService, service::Interceptor, Request, Status};
 
 use crate::{
-    common::{credential::CallCredentials, Credential, TonicChannel},
+    common::{credential::CallCredentials, Address, Credential, TonicChannel},
     Result,
 };
 
@@ -38,16 +38,10 @@ pub(crate) enum Channel {
 
 impl Channel {
     pub(crate) fn open_encrypted(
-        address: &str,
+        address: Address,
         credential: Credential,
     ) -> Result<(Self, Arc<Mutex<CallCredentials>>)> {
-        let uri = if address.contains("://") {
-            address.parse()?
-        } else {
-            format!("http://{}", address).parse()?
-        };
-
-        let mut builder = TonicChannel::builder(uri);
+        let mut builder = TonicChannel::builder(address.into_uri());
         if credential.is_tls_enabled() {
             builder = builder.tls_config(credential.tls_config()?)?;
         }

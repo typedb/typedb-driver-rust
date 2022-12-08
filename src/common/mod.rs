@@ -19,10 +19,12 @@
  * under the License.
  */
 
+mod address;
 pub mod credential;
 pub mod error;
 pub(crate) mod rpc;
 
+pub use address::Address;
 pub use credential::Credential;
 pub use error::Error;
 

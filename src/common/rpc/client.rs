@@ -33,7 +33,7 @@ use crate::common::{
         channel::CallCredChannel,
         Channel,
     },
-    Executor, Result, TonicChannel,
+    Address, Executor, Result, TonicChannel,
 };
 
 #[derive(Clone, Debug)]
@@ -54,7 +54,7 @@ macro_rules! dispatch {
 }
 
 impl ProtoTypeDBClient {
-    pub async fn connect(address: &str) -> StdResult<Self, tonic::transport::Error> {
+    pub async fn connect(address: Address) -> StdResult<Self, tonic::transport::Error> {
         Ok(Self::Plaintext(TypeDbClient::connect(address.to_string()).await?))
     }
 
@@ -130,7 +130,7 @@ pub(crate) struct Client {
 }
 
 impl Client {
-    pub(crate) async fn connect(address: &str) -> Result<Self> {
+    pub(crate) async fn connect(address: Address) -> Result<Self> {
         Self::construct(ProtoTypeDBClient::connect(address).await?).await
     }
 }

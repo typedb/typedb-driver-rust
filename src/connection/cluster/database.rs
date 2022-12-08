@@ -19,8 +19,9 @@
  * under the License.
  */
 
-use std::{fmt, fmt::Debug, future::Future, result::Result as StdResult, sync::Arc};
-use std::time::Duration;
+use std::{
+    fmt, fmt::Debug, future::Future, result::Result as StdResult, sync::Arc, time::Duration,
+};
 
 use futures::future::try_join_all;
 use tokio::time::sleep;
@@ -34,7 +35,7 @@ use crate::{
             cluster::database_manager::{all_req, get_req},
             core::database_manager::{contains_req, create_req},
         },
-        Result,
+        Address, Result,
     },
     connection::server,
 };
@@ -43,7 +44,7 @@ type TonicResult<R> = StdResult<Response<R>, Status>;
 
 #[derive(Clone)]
 pub struct Replica {
-    pub(crate) address: String,
+    pub(crate) address: Address,
     pub(crate) database_name: String,
     pub(crate) is_primary: bool,
     pub(crate) is_preferred: bool,
@@ -68,7 +69,7 @@ impl Replica {
         rpc_client: rpc::Client,
     ) -> Replica {
         Self {
-            address: metadata.address,
+            address: metadata.address.parse().expect("Invalid URI received from the server"),
             database_name: name.to_owned(),
             is_primary: metadata.primary,
             is_preferred: metadata.preferred,
@@ -102,7 +103,8 @@ impl Database {
             .replicas
             .into_iter()
             .map(|replica| {
-                let rpc_client = rpc_cluster_manager.get(&replica.address).into_core();
+                let rpc_client =
+                    rpc_cluster_manager.get(&replica.address.parse().unwrap()).into_core();
                 Replica::new(&proto.name, replica, rpc_client)
             })
             .collect();
@@ -122,7 +124,8 @@ impl Database {
             .replicas
             .into_iter()
             .map(|replica| {
-                let rpc_client = self.rpc_cluster_manager.get(&replica.address).into_core();
+                let rpc_client =
+                    self.rpc_cluster_manager.get(&replica.address.parse().unwrap()).into_core();
                 Replica::new(&proto.name, replica, rpc_client)
             })
             .collect();

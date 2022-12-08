@@ -23,11 +23,9 @@ use std::sync::Arc;
 
 use super::Database;
 use crate::{
-    common::{rpc, Result, SessionType},
-    connection::{core, server},
+    common::{rpc, Result, SessionType, TransactionType},
+    connection::{core, server, server::Transaction},
 };
-use crate::common::TransactionType;
-use crate::connection::server::Transaction;
 
 pub struct Session {
     pub database: Database,

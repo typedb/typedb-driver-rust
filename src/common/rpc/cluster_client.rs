@@ -43,24 +43,24 @@ use crate::common::{
         channel::CallCredChannel,
         Channel,
     },
-    Credential, Executor, Result,
+    Address, Credential, Executor, Result,
 };
 
 #[derive(Debug, Clone)]
 pub(crate) struct ClusterClientManager {
-    cluster_clients: HashMap<String, ClusterClient>,
+    cluster_clients: HashMap<Address, ClusterClient>,
 }
 
 impl ClusterClientManager {
     pub(crate) async fn fetch_current_addresses(
         addresses: &HashSet<String>,
         credential: &Credential,
-    ) -> Result<HashSet<String>> {
+    ) -> Result<HashSet<Address>> {
         for address in addresses {
-            match ClusterClient::new_checked(address, credential.clone()).await {
+            match ClusterClient::new_checked(address.parse()?, credential.clone()).await {
                 Ok(mut client) => {
                     let servers = client.servers_all().await?.servers;
-                    return Ok(servers.into_iter().map(|server| server.address).collect());
+                    return servers.into_iter().map(|server| server.address.parse()).collect();
                 }
                 Err(err) if err == MESSAGES.client.unable_to_connect.to_err(vec![]) => (),
                 Err(err) => return Err(err),
@@ -70,18 +70,18 @@ impl ClusterClientManager {
     }
 
     pub(crate) async fn new(
-        addresses: HashSet<String>,
+        addresses: HashSet<Address>,
         credential: Credential,
     ) -> Result<Arc<Self>> {
         let cluster_clients = try_join_all(addresses.iter().map(|address| async {
-            ClusterClient::new_unchecked(address, credential.clone()).await
+            ClusterClient::new_unchecked(address.clone(), credential.clone()).await
         }))
         .await?;
         let cluster_clients = addresses.into_iter().zip(cluster_clients.into_iter()).collect();
         Ok(Arc::new(Self { cluster_clients }))
     }
 
-    pub(crate) fn get(&self, address: &str) -> ClusterClient {
+    pub(crate) fn get(&self, address: &Address) -> ClusterClient {
         self.cluster_clients.get(address).unwrap().clone()
     }
 
@@ -106,7 +106,7 @@ pub(crate) struct ClusterClient {
 }
 
 impl ClusterClient {
-    pub(crate) async fn new_unchecked(address: &str, credential: Credential) -> Result<Self> {
+    pub(crate) async fn new_unchecked(address: Address, credential: Credential) -> Result<Self> {
         let (channel, shared_cred) = Channel::open_encrypted(address, credential)?;
         let mut this = Self {
             core_client: rpc::Client::new(channel.clone()).await?,
@@ -119,7 +119,7 @@ impl ClusterClient {
         Ok(this)
     }
 
-    pub(crate) async fn new_checked(address: &str, credential: Credential) -> Result<Self> {
+    pub(crate) async fn new_checked(address: Address, credential: Credential) -> Result<Self> {
         let mut this = Self::new_unchecked(address, credential).await?;
         this.check_connection().await?;
         Ok(this)

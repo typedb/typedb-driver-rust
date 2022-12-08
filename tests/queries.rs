@@ -129,14 +129,12 @@ async fn basic_cluster() {
     );
 
     let session = client.session(GRAKN, Data).await.expect("An error occurred opening a session");
-    let mut transaction = session.transaction(Write).await.expect("An error occurred opening a transaction");
-    let mut answer_stream =
-        transaction.query.match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
+    let mut transaction =
+        session.transaction(Write).await.expect("An error occurred opening a transaction");
+    let mut answer_stream = transaction.query.match_("match $x sub thing;");
     while let Some(result) = answer_stream.next().await {
         match result {
-            Ok(concept_map) => {
-                println!("{:#?}", concept_map)
-            }
+            Ok(concept_map) => println!("{:?}", concept_map),
             Err(err) => panic!("An error occurred fetching answers of a Match query: {}", err),
         }
     }
