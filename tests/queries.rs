@@ -21,7 +21,7 @@
 
 use std::{collections::HashSet, sync::mpsc, time::Instant};
 
-use futures::StreamExt;
+use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
 use typedb_client::{
     common::{
@@ -113,7 +113,7 @@ async fn basic_cluster() {
     .expect("An error occurred connecting to TypeDB Cluster");
 
     if client.databases().contains(GRAKN).await.unwrap() {
-        client.databases().get(GRAKN).await.unwrap().delete().await.unwrap();
+        client.databases().get(GRAKN).and_then(|db| db.delete()).await.unwrap();
     }
     client.databases().create(GRAKN).await.unwrap();
 

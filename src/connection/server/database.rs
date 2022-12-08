@@ -87,7 +87,8 @@ impl Database {
     }
 
     pub async fn delete(mut self) -> Result {
-        self.rpc_client.database_delete(delete_req(self.name.as_str())).await.map(|_| ())
+        self.rpc_client.database_delete(delete_req(self.name.as_str())).await?;
+        Ok(())
     }
 
     pub async fn rule_schema(&mut self) -> Result<String> {
