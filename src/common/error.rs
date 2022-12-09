@@ -19,11 +19,36 @@
  * under the License.
  */
 
+use typeql_lang::error_messages;
+
+error_messages! { ClientError
+    code: "CLI", type: "Client Error",
+    SessionIsClosed() =
+        2: "The session is closed and no further operation is allowed.",
+    TransactionIsClosed() =
+        3: "The transaction is closed and no further operation is allowed.",
+    TransactionIsClosedWithErrors(String) =
+        4: "The transaction is closed because of the error(s):\n{}",
+    UnableToConnect() =
+        5: "Unable to connect to TypeDB server.",
+    DatabaseDoesNotExist(String) =
+        8: "The database '{}' does not exist.",
+    MissingResponseField(&'static str) =
+        9: "Missing field in message received from server: '{}'.",
+    UnknownRequestId(String) =
+        10: "Received a response with unknown request id '{}'",
+    ClusterReplicaNotPrimary() =
+        13: "The replica is not the primary replica.",
+    ClusterTokenCredentialInvalid() =
+        16: "Invalid token credential.",
+    SessionCloseFailed() =
+        17: "Failed to close session. It may still be open on the server: or it may already have been closed previously.",
+    SessionWasNeverClosed() =
+        18: "A session went out of scope without being closed. Sessions should always be closed by awaiting Session::close.",
+}
+
 // use grpc::{Error as GrpcError, GrpcMessageError, GrpcStatus};
-use std::{
-    error::Error as StdError,
-    fmt::{Debug, Display, Formatter},
-};
+use std::{error::Error as StdError, fmt};
 
 use tonic::Status;
 
@@ -121,47 +146,23 @@ impl MessageTemplates<'_> {
 
 const TEMPLATES: MessageTemplates = MessageTemplates::new();
 
-pub struct ClientMessages<'a> {
-    pub session_is_closed: Message<'a>,
-    pub transaction_is_closed: Message<'a>,
-    pub transaction_is_closed_with_errors: Message<'a>,
-    pub unable_to_connect: Message<'a>,
-    pub db_does_not_exist: Message<'a>,
-    pub missing_response_field: Message<'a>,
-    pub unknown_request_id: Message<'a>,
-    pub cluster_replica_not_primary: Message<'a>,
-    pub cluster_token_credential_invalid: Message<'a>,
-    pub session_close_failed: Message<'a>,
-    pub session_was_never_closed: Message<'a>,
-}
-
 pub struct ConceptMessages<'a> {
     pub invalid_concept_casting: Message<'a>,
 }
 
 pub struct Messages<'a> {
-    pub client: ClientMessages<'a>,
     pub concept: ConceptMessages<'a>,
 }
 
 impl Messages<'_> {
     const fn new() -> Messages<'static> {
         Messages {
-            client: ClientMessages {
-                session_is_closed: Message::new(TEMPLATES.client, 2, "The session is closed and no further operation is allowed."),
-                transaction_is_closed: Message::new(TEMPLATES.client, 3, "The transaction is closed and no further operation is allowed."),
-                transaction_is_closed_with_errors: Message::new(TEMPLATES.client, 4, "The transaction is closed because of the error(s):\n{}"),
-                unable_to_connect: Message::new(TEMPLATES.client, 5, "Unable to connect to TypeDB server."),
-                db_does_not_exist: Message::new(TEMPLATES.client, 8, "The database '{}' does not exist."),
-                missing_response_field: Message::new(TEMPLATES.client, 9, "Missing field in message received from server: '{}'."),
-                unknown_request_id: Message::new(TEMPLATES.client, 10, "Received a response with unknown request id '{}'"),
-                cluster_replica_not_primary: Message::new(TEMPLATES.client, 13, "The replica is not the primary replica."),
-                cluster_token_credential_invalid: Message::new(TEMPLATES.client, 16, "Invalid token credential."),
-                session_close_failed: Message::new(TEMPLATES.client, 17, "Failed to close session. It may still be open on the server, or it may already have been closed previously."),
-                session_was_never_closed: Message::new(TEMPLATES.client, 18, "A session went out of scope without being closed. Sessions should always be closed by awaiting Session::close."),
-            },
             concept: ConceptMessages {
-                invalid_concept_casting: Message::new(TEMPLATES.concept, 1, "Invalid concept conversion from '{}' to '{}'"),
+                invalid_concept_casting: Message::new(
+                    TEMPLATES.concept,
+                    1,
+                    "Invalid concept conversion from '{}' to '{}'",
+                ),
             },
         }
     }
@@ -172,6 +173,7 @@ pub const MESSAGES: Messages = Messages::new();
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     // GrpcError(String, GrpcError),
+    Client(ClientError),
     Other(String),
 }
 
@@ -203,22 +205,28 @@ impl Error {
     // }
 }
 
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let message = match self {
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
             // Error::GrpcError(msg, _) => msg,
-            Error::Other(msg) => msg,
-        };
-        write!(f, "{}", message)
+            Error::Client(error) => write!(f, "{}", error),
+            Error::Other(message) => write!(f, "{}", message),
+        }
     }
 }
 
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
-            // Error::GrpcError(_, source) => Some(source),
+            Error::Client(error) => Some(error),
             Error::Other(_) => None,
         }
+    }
+}
+
+impl From<ClientError> for Error {
+    fn from(error: ClientError) -> Self {
+        Error::Client(error)
     }
 }
 

@@ -41,7 +41,7 @@ use typedb_protocol::{
 };
 
 use crate::common::{
-    error::{Error, MESSAGES},
+    error::{ClientError, Error},
     rpc,
     rpc::builder::transaction::{client_msg, stream_req},
     Executor, Result,
@@ -292,12 +292,7 @@ impl ReceiverState {
             Some(Server::ResPart(res_part)) => {
                 self.collect_res_part(res_part).await;
             }
-            None => {
-                println!(
-                    "{}",
-                    MESSAGES.client.missing_response_field.to_err(vec!["server"]).to_string()
-                )
-            }
+            None => println!("{}", ClientError::MissingResponseField("server")),
         }
     }
 
@@ -308,14 +303,7 @@ impl ReceiverState {
                 if let Res::OpenRes(_) = res.res.unwrap() {
                     // ignore open_res
                 } else {
-                    println!(
-                        "{}",
-                        MESSAGES.client.unknown_request_id.to_err(vec![format!(
-                            "{:?}",
-                            &res.req_id
-                        )
-                        .as_str()])
-                    )
+                    println!("{}", ClientError::UnknownRequestId(format!("{:?}", &res.req_id)))
                     // println!("{}", MESSAGES.client.unknown_request_id.to_err(
                     //     vec![std::str::from_utf8(&res.req_id).unwrap()])
                     // )
@@ -335,7 +323,7 @@ impl ReceiverState {
             }
             None => {
                 let req_id_str = hex_string(&res_part.req_id);
-                println!("{}", MESSAGES.client.unknown_request_id.to_err(vec![req_id_str.as_str()]))
+                println!("{}", ClientError::UnknownRequestId(req_id_str));
             }
         }
     }
@@ -364,11 +352,10 @@ fn hex_string(v: &[u8]) -> String {
 
 fn close_reason(error_str: &Option<String>) -> Error {
     match error_str {
-        None => MESSAGES.client.transaction_is_closed.to_err(vec![]),
-        Some(value) => {
-            MESSAGES.client.transaction_is_closed_with_errors.to_err(vec![value.as_str()])
-        }
+        None => ClientError::TransactionIsClosed(),
+        Some(value) => ClientError::TransactionIsClosedWithErrors(value.clone()),
     }
+    .into()
 }
 
 impl Receiver {
@@ -439,14 +426,7 @@ impl Stream for ResPartStream {
                         }
                     }
                     Some(_other) => poll,
-                    None => panic!(
-                        "{}",
-                        MESSAGES
-                            .client
-                            .missing_response_field
-                            .to_err(vec!["res_part.res"])
-                            .to_string()
-                    ),
+                    None => panic!("{}", ClientError::MissingResponseField("res_part.res")),
                 }
             }
             poll => poll,

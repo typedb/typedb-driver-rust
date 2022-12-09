@@ -22,7 +22,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::common::{
-    error::MESSAGES,
+    error::{ClientError},
     rpc,
     rpc::builder::core::{
         database::{delete_req, rule_schema_req, schema_req, type_schema_req},
@@ -56,7 +56,7 @@ impl DatabaseManager {
     pub async fn get(&mut self, name: &str) -> Result<Database> {
         match self.contains(name).await? {
             true => Ok(Database::new(name, self.rpc_client.clone())),
-            false => Err(MESSAGES.client.db_does_not_exist.to_err(vec![name])),
+            false => Err(ClientError::DatabaseDoesNotExist(name.to_string()))?,
         }
     }
 

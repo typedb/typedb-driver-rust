@@ -33,15 +33,6 @@ load("@io_bazel_rules_kotlin//kotlin:kotlin.bzl", "kotlin_repositories", "kt_reg
 kotlin_repositories()
 kt_register_toolchains()
 
-# TODO: enable this when we load @vaticle_typeql
-## Load //builder/antlr
-#load("@vaticle_dependencies//builder/antlr:deps.bzl", antlr_deps = "deps", "antlr_version")
-#antlr_deps()
-#
-#load("@rules_antlr//antlr:lang.bzl", "JAVA")
-#load("@rules_antlr//antlr:repositories.bzl", "rules_antlr_dependencies")
-#rules_antlr_dependencies(antlr_version, JAVA)
-
 # Load //builder/grpc (required by @vaticle_typedb_protocol)
 load("@vaticle_dependencies//builder/grpc:deps.bzl", grpc_deps = "deps")
 grpc_deps()
@@ -89,6 +80,9 @@ github_deps()
 
 load("//dependencies/vaticle:repositories.bzl", "vaticle_typedb_protocol")
 vaticle_typedb_protocol()
+
+load("//dependencies/vaticle:repositories.bzl", "vaticle_typeql")
+vaticle_typeql()
 
 ############################
 # Load @maven dependencies #

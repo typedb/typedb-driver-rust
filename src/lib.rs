@@ -21,6 +21,9 @@
 
 #![allow(dead_code)]
 
+#[macro_use]
+extern crate typeql_lang;
+
 pub mod answer;
 
 pub mod connection;

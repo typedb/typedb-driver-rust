@@ -128,7 +128,8 @@ async fn basic_cluster() {
             .fold(String::new(), |acc, db| acc + db.name.as_str() + ",")
     );
 
-    let session = client.session(GRAKN, Data).await.expect("An error occurred opening a session");
+    let mut session =
+        client.session(GRAKN, Data).await.expect("An error occurred opening a session");
     let mut transaction =
         session.transaction(Write).await.expect("An error occurred opening a transaction");
     let mut answer_stream = transaction.query.match_("match $x sub thing;");

@@ -32,7 +32,7 @@ use typedb_protocol::{
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{
-        error::MESSAGES,
+        error::ClientError,
         rpc::{
             builder::query_manager::{
                 define_req, delete_req, insert_req, match_aggregate_req, match_req, undefine_req,
@@ -54,11 +54,12 @@ macro_rules! stream_concept_maps {
                         stream::iter(x.answers.into_iter().map(|cm| ConceptMap::from_proto(cm)))
                             .left_stream()
                     }
-                    _ => stream::iter(once(Err(MESSAGES.client.missing_response_field.to_err(
-                        vec![
-                            format!("query_manager_res_part.{}_res_part", $query_type_str).as_str()
-                        ],
-                    ))))
+                    _ => stream::iter(once(Err(ClientError::MissingResponseField(concat!(
+                        "query_manager_res_part.",
+                        $query_type_str,
+                        "_res_part"
+                    ))
+                    .into())))
                     .right_stream(),
                 },
                 Err(err) => stream::iter(once(Err(err))).right_stream(),
@@ -125,7 +126,7 @@ impl QueryManager {
     pub async fn match_aggregate(&mut self, query: &str) -> Result<Numeric> {
         match self.single_call(match_aggregate_req(query, None)).await? {
             MatchAggregateRes(res) => res.answer.unwrap().try_into(),
-            _ => Err(MESSAGES.client.missing_response_field.to_err(vec!["match_aggregate_res"])),
+            _ => Err(ClientError::MissingResponseField("match_aggregate_res"))?,
         }
     }
 
@@ -136,7 +137,7 @@ impl QueryManager {
     ) -> Result<Numeric> {
         match self.single_call(match_aggregate_req(query, Some(options.to_proto()))).await? {
             MatchAggregateRes(res) => res.answer.unwrap().try_into(),
-            _ => Err(MESSAGES.client.missing_response_field.to_err(vec!["match_aggregate_res"])),
+            _ => Err(ClientError::MissingResponseField("match_aggregate_res"))?,
         }
     }
 
@@ -164,10 +165,10 @@ impl QueryManager {
 
     async fn single_call(&mut self, req: transaction::Req) -> Result<query_manager::res::Res> {
         match self.tx.single(req).await?.res {
-            Some(transaction::res::Res::QueryManagerRes(res)) => res.res.ok_or_else(|| {
-                MESSAGES.client.missing_response_field.to_err(vec!["res.query_manager_res"])
-            }),
-            _ => Err(MESSAGES.client.missing_response_field.to_err(vec!["res.query_manager_res"])),
+            Some(transaction::res::Res::QueryManagerRes(res)) => {
+                res.res.ok_or(ClientError::MissingResponseField("res.query_manager_res").into())
+            }
+            _ => Err(ClientError::MissingResponseField("res.query_manager_res"))?,
         }
     }
 
@@ -178,17 +179,11 @@ impl QueryManager {
         self.tx.stream(req).map(|result: Result<transaction::ResPart>| match result {
             Ok(tx_res_part) => match tx_res_part.res {
                 Some(transaction::res_part::Res::QueryManagerResPart(res_part)) => {
-                    res_part.res.ok_or_else(|| {
-                        MESSAGES
-                            .client
-                            .missing_response_field
-                            .to_err(vec!["res_part.query_manager_res_part"])
-                    })
+                    res_part.res.ok_or(
+                        ClientError::MissingResponseField("res_part.query_manager_res_part").into(),
+                    )
                 }
-                _ => Err(MESSAGES
-                    .client
-                    .missing_response_field
-                    .to_err(vec!["res_part.query_manager_res_part"])),
+                _ => Err(ClientError::MissingResponseField("res_part.query_manager_res_part"))?,
             },
             Err(err) => Err(err),
         })

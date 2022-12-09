@@ -26,7 +26,7 @@ use tokio::time::sleep;
 
 use crate::{
     common::{
-        error::MESSAGES,
+        error::{ClientError},
         rpc,
         rpc::builder::{
             cluster::database_manager::{all_req, get_req},
@@ -124,9 +124,19 @@ impl Database {
 
     pub(crate) async fn primary_replica(&mut self) -> Option<Replica> {
         // FIXME REMOVE
-        let _ = sleep(Duration::from_secs(2)).await;
-        self.refresh_replicas().await;
-        self.replicas.iter().filter(|r| r.is_primary).max_by_key(|r| r.term).cloned()
+        let mut retries_left = 10;
+        while retries_left > 0 {
+            self.refresh_replicas().await;
+            if let Some(replica) =
+                self.replicas.iter().filter(|r| r.is_primary).max_by_key(|r| r.term).cloned()
+            {
+                return Some(replica);
+            }
+            println!("Retrying...");
+            let _ = sleep(Duration::from_secs(2)).await;
+            retries_left -= 1;
+        }
+        None
     }
 
     pub async fn delete(mut self) -> Result {
@@ -167,7 +177,7 @@ impl DatabaseManager {
         if let Some(proto_db) = maybe_proto_db {
             Database::new(proto_db, self.rpc_cluster_manager.clone()).await
         } else {
-            Err(MESSAGES.client.db_does_not_exist.to_err(vec![name]))
+            Err(ClientError::DatabaseDoesNotExist(name.to_string()))?
         }
     }
 
@@ -215,6 +225,6 @@ impl DatabaseManager {
                 Err(_) => (),
             }
         }
-        Err(MESSAGES.client.unable_to_connect.to_err(vec![]))
+        Err(ClientError::UnableToConnect())?
     }
 }

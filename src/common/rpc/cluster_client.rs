@@ -35,14 +35,14 @@ use typedb_protocol::{
 
 use crate::common::{
     credential::CallCredentials,
-    error::MESSAGES,
+    error::ClientError,
     rpc,
     rpc::{
         builder::{cluster, cluster::user::token_req},
         channel::CallCredChannel,
         Channel,
     },
-    Address, Credential, Executor, Result, TonicResult,
+    Address, Credential, Error, Executor, Result, TonicResult,
 };
 
 #[derive(Debug, Clone)]
@@ -61,11 +61,11 @@ impl ClusterClientManager {
                     let servers = client.servers_all().await?.servers;
                     return servers.into_iter().map(|server| server.address.parse()).collect();
                 }
-                Err(err) if err == MESSAGES.client.unable_to_connect.to_err(vec![]) => (),
-                Err(err) => return Err(err),
+                Err(Error::Client(ClientError::UnableToConnect())) => (),
+                Err(err) => Err(err)?,
             }
         }
-        Err(MESSAGES.client.unable_to_connect.to_err(vec![]))
+        Err(ClientError::UnableToConnect())?
     }
 
     pub(crate) async fn new(

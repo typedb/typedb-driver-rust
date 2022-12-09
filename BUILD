@@ -33,6 +33,7 @@ rust_library(
     srcs = glob(["src/**/*.rs"]),
     deps = [
         "@vaticle_typedb_protocol//grpc/rust:typedb_protocol",
+        "@vaticle_typeql//rust:typeql_lang",
 
         "@vaticle_dependencies//library/crates:chrono",
         "@vaticle_dependencies//library/crates:crossbeam",

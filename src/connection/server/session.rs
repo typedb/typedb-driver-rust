@@ -27,7 +27,7 @@ use log::warn;
 
 use crate::{
     common::{
-        error::MESSAGES,
+        error::{ClientError},
         rpc,
         rpc::builder::session::{close_req, open_req},
         Result, SessionType, TransactionType,
@@ -88,7 +88,7 @@ impl Session {
                 )
                 .await
             }
-            false => Err(MESSAGES.client.session_is_closed.to_err(vec![])),
+            false => Err(ClientError::SessionIsClosed())?,
         }
     }
 
@@ -103,7 +103,7 @@ impl Session {
             // TODO: the request errors harmlessly if the session is already closed. Protocol should
             //       expose the cause of the error and we can use that to decide whether to warn here.
             if res.is_err() {
-                warn!("{}", MESSAGES.client.session_close_failed.to_err(vec![]))
+                warn!("{}", ClientError::SessionCloseFailed())
             }
         }
     }
