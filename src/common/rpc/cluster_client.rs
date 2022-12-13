@@ -80,6 +80,14 @@ impl ClusterClientManager {
         Ok(Arc::new(Self { cluster_clients }))
     }
 
+    pub(crate) fn len(&self) -> usize {
+        self.cluster_clients.len()
+    }
+
+    pub(crate) fn addresses(&self) -> impl Iterator<Item = &Address> {
+        self.cluster_clients.keys()
+    }
+
     pub(crate) fn get(&self, address: &Address) -> ClusterClient {
         self.cluster_clients.get(address).unwrap().clone()
     }
@@ -89,13 +97,14 @@ impl ClusterClientManager {
         self.cluster_clients.values().next().unwrap().clone()
     }
 
-    pub(crate) fn iter(&self) -> impl Iterator<Item = ClusterClient> + '_ {
+    pub(crate) fn iter_cloned(&self) -> impl Iterator<Item = ClusterClient> + '_ {
         self.cluster_clients.values().cloned()
     }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct ClusterClient {
+    address: Address,
     core_client: rpc::Client,
     cluster_client: ProtoTypeDBClusterClient<CallCredChannel>,
     pub(crate) executor: Arc<Executor>,
@@ -104,8 +113,9 @@ pub(crate) struct ClusterClient {
 
 impl ClusterClient {
     pub(crate) async fn new_unchecked(address: Address, credential: Credential) -> Result<Self> {
-        let (channel, shared_cred) = Channel::open_encrypted(address, credential)?;
+        let (channel, shared_cred) = Channel::open_encrypted(address.clone(), credential)?;
         let mut this = Self {
+            address,
             core_client: rpc::Client::new(channel.clone()).await?,
             cluster_client: ProtoTypeDBClusterClient::new(channel.into()),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
@@ -124,6 +134,10 @@ impl ClusterClient {
 
     pub(crate) fn into_core(self) -> rpc::Client {
         self.core_client
+    }
+
+    pub(crate) fn address(&self) -> &Address {
+        &self.address
     }
 
     async fn renew_token(&mut self) -> Result {

@@ -19,6 +19,9 @@
  * under the License.
  */
 
+use std::{error::Error as StdError, fmt};
+
+use tonic::{Code, Status};
 use typeql_lang::error_messages;
 
 error_messages! { ClientError
@@ -37,8 +40,12 @@ error_messages! { ClientError
         9: "Missing field in message received from server: '{}'.",
     UnknownRequestId(String) =
         10: "Received a response with unknown request id '{}'",
+    ClusterUnableToConnect(String) =
+        12: "Unable to connect to TypeDB Cluster. Attempted connecting to the cluster members, but none are available: '{}'.",
     ClusterReplicaNotPrimary() =
         13: "The replica is not the primary replica.",
+    ClusterAllNodesFailed(String) =
+        14: "Attempted connecting to all cluster members, but the following errors occurred: \n{}.",
     ClusterTokenCredentialInvalid() =
         16: "Invalid token credential.",
     SessionCloseFailed() =
@@ -47,132 +54,8 @@ error_messages! { ClientError
         18: "A session went out of scope without being closed. Sessions should always be closed by awaiting Session::close.",
 }
 
-// use grpc::{Error as GrpcError, GrpcMessageError, GrpcStatus};
-use std::{error::Error as StdError, fmt};
-
-use tonic::Status;
-
-// TODO: try refactoring out the lifetime by storing String instead of &str
-struct MessageTemplate<'a> {
-    code_prefix: &'a str,
-    msg_prefix: &'a str,
-}
-
-impl MessageTemplate<'_> {
-    const fn new<'a>(code_prefix: &'a str, msg_prefix: &'a str) -> MessageTemplate<'a> {
-        MessageTemplate { code_prefix, msg_prefix }
-    }
-}
-
-// TODO: try introducing generic type parameter representing the template variable list
-pub struct Message<'a> {
-    code_prefix: &'a str,
-    code_number: u8,
-    msg_prefix: &'a str,
-    msg_body: &'a str,
-}
-
-impl Message<'_> {
-    const fn new<'a>(
-        template: MessageTemplate<'a>,
-        code_number: u8,
-        msg_body: &'a str,
-    ) -> Message<'a> {
-        Message {
-            code_prefix: template.code_prefix,
-            code_number,
-            msg_prefix: template.msg_prefix,
-            msg_body,
-        }
-    }
-
-    fn format(&self, args: Vec<&str>) -> String {
-        let expected_arg_count = self.msg_body.matches("{}").count();
-        assert_eq!(
-            expected_arg_count,
-            args.len(),
-            "Message template `{}` takes `{}` args but `{}` were provided",
-            self.msg_body,
-            expected_arg_count,
-            args.len()
-        );
-        format!(
-            "[{}{:0>2}] {}: {}",
-            self.code_prefix,
-            self.code_number,
-            self.msg_prefix,
-            self.expand_msg(args)
-        )
-    }
-
-    pub(crate) fn to_err(&self, args: Vec<&str>) -> Error {
-        Error::new(self.format(args))
-    }
-
-    fn expand_msg(&self, args: Vec<&str>) -> String {
-        let arg_count = args.len();
-        let msg_split_indexed = self.msg_body.split("{}").enumerate();
-        let mut formatted_msg = String::new();
-        for (idx, fragment) in msg_split_indexed {
-            formatted_msg.push_str(fragment);
-            if idx < arg_count {
-                formatted_msg.push_str(args[idx])
-            }
-        }
-        formatted_msg
-    }
-}
-
-impl From<Message<'_>> for String {
-    fn from(msg: Message) -> Self {
-        assert!(!msg.msg_body.contains("{}"));
-        String::from(msg.msg_body)
-    }
-}
-
-struct MessageTemplates<'a> {
-    client: MessageTemplate<'a>,
-    concept: MessageTemplate<'a>,
-}
-
-impl MessageTemplates<'_> {
-    const fn new() -> MessageTemplates<'static> {
-        MessageTemplates {
-            client: MessageTemplate::new("CLI", "Client Error"),
-            concept: MessageTemplate::new("CON", "Concept Error"),
-        }
-    }
-}
-
-const TEMPLATES: MessageTemplates = MessageTemplates::new();
-
-pub struct ConceptMessages<'a> {
-    pub invalid_concept_casting: Message<'a>,
-}
-
-pub struct Messages<'a> {
-    pub concept: ConceptMessages<'a>,
-}
-
-impl Messages<'_> {
-    const fn new() -> Messages<'static> {
-        Messages {
-            concept: ConceptMessages {
-                invalid_concept_casting: Message::new(
-                    TEMPLATES.concept,
-                    1,
-                    "Invalid concept conversion from '{}' to '{}'",
-                ),
-            },
-        }
-    }
-}
-
-pub const MESSAGES: Messages = Messages::new();
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
-    // GrpcError(String, GrpcError),
     Client(ClientError),
     Other(String),
 }
@@ -181,34 +64,11 @@ impl Error {
     pub(crate) fn new(msg: String) -> Self {
         Error::Other(msg)
     }
-
-    // TODO: rewrite this to work with Tonic (and error library from 'typeql')
-    // pub(crate) fn from_grpc(source: GrpcError) -> Self {
-    //     match source {
-    //         GrpcError::Http(_) => Error::GrpcError(String::from(MESSAGES.client.unable_to_connect), source),
-    //         GrpcError::GrpcMessage(ref err) => {
-    //             // TODO: this is awkward because we use gRPC errors to represent some user errors too
-    //             if Error::is_replica_not_primary(err) { Error::new(MESSAGES.client.cluster_replica_not_primary.format(vec![])) }
-    //             else if Error::is_token_credential_invalid(err) { Error::new(MESSAGES.client.cluster_token_credential_invalid.format(vec![])) }
-    //             else { Error::GrpcError(source.to_string().replacen("grpc message error: ", "", 1), source) }
-    //         },
-    //         _ => Error::GrpcError(source.to_string(), source)
-    //     }
-    // }
-
-    // fn is_replica_not_primary(err: &GrpcMessageError) -> bool {
-    //     err.grpc_status == GrpcStatus::Internal as i32 && err.grpc_message.contains("[RPL01]")
-    // }
-    //
-    // fn is_token_credential_invalid(err: &GrpcMessageError) -> bool {
-    //     err.grpc_status == GrpcStatus::Unauthenticated as i32 && err.grpc_message.contains("[CLS08]")
-    // }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            // Error::GrpcError(msg, _) => msg,
             Error::Client(error) => write!(f, "{}", error),
             Error::Other(message) => write!(f, "{}", message),
         }
@@ -230,9 +90,32 @@ impl From<ClientError> for Error {
     }
 }
 
+fn is_rst_stream(status: &Status) -> bool {
+    // "Received Rst Stream" occurs if the server is in the process of shutting down.
+    status.code() == Code::Unavailable
+        || status.code() == Code::Unknown
+        || status.message().contains("Received Rst Stream")
+}
+
+fn is_replica_not_primary(status: &Status) -> bool {
+    status.code() == Code::Internal && status.message().contains("[RPL01]")
+}
+
+fn is_token_credential_invalid(status: &Status) -> bool {
+    status.code() == Code::Unauthenticated && status.message().contains("[CLS08]")
+}
+
 impl From<Status> for Error {
     fn from(status: Status) -> Self {
-        Error::Other(status.to_string())
+        if is_rst_stream(&status) {
+            Self::Client(ClientError::UnableToConnect())
+        } else if is_replica_not_primary(&status) {
+            Self::Client(ClientError::ClusterReplicaNotPrimary())
+        } else if is_token_credential_invalid(&status) {
+            Self::Client(ClientError::ClusterTokenCredentialInvalid())
+        } else {
+            Self::Other(status.message().to_string())
+        }
     }
 }
 

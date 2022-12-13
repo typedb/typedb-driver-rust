@@ -23,10 +23,9 @@ use std::sync::Arc;
 
 use super::Database;
 use crate::{
-    common::{rpc, Error, Result, SessionType, TransactionType},
+    common::{rpc, Result, SessionType, TransactionType},
     connection::{core, server, server::Transaction},
 };
-use crate::common::error::ClientError;
 
 pub struct Session {
     pub database: Database,
@@ -43,49 +42,52 @@ impl Session {
         session_type: SessionType,
         rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
     ) -> Result<Self> {
-        let server_session = loop {
-            let primary_address = &database.primary_replica().await.unwrap().address;
-            match server::Session::new(
-                &database.name,
-                session_type,
-                core::Options::default(),
-                rpc_cluster_client_manager.get(primary_address).into_core(),
-            )
-            .await
-            {
-                Ok(sess) => break sess,
-                Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => (),
-                Err(err) => return Err(err),
-            }
-        };
+        let server_session = database
+            .run_on_primary_replica(|name, client, _| async {
+                let name = name; // move just `name`
+                server::Session::new(
+                    &name.clone(),
+                    session_type,
+                    core::Options::default(),
+                    client.into_core(),
+                )
+                .await
+            })
+            .await?;
 
         Ok(Self { database, session_type, server_session, rpc_cluster_client_manager })
     }
 
     //TODO options
     pub async fn transaction(&mut self, transaction_type: TransactionType) -> Result<Transaction> {
-        loop {
-            match self.server_session.transaction(transaction_type).await {
-                Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => loop {
-                    let primary_address = &self.database.primary_replica().await.unwrap().address;
-                    match server::Session::new(
-                        &self.database.name,
-                        self.server_session.session_type,
-                        core::Options::default(),
-                        self.rpc_cluster_client_manager.get(primary_address).into_core(),
-                    )
-                    .await
-                    {
-                        Ok(sess) => {
-                            self.server_session = sess;
-                            break;
-                        }
-                        Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => (),
-                        Err(err) => return Err(err),
+        let (session, transaction) = self
+            .database
+            .run_on_primary_replica(|name, client, is_first_run| {
+                let session_type = self.session_type.clone();
+                let session = &self.server_session;
+                async move {
+                    if is_first_run {
+                        let transaction = session.transaction(transaction_type).await?;
+                        Ok((None, transaction))
+                    } else {
+                        let server_session = server::Session::new(
+                            &name.clone(),
+                            session_type,
+                            core::Options::default(),
+                            client.into_core(),
+                        )
+                        .await?;
+                        let transaction = server_session.transaction(transaction_type).await?;
+                        Ok((Some(server_session), transaction))
                     }
-                },
-                res => return res,
-            }
+                }
+            })
+            .await?;
+
+        if let Some(session) = session {
+            self.server_session = session;
         }
+
+        Ok(transaction)
     }
 }

@@ -27,7 +27,7 @@ use log::warn;
 
 use crate::{
     common::{
-        error::{ClientError},
+        error::ClientError,
         rpc,
         rpc::builder::session::{close_req, open_req},
         Result, SessionType, TransactionType,

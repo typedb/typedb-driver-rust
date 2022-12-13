@@ -22,7 +22,7 @@
 use std::fmt::{Display, Formatter};
 
 use crate::common::{
-    error::{ClientError},
+    error::ClientError,
     rpc,
     rpc::builder::core::{
         database::{delete_req, rule_schema_req, schema_req, type_schema_req},
