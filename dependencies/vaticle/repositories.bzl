@@ -22,16 +22,12 @@
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 def vaticle_dependencies():
-#    git_repository(
-#        name = "vaticle_dependencies",
-#        remote = "https://github.com/vaticle/dependencies",
-#        commit = "ef99eda281717dafcb835cf924e4c673f46d7217", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
-#    )
-    native.local_repository(
+    git_repository(
         name = "vaticle_dependencies",
-        path = "../dependencies",
+        remote = "https://github.com/dmitrii-ubskii/vaticle-dependencies",
+        commit = "146359b03bb8b3805fd9abc7f19ed3130c687d52", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
     )
-    
+
 def vaticle_typedb_protocol():
     git_repository(
         name = "vaticle_typedb_protocol",
@@ -40,12 +36,8 @@ def vaticle_typedb_protocol():
     )
 
 def vaticle_typeql():
-#    git_repository(
-#        name = "vaticle_typeql",
-#        remote = "https://github.com/vaticle/typeql",
-#        commit = "16d1fb6749c0fee85843ca67f470015dda9fc497", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
-#    )
-    native.local_repository(
+    git_repository(
         name = "vaticle_typeql",
-        path = "../../typeql-workspace/typeql",
+        remote = "https://github.com/dmitrii-ubskii/typeql",
+        commit = "38c19e36ba31147ec39b4f76fe0fbd1da29ccb9c", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
     )
