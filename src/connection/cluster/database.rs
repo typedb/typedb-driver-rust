@@ -109,7 +109,7 @@ impl Debug for Database {
 }
 
 impl Database {
-    async fn new(
+    fn new(
         proto: typedb_protocol::ClusterDatabase,
         rpc_cluster_manager: Arc<rpc::ClusterClientManager>,
     ) -> Result<Self> {
@@ -257,8 +257,8 @@ pub struct DatabaseManager {
 }
 
 impl DatabaseManager {
-    pub(crate) async fn new(rpc_cluster_manager: Arc<rpc::ClusterClientManager>) -> Result<Self> {
-        Ok(Self { rpc_cluster_manager })
+    pub(crate) fn new(rpc_cluster_manager: Arc<rpc::ClusterClientManager>) -> Self {
+        Self { rpc_cluster_manager }
     }
 
     pub async fn get(&mut self, name: &str) -> Result<Database> {
@@ -300,14 +300,12 @@ impl DatabaseManager {
             Err(ClientError::ClusterAllNodesFailed(error_buffer.join("\n")))?;
         }
 
-        try_join_all(
-            database_list
-                .unwrap()
-                .databases
-                .into_iter()
-                .map(|proto_db| Database::new(proto_db, self.rpc_cluster_manager.clone())),
-        )
-        .await
+        database_list
+            .unwrap()
+            .databases
+            .into_iter()
+            .map(|proto_db| Database::new(proto_db, self.rpc_cluster_manager.clone()))
+            .collect()
     }
 
     async fn run_failsafe<F, P, R>(&mut self, name: &str, task: F) -> Result<R>

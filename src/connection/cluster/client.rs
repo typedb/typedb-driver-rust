@@ -37,7 +37,7 @@ impl Client {
         let rpc_cluster_client_manager =
             rpc::ClusterClientManager::new(addresses.clone(), credential).await?;
 
-        let databases = DatabaseManager::new(rpc_cluster_client_manager.clone()).await?;
+        let databases = DatabaseManager::new(rpc_cluster_client_manager.clone());
 
         Ok(Self { rpc_cluster_client_manager, databases, sessions: Vec::new() })
     }
