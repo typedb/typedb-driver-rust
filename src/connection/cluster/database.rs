@@ -208,7 +208,7 @@ impl Database {
                 Err(Error::Client(
                     ClientError::ClusterReplicaNotPrimary() | ClientError::UnableToConnect(),
                 )) => {
-                    println!("Primary replica error, waiting...");
+                    debug!("Primary replica error, waiting...");
                     Self::wait_for_primary_replica_selection().await;
                     primary_replica = self.seek_primary_replica().await?;
                 }
@@ -221,10 +221,8 @@ impl Database {
     async fn seek_primary_replica(&mut self) -> Result<Replica> {
         let fetch_max_retries = 10; // FIXME constant
         for _retry in 0..fetch_max_retries {
-            println!("Seeking, attempt #{}...", _retry + 1);
             self.fetch_replicas().await?;
             if let Some(replica) = self.primary_replica() {
-                println!("Got primary replica!");
                 return Ok(replica);
             }
             Self::wait_for_primary_replica_selection().await;
