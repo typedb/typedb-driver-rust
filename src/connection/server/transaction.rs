@@ -47,14 +47,14 @@ pub struct Transaction {
 
 impl Transaction {
     pub(crate) async fn new(
-        session_id: &Vec<u8>,
+        session_id: &[u8],
         transaction_type: TransactionType,
         options: core::Options,
         network_latency: Duration,
         rpc_client: &rpc::Client,
     ) -> Result<Self> {
         let open_req = open_req(
-            session_id.clone(),
+            session_id.to_vec(),
             transaction_type.to_proto(),
             options.to_proto(),
             network_latency.as_millis() as i32,

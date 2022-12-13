@@ -63,7 +63,7 @@ impl Session {
         let (session, transaction) = self
             .database
             .run_on_primary_replica(|name, client, is_first_run| {
-                let session_type = self.session_type.clone();
+                let session_type = self.session_type;
                 let session = &self.server_session;
                 async move {
                     if is_first_run {

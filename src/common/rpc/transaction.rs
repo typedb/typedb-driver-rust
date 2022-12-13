@@ -172,7 +172,7 @@ impl SenderState {
 
     async fn close(&self, error: Option<Error>) {
         if let Ok(true) = self.is_open.compare_exchange(true, false) {
-            if let None = error {
+            if error.is_none() {
                 self.dispatch_messages().await;
             }
             // TODO: refactor to non-busy wait?
@@ -209,7 +209,7 @@ impl Sender {
             }
         });
 
-        Sender { state, executor: executor.clone() }
+        Sender { state, executor }
     }
 
     fn submit_message(&self, req: transaction::Req) {
@@ -219,8 +219,7 @@ impl Sender {
     fn add_message_provider(&self, provider: std::sync::mpsc::Receiver<transaction::Req>) {
         let cloned_state = self.state.clone();
         self.executor.spawn_ok(async move {
-            let mut message_iterator = provider.iter();
-            while let Some(req) = message_iterator.next() {
+            for req in provider.iter() {
                 cloned_state.submit_message(req);
             }
         });
@@ -317,7 +316,7 @@ impl ReceiverState {
         match value {
             Some(mut collector) => {
                 let req_id = res_part.req_id.clone();
-                if let Ok(_) = collector.send(Ok(res_part)).await {
+                if collector.send(Ok(res_part)).await.is_ok() {
                     self.res_part_collectors.lock().unwrap().insert(req_id, collector);
                 }
             }

@@ -58,10 +58,10 @@ impl Channel {
     }
 }
 
-impl Into<CallCredChannel> for Channel {
-    fn into(self) -> CallCredChannel {
-        match self {
-            Self::Encrypted(channel) => channel,
+impl From<Channel> for CallCredChannel {
+    fn from(channel: Channel) -> Self {
+        match channel {
+            Channel::Encrypted(channel) => channel,
             _ => panic!(),
         }
     }

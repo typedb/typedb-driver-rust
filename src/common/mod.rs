@@ -44,7 +44,7 @@ pub enum SessionType {
 }
 
 impl SessionType {
-    pub(crate) fn to_proto(&self) -> session_proto::Type {
+    pub(crate) fn to_proto(self) -> session_proto::Type {
         match self {
             SessionType::Data => session_proto::Type::Data,
             SessionType::Schema => session_proto::Type::Schema,
@@ -59,7 +59,7 @@ pub enum TransactionType {
 }
 
 impl TransactionType {
-    pub(crate) fn to_proto(&self) -> transaction_proto::Type {
+    pub(crate) fn to_proto(self) -> transaction_proto::Type {
         match self {
             TransactionType::Read => transaction_proto::Type::Read,
             TransactionType::Write => transaction_proto::Type::Write,

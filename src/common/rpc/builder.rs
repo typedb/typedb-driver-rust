@@ -303,9 +303,9 @@ pub(crate) mod thing {
         super::transaction::req(ThingReq(req))
     }
 
-    pub(crate) fn attribute_get_owners_req(iid: &Vec<u8>) -> transaction::Req {
+    pub(crate) fn attribute_get_owners_req(iid: &[u8]) -> transaction::Req {
         thing_req(thing::Req {
-            iid: iid.clone(),
+            iid: iid.to_vec(),
             req: AttributeGetOwnersReq(attribute::get_owners::Req { filter: None }).into(),
         })
     }

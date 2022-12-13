@@ -31,10 +31,6 @@ pub struct Address {
 }
 
 impl Address {
-    pub fn as_uri(&self) -> &Uri {
-        &self.uri
-    }
-
     pub fn into_uri(self) -> Uri {
         self.uri
     }
