@@ -50,8 +50,6 @@ error_messages! { ClientError
         16: "Invalid token credential.",
     SessionCloseFailed() =
         17: "Failed to close session. It may still be open on the server: or it may already have been closed previously.",
-    SessionWasNeverClosed() =
-        18: "A session went out of scope without being closed. Sessions should always be closed by awaiting Session::close.",
 }
 
 #[derive(Debug, PartialEq, Eq)]
