@@ -124,18 +124,18 @@ impl ProtoTypeDBClient {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Client {
+pub(crate) struct ServerClient {
     client: ProtoTypeDBClient,
     pub(crate) executor: Arc<Executor>,
 }
 
-impl Client {
+impl ServerClient {
     pub(crate) async fn connect(address: Address) -> Result<Self> {
         Self::construct(ProtoTypeDBClient::connect(address).await?).await
     }
 }
 
-impl Client {
+impl ServerClient {
     pub(crate) async fn new(channel: Channel) -> Result<Self> {
         Self::construct(ProtoTypeDBClient::new(channel)).await
     }

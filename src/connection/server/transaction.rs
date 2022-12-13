@@ -51,7 +51,7 @@ impl Transaction {
         transaction_type: TransactionType,
         options: core::Options,
         network_latency: Duration,
-        rpc_client: &rpc::Client,
+        rpc_client: &rpc::ServerClient,
     ) -> Result<Self> {
         let open_req = open_req(
             session_id.to_vec(),

@@ -64,7 +64,7 @@ impl Replica {
     fn new(
         name: &str,
         metadata: typedb_protocol::cluster_database::Replica,
-        rpc_client: rpc::Client,
+        rpc_client: rpc::ServerClient,
     ) -> Replica {
         Self {
             address: metadata.address.parse().expect("Invalid URI received from the server"),
@@ -85,7 +85,7 @@ impl Replica {
             .into_iter()
             .map(|replica| {
                 let rpc_client =
-                    rpc_cluster_manager.get(&replica.address.parse().unwrap()).into_core();
+                    rpc_cluster_manager.get(&replica.address.parse().unwrap()).into_server_client();
                 Replica::new(&proto.name, replica, rpc_client)
             })
             .collect()

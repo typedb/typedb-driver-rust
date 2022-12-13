@@ -105,7 +105,7 @@ impl ClusterClientManager {
 #[derive(Clone, Debug)]
 pub(crate) struct ClusterClient {
     address: Address,
-    core_client: rpc::Client,
+    server_client: rpc::ServerClient,
     cluster_client: ProtoTypeDBClusterClient<CallCredChannel>,
     pub(crate) executor: Arc<Executor>,
     credential_handler: Arc<Mutex<CallCredentials>>,
@@ -116,7 +116,7 @@ impl ClusterClient {
         let (channel, shared_cred) = Channel::open_encrypted(address.clone(), credential)?;
         let mut this = Self {
             address,
-            core_client: rpc::Client::new(channel.clone()).await?,
+            server_client: rpc::ServerClient::new(channel.clone()).await?,
             cluster_client: ProtoTypeDBClusterClient::new(channel.into()),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
             credential_handler: shared_cred,
@@ -132,8 +132,8 @@ impl ClusterClient {
         Ok(this)
     }
 
-    pub(crate) fn into_core(self) -> rpc::Client {
-        self.core_client
+    pub(crate) fn into_server_client(self) -> rpc::ServerClient {
+        self.server_client
     }
 
     pub(crate) fn address(&self) -> &Address {
@@ -202,62 +202,62 @@ impl ClusterClient {
         &mut self,
         req: core_database_manager::contains::Req,
     ) -> Result<core_database_manager::contains::Res> {
-        self.core_client.databases_contains(req).await
+        self.server_client.databases_contains(req).await
     }
 
     pub(crate) async fn databases_create(
         &mut self,
         req: core_database_manager::create::Req,
     ) -> Result<core_database_manager::create::Res> {
-        self.core_client.databases_create(req).await
+        self.server_client.databases_create(req).await
     }
 
     pub(crate) async fn database_delete(
         &mut self,
         req: core_database::delete::Req,
     ) -> Result<core_database::delete::Res> {
-        self.core_client.database_delete(req).await
+        self.server_client.database_delete(req).await
     }
 
     pub(crate) async fn database_rule_schema(
         &mut self,
         req: core_database::rule_schema::Req,
     ) -> Result<core_database::rule_schema::Res> {
-        self.core_client.database_rule_schema(req).await
+        self.server_client.database_rule_schema(req).await
     }
 
     pub(crate) async fn database_schema(
         &mut self,
         req: core_database::schema::Req,
     ) -> Result<core_database::schema::Res> {
-        self.core_client.database_schema(req).await
+        self.server_client.database_schema(req).await
     }
 
     pub(crate) async fn database_type_schema(
         &mut self,
         req: core_database::type_schema::Req,
     ) -> Result<core_database::type_schema::Res> {
-        self.core_client.database_type_schema(req).await
+        self.server_client.database_type_schema(req).await
     }
 
     pub(crate) async fn session_open(
         &mut self,
         req: session::open::Req,
     ) -> Result<session::open::Res> {
-        self.core_client.session_open(req).await
+        self.server_client.session_open(req).await
     }
 
     pub(crate) async fn session_close(
         &mut self,
         req: session::close::Req,
     ) -> Result<session::close::Res> {
-        self.core_client.session_close(req).await
+        self.server_client.session_close(req).await
     }
 
     pub(crate) async fn transaction(
         &mut self,
         open_req: transaction::Req,
     ) -> Result<(mpsc::Sender<transaction::Client>, Streaming<transaction::Server>)> {
-        self.core_client.transaction(open_req).await
+        self.server_client.transaction(open_req).await
     }
 }

@@ -43,11 +43,11 @@ use crate::common::{
 /// failure or other problem executing the operation, they will return an [`Err`][Err] result.
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {
-    pub(crate) rpc_client: rpc::Client,
+    pub(crate) rpc_client: rpc::ServerClient,
 }
 
 impl DatabaseManager {
-    pub(crate) fn new(rpc_client: rpc::Client) -> Self {
+    pub(crate) fn new(rpc_client: rpc::ServerClient) -> Self {
         DatabaseManager { rpc_client }
     }
 
@@ -78,11 +78,11 @@ impl DatabaseManager {
 #[derive(Clone, Debug)]
 pub struct Database {
     pub name: String,
-    rpc_client: rpc::Client,
+    rpc_client: rpc::ServerClient,
 }
 
 impl Database {
-    pub(crate) fn new(name: &str, rpc_client: rpc::Client) -> Self {
+    pub(crate) fn new(name: &str, rpc_client: rpc::ServerClient) -> Self {
         Database { name: name.into(), rpc_client }
     }
 

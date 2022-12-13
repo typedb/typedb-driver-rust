@@ -49,7 +49,7 @@ impl Session {
                     &name.clone(),
                     session_type,
                     core::Options::default(),
-                    client.into_core(),
+                    client.into_server_client(),
                 )
                 .await
             })
@@ -74,7 +74,7 @@ impl Session {
                             &name.clone(),
                             session_type,
                             core::Options::default(),
-                            client.into_core(),
+                            client.into_server_client(),
                         )
                         .await?;
                         let transaction = server_session.transaction(transaction_type).await?;

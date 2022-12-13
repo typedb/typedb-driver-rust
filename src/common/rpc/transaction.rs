@@ -50,13 +50,16 @@ use crate::common::{
 // TODO: This structure has become pretty messy - review
 #[derive(Clone, Debug)]
 pub(crate) struct TransactionRpc {
-    rpc_client: rpc::Client,
+    rpc_client: rpc::ServerClient,
     sender: Sender,
     receiver: Receiver,
 }
 
 impl TransactionRpc {
-    pub(crate) async fn new(rpc_client: &rpc::Client, open_req: transaction::Req) -> Result<Self> {
+    pub(crate) async fn new(
+        rpc_client: &rpc::ServerClient,
+        open_req: transaction::Req,
+    ) -> Result<Self> {
         let mut rpc_client_clone = rpc_client.clone();
         let (req_sink, streaming_res): (
             mpsc::Sender<transaction::Client>,

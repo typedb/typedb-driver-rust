@@ -42,7 +42,7 @@ pub struct Session {
     pub db_name: String,
     pub session_type: SessionType,
     pub(crate) id: SessionId,
-    pub(crate) rpc_client: rpc::Client,
+    pub(crate) rpc_client: rpc::ServerClient,
     is_open_atomic: AtomicCell<bool>,
     network_latency: Duration,
 }
@@ -52,7 +52,7 @@ impl Session {
         db_name: &str,
         session_type: SessionType,
         options: core::Options,
-        mut rpc_client: rpc::Client,
+        mut rpc_client: rpc::ServerClient,
     ) -> Result<Self> {
         let start_time = Instant::now();
         let open_req = open_req(db_name, session_type.to_proto(), options.to_proto());

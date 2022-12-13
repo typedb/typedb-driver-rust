@@ -26,7 +26,7 @@ use crate::{
 
 pub struct Client {
     pub databases: server::DatabaseManager,
-    pub(crate) rpc_client: rpc::Client,
+    pub(crate) rpc_client: rpc::ServerClient,
 }
 
 impl Client {
@@ -35,7 +35,7 @@ impl Client {
     }
 
     pub async fn new(address: &str) -> Result<Self> {
-        let rpc_client = rpc::Client::connect(address.parse()?).await?;
+        let rpc_client = rpc::ServerClient::connect(address.parse()?).await?;
         Ok(Self { databases: server::DatabaseManager::new(rpc_client.clone()), rpc_client })
     }
 
