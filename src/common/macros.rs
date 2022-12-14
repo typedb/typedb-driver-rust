@@ -19,14 +19,18 @@
  * under the License.
  */
 
-pub(crate) mod builder;
-pub(crate) mod channel;
-pub(crate) mod client;
-pub(crate) mod cluster_client;
-pub(crate) mod server_client;
-pub(crate) mod transaction;
+#[macro_export]
+macro_rules! async_enum_dispatch {
+    {
+        $variants:tt
+        $($vis:vis async fn $name:ident(&mut self, $arg:ident : $arg_type:ty $(,)?) -> $res:ty);+ $(;)?
+    } => { $(async_enum_dispatch!(@impl $variants, $vis, $name, $arg, $arg_type, $res);)+ };
 
-pub(crate) use channel::Channel;
-pub(crate) use client::Client;
-pub(crate) use cluster_client::{ClusterClient, ClusterClientManager};
-pub(crate) use server_client::ServerClient;
+    (@impl {$($variant:ident),+}, $vis:vis, $name:ident, $arg:ident, $arg_type:ty, $res:ty) => {
+        $vis async fn $name(&mut self, $arg: $arg_type) -> $res {
+            match self {
+                $(Self::$variant(inner) => inner.$name($arg).await,)+
+            }
+        }
+    }
+}

@@ -103,7 +103,7 @@ impl ClusterClientManager {
 #[derive(Clone, Debug)]
 pub(crate) struct ClusterClient {
     address: Address,
-    server_client: rpc::ServerClient,
+    pub(super) server_client: rpc::ServerClient,
     cluster_client: ProtoTypeDBClusterClient<CallCredChannel>,
     pub(crate) executor: Arc<Executor>,
     credential_handler: Arc<Mutex<CallCredentials>>,
@@ -125,10 +125,6 @@ impl ClusterClient {
         let mut this = Self::new_lazy(address, credential)?;
         this.validate_connection().await?;
         Ok(this)
-    }
-
-    pub(crate) fn into_server_client(self) -> rpc::ServerClient {
-        self.server_client
     }
 
     pub(crate) fn address(&self) -> &Address {

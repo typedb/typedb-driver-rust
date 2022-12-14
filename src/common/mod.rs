@@ -22,6 +22,7 @@
 mod address;
 pub mod credential;
 pub mod error;
+mod macros;
 pub(crate) mod rpc;
 
 pub use address::Address;

@@ -27,30 +27,22 @@ use typedb_protocol::{
     core_database, core_database_manager, session, transaction, type_db_client::TypeDbClient,
 };
 
-use crate::common::{
-    rpc::{
-        builder::{core, transaction::client_msg},
-        channel::CallCredChannel,
-        Channel,
+use crate::{
+    async_enum_dispatch,
+    common::{
+        rpc::{
+            builder::{core, transaction::client_msg},
+            channel::CallCredChannel,
+            Channel,
+        },
+        Address, Executor, Result, StdResult, TonicChannel,
     },
-    Address, Executor, Result, StdResult, TonicChannel,
 };
 
 #[derive(Clone, Debug)]
 enum ProtoTypeDBClient {
     Plaintext(TypeDbClient<TonicChannel>),
     Encrypted(TypeDbClient<CallCredChannel>),
-}
-
-macro_rules! dispatch {
-    {$(pub async fn $name:ident(&mut self, request : $req_type:ty $(,)?) -> $res:ty);+ $(;)?} => {
-        $(pub async fn $name(&mut self, request: $req_type) -> $res {
-            match self {
-                Self::Plaintext(client) => client.$name(request).await,
-                Self::Encrypted(client) => client.$name(request).await,
-            }
-        })+
-    };
 }
 
 impl ProtoTypeDBClient {
@@ -61,7 +53,7 @@ impl ProtoTypeDBClient {
         }
     }
 
-    dispatch! {
+    async_enum_dispatch! { { Plaintext, Encrypted }
         pub async fn databases_contains(
             &mut self,
             request: core_database_manager::contains::Req,
