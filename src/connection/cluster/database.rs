@@ -228,7 +228,7 @@ impl Database {
         Err(self.cluster_unable_to_connect())
     }
 
-    async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
+    pub(crate) async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
     where
         F: Fn(server::Database, rpc::ClusterClient, bool) -> P,
         P: Future<Output = Result<R>>,
