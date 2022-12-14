@@ -132,7 +132,7 @@ impl SenderState {
     fn new(req_sink: mpsc::Sender<transaction::Client>) -> Self {
         SenderState {
             req_sink,
-            queued_messages: Mutex::new(vec![]),
+            queued_messages: Mutex::new(Vec::new()),
             ongoing_task_count: AtomicCell::new(0),
             is_open: AtomicCell::new(true),
         }
@@ -333,7 +333,7 @@ impl ReceiverState {
             for (_, collector) in self.res_collectors.lock().unwrap().drain() {
                 collector.send(Err(close_reason(&error_str))).ok();
             }
-            let mut res_part_collectors: Vec<ResPartCollector> = vec![];
+            let mut res_part_collectors = Vec::new();
             for (_, res_part_collector) in self.res_part_collectors.lock().unwrap().drain() {
                 res_part_collectors.push(res_part_collector)
             }

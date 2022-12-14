@@ -121,9 +121,7 @@ impl ServerClient {
     pub(crate) async fn connect(address: Address) -> Result<Self> {
         Self::new_validated(Channel::open_plaintext(address)?).await
     }
-}
 
-impl ServerClient {
     pub(crate) fn new_lazy(channel: Channel) -> Result<Self> {
         Ok(Self {
             client: ProtoTypeDBClient::new(channel),
@@ -220,7 +218,6 @@ impl ServerClient {
 pub(crate) async fn single<T>(
     res: impl Future<Output = StdResult<Response<T>, Status>>,
 ) -> Result<T> {
-    // TODO: check if we need ensureConnected() from client-java
     Ok(res.await?.into_inner())
 }
 
