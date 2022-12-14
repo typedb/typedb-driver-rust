@@ -43,8 +43,8 @@ impl Session {
         rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
     ) -> Result<Self> {
         let server_session = database
-            .run_on_primary_replica(|database_name, client, _| async {
-                let database_name = database_name; // move just `database_name`
+            .run_on_primary_replica(|database, client, _| async {
+                let database_name = database.name;
                 server::Session::new(
                     database_name.as_str(),
                     session_type,
@@ -62,7 +62,7 @@ impl Session {
     pub async fn transaction(&mut self, transaction_type: TransactionType) -> Result<Transaction> {
         let (session, transaction) = self
             .database
-            .run_on_primary_replica(|database_name, client, is_first_run| {
+            .run_on_primary_replica(|database, client, is_first_run| {
                 let session_type = self.session_type;
                 let session = &self.server_session;
                 async move {
@@ -71,7 +71,7 @@ impl Session {
                         Ok((None, transaction))
                     } else {
                         let server_session = server::Session::new(
-                            database_name.as_str(),
+                            database.name.as_str(),
                             session_type,
                             core::Options::default(),
                             client.into(),
