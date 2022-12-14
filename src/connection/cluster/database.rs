@@ -37,56 +37,75 @@ use crate::{
     connection::server,
 };
 
-#[derive(Clone)]
-pub struct Replica {
-    pub(crate) address: Address,
-    database_name: String,
-    is_primary: bool,
-    term: i64,
-    is_preferred: bool,
-    database: server::Database,
+#[derive(Clone, Debug)]
+pub struct DatabaseManager {
+    rpc_cluster_manager: Arc<rpc::ClusterClientManager>,
 }
 
-impl Debug for Replica {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Replica")
-            .field("address", &self.address)
-            .field("database_name", &self.database_name)
-            .field("is_primary", &self.is_primary)
-            .field("term", &self.term)
-            .field("is_preferred", &self.is_preferred)
-            .finish()
-    }
-}
-
-impl Replica {
-    fn new(
-        name: &str,
-        metadata: typedb_protocol::cluster_database::Replica,
-        rpc_client: rpc::ClusterClient,
-    ) -> Replica {
-        Self {
-            address: metadata.address.parse().expect("Invalid URI received from the server"),
-            database_name: name.to_owned(),
-            is_primary: metadata.primary,
-            term: metadata.term,
-            is_preferred: metadata.preferred,
-            database: server::Database::new(name, rpc_client.into()),
-        }
+impl DatabaseManager {
+    pub(crate) fn new(rpc_cluster_manager: Arc<rpc::ClusterClientManager>) -> Self {
+        Self { rpc_cluster_manager }
     }
 
-    fn from_proto(
-        proto: typedb_protocol::ClusterDatabase,
-        rpc_cluster_manager: &rpc::ClusterClientManager,
-    ) -> Vec<Replica> {
-        proto
-            .replicas
-            .into_iter()
-            .map(|replica| {
-                let rpc_client = rpc_cluster_manager.get(&replica.address.parse().unwrap());
-                Replica::new(&proto.name, replica, rpc_client)
+    pub async fn get(&mut self, name: &str) -> Result<Database> {
+        Database::get(name, self.rpc_cluster_manager.clone()).await
+    }
+
+    pub async fn contains(&mut self, name: &str) -> Result<bool> {
+        Ok(self
+            .run_failsafe(name, move |name, mut server_client, _| {
+                let req = contains_req(&name);
+                async move { server_client.databases_contains(req).await }
             })
+            .await?
+            .contains)
+    }
+
+    pub async fn create(&mut self, name: &str) -> Result {
+        self.run_failsafe(name, |name, mut server_client, _| {
+            let req = create_req(&name);
+            async move { server_client.databases_create(req).await }
+        })
+        .await?;
+        Ok(())
+    }
+
+    pub async fn all(&mut self) -> Result<Vec<Database>> {
+        let mut error_buffer = Vec::with_capacity(self.rpc_cluster_manager.len());
+        let mut database_list = None;
+        for mut server_client in self.rpc_cluster_manager.iter_cloned() {
+            match server_client.databases_all(all_req()).await {
+                Err(err) => error_buffer.push(format!("- {}: {}", server_client.address(), err)),
+                Ok(list) => {
+                    database_list = Some(list);
+                    break;
+                }
+            }
+        }
+        if database_list.is_none() {
+            Err(ClientError::ClusterAllNodesFailed(error_buffer.join("\n")))?;
+        }
+
+        database_list
+            .unwrap()
+            .databases
+            .into_iter()
+            .map(|proto_db| Database::new(proto_db, self.rpc_cluster_manager.clone()))
             .collect()
+    }
+
+    async fn run_failsafe<F, P, R>(&mut self, name: &str, task: F) -> Result<R>
+    where
+        F: Fn(String, rpc::ClusterClient, bool) -> P,
+        P: Future<Output = Result<R>>,
+    {
+        let mut database = Database::get(name, self.rpc_cluster_manager.clone()).await?;
+        match database.run_on_any_replica(&task).await {
+            Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => {
+                database.run_on_any_replica(&task).await
+            }
+            res => res,
+        }
     }
 }
 
@@ -233,7 +252,8 @@ impl Database {
     }
 
     pub async fn delete(mut self) -> Result {
-        self.primary_replica().unwrap().database.delete().await
+        self.run_on_primary_replica(|_, _, _| self.primary_replica().unwrap().database.delete())
+            .await
     }
 
     pub async fn rule_schema(&mut self) -> Result<String> {
@@ -249,74 +269,55 @@ impl Database {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct DatabaseManager {
-    rpc_cluster_manager: Arc<rpc::ClusterClientManager>,
+#[derive(Clone)]
+pub struct Replica {
+    pub(crate) address: Address,
+    database_name: String,
+    is_primary: bool,
+    term: i64,
+    is_preferred: bool,
+    database: server::Database,
 }
 
-impl DatabaseManager {
-    pub(crate) fn new(rpc_cluster_manager: Arc<rpc::ClusterClientManager>) -> Self {
-        Self { rpc_cluster_manager }
+impl Debug for Replica {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Replica")
+            .field("address", &self.address)
+            .field("database_name", &self.database_name)
+            .field("is_primary", &self.is_primary)
+            .field("term", &self.term)
+            .field("is_preferred", &self.is_preferred)
+            .finish()
     }
+}
 
-    pub async fn get(&mut self, name: &str) -> Result<Database> {
-        Database::get(name, self.rpc_cluster_manager.clone()).await
-    }
-
-    pub async fn contains(&mut self, name: &str) -> Result<bool> {
-        Ok(self
-            .run_failsafe(name, move |name, mut server_client, _| {
-                let req = contains_req(&name);
-                async move { server_client.databases_contains(req).await }
-            })
-            .await?
-            .contains)
-    }
-
-    pub async fn create(&mut self, name: &str) -> Result {
-        self.run_failsafe(name, |name, mut server_client, _| {
-            let req = create_req(&name);
-            async move { server_client.databases_create(req).await }
-        })
-        .await?;
-        Ok(())
-    }
-
-    pub async fn all(&mut self) -> Result<Vec<Database>> {
-        let mut error_buffer = Vec::with_capacity(self.rpc_cluster_manager.len());
-        let mut database_list = None;
-        for mut server_client in self.rpc_cluster_manager.iter_cloned() {
-            match server_client.databases_all(all_req()).await {
-                Err(err) => error_buffer.push(format!("- {}: {}", server_client.address(), err)),
-                Ok(list) => {
-                    database_list = Some(list);
-                    break;
-                }
-            }
+impl Replica {
+    fn new(
+        name: &str,
+        metadata: typedb_protocol::cluster_database::Replica,
+        rpc_client: rpc::ClusterClient,
+    ) -> Replica {
+        Self {
+            address: metadata.address.parse().expect("Invalid URI received from the server"),
+            database_name: name.to_owned(),
+            is_primary: metadata.primary,
+            term: metadata.term,
+            is_preferred: metadata.preferred,
+            database: server::Database::new(name, rpc_client.into()),
         }
-        if database_list.is_none() {
-            Err(ClientError::ClusterAllNodesFailed(error_buffer.join("\n")))?;
-        }
+    }
 
-        database_list
-            .unwrap()
-            .databases
+    fn from_proto(
+        proto: typedb_protocol::ClusterDatabase,
+        rpc_cluster_manager: &rpc::ClusterClientManager,
+    ) -> Vec<Replica> {
+        proto
+            .replicas
             .into_iter()
-            .map(|proto_db| Database::new(proto_db, self.rpc_cluster_manager.clone()))
+            .map(|replica| {
+                let rpc_client = rpc_cluster_manager.get(&replica.address.parse().unwrap());
+                Replica::new(&proto.name, replica, rpc_client)
+            })
             .collect()
-    }
-
-    async fn run_failsafe<F, P, R>(&mut self, name: &str, task: F) -> Result<R>
-    where
-        F: Fn(String, rpc::ClusterClient, bool) -> P,
-        P: Future<Output = Result<R>>,
-    {
-        let mut database = Database::get(name, self.rpc_cluster_manager.clone()).await?;
-        match database.run_on_any_replica(&task).await {
-            Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => {
-                database.run_on_any_replica(&task).await
-            }
-            res => res,
-        }
     }
 }
