@@ -122,7 +122,6 @@ impl ClusterClient {
             credential_handler: shared_cred,
         };
         let _ = this.renew_token().await; // try to renew token, do nothing on failure
-                                          // FIXME token would never be renewed if this fails
         Ok(this)
     }
 
@@ -197,7 +196,7 @@ impl ClusterClient {
         self.may_renew_token(|this| Box::pin(this.cluster_client.databases_all(req.clone()))).await
     }
 
-    // core stub dispatch
+    // server client pasthrough
     pub(crate) async fn databases_contains(
         &mut self,
         req: core_database_manager::contains::Req,
