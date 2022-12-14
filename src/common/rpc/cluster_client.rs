@@ -135,14 +135,6 @@ impl ClusterClient {
         &self.address
     }
 
-    async fn renew_token(&mut self) -> Result {
-        self.credential_handler.lock().unwrap().reset_token();
-        let req = token_req(self.credential_handler.lock().unwrap().username());
-        let token = self.user_token(req).await?.token;
-        self.credential_handler.lock().unwrap().set_token(token);
-        Ok(())
-    }
-
     async fn validate_connection(&mut self) -> Result<()> {
         self.cluster_client.databases_all(cluster::database_manager::all_req()).await?;
         Ok(())
@@ -161,7 +153,15 @@ impl ClusterClient {
         }
     }
 
-    pub(crate) async fn user_token(
+    async fn renew_token(&mut self) -> Result {
+        self.credential_handler.lock().unwrap().reset_token();
+        let req = token_req(self.credential_handler.lock().unwrap().username());
+        let token = self.user_token(req).await?.token;
+        self.credential_handler.lock().unwrap().set_token(token);
+        Ok(())
+    }
+
+    async fn user_token(
         &mut self,
         username: cluster_user::token::Req,
     ) -> Result<cluster_user::token::Res> {
