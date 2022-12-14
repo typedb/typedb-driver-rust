@@ -23,7 +23,7 @@ use std::{fmt, str::FromStr};
 
 use tonic::transport::Uri;
 
-use crate::common::{Error, StdResult};
+use crate::common::{Error, Result};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Address {
@@ -39,7 +39,7 @@ impl Address {
 impl FromStr for Address {
     type Err = Error;
 
-    fn from_str(address: &str) -> StdResult<Self, Self::Err> {
+    fn from_str(address: &str) -> Result<Self> {
         let uri = if address.contains("://") {
             address.parse::<Uri>()?
         } else {
