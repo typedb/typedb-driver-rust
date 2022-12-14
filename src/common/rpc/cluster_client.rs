@@ -27,7 +27,7 @@ use std::{
 };
 
 use futures::channel::mpsc;
-use tonic::{Code, Streaming};
+use tonic::Streaming;
 use typedb_protocol::{
     cluster_database_manager, cluster_user, core_database, core_database_manager, session,
     transaction, type_db_cluster_client::TypeDbClusterClient as ProtoTypeDBClusterClient,
@@ -152,9 +152,8 @@ impl ClusterClient {
     where
         for<'a> F: Fn(&'a mut Self) -> Pin<Box<dyn Future<Output = TonicResult<R>> + 'a>>,
     {
-        match call(self).await {
-            // TODO proper error conversions
-            Err(err) if err.code() == Code::Unauthenticated => {
+        match call(self).await.map_err(Error::from) {
+            Err(Error::Client(ClientError::ClusterTokenCredentialInvalid())) => {
                 self.renew_token().await?;
                 Ok(call(self).await?.into_inner())
             }
