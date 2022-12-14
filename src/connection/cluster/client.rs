@@ -34,11 +34,8 @@ impl Client {
     pub async fn new(init_addresses: &HashSet<String>, credential: Credential) -> Result<Self> {
         let addresses =
             rpc::ClusterClientManager::fetch_current_addresses(init_addresses, &credential).await?;
-        let rpc_cluster_client_manager =
-            rpc::ClusterClientManager::new(addresses.clone(), credential).await?;
-
+        let rpc_cluster_client_manager = rpc::ClusterClientManager::new(addresses, credential)?;
         let databases = DatabaseManager::new(rpc_cluster_client_manager.clone());
-
         Ok(Self { rpc_cluster_client_manager, databases, sessions: Vec::new() })
     }
 

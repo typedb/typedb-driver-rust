@@ -37,9 +37,7 @@ pub(crate) enum Channel {
 }
 
 impl Channel {
-    pub(crate) fn open_plaintext(
-        address: Address,
-    ) -> Result<Self> {
+    pub(crate) fn open_plaintext(address: Address) -> Result<Self> {
         Ok(Self::Plaintext(TonicChannel::builder(address.into_uri()).connect_lazy()))
     }
 

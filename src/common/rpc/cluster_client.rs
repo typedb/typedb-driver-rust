@@ -26,7 +26,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use futures::{channel::mpsc, future::try_join_all};
+use futures::channel::mpsc;
 use tonic::{Code, Streaming};
 use typedb_protocol::{
     cluster_database_manager, cluster_user, core_database, core_database_manager, session,
@@ -68,15 +68,13 @@ impl ClusterClientManager {
         Err(ClientError::UnableToConnect())?
     }
 
-    pub(crate) async fn new(
-        addresses: HashSet<Address>,
-        credential: Credential,
-    ) -> Result<Arc<Self>> {
-        let cluster_clients = try_join_all(addresses.iter().map(|address| async {
-            ClusterClient::new_lazy(address.clone(), credential.clone()).await
-        }))
-        .await?;
-        let cluster_clients = addresses.into_iter().zip(cluster_clients.into_iter()).collect();
+    pub(crate) fn new(addresses: HashSet<Address>, credential: Credential) -> Result<Arc<Self>> {
+        let cluster_clients = addresses
+            .into_iter()
+            .map(|address| {
+                Ok((address.clone(), ClusterClient::new_lazy(address, credential.clone())?))
+            })
+            .collect::<Result<_>>()?;
         Ok(Arc::new(Self { cluster_clients }))
     }
 
@@ -112,21 +110,19 @@ pub(crate) struct ClusterClient {
 }
 
 impl ClusterClient {
-    pub(crate) async fn new_lazy(address: Address, credential: Credential) -> Result<Self> {
-        let (channel, shared_cred) = Channel::open_encrypted(address.clone(), credential)?;
-        let mut this = Self {
+    pub(crate) fn new_lazy(address: Address, credential: Credential) -> Result<Self> {
+        let (channel, credential_handler) = Channel::open_encrypted(address.clone(), credential)?;
+        Ok(Self {
             address,
             server_client: rpc::ServerClient::new_lazy(channel.clone())?,
             cluster_client: ProtoTypeDBClusterClient::new(channel.into()),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
-            credential_handler: shared_cred,
-        };
-        let _ = this.renew_token().await; // try to renew token, do nothing on failure
-        Ok(this)
+            credential_handler,
+        })
     }
 
     pub(crate) async fn new_validated(address: Address, credential: Credential) -> Result<Self> {
-        let mut this = Self::new_lazy(address, credential).await?;
+        let mut this = Self::new_lazy(address, credential)?;
         this.validate_connection().await?;
         Ok(this)
     }
