@@ -103,7 +103,7 @@ impl ClusterClientManager {
 #[derive(Clone, Debug)]
 pub(crate) struct ClusterClient {
     address: Address,
-    pub(super) server_client: rpc::ServerClient,
+    pub(super) server_client: rpc::CoreClient,
     cluster_client: ProtoTypeDBClusterClient<CallCredChannel>,
     pub(crate) executor: Arc<Executor>,
     credential_handler: Arc<Mutex<CallCredentials>>,
@@ -114,7 +114,7 @@ impl ClusterClient {
         let (channel, credential_handler) = Channel::open_encrypted(address.clone(), credential)?;
         Ok(Self {
             address,
-            server_client: rpc::ServerClient::new_lazy(channel.clone())?,
+            server_client: rpc::CoreClient::new_lazy(channel.clone())?,
             cluster_client: ProtoTypeDBClusterClient::new(channel.into()),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
             credential_handler,
