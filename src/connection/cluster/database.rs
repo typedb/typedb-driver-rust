@@ -72,23 +72,22 @@ impl DatabaseManager {
 
     pub async fn all(&mut self) -> Result<Vec<Database>> {
         let mut error_buffer = Vec::with_capacity(self.rpc_cluster_manager.len());
-        let mut database_list = None;
+        let mut databases = None;
         for mut server_client in self.rpc_cluster_manager.iter_cloned() {
             match server_client.databases_all(all_req()).await {
                 Err(err) => error_buffer.push(format!("- {}: {}", server_client.address(), err)),
                 Ok(list) => {
-                    database_list = Some(list);
+                    databases = Some(list.databases);
                     break;
                 }
             }
         }
-        if database_list.is_none() {
+        if databases.is_none() {
             Err(ClientError::ClusterAllNodesFailed(error_buffer.join("\n")))?;
         }
 
-        database_list
+        databases
             .unwrap()
-            .databases
             .into_iter()
             .map(|proto_db| Database::new(proto_db, self.rpc_cluster_manager.clone()))
             .collect()
@@ -230,9 +229,9 @@ impl Database {
     }
 
     async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
-        where
-            F: Fn(server::Database, rpc::ClusterClient, bool) -> P,
-            P: Future<Output = Result<R>>,
+    where
+        F: Fn(server::Database, rpc::ClusterClient, bool) -> P,
+        P: Future<Output = Result<R>>,
     {
         match self.run_on_any_replica(&task).await {
             Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => {
@@ -264,22 +263,15 @@ impl Database {
     }
 
     pub async fn schema(&mut self) -> Result<String> {
-        self.run_failsafe(|mut database, _, _| async move { database.schema().await })
-            .await
+        self.run_failsafe(|mut database, _, _| async move { database.schema().await }).await
     }
 
     pub async fn rule_schema(&mut self) -> Result<String> {
-        self.run_failsafe(
-            |mut database, _, _| async move { database.rule_schema().await },
-        )
-        .await
+        self.run_failsafe(|mut database, _, _| async move { database.rule_schema().await }).await
     }
 
     pub async fn type_schema(&mut self) -> Result<String> {
-        self.run_failsafe(
-            |mut database, _, _| async move { database.type_schema().await },
-        )
-        .await
+        self.run_failsafe(|mut database, _, _| async move { database.type_schema().await }).await
     }
 }
 
