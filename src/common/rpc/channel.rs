@@ -37,6 +37,12 @@ pub(crate) enum Channel {
 }
 
 impl Channel {
+    pub(crate) fn open_plaintext(
+        address: Address,
+    ) -> Result<Self> {
+        Ok(Self::Plaintext(TonicChannel::builder(address.into_uri()).connect_lazy()))
+    }
+
     pub(crate) fn open_encrypted(
         address: Address,
         credential: Credential,
@@ -55,6 +61,15 @@ impl Channel {
             )),
             shared_cred,
         ))
+    }
+}
+
+impl From<Channel> for TonicChannel {
+    fn from(channel: Channel) -> Self {
+        match channel {
+            Channel::Plaintext(channel) => channel,
+            _ => panic!(),
+        }
     }
 }
 
