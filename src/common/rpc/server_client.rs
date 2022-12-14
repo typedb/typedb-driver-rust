@@ -54,10 +54,6 @@ macro_rules! dispatch {
 }
 
 impl ProtoTypeDBClient {
-    pub async fn connect(address: Address) -> StdResult<Self, tonic::transport::Error> {
-        Ok(Self::Plaintext(TypeDbClient::connect(address.to_string()).await?))
-    }
-
     pub fn new(channel: Channel) -> Self {
         match channel {
             Channel::Plaintext(channel) => Self::Plaintext(TypeDbClient::new(channel)),
@@ -131,25 +127,25 @@ pub(crate) struct ServerClient {
 
 impl ServerClient {
     pub(crate) async fn connect(address: Address) -> Result<Self> {
-        Self::construct(ProtoTypeDBClient::connect(address).await?).await
+        Self::new_validated(Channel::open_plaintext(address)?).await
     }
 }
 
 impl ServerClient {
-    pub(crate) async fn new(channel: Channel) -> Result<Self> {
-        Self::construct(ProtoTypeDBClient::new(channel)).await
+    pub(crate) fn new_lazy(channel: Channel) -> Result<Self> {
+        Ok(Self {
+            client: ProtoTypeDBClient::new(channel),
+            executor: Arc::new(Executor::new().expect("Failed to create Executor")),
+        })
     }
 
-    async fn construct(client: ProtoTypeDBClient) -> Result<Self> {
-        let mut this = Self {
-            client,
-            executor: Arc::new(Executor::new().expect("Failed to create Executor")),
-        };
-        this.check_connection().await?;
+    pub(crate) async fn new_validated(channel: Channel) -> Result<Self> {
+        let mut this = Self::new_lazy(channel)?;
+        this.validate_connection().await?;
         Ok(this)
     }
 
-    async fn check_connection(&mut self) -> Result<()> {
+    async fn validate_connection(&mut self) -> Result<()> {
         // TODO: temporary hack to validate connection until we have client pulse
         self.client.databases_all(core::database_manager::all_req()).await?;
         Ok(())

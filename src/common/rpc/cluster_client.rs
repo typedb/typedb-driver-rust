@@ -56,7 +56,7 @@ impl ClusterClientManager {
         credential: &Credential,
     ) -> Result<HashSet<Address>> {
         for address in addresses {
-            match ClusterClient::new_checked(address.parse()?, credential.clone()).await {
+            match ClusterClient::new_validated(address.parse()?, credential.clone()).await {
                 Ok(mut client) => {
                     let servers = client.servers_all().await?.servers;
                     return servers.into_iter().map(|server| server.address.parse()).collect();
@@ -73,7 +73,7 @@ impl ClusterClientManager {
         credential: Credential,
     ) -> Result<Arc<Self>> {
         let cluster_clients = try_join_all(addresses.iter().map(|address| async {
-            ClusterClient::new_unchecked(address.clone(), credential.clone()).await
+            ClusterClient::new_lazy(address.clone(), credential.clone()).await
         }))
         .await?;
         let cluster_clients = addresses.into_iter().zip(cluster_clients.into_iter()).collect();
@@ -112,11 +112,11 @@ pub(crate) struct ClusterClient {
 }
 
 impl ClusterClient {
-    pub(crate) async fn new_unchecked(address: Address, credential: Credential) -> Result<Self> {
+    pub(crate) async fn new_lazy(address: Address, credential: Credential) -> Result<Self> {
         let (channel, shared_cred) = Channel::open_encrypted(address.clone(), credential)?;
         let mut this = Self {
             address,
-            server_client: rpc::ServerClient::new(channel.clone()).await?,
+            server_client: rpc::ServerClient::new_lazy(channel.clone())?,
             cluster_client: ProtoTypeDBClusterClient::new(channel.into()),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
             credential_handler: shared_cred,
@@ -125,9 +125,9 @@ impl ClusterClient {
         Ok(this)
     }
 
-    pub(crate) async fn new_checked(address: Address, credential: Credential) -> Result<Self> {
-        let mut this = Self::new_unchecked(address, credential).await?;
-        this.check_connection().await?;
+    pub(crate) async fn new_validated(address: Address, credential: Credential) -> Result<Self> {
+        let mut this = Self::new_lazy(address, credential).await?;
+        this.validate_connection().await?;
         Ok(this)
     }
 
@@ -147,7 +147,7 @@ impl ClusterClient {
         Ok(())
     }
 
-    async fn check_connection(&mut self) -> Result<()> {
+    async fn validate_connection(&mut self) -> Result<()> {
         self.cluster_client.databases_all(cluster::database_manager::all_req()).await?;
         Ok(())
     }
