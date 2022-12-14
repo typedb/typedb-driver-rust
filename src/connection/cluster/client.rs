@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 use super::{DatabaseManager, Session};
 use crate::common::{rpc, Credential, Result, SessionType};
@@ -31,7 +31,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn new(init_addresses: &HashSet<String>, credential: Credential) -> Result<Self> {
+    pub async fn new(init_addresses: &[&str], credential: Credential) -> Result<Self> {
         let addresses =
             rpc::ClusterClientManager::fetch_current_addresses(init_addresses, &credential).await?;
         let rpc_cluster_client_manager = rpc::ClusterClientManager::new(addresses, credential)?;

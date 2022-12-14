@@ -52,7 +52,7 @@ pub(crate) struct ClusterClientManager {
 
 impl ClusterClientManager {
     pub(crate) async fn fetch_current_addresses(
-        addresses: &HashSet<String>,
+        addresses: &[&str],
         credential: &Credential,
     ) -> Result<HashSet<Address>> {
         for address in addresses {

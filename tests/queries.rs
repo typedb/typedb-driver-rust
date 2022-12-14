@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{collections::HashSet, sync::mpsc, time::Instant};
+use std::{sync::mpsc, time::Instant};
 
 use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
@@ -102,11 +102,7 @@ fn run_insert_query(tx: &mut Transaction, query: &str) {
 #[serial(cluster)]
 async fn basic_cluster() {
     let mut client = cluster::Client::new(
-        &HashSet::from([
-            "127.0.0.1:11729".to_string(),
-            "127.0.0.1:21729".to_string(),
-            "127.0.0.1:31729".to_string(),
-        ]),
+        &["127.0.0.1:11729", "127.0.0.1:21729", "127.0.0.1:31729"],
         Credential::new_without_tls("admin", "password"),
     )
     .await
