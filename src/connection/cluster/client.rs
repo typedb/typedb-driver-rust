@@ -27,7 +27,6 @@ use crate::common::{rpc, Credential, Result, SessionType};
 pub struct Client {
     rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
     databases: DatabaseManager,
-    sessions: Vec<Session>,
 }
 
 impl Client {
@@ -36,7 +35,7 @@ impl Client {
             rpc::ClusterClientManager::fetch_current_addresses(init_addresses, &credential).await?;
         let rpc_cluster_client_manager = rpc::ClusterClientManager::new(addresses, credential)?;
         let databases = DatabaseManager::new(rpc_cluster_client_manager.clone());
-        Ok(Self { rpc_cluster_client_manager, databases, sessions: Vec::new() })
+        Ok(Self { rpc_cluster_client_manager, databases })
     }
 
     pub fn databases(&mut self) -> &mut DatabaseManager {
