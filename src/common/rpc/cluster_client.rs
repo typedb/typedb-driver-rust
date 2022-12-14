@@ -26,7 +26,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use futures::channel::mpsc;
+use futures::{channel::mpsc, FutureExt};
 use tonic::Streaming;
 use typedb_protocol::{
     cluster_database_manager, cluster_user, core_database, core_database_manager, session,
@@ -42,7 +42,7 @@ use crate::common::{
         channel::CallCredChannel,
         Channel,
     },
-    Address, Credential, Error, Executor, Result, TonicResult,
+    Address, Credential, Error, Executor, Result,
 };
 
 #[derive(Debug, Clone)]
@@ -142,14 +142,14 @@ impl ClusterClient {
 
     async fn may_renew_token<F, R>(&mut self, call: F) -> Result<R>
     where
-        for<'a> F: Fn(&'a mut Self) -> Pin<Box<dyn Future<Output = TonicResult<R>> + 'a>>,
+        for<'a> F: Fn(&'a mut Self) -> Pin<Box<dyn Future<Output = Result<R>> + 'a>>,
     {
-        match call(self).await.map_err(Error::from) {
+        match call(self).await {
             Err(Error::Client(ClientError::ClusterTokenCredentialInvalid())) => {
                 self.renew_token().await?;
-                Ok(call(self).await?.into_inner())
+                call(self).await
             }
-            res => Ok(res?.into_inner()),
+            res => res,
         }
     }
 
@@ -172,7 +172,11 @@ impl ClusterClient {
         &mut self,
     ) -> Result<typedb_protocol::server_manager::all::Res> {
         self.may_renew_token(|this| {
-            Box::pin(this.cluster_client.servers_all(cluster::server_manager::all_req()))
+            Box::pin(
+                this.cluster_client
+                    .servers_all(cluster::server_manager::all_req())
+                    .map(|res| Ok(res?.into_inner())),
+            )
         })
         .await
     }
@@ -181,14 +185,24 @@ impl ClusterClient {
         &mut self,
         req: cluster_database_manager::get::Req,
     ) -> Result<cluster_database_manager::get::Res> {
-        self.may_renew_token(|this| Box::pin(this.cluster_client.databases_get(req.clone()))).await
+        self.may_renew_token(|this| {
+            Box::pin(
+                this.cluster_client.databases_get(req.clone()).map(|res| Ok(res?.into_inner())),
+            )
+        })
+        .await
     }
 
     pub(crate) async fn databases_all(
         &mut self,
         req: cluster_database_manager::all::Req,
     ) -> Result<cluster_database_manager::all::Res> {
-        self.may_renew_token(|this| Box::pin(this.cluster_client.databases_all(req.clone()))).await
+        self.may_renew_token(|this| {
+            Box::pin(
+                this.cluster_client.databases_all(req.clone()).map(|res| Ok(res?.into_inner())),
+            )
+        })
+        .await
     }
 
     // server client pasthrough
@@ -196,62 +210,66 @@ impl ClusterClient {
         &mut self,
         req: core_database_manager::contains::Req,
     ) -> Result<core_database_manager::contains::Res> {
-        self.server_client.databases_contains(req).await
+        self.may_renew_token(|this| Box::pin(this.server_client.databases_contains(req.clone())))
+            .await
     }
 
     pub(crate) async fn databases_create(
         &mut self,
         req: core_database_manager::create::Req,
     ) -> Result<core_database_manager::create::Res> {
-        self.server_client.databases_create(req).await
+        self.may_renew_token(|this| Box::pin(this.server_client.databases_create(req.clone())))
+            .await
     }
 
     pub(crate) async fn database_delete(
         &mut self,
         req: core_database::delete::Req,
     ) -> Result<core_database::delete::Res> {
-        self.server_client.database_delete(req).await
+        self.may_renew_token(|this| Box::pin(this.server_client.database_delete(req.clone()))).await
     }
 
     pub(crate) async fn database_rule_schema(
         &mut self,
         req: core_database::rule_schema::Req,
     ) -> Result<core_database::rule_schema::Res> {
-        self.server_client.database_rule_schema(req).await
+        self.may_renew_token(|this| Box::pin(this.server_client.database_rule_schema(req.clone())))
+            .await
     }
 
     pub(crate) async fn database_schema(
         &mut self,
         req: core_database::schema::Req,
     ) -> Result<core_database::schema::Res> {
-        self.server_client.database_schema(req).await
+        self.may_renew_token(|this| Box::pin(this.server_client.database_schema(req.clone()))).await
     }
 
     pub(crate) async fn database_type_schema(
         &mut self,
         req: core_database::type_schema::Req,
     ) -> Result<core_database::type_schema::Res> {
-        self.server_client.database_type_schema(req).await
+        self.may_renew_token(|this| Box::pin(this.server_client.database_type_schema(req.clone())))
+            .await
     }
 
     pub(crate) async fn session_open(
         &mut self,
         req: session::open::Req,
     ) -> Result<session::open::Res> {
-        self.server_client.session_open(req).await
+        self.may_renew_token(|this| Box::pin(this.server_client.session_open(req.clone()))).await
     }
 
     pub(crate) async fn session_close(
         &mut self,
         req: session::close::Req,
     ) -> Result<session::close::Res> {
-        self.server_client.session_close(req).await
+        self.may_renew_token(|this| Box::pin(this.server_client.session_close(req.clone()))).await
     }
 
     pub(crate) async fn transaction(
         &mut self,
-        open_req: transaction::Req,
+        req: transaction::Req,
     ) -> Result<(mpsc::Sender<transaction::Client>, Streaming<transaction::Server>)> {
-        self.server_client.transaction(open_req).await
+        self.may_renew_token(|this| Box::pin(this.server_client.transaction(req.clone()))).await
     }
 }
