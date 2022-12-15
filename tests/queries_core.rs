@@ -26,41 +26,14 @@ use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
 use typedb_client::{
     common::{
-        Credential,
         SessionType::{Data, Schema},
         TransactionType::{Read, Write},
     },
     concept::{Attribute, Concept, DateTimeAttribute, StringAttribute, Thing},
-    connection::{cluster, core, server},
+    connection::{core, server},
 };
 
 const TEST_DATABASE: &str = "grakn";
-
-#[tokio::test(flavor = "multi_thread")]
-#[serial(cluster)]
-async fn basic_cluster() {
-    let mut client = cluster::Client::new(
-        &["127.0.0.1:11729", "127.0.0.1:21729", "127.0.0.1:31729"],
-        Credential::new_without_tls("admin", "password"),
-    )
-    .await
-    .unwrap();
-
-    if client.databases().contains(TEST_DATABASE).await.unwrap() {
-        client.databases().get(TEST_DATABASE).and_then(|db| db.delete()).await.unwrap();
-    }
-    client.databases().create(TEST_DATABASE).await.unwrap();
-
-    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
-
-    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
-    let mut transaction = session.transaction(Write).await.unwrap();
-    let mut answer_stream = transaction.query.match_("match $x sub thing;");
-    while let Some(result) = answer_stream.next().await {
-        assert!(result.is_ok())
-    }
-    transaction.commit().await.unwrap();
-}
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(core)]

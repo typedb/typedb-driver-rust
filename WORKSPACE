@@ -79,6 +79,14 @@ github_deps()
 # Load @vaticle dependencies #
 ################################
 
+load("//dependencies/vaticle:repositories.bzl", "vaticle_typedb_common")
+vaticle_typedb_common()
+
+# Load artifacts
+load("//dependencies/vaticle:artifacts.bzl", "vaticle_typedb_artifacts", "vaticle_typedb_cluster_artifacts")
+vaticle_typedb_artifacts()
+vaticle_typedb_cluster_artifacts()
+
 load("//dependencies/vaticle:repositories.bzl", "vaticle_typedb_protocol")
 vaticle_typedb_protocol()
 

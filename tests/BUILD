@@ -25,8 +25,8 @@ load("@rules_rust//rust:defs.bzl", "rust_test", "rustfmt_test")
 load("@vaticle_dependencies//tool/checkstyle:rules.bzl", "checkstyle_test")
 
 rust_test(
-    name = "queries",
-    srcs = ["queries.rs"],
+    name = "queries_core",
+    srcs = ["queries_core.rs"],
     deps = [
         "//:typedb_client",
 
@@ -37,11 +37,52 @@ rust_test(
     ],
 )
 
-rustfmt_test(name = "queries_rustfmt_test", targets = ["queries"])
+rust_test(
+    name = "queries_cluster",
+    srcs = ["queries_cluster.rs"],
+    deps = [
+        "//:typedb_client",
+
+        "@vaticle_dependencies//library/crates:futures",
+        "@vaticle_dependencies//library/crates:serial_test",
+        "@vaticle_dependencies//library/crates:tokio",
+    ],
+)
+
+rustfmt_test(name = "queries_rustfmt_test", targets = ["queries_core", "queries_cluster"])
 
 checkstyle_test(
     name = "checkstyle",
     include = glob(["*"]),
     license_type = "apache-header",
     size = "small",
+)
+
+load("@vaticle_typedb_common//test:rules.bzl", "native_typedb_artifact")
+load("@vaticle_bazel_distribution//artifact:rules.bzl", "artifact_extractor")
+
+native_typedb_artifact(
+    name = "native-typedb-artifact",
+    mac_artifact = "@vaticle_typedb_artifact_mac//file",
+    linux_artifact = "@vaticle_typedb_artifact_linux//file",
+    windows_artifact = "@vaticle_typedb_artifact_windows//file",
+    output = "typedb-artifact.tar.gz"
+)
+
+native_typedb_artifact(
+    name = "native-typedb-cluster-artifact",
+    mac_artifact = "@vaticle_typedb_cluster_artifact_mac//file",
+    linux_artifact = "@vaticle_typedb_cluster_artifact_linux//file",
+    windows_artifact = "@vaticle_typedb_cluster_artifact_windows//file",
+    output = "typedb-cluster-artifact.tar.gz"
+)
+
+artifact_extractor(
+    name = "typedb-extractor",
+    artifact = ":native-typedb-artifact",
+)
+
+artifact_extractor(
+    name = "typedb-cluster-extractor",
+    artifact = ":native-typedb-cluster-artifact",
 )

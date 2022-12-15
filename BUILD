@@ -88,6 +88,7 @@ checkstyle_test(
     include = glob([
         "*",
         "src/**/*",
+        "tools/*",
         ".factory/*",
     ]),
     exclude = glob([
