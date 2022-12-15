@@ -53,7 +53,7 @@ build:
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         bazel build //...
         tools/start-core-server.sh
-        bazel test //tests:queries_core --test_output=errors && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
+        bazel test //tests:queries_core --test_output=streamed && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
         tools/stop-core-server.sh
         exit $TEST_SUCCESS
     test-integration-cluster:
@@ -65,7 +65,7 @@ build:
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         bazel build //...
         source tools/start-cluster-servers.sh # use source to receive export vars
-        bazel test //tests:queries_cluster --test_env=ROOT_CA=$ROOT_CA --test_output=errors && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
+        bazel test //tests:queries_cluster --test_env=ROOT_CA=$ROOT_CA --test_output=streamed && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
         tools/stop-cluster-servers.sh
         exit $TEST_SUCCESS
     deploy-crate-snapshot:
