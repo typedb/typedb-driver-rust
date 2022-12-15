@@ -41,7 +41,7 @@ impl Client {
     }
 
     pub async fn with_default_address() -> Result<Self> {
-        Self::new("http://0.0.0.0:1729").await
+        Self::new("http://localhost:1729").await
     }
 
     pub async fn session(
