@@ -32,7 +32,7 @@ use std::{
 use crossbeam::atomic::AtomicCell;
 use futures::{
     channel::{mpsc, oneshot},
-    executor, SinkExt, Stream, StreamExt,
+    SinkExt, Stream, StreamExt,
 };
 use tonic::Streaming;
 use typedb_protocol::{
@@ -234,12 +234,6 @@ impl Sender {
 
     async fn close(&self, error: Option<Error>) {
         self.state.close(error).await
-    }
-}
-
-impl Drop for Sender {
-    fn drop(&mut self) {
-        executor::block_on(self.state.close(None));
     }
 }
 

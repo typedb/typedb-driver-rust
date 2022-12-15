@@ -23,6 +23,6 @@ mod database;
 mod session;
 mod transaction;
 
-pub(crate) use database::{Database, DatabaseManager};
+pub use database::{Database, DatabaseManager};
 pub use session::Session;
 pub use transaction::Transaction;

@@ -21,82 +21,20 @@
 
 use std::{sync::mpsc, time::Instant};
 
+use chrono::{NaiveDate, NaiveDateTime};
 use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
 use typedb_client::{
     common::{
-        Credential, SessionType,
+        Credential,
         SessionType::{Data, Schema},
-        TransactionType,
         TransactionType::{Read, Write},
     },
-    concept::{Attribute, Concept, Thing, ThingType, Type},
-    connection::{
-        cluster, core,
-        server::{Session, Transaction},
-    },
+    concept::{Attribute, Concept, DateTimeAttribute, StringAttribute, Thing},
+    connection::{cluster, core, server},
 };
 
-const GRAKN: &str = "grakn";
-
-async fn new_typedb_client() -> core::Client {
-    core::Client::with_default_address()
-        .await
-        .expect("An error occurred connecting to TypeDB Server")
-}
-
-async fn create_db_grakn(client: &mut core::Client) {
-    if client
-        .databases()
-        .contains(GRAKN)
-        .await
-        .expect(&format!("An error occurred checking if the database '{GRAKN}' exists"))
-    {
-        let grakn = client
-            .databases()
-            .get(GRAKN)
-            .await
-            .expect(&format!("An error occurred getting database '{GRAKN}'"));
-        grakn.delete().await.expect(&format!("An error occurred deleting database '{GRAKN}'"))
-    }
-    client
-        .databases()
-        .create(GRAKN)
-        .await
-        .expect(&format!("An error occurred creating database '{GRAKN}'"));
-}
-
-async fn new_session(client: &mut core::Client, session_type: SessionType) -> Session {
-    client.session(GRAKN, session_type).await.expect("An error occurred opening a session")
-}
-
-async fn new_tx(session: &Session, tx_type: TransactionType) -> Transaction {
-    new_tx_with_options(session, tx_type, core::Options::default()).await
-}
-
-async fn new_tx_with_options(
-    session: &Session,
-    tx_type: TransactionType,
-    options: core::Options,
-) -> Transaction {
-    session
-        .transaction_with_options(tx_type, options)
-        .await
-        .expect("An error occurred opening a transaction")
-}
-
-async fn commit_tx(tx: &mut Transaction) {
-    tx.commit().await.expect("An error occurred committing a transaction")
-}
-
-async fn run_define_query(tx: &mut Transaction, query: &str) {
-    tx.query.define(query).await.expect("An error occurred running a Define query");
-}
-
-#[allow(unused_must_use)]
-fn run_insert_query(tx: &mut Transaction, query: &str) {
-    tx.query.insert(query);
-}
+const TEST_DATABASE: &str = "grakn";
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(cluster)]
@@ -106,267 +44,139 @@ async fn basic_cluster() {
         Credential::new_without_tls("admin", "password"),
     )
     .await
-    .expect("An error occurred connecting to TypeDB Cluster");
+    .unwrap();
 
-    if client.databases().contains(GRAKN).await.unwrap() {
-        client.databases().get(GRAKN).and_then(|db| db.delete()).await.unwrap();
+    if client.databases().contains(TEST_DATABASE).await.unwrap() {
+        client.databases().get(TEST_DATABASE).and_then(|db| db.delete()).await.unwrap();
     }
-    client.databases().create(GRAKN).await.unwrap();
+    client.databases().create(TEST_DATABASE).await.unwrap();
 
-    println!(
-        "{}",
-        client
-            .databases()
-            .all()
-            .await
-            .expect("An error occurred listing databases")
-            .iter()
-            .fold(String::new(), |acc, db| acc + db.name.as_str() + ",")
-    );
+    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
 
-    let mut session =
-        client.session(GRAKN, Data).await.expect("An error occurred opening a session");
-    let mut transaction =
-        session.transaction(Write).await.expect("An error occurred opening a transaction");
+    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let mut transaction = session.transaction(Write).await.unwrap();
     let mut answer_stream = transaction.query.match_("match $x sub thing;");
     while let Some(result) = answer_stream.next().await {
-        match result {
-            Ok(concept_map) => println!("{:?}", concept_map),
-            Err(err) => panic!("An error occurred fetching answers of a Match query: {}", err),
-        }
+        assert!(result.is_ok())
     }
-    transaction.commit().await.expect("An error occurred committing a transaction");
+    transaction.commit().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(core)]
-async fn basic() {
-    let mut client = new_typedb_client().await;
-    create_db_grakn(&mut client).await;
-    println!(
-        "{}",
-        client
-            .databases()
-            .all()
-            .await
-            .expect("An error occurred listing databases")
-            .iter()
-            .fold(String::new(), |acc, db| acc + db.name.as_str() + ",")
-    );
-    let session = new_session(&mut client, Data).await;
-    let mut tx = new_tx(&session, Write).await;
-    let mut answer_stream =
-        tx.query.match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
+async fn basic_core() {
+    let mut client = core::Client::with_default_address().await.unwrap();
+    create_test_database_with_schema_core(&mut client, "define person sub entity;").await.unwrap();
+    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
+
+    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let mut transaction = session.transaction(Write).await.unwrap();
+    let mut answer_stream = transaction.query.match_("match $x sub thing;");
     while let Some(result) = answer_stream.next().await {
-        match result {
-            Ok(concept_map) => {
-                println!("{:#?}", concept_map)
-            }
-            Err(err) => panic!("An error occurred fetching answers of a Match query: {}", err),
-        }
+        assert!(result.is_ok())
     }
-    commit_tx(&mut tx).await;
+    transaction.commit().await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(core)]
-async fn concurrent_db_ops() {
-    let mut client = new_typedb_client().await;
+async fn concurrent_queries_core() {
+    let mut client = core::Client::with_default_address().await.unwrap();
+    create_test_database_with_schema_core(&mut client, "define person sub entity;").await.unwrap();
+
+    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let transaction = session.transaction(Write).await.unwrap();
+
     let (sender, receiver) = mpsc::channel();
-    // This example shows that our counted refs to our gRPC client must be atomic (Arc)
-    // Replacing Arc with Rc results in the error: 'Rc<...> cannot be sent between threads safely'
-    let sender1 = sender.clone();
-    let mut databases1 = client.databases().clone();
-    let handle1 = tokio::spawn(async move {
-        for _ in 0..5 {
-            match databases1.all().await {
-                Ok(dbs) => {
-                    sender1.send(Ok(format!("got databases {:?} from thread 1", dbs))).unwrap();
-                }
-                Err(err) => {
-                    sender1.send(Err(err)).unwrap();
-                    return;
+
+    for _ in 0..5 {
+        let sender = sender.clone();
+        let mut transaction = transaction.clone();
+        tokio::spawn(async move {
+            for _ in 0..5 {
+                let mut answer_stream = transaction.query.match_("match $x sub thing;");
+                while let Some(result) = answer_stream.next().await {
+                    sender.send(result).unwrap();
                 }
             }
-        }
-    });
-    let handle2 = tokio::spawn(async move {
-        for _ in 0..5 {
-            match client.databases().all().await {
-                Ok(dbs) => {
-                    sender.send(Ok(format!("got databases {:?} from thread 2", dbs))).unwrap();
-                }
-                Err(err) => {
-                    sender.send(Err(err)).unwrap();
-                    return;
-                }
-            }
-        }
-    });
-    handle1.await.unwrap();
-    handle2.await.unwrap();
+        });
+    }
+    drop(sender); // receiver expects data while any sender is live
+
     for received in receiver {
-        match received {
-            Ok(msg) => {
-                println!("{}", msg);
-            }
-            Err(err) => {
-                panic!("{}", err.to_string());
-            }
-        }
+        assert!(received.is_ok());
     }
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(core)]
-async fn concurrent_queries() {
-    let mut client = new_typedb_client().await;
-    let (sender, receiver) = mpsc::channel();
-    let sender2 = sender.clone();
-    let session = client.session(GRAKN, Data).await.expect("An error occurred opening a session");
-    let mut tx: Transaction =
-        session.transaction(Write).await.expect("An error occurred opening a transaction");
-    let mut tx2 = tx.clone();
-    let handle = tokio::spawn(async move {
-        for _ in 0..5 {
-            let mut answer_stream =
-                tx.query.match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
-            while let Some(result) = answer_stream.next().await {
-                match result {
-                    Ok(res) => {
-                        sender.send(Ok(format!("got answer {:?} from thread 1", res))).unwrap();
-                    }
-                    Err(err) => {
-                        sender.send(Err(err)).unwrap();
-                        return;
-                    }
-                }
-            }
-        }
-    });
-    let handle2 = tokio::spawn(async move {
-        for _ in 0..5 {
-            let mut answer_stream =
-                tx2.query.match_("match $x sub thing; { $x type thing; } or { $x type entity; };");
-            while let Some(result) = answer_stream.next().await {
-                match result {
-                    Ok(res) => {
-                        sender2.send(Ok(format!("got answer {:?} from thread 2", res))).unwrap();
-                    }
-                    Err(err) => {
-                        sender2.send(Err(err)).unwrap();
-                        return;
-                    }
-                }
-            }
-        }
-    });
-    handle2.await.unwrap();
-    handle.await.unwrap();
-    for received in receiver {
-        match received {
-            Ok(msg) => {
-                println!("{}", msg);
-            }
-            Err(err) => {
-                panic!("{}", err.to_string());
-            }
-        }
-    }
+async fn query_options_core() {
+    let mut client = core::Client::with_default_address().await.unwrap();
+    let schema = r#"define
+        person sub entity,
+            owns name,
+            owns age;
+        name sub attribute, value string;
+        age sub attribute, value long;
+        rule age-rule: when { $x isa person; } then { $x has age 25; };"#;
+    create_test_database_with_schema_core(&mut client, schema).await.unwrap();
+
+    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let mut transaction = session.transaction(Write).await.unwrap();
+    let data = "insert $x isa person, has name 'Alice'; $y isa person, has name 'Bob';";
+    let _ = transaction.query.insert(data);
+    transaction.commit().await.unwrap();
+
+    let mut transaction = session.transaction(Read).await.unwrap();
+    let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
+    assert_eq!(age_count.into_i64(), 0);
+
+    let with_inference = core::Options::new_core().infer(true);
+    let mut transaction = session.transaction_with_options(Read, with_inference).await.unwrap();
+    let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
+    assert_eq!(age_count.into_i64(), 1);
 }
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial(core)]
-async fn query_options() {
-    let mut client = new_typedb_client().await;
-    create_db_grakn(&mut client).await;
-    {
-        let session = new_session(&mut client, Schema).await;
-        let mut tx = new_tx(&session, Write).await;
-        run_define_query(
-            &mut tx,
-            "define person sub entity, owns name, owns age;\n\
-            name sub attribute, value string;\n\
-            age sub attribute, value long;\n\
-            rule age-rule: when { $x isa person; } then { $x has age 25; };",
-        )
-        .await;
-        commit_tx(&mut tx).await;
-    }
-    {
-        let session = new_session(&mut client, Data).await;
-        {
-            let mut tx = new_tx(&session, Write).await;
-            run_insert_query(
-                &mut tx,
-                "insert $x isa person, has name \"Alice\"; $y isa person, has name \"Bob\";",
-            );
-            commit_tx(&mut tx).await;
-        }
-        {
-            let mut tx = new_tx(&session, Read).await;
-            let material_age_count =
-                tx.query.match_aggregate("match $x isa age; count;").await.unwrap();
-            println!("Ages (excluding inferred): {}", material_age_count.into_i64());
-        }
-        {
-            let mut tx =
-                new_tx_with_options(&session, Read, core::Options::new_core().infer(true)).await;
-            let all_age_count = tx.query.match_aggregate("match $x isa age; count;").await.unwrap();
-            println!("Ages (including inferred): {}", all_age_count.into_i64());
-        }
-    }
-}
+async fn many_concept_types_core() {
+    let mut client = core::Client::with_default_address().await.unwrap();
+    let schema = r#"define
+        person sub entity,
+            owns name,
+            owns date-of-birth,
+            plays friendship:friend;
+        name sub attribute, value string;
+        date-of-birth sub attribute, value datetime;
+        friendship sub relation,
+            relates friend;"#;
+    create_test_database_with_schema_core(&mut client, schema).await.unwrap();
 
-#[tokio::test(flavor = "multi_thread")]
-#[serial(core)]
-async fn many_concept_types() {
-    let mut client = new_typedb_client().await;
-    create_db_grakn(&mut client).await;
-    {
-        let session = new_session(&mut client, Schema).await;
-        let mut tx = new_tx(&session, Write).await;
-        run_define_query(
-            &mut tx,
-            "define\n\
-            person sub entity, owns name, owns dob, plays friendship:friend;\n\
-            name sub attribute, value string;\n\
-            dob sub attribute, value datetime;\n\
-            friendship sub relation, relates friend;",
-        )
-        .await;
-        commit_tx(&mut tx).await;
-    }
-    {
-        let session = new_session(&mut client, Data).await;
-        {
-            let mut tx = new_tx(&session, Write).await;
-            run_insert_query(
-                &mut tx,
-                "insert\n\
-                $x isa person, has name \"Alice\", has dob 1994-10-03;\n\
-                $y isa person, has name \"Bob\", has dob 1993-04-17;\n\
-                (friend: $x, friend: $y) isa friendship;",
-            );
-            commit_tx(&mut tx).await;
-        }
-        {
-            let mut tx = new_tx(&session, Read).await;
-            let mut answer_stream = tx
-                .query
-                .match_("match $p isa person; $f($role: $p) isa friendship; $x has dob $dob;");
-            while let Some(result) = answer_stream.next().await {
-                match result {
-                    Ok(concept_map) => {
-                        for (_, concept) in concept_map {
-                            describe_concept(&concept).await;
-                        }
-                    }
-                    Err(err) => {
-                        panic!("An error occurred fetching answers of a Match query: {}", err)
-                    }
-                }
-            }
+    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let mut transaction = session.transaction(Write).await.unwrap();
+    let data = r#"insert
+        $x isa person, has name "Alice", has date-of-birth 1994-10-03;
+        $y isa person, has name "Bob", has date-of-birth 1993-04-17;
+        (friend: $x, friend: $y) isa friendship;"#;
+    let _ = transaction.query.insert(data);
+    transaction.commit().await.unwrap();
+
+    let mut transaction = session.transaction(Read).await.unwrap();
+    let mut answer_stream = transaction.query.match_(
+        r#"match
+        $p isa person, has name $name, has date-of-birth $date-of-birth;
+        $f($role: $p) isa friendship;"#,
+    );
+
+    while let Some(result) = answer_stream.next().await {
+        assert!(result.is_ok());
+        let mut result = result.unwrap().map;
+        let name = unwrap_string(result.remove("name").unwrap());
+        let date_of_birth = unwrap_date_time(result.remove("date-of-birth").unwrap()).date();
+        match name.as_str() {
+            "Alice" => assert_eq!(date_of_birth, NaiveDate::from_ymd_opt(1994, 10, 3).unwrap()),
+            "Bob" => assert_eq!(date_of_birth, NaiveDate::from_ymd_opt(1993, 4, 17).unwrap()),
+            _ => unreachable!(),
         }
     }
 }
@@ -374,144 +184,93 @@ async fn many_concept_types() {
 #[tokio::test(flavor = "multi_thread")]
 #[serial(core)]
 #[ignore]
-async fn streaming_perf() {
-    let mut client = new_typedb_client().await;
-    for iteration in 0..5 {
-        create_db_grakn(&mut client).await;
-        {
-            let session = new_session(&mut client, Schema).await;
-            let mut tx = new_tx(&session, Write).await;
-            run_define_query(
-                &mut tx,
-                concat!(
-                    "define person sub entity, owns name, owns age; ",
-                    "name sub attribute, value string; ",
-                    "age sub attribute, value long;"
-                ),
-            )
-            .await;
-            commit_tx(&mut tx).await;
+async fn streaming_perf_core() {
+    let mut client = core::Client::with_default_address().await.unwrap();
+    for i in 0..5 {
+        let schema = r#"define
+            person sub entity, owns name, owns age;
+            name sub attribute, value string;
+            age sub attribute, value long;"#;
+        create_test_database_with_schema_core(&mut client, schema).await.unwrap();
+
+        let start_time = Instant::now();
+        let session = client.session(TEST_DATABASE, Data).await.unwrap();
+        let mut transaction = session.transaction(Write).await.unwrap();
+        for j in 0..100_000 {
+            let _ = transaction.query.insert(format!("insert $x {j} isa age;").as_str());
         }
-        {
-            let start_time = Instant::now();
-            let session = new_session(&mut client, Data).await;
-            let mut tx = new_tx(&session, Write).await;
-            for j in 0..100_000 {
-                run_insert_query(&mut tx, format!("insert $x {} isa age;", j).as_str());
-            }
-            commit_tx(&mut tx).await;
-            println!(
-                "iteration {}: inserted and committed 100k attrs in {}ms",
-                iteration,
-                (Instant::now() - start_time).as_millis()
-            );
-        }
-        {
-            let mut start_time = Instant::now();
-            let session = new_session(&mut client, Data).await;
-            let mut tx = new_tx(&session, Read).await;
-            let mut answer_stream = tx.query.match_("match $x isa attribute;");
-            let mut sum: i64 = 0;
-            let mut idx = 0;
-            while let Some(result) = answer_stream.next().await {
-                match result {
-                    Ok(concept_map) => {
-                        for (_, concept) in concept_map {
-                            if let Concept::Thing(Thing::Attribute(Attribute::Long(long_attr))) =
-                                concept
-                            {
-                                sum += long_attr.value
-                            }
+        transaction.commit().await.unwrap();
+        println!(
+            "iteration {i}: inserted and committed 100k attrs in {}ms",
+            (Instant::now() - start_time).as_millis()
+        );
+
+        let mut start_time = Instant::now();
+        let session = client.session(TEST_DATABASE, Data).await.unwrap();
+        let mut transaction = session.transaction(Read).await.unwrap();
+        let mut answer_stream = transaction.query.match_("match $x isa attribute;");
+        let mut sum: i64 = 0;
+        let mut idx = 0;
+        while let Some(result) = answer_stream.next().await {
+            match result {
+                Ok(concept_map) => {
+                    for (_, concept) in concept_map {
+                        if let Concept::Thing(Thing::Attribute(Attribute::Long(long_attr))) =
+                            concept
+                        {
+                            sum += long_attr.value
                         }
                     }
-                    Err(err) => {
-                        panic!("An error occurred fetching answers of a Match query: {}", err)
-                    }
                 }
-                idx = idx + 1;
-                if idx == 100_000 {
-                    println!(
-                        "iteration {}: retrieved and summed 100k attrs in {}ms",
-                        iteration,
-                        (Instant::now() - start_time).as_millis()
-                    );
-                    start_time = Instant::now();
+                Err(err) => {
+                    panic!("An error occurred fetching answers of a Match query: {}", err)
                 }
             }
-            println!("sum is {}", sum);
+            idx = idx + 1;
+            if idx == 100_000 {
+                println!(
+                    "iteration {i}: retrieved and summed 100k attrs in {}ms",
+                    (Instant::now() - start_time).as_millis()
+                );
+                start_time = Instant::now();
+            }
         }
+        println!("sum is {}", sum);
     }
 }
 
-async fn describe_concept(concept: &Concept) {
+async fn create_test_database_with_schema_core(
+    client: &mut core::Client,
+    schema: &str,
+) -> typedb_client::Result {
+    if client.databases().contains(TEST_DATABASE).await.unwrap() {
+        client.databases().get(TEST_DATABASE).and_then(server::Database::delete).await.unwrap();
+    }
+    client.databases().create(TEST_DATABASE).await.unwrap();
+
+    let mut session = client.session(TEST_DATABASE, Schema).await.unwrap();
+    let mut transaction = session.transaction(Write).await.unwrap();
+    transaction.query.define(schema).await.unwrap();
+    transaction.commit().await.unwrap();
+    session.close().await;
+
+    Ok(())
+}
+
+// Concept helpers
+// FIXME should be removed after concept API is implemented
+fn unwrap_date_time(concept: Concept) -> NaiveDateTime {
     match concept {
-        Concept::Type(x) => {
-            describe_type(x).await;
-        }
-        Concept::Thing(x) => {
-            describe_thing(x).await;
-        }
+        Concept::Thing(Thing::Attribute(Attribute::DateTime(DateTimeAttribute {
+            value, ..
+        }))) => value,
+        _ => unreachable!(),
     }
 }
 
-async fn describe_type(type_: &Type) {
-    match type_ {
-        Type::Thing(x) => {
-            describe_thing_type(x).await;
-        }
-        Type::Role(x) => {
-            println!("got the ROLE TYPE '{}'", x.label)
-        }
-    }
-}
-
-async fn describe_thing_type(thing_type: &ThingType) {
-    match thing_type {
-        ThingType::Root(_) => {
-            println!("got the ROOT THING TYPE 'thing'");
-        }
-        ThingType::Entity(x) => {
-            println!("got the ENTITY TYPE '{}'", x.label);
-        }
-        ThingType::Relation(x) => {
-            println!("got the RELATION TYPE '{}'", x.label);
-        }
-        ThingType::Attribute(_) => {
-            todo!()
-        }
-    }
-}
-
-async fn describe_thing(thing: &Thing) {
-    match thing {
-        Thing::Entity(x) => {
-            println!("got an ENTITY of type {}", x.type_.label.as_str());
-        }
-        Thing::Relation(x) => {
-            println!("got a RELATION of type {}", x.type_.label.as_str());
-        }
-        Thing::Attribute(x) => {
-            describe_attr(x).await;
-        }
-    }
-}
-
-async fn describe_attr(attr: &Attribute) {
-    match attr {
-        Attribute::Long(x) => {
-            println!("got a LONG ATTRIBUTE with value {}", x.value);
-        }
-        Attribute::String(x) => {
-            println!("got a STRING ATTRIBUTE with value {}", x.value);
-        }
-        Attribute::Boolean(x) => {
-            println!("got a BOOLEAN ATTRIBUTE with value {}", x.value);
-        }
-        Attribute::Double(x) => {
-            println!("got a DOUBLE ATTRIBUTE with value {}", x.value);
-        }
-        Attribute::DateTime(x) => {
-            println!("got a DATETIME ATTRIBUTE with value {}", x.value);
-        }
+fn unwrap_string(concept: Concept) -> String {
+    match concept {
+        Concept::Thing(Thing::Attribute(Attribute::String(StringAttribute { value, .. }))) => value,
+        _ => unreachable!(),
     }
 }
