@@ -31,8 +31,8 @@ use typedb_client::{
 const TEST_DATABASE: &str = "grakn";
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(cluster)]
-async fn basic_cluster() {
+#[serial]
+async fn basic() {
     let mut client = cluster::Client::new(
         &["localhost:11729", "localhost:21729", "localhost:31729"],
         Credential::new_with_tls(

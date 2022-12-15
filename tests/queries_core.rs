@@ -36,10 +36,10 @@ use typedb_client::{
 const TEST_DATABASE: &str = "grakn";
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(core)]
-async fn basic_core() {
+#[serial]
+async fn basic() {
     let mut client = core::Client::with_default_address().await.unwrap();
-    create_test_database_with_schema_core(&mut client, "define person sub entity;").await.unwrap();
+    create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
     assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
 
     let session = client.session(TEST_DATABASE, Data).await.unwrap();
@@ -52,10 +52,10 @@ async fn basic_core() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(core)]
-async fn concurrent_queries_core() {
+#[serial]
+async fn concurrent_queries() {
     let mut client = core::Client::with_default_address().await.unwrap();
-    create_test_database_with_schema_core(&mut client, "define person sub entity;").await.unwrap();
+    create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
 
     let session = client.session(TEST_DATABASE, Data).await.unwrap();
     let transaction = session.transaction(Write).await.unwrap();
@@ -82,8 +82,8 @@ async fn concurrent_queries_core() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(core)]
-async fn query_options_core() {
+#[serial]
+async fn query_options() {
     let mut client = core::Client::with_default_address().await.unwrap();
     let schema = r#"define
         person sub entity,
@@ -92,7 +92,7 @@ async fn query_options_core() {
         name sub attribute, value string;
         age sub attribute, value long;
         rule age-rule: when { $x isa person; } then { $x has age 25; };"#;
-    create_test_database_with_schema_core(&mut client, schema).await.unwrap();
+    create_test_database_with_schema(&mut client, schema).await.unwrap();
 
     let session = client.session(TEST_DATABASE, Data).await.unwrap();
     let mut transaction = session.transaction(Write).await.unwrap();
@@ -111,8 +111,8 @@ async fn query_options_core() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(core)]
-async fn many_concept_types_core() {
+#[serial]
+async fn many_concept_types() {
     let mut client = core::Client::with_default_address().await.unwrap();
     let schema = r#"define
         person sub entity,
@@ -123,7 +123,7 @@ async fn many_concept_types_core() {
         date-of-birth sub attribute, value datetime;
         friendship sub relation,
             relates friend;"#;
-    create_test_database_with_schema_core(&mut client, schema).await.unwrap();
+    create_test_database_with_schema(&mut client, schema).await.unwrap();
 
     let session = client.session(TEST_DATABASE, Data).await.unwrap();
     let mut transaction = session.transaction(Write).await.unwrap();
@@ -155,16 +155,16 @@ async fn many_concept_types_core() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-#[serial(core)]
+#[serial]
 #[ignore]
-async fn streaming_perf_core() {
+async fn streaming_perf() {
     let mut client = core::Client::with_default_address().await.unwrap();
     for i in 0..5 {
         let schema = r#"define
             person sub entity, owns name, owns age;
             name sub attribute, value string;
             age sub attribute, value long;"#;
-        create_test_database_with_schema_core(&mut client, schema).await.unwrap();
+        create_test_database_with_schema(&mut client, schema).await.unwrap();
 
         let start_time = Instant::now();
         let session = client.session(TEST_DATABASE, Data).await.unwrap();
@@ -212,7 +212,7 @@ async fn streaming_perf_core() {
     }
 }
 
-async fn create_test_database_with_schema_core(
+async fn create_test_database_with_schema(
     client: &mut core::Client,
     schema: &str,
 ) -> typedb_client::Result {
