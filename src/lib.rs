@@ -22,12 +22,10 @@
 #![allow(dead_code)]
 
 pub mod answer;
-
-pub mod connection;
-
-pub mod concept;
-
 pub mod common;
-pub use common::Result;
-
+pub mod concept;
+pub(crate) mod connection;
 pub mod query;
+
+pub use common::Result;
+pub use connection::{cluster, core, server};

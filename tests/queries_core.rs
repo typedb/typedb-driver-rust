@@ -30,7 +30,7 @@ use typedb_client::{
         TransactionType::{Read, Write},
     },
     concept::{Attribute, Concept, DateTimeAttribute, StringAttribute, Thing},
-    connection::{core, server},
+    core, server,
 };
 
 const TEST_DATABASE: &str = "grakn";

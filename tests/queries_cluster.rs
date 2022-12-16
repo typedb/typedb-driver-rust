@@ -24,8 +24,8 @@ use std::path::PathBuf;
 use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
 use typedb_client::{
+    cluster,
     common::{Credential, SessionType::Data, TransactionType::Write},
-    connection::cluster,
 };
 
 const TEST_DATABASE: &str = "grakn";
