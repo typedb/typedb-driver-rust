@@ -23,12 +23,11 @@ use std::fmt::{Display, Formatter};
 
 use crate::common::{
     error::ClientError,
-    rpc,
     rpc::builder::core::{
         database::{delete_req, rule_schema_req, schema_req, type_schema_req},
         database_manager::{all_req, contains_req, create_req},
     },
-    Result,
+    Result, ServerRPC,
 };
 
 /// An interface for performing database-level operations against the connected server.
@@ -43,11 +42,11 @@ use crate::common::{
 /// failure or other problem executing the operation, they will return an [`Err`][Err] result.
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {
-    pub(crate) rpc_client: rpc::ServerClient,
+    pub(crate) rpc_client: ServerRPC,
 }
 
 impl DatabaseManager {
-    pub(crate) fn new(rpc_client: rpc::ServerClient) -> Self {
+    pub(crate) fn new(rpc_client: ServerRPC) -> Self {
         DatabaseManager { rpc_client }
     }
 
@@ -78,11 +77,11 @@ impl DatabaseManager {
 #[derive(Clone, Debug)]
 pub struct Database {
     pub name: String,
-    rpc_client: rpc::ServerClient,
+    rpc_client: ServerRPC,
 }
 
 impl Database {
-    pub(crate) fn new(name: &str, rpc_client: rpc::ServerClient) -> Self {
+    pub(crate) fn new(name: &str, rpc_client: ServerRPC) -> Self {
         Database { name: name.into(), rpc_client }
     }
 

@@ -23,6 +23,8 @@ mod client;
 mod database;
 mod session;
 
-pub use client::Client;
-pub use database::{Database, DatabaseManager};
-pub use session::Session;
+pub use self::{
+    client::Client,
+    database::{Database, DatabaseManager},
+    session::Session,
+};

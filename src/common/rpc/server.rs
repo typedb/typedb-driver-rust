@@ -28,30 +28,30 @@ use typedb_protocol::{core_database, core_database_manager, session, transaction
 use crate::{
     async_enum_dispatch,
     common::{
-        rpc::{core_client::CoreClient, ClusterClient},
+        rpc::{core::CoreRPC, ClusterServerRPC},
         Executor, Result,
     },
 };
 
 #[derive(Clone, Debug)]
-pub(crate) enum ServerClient {
-    Core(CoreClient),
-    Cluster(ClusterClient),
+pub(crate) enum ServerRPC {
+    Core(CoreRPC),
+    Cluster(ClusterServerRPC),
 }
 
-impl From<CoreClient> for ServerClient {
-    fn from(server_client: CoreClient) -> Self {
-        ServerClient::Core(server_client)
+impl From<CoreRPC> for ServerRPC {
+    fn from(server_client: CoreRPC) -> Self {
+        ServerRPC::Core(server_client)
     }
 }
 
-impl From<ClusterClient> for ServerClient {
-    fn from(cluster_client: ClusterClient) -> Self {
-        ServerClient::Cluster(cluster_client)
+impl From<ClusterServerRPC> for ServerRPC {
+    fn from(cluster_client: ClusterServerRPC) -> Self {
+        ServerRPC::Cluster(cluster_client)
     }
 }
 
-impl ServerClient {
+impl ServerRPC {
     pub(crate) fn executor(&self) -> &Arc<Executor> {
         match self {
             Self::Core(client) => &client.executor,
@@ -65,7 +65,7 @@ impl ServerClient {
     ) -> Result<core_database_manager::all::Res> {
         match self {
             Self::Core(client) => client.databases_all(req).await,
-            Self::Cluster(client) => client.server_client.databases_all(req).await,
+            Self::Cluster(client) => client.core_databases_all(req).await,
         }
     }
 

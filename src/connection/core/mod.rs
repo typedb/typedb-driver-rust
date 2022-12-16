@@ -22,5 +22,4 @@
 mod client;
 mod options;
 
-pub use client::Client;
-pub use options::Options;
+pub use self::{client::Client, options::Options};

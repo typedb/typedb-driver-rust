@@ -22,18 +22,17 @@
 use std::sync::Arc;
 
 use super::{DatabaseManager, Session};
-use crate::common::{rpc, Credential, Result, SessionType};
+use crate::common::{ClusterRPC, Credential, Result, SessionType};
 
 pub struct Client {
     databases: DatabaseManager,
-    rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
+    rpc_cluster_client_manager: Arc<ClusterRPC>,
 }
 
 impl Client {
     pub async fn new<T: AsRef<str>>(init_addresses: &[T], credential: Credential) -> Result<Self> {
-        let addresses =
-            rpc::ClusterClientManager::fetch_current_addresses(init_addresses, &credential).await?;
-        let rpc_cluster_client_manager = rpc::ClusterClientManager::new(addresses, credential)?;
+        let addresses = ClusterRPC::fetch_current_addresses(init_addresses, &credential).await?;
+        let rpc_cluster_client_manager = ClusterRPC::new(addresses, credential)?;
         let databases = DatabaseManager::new(rpc_cluster_client_manager.clone());
         Ok(Self { rpc_cluster_client_manager, databases })
     }

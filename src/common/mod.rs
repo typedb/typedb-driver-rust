@@ -25,11 +25,11 @@ pub mod error;
 mod macros;
 pub(crate) mod rpc;
 
-pub use address::Address;
-pub use credential::Credential;
-pub use error::Error;
 use tonic::{Response, Status};
 use typedb_protocol::{session as session_proto, transaction as transaction_proto};
+
+pub(crate) use self::rpc::{ClusterRPC, ClusterServerRPC, CoreRPC, ServerRPC, TransactionRPC};
+pub use self::{address::Address, credential::Credential, error::Error};
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
 pub type Result<T = ()> = StdResult<T, Error>;

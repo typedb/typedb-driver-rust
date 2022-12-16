@@ -33,14 +33,11 @@ use crate::{
     answer::{ConceptMap, Numeric},
     common::{
         error::ClientError,
-        rpc::{
-            builder::query_manager::{
-                define_req, delete_req, insert_req, match_aggregate_req, match_req, undefine_req,
-                update_req,
-            },
-            transaction::TransactionRpc,
+        rpc::builder::query_manager::{
+            define_req, delete_req, insert_req, match_aggregate_req, match_req, undefine_req,
+            update_req,
         },
-        Result,
+        Result, TransactionRPC,
     },
     connection::core,
 };
@@ -70,11 +67,11 @@ macro_rules! stream_concept_maps {
 
 #[derive(Clone, Debug)]
 pub struct QueryManager {
-    tx: TransactionRpc,
+    tx: TransactionRPC,
 }
 
 impl QueryManager {
-    pub(crate) fn new(tx: &TransactionRpc) -> QueryManager {
+    pub(crate) fn new(tx: &TransactionRPC) -> QueryManager {
         QueryManager { tx: tx.clone() }
     }
 

@@ -40,12 +40,12 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-enum ProtoTypeDBClient {
+enum ProtoTypeDBRPC {
     Plaintext(TypeDbClient<TonicChannel>),
     Encrypted(TypeDbClient<CallCredChannel>),
 }
 
-impl ProtoTypeDBClient {
+impl ProtoTypeDBRPC {
     pub fn new(channel: Channel) -> Self {
         match channel {
             Channel::Plaintext(channel) => Self::Plaintext(TypeDbClient::new(channel)),
@@ -112,19 +112,19 @@ impl ProtoTypeDBClient {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct CoreClient {
-    client: ProtoTypeDBClient,
+pub(crate) struct CoreRPC {
+    client: ProtoTypeDBRPC,
     pub(crate) executor: Arc<Executor>,
 }
 
-impl CoreClient {
+impl CoreRPC {
     pub(crate) async fn connect(address: Address) -> Result<Self> {
         Self::new(Channel::open_plaintext(address)?)?.validated().await
     }
 
     pub(crate) fn new(channel: Channel) -> Result<Self> {
         Ok(Self {
-            client: ProtoTypeDBClient::new(channel),
+            client: ProtoTypeDBRPC::new(channel),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
         })
     }

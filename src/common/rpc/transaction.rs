@@ -42,31 +42,30 @@ use typedb_protocol::{
 
 use crate::common::{
     error::{ClientError, Error},
-    rpc,
-    rpc::builder::transaction::{client_msg, stream_req},
+    rpc::{
+        builder::transaction::{client_msg, stream_req},
+        ServerRPC,
+    },
     Executor, Result,
 };
 
 // TODO: This structure has become pretty messy - review
 #[derive(Clone, Debug)]
-pub(crate) struct TransactionRpc {
-    rpc_client: rpc::ServerClient,
+pub(crate) struct TransactionRPC {
+    rpc_client: ServerRPC,
     sender: Sender,
     receiver: Receiver,
 }
 
-impl TransactionRpc {
-    pub(crate) async fn new(
-        rpc_client: &rpc::ServerClient,
-        open_req: transaction::Req,
-    ) -> Result<Self> {
+impl TransactionRPC {
+    pub(crate) async fn new(rpc_client: &ServerRPC, open_req: transaction::Req) -> Result<Self> {
         let mut rpc_client_clone = rpc_client.clone();
         let (req_sink, streaming_res): (
             mpsc::Sender<transaction::Client>,
             Streaming<transaction::Server>,
         ) = rpc_client_clone.transaction(open_req).await?;
         let (close_signal_sink, close_signal_receiver) = oneshot::channel::<Option<Error>>();
-        Ok(TransactionRpc {
+        Ok(TransactionRPC {
             rpc_client: rpc_client_clone.clone(),
             sender: Sender::new(
                 req_sink,

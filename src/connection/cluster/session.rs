@@ -32,7 +32,7 @@ pub struct Session {
     pub session_type: SessionType,
 
     server_session: server::Session,
-    rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
+    rpc_cluster_client_manager: Arc<rpc::ClusterRPC>,
 }
 
 impl Session {
@@ -40,7 +40,7 @@ impl Session {
     pub(crate) async fn new(
         mut database: Database,
         session_type: SessionType,
-        rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
+        rpc_cluster_client_manager: Arc<rpc::ClusterRPC>,
     ) -> Result<Self> {
         let server_session = database
             .run_failsafe(|database, client, _| async {

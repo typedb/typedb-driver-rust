@@ -26,12 +26,8 @@ use typedb_protocol::transaction as transaction_proto;
 
 use crate::{
     common::{
-        rpc,
-        rpc::{
-            builder::transaction::{commit_req, open_req, rollback_req},
-            transaction::TransactionRpc,
-        },
-        Result, TransactionType,
+        rpc::builder::transaction::{commit_req, open_req, rollback_req},
+        Result, ServerRPC, TransactionRPC, TransactionType,
     },
     connection::core,
     query::QueryManager,
@@ -42,7 +38,7 @@ pub struct Transaction {
     pub type_: TransactionType,
     pub options: core::Options,
     pub query: QueryManager,
-    rpc: TransactionRpc,
+    rpc: TransactionRPC,
 }
 
 impl Transaction {
@@ -51,7 +47,7 @@ impl Transaction {
         transaction_type: TransactionType,
         options: core::Options,
         network_latency: Duration,
-        rpc_client: &rpc::ServerClient,
+        rpc_client: &ServerRPC,
     ) -> Result<Self> {
         let open_req = open_req(
             session_id.to_vec(),
@@ -59,7 +55,7 @@ impl Transaction {
             options.to_proto(),
             network_latency.as_millis() as i32,
         );
-        let rpc = TransactionRpc::new(rpc_client, open_req).await?;
+        let rpc = TransactionRPC::new(rpc_client, open_req).await?;
         Ok(Transaction { type_: transaction_type, options, query: QueryManager::new(&rpc), rpc })
     }
 

@@ -27,23 +27,22 @@ use tokio::time::sleep;
 use crate::{
     common::{
         error::ClientError,
-        rpc,
         rpc::builder::{
             cluster::database_manager::{all_req, get_req},
             core::database_manager::{contains_req, create_req},
         },
-        Address, Error, Result,
+        Address, ClusterRPC, ClusterServerRPC, Error, Result,
     },
     connection::server,
 };
 
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {
-    rpc_cluster_manager: Arc<rpc::ClusterClientManager>,
+    rpc_cluster_manager: Arc<ClusterRPC>,
 }
 
 impl DatabaseManager {
-    pub(crate) fn new(rpc_cluster_manager: Arc<rpc::ClusterClientManager>) -> Self {
+    pub(crate) fn new(rpc_cluster_manager: Arc<ClusterRPC>) -> Self {
         Self { rpc_cluster_manager }
     }
 
@@ -95,7 +94,7 @@ impl DatabaseManager {
 
     async fn run_failsafe<F, P, R>(&mut self, name: &str, task: F) -> Result<R>
     where
-        F: Fn(server::Database, rpc::ClusterClient, bool) -> P,
+        F: Fn(server::Database, ClusterServerRPC, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         Database::get(name, self.rpc_cluster_manager.clone()).await?.run_failsafe(&task).await
@@ -106,7 +105,7 @@ impl DatabaseManager {
 pub struct Database {
     pub name: String,
     replicas: Vec<Replica>,
-    rpc_cluster_manager: Arc<rpc::ClusterClientManager>,
+    rpc_cluster_manager: Arc<ClusterRPC>,
 }
 
 impl Debug for Database {
@@ -121,14 +120,14 @@ impl Debug for Database {
 impl Database {
     fn new(
         proto: typedb_protocol::ClusterDatabase,
-        rpc_cluster_manager: Arc<rpc::ClusterClientManager>,
+        rpc_cluster_manager: Arc<ClusterRPC>,
     ) -> Result<Self> {
         let name = proto.name.clone();
         let replicas = Replica::from_proto(proto, &rpc_cluster_manager);
         Ok(Self { name, replicas, rpc_cluster_manager })
     }
 
-    async fn get(name: &str, rpc_cluster_manager: Arc<rpc::ClusterClientManager>) -> Result<Self> {
+    async fn get(name: &str, rpc_cluster_manager: Arc<ClusterRPC>) -> Result<Self> {
         Ok(Self {
             name: name.to_string(),
             replicas: Replica::fetch_all(name, rpc_cluster_manager.clone()).await?,
@@ -142,7 +141,7 @@ impl Database {
 
     pub(crate) async fn run_on_any_replica<F, P, R>(&mut self, task: F) -> Result<R>
     where
-        F: Fn(server::Database, rpc::ClusterClient, bool) -> P,
+        F: Fn(server::Database, ClusterServerRPC, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         let mut is_first_run = true;
@@ -166,7 +165,7 @@ impl Database {
 
     pub(crate) async fn run_on_primary_replica<F, P, R>(&mut self, task: F) -> Result<R>
     where
-        F: Fn(server::Database, rpc::ClusterClient, bool) -> P,
+        F: Fn(server::Database, ClusterServerRPC, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         let mut primary_replica = if let Some(replica) = self.primary_replica() {
@@ -199,7 +198,7 @@ impl Database {
 
     pub(crate) async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
     where
-        F: Fn(server::Database, rpc::ClusterClient, bool) -> P,
+        F: Fn(server::Database, ClusterServerRPC, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         match self.run_on_any_replica(&task).await {
@@ -271,7 +270,7 @@ impl Replica {
     fn new(
         name: &str,
         metadata: typedb_protocol::cluster_database::Replica,
-        rpc_client: rpc::ClusterClient,
+        rpc_client: ClusterServerRPC,
     ) -> Replica {
         Self {
             address: metadata.address.parse().expect("Invalid URI received from the server"),
@@ -285,7 +284,7 @@ impl Replica {
 
     fn from_proto(
         proto: typedb_protocol::ClusterDatabase,
-        rpc_cluster_manager: &rpc::ClusterClientManager,
+        rpc_cluster_manager: &ClusterRPC,
     ) -> Vec<Replica> {
         proto
             .replicas
@@ -297,10 +296,7 @@ impl Replica {
             .collect()
     }
 
-    async fn fetch_all(
-        name: &str,
-        rpc_cluster_manager: Arc<rpc::ClusterClientManager>,
-    ) -> Result<Vec<Self>> {
+    async fn fetch_all(name: &str, rpc_cluster_manager: Arc<ClusterRPC>) -> Result<Vec<Self>> {
         for mut client in rpc_cluster_manager.iter_cloned() {
             let res = client.databases_get(get_req(&name)).await;
             match res {

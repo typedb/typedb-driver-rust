@@ -20,13 +20,16 @@
  */
 
 pub(crate) mod builder;
-pub(crate) mod channel;
-pub(crate) mod cluster_client;
-pub(crate) mod core_client;
-pub(crate) mod server_client;
-pub(crate) mod transaction;
+mod channel;
+mod cluster;
+mod core;
+mod server;
+mod transaction;
 
-pub(crate) use channel::Channel;
-pub(crate) use cluster_client::{ClusterClient, ClusterClientManager};
-pub(crate) use core_client::CoreClient;
-pub(crate) use server_client::ServerClient;
+pub(crate) use self::{
+    channel::Channel,
+    cluster::{ClusterRPC, ClusterServerRPC},
+    core::CoreRPC,
+    server::ServerRPC,
+    transaction::TransactionRPC,
+};

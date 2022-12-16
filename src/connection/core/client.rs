@@ -20,19 +20,18 @@
  */
 
 use crate::{
-    common::{rpc, Result, SessionType},
+    common::{CoreRPC, Result, ServerRPC, SessionType},
     connection::{core, server},
 };
 
 pub struct Client {
     databases: server::DatabaseManager,
-    rpc_client: rpc::ServerClient,
+    rpc_client: ServerRPC,
 }
 
 impl Client {
     pub async fn new(address: &str) -> Result<Self> {
-        let rpc_client: rpc::ServerClient =
-            rpc::CoreClient::connect(address.parse()?).await?.into();
+        let rpc_client: ServerRPC = CoreRPC::connect(address.parse()?).await?.into();
         Ok(Self { databases: server::DatabaseManager::new(rpc_client.clone()), rpc_client })
     }
 

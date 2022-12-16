@@ -27,5 +27,7 @@ pub mod concept;
 pub(crate) mod connection;
 pub mod query;
 
-pub use common::{Credential, Error, Result, SessionType, TransactionType};
-pub use connection::{cluster, core, server};
+pub use self::{
+    common::{Credential, Error, Result, SessionType, TransactionType},
+    connection::{cluster, core, server},
+};

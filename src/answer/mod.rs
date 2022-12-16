@@ -20,7 +20,6 @@
  */
 
 mod concept_map;
-pub use concept_map::ConceptMap;
-
 mod numeric;
-pub use numeric::Numeric;
+
+pub use self::{concept_map::ConceptMap, numeric::Numeric};
