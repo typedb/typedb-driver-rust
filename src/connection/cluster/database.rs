@@ -38,41 +38,41 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {
-    rpc_cluster_manager: Arc<ClusterRPC>,
+    cluster_rpc: Arc<ClusterRPC>,
 }
 
 impl DatabaseManager {
-    pub(crate) fn new(rpc_cluster_manager: Arc<ClusterRPC>) -> Self {
-        Self { rpc_cluster_manager }
+    pub(crate) fn new(cluster_rpc: Arc<ClusterRPC>) -> Self {
+        Self { cluster_rpc }
     }
 
     pub async fn get(&mut self, name: &str) -> Result<Database> {
-        Database::get(name, self.rpc_cluster_manager.clone()).await
+        Database::get(name, self.cluster_rpc.clone()).await
     }
 
     pub async fn contains(&mut self, name: &str) -> Result<bool> {
         Ok(self
-            .run_failsafe(name, move |database, mut server_client, _| {
+            .run_failsafe(name, move |database, mut server_rpc, _| {
                 let req = contains_req(&database.name);
-                async move { server_client.databases_contains(req).await }
+                async move { server_rpc.databases_contains(req).await }
             })
             .await?
             .contains)
     }
 
     pub async fn create(&mut self, name: &str) -> Result {
-        self.run_failsafe(name, |database, mut server_client, _| {
+        self.run_failsafe(name, |database, mut server_rpc, _| {
             let req = create_req(&database.name);
-            async move { server_client.databases_create(req).await }
+            async move { server_rpc.databases_create(req).await }
         })
         .await?;
         Ok(())
     }
 
     pub async fn all(&mut self) -> Result<Vec<Database>> {
-        let mut error_buffer = Vec::with_capacity(self.rpc_cluster_manager.len());
+        let mut error_buffer = Vec::with_capacity(self.cluster_rpc.len());
         let mut databases = None;
-        for mut server_client in self.rpc_cluster_manager.iter_cloned() {
+        for mut server_client in self.cluster_rpc.iter_servers_cloned() {
             match server_client.databases_all(all_req()).await {
                 Err(err) => error_buffer.push(format!("- {}: {}", server_client.address(), err)),
                 Ok(list) => {
@@ -88,7 +88,7 @@ impl DatabaseManager {
         databases
             .unwrap()
             .into_iter()
-            .map(|proto_db| Database::new(proto_db, self.rpc_cluster_manager.clone()))
+            .map(|proto_db| Database::new(proto_db, self.cluster_rpc.clone()))
             .collect()
     }
 
@@ -97,7 +97,7 @@ impl DatabaseManager {
         F: Fn(server::Database, ClusterServerRPC, bool) -> P,
         P: Future<Output = Result<R>>,
     {
-        Database::get(name, self.rpc_cluster_manager.clone()).await?.run_failsafe(&task).await
+        Database::get(name, self.cluster_rpc.clone()).await?.run_failsafe(&task).await
     }
 }
 
@@ -105,7 +105,7 @@ impl DatabaseManager {
 pub struct Database {
     pub name: String,
     replicas: Vec<Replica>,
-    rpc_cluster_manager: Arc<ClusterRPC>,
+    cluster_rpc: Arc<ClusterRPC>,
 }
 
 impl Debug for Database {
@@ -118,20 +118,17 @@ impl Debug for Database {
 }
 
 impl Database {
-    fn new(
-        proto: typedb_protocol::ClusterDatabase,
-        rpc_cluster_manager: Arc<ClusterRPC>,
-    ) -> Result<Self> {
+    fn new(proto: typedb_protocol::ClusterDatabase, cluster_rpc: Arc<ClusterRPC>) -> Result<Self> {
         let name = proto.name.clone();
-        let replicas = Replica::from_proto(proto, &rpc_cluster_manager);
-        Ok(Self { name, replicas, rpc_cluster_manager })
+        let replicas = Replica::from_proto(proto, &cluster_rpc);
+        Ok(Self { name, replicas, cluster_rpc })
     }
 
-    async fn get(name: &str, rpc_cluster_manager: Arc<ClusterRPC>) -> Result<Self> {
+    async fn get(name: &str, cluster_rpc: Arc<ClusterRPC>) -> Result<Self> {
         Ok(Self {
             name: name.to_string(),
-            replicas: Replica::fetch_all(name, rpc_cluster_manager.clone()).await?,
-            rpc_cluster_manager,
+            replicas: Replica::fetch_all(name, cluster_rpc.clone()).await?,
+            cluster_rpc,
         })
     }
 
@@ -148,7 +145,7 @@ impl Database {
         for replica in self.replicas.iter() {
             match task(
                 replica.database.clone(),
-                self.rpc_cluster_manager.get(&replica.address),
+                self.cluster_rpc.get_server(&replica.address),
                 is_first_run,
             )
             .await
@@ -160,7 +157,7 @@ impl Database {
             }
             is_first_run = false;
         }
-        Err(self.rpc_cluster_manager.unable_to_connect())
+        Err(self.cluster_rpc.unable_to_connect())
     }
 
     pub(crate) async fn run_on_primary_replica<F, P, R>(&mut self, task: F) -> Result<R>
@@ -178,7 +175,7 @@ impl Database {
         for retry in 0..max_retries {
             match task(
                 primary_replica.database.clone(),
-                self.rpc_cluster_manager.get(&primary_replica.address),
+                self.cluster_rpc.get_server(&primary_replica.address),
                 retry == 0,
             )
             .await
@@ -193,7 +190,7 @@ impl Database {
                 res => return res,
             }
         }
-        Err(self.rpc_cluster_manager.unable_to_connect())
+        Err(self.cluster_rpc.unable_to_connect())
     }
 
     pub(crate) async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
@@ -212,15 +209,14 @@ impl Database {
 
     async fn seek_primary_replica(&mut self) -> Result<Replica> {
         let fetch_max_retries = 10; // FIXME constant
-        for _retry in 0..fetch_max_retries {
-            self.replicas =
-                Replica::fetch_all(&self.name, self.rpc_cluster_manager.clone()).await?;
+        for _ in 0..fetch_max_retries {
+            self.replicas = Replica::fetch_all(&self.name, self.cluster_rpc.clone()).await?;
             if let Some(replica) = self.primary_replica() {
                 return Ok(replica);
             }
             Self::wait_for_primary_replica_selection().await;
         }
-        Err(self.rpc_cluster_manager.unable_to_connect())
+        Err(self.cluster_rpc.unable_to_connect())
     }
 
     async fn wait_for_primary_replica_selection() {
@@ -284,24 +280,24 @@ impl Replica {
 
     fn from_proto(
         proto: typedb_protocol::ClusterDatabase,
-        rpc_cluster_manager: &ClusterRPC,
+        cluster_rpc: &ClusterRPC,
     ) -> Vec<Replica> {
         proto
             .replicas
             .into_iter()
             .map(|replica| {
-                let rpc_client = rpc_cluster_manager.get(&replica.address.parse().unwrap());
-                Replica::new(&proto.name, replica, rpc_client)
+                let server_rpc = cluster_rpc.get_server(&replica.address.parse().unwrap());
+                Replica::new(&proto.name, replica, server_rpc)
             })
             .collect()
     }
 
-    async fn fetch_all(name: &str, rpc_cluster_manager: Arc<ClusterRPC>) -> Result<Vec<Self>> {
-        for mut client in rpc_cluster_manager.iter_cloned() {
+    async fn fetch_all(name: &str, cluster_rpc: Arc<ClusterRPC>) -> Result<Vec<Self>> {
+        for mut client in cluster_rpc.iter_servers_cloned() {
             let res = client.databases_get(get_req(&name)).await;
             match res {
                 Ok(res) => {
-                    return Ok(Replica::from_proto(res.database.unwrap(), &rpc_cluster_manager));
+                    return Ok(Replica::from_proto(res.database.unwrap(), &cluster_rpc));
                 }
                 Err(Error::Client(ClientError::UnableToConnect())) => {
                     println!(
@@ -313,6 +309,6 @@ impl Replica {
                 Err(err) => return Err(err),
             }
         }
-        Err(rpc_cluster_manager.unable_to_connect())
+        Err(cluster_rpc.unable_to_connect())
     }
 }

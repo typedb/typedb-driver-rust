@@ -26,13 +26,15 @@ use crate::{
 
 pub struct Client {
     databases: server::DatabaseManager,
-    rpc_client: ServerRPC,
+    server_rpc: ServerRPC,
 }
 
 impl Client {
     pub async fn new(address: &str) -> Result<Self> {
-        let rpc_client: ServerRPC = CoreRPC::connect(address.parse()?).await?.into();
-        Ok(Self { databases: server::DatabaseManager::new(rpc_client.clone()), rpc_client })
+        Ok(Self {
+            databases: server::DatabaseManager::new(server_rpc.clone()),
+            server_rpc: CoreRPC::connect(address.parse()?).await?.into(),
+        })
     }
 
     pub async fn with_default_address() -> Result<Self> {
@@ -57,6 +59,6 @@ impl Client {
         session_type: SessionType,
         options: core::Options,
     ) -> Result<server::Session> {
-        server::Session::new(database_name, session_type, options, self.rpc_client.clone()).await
+        server::Session::new(database_name, session_type, options, self.server_rpc.clone()).await
     }
 }

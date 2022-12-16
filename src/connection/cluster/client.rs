@@ -26,15 +26,15 @@ use crate::common::{ClusterRPC, Credential, Result, SessionType};
 
 pub struct Client {
     databases: DatabaseManager,
-    rpc_cluster_client_manager: Arc<ClusterRPC>,
+    cluster_rpc: Arc<ClusterRPC>,
 }
 
 impl Client {
     pub async fn new<T: AsRef<str>>(init_addresses: &[T], credential: Credential) -> Result<Self> {
         let addresses = ClusterRPC::fetch_current_addresses(init_addresses, &credential).await?;
-        let rpc_cluster_client_manager = ClusterRPC::new(addresses, credential)?;
-        let databases = DatabaseManager::new(rpc_cluster_client_manager.clone());
-        Ok(Self { rpc_cluster_client_manager, databases })
+        let cluster_rpc = ClusterRPC::new(addresses, credential)?;
+        let databases = DatabaseManager::new(cluster_rpc.clone());
+        Ok(Self { cluster_rpc, databases })
     }
 
     pub fn databases(&mut self) -> &mut DatabaseManager {
@@ -49,7 +49,7 @@ impl Client {
         Session::new(
             self.databases.get(database_name).await?,
             session_type,
-            self.rpc_cluster_client_manager.clone(),
+            self.cluster_rpc.clone(),
         )
         .await
     }

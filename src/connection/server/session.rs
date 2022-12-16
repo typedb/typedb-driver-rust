@@ -41,7 +41,7 @@ pub struct Session {
     pub db_name: String,
     pub session_type: SessionType,
     pub(crate) id: SessionId,
-    pub(crate) rpc_client: ServerRPC,
+    pub(crate) server_rpc: ServerRPC,
     is_open_atomic: AtomicCell<bool>,
     network_latency: Duration,
 }
@@ -51,18 +51,18 @@ impl Session {
         db_name: &str,
         session_type: SessionType,
         options: core::Options,
-        mut rpc_client: ServerRPC,
+        mut server_rpc: ServerRPC,
     ) -> Result<Self> {
         let start_time = Instant::now();
         let open_req = open_req(db_name, session_type.to_proto(), options.to_proto());
-        let res = rpc_client.session_open(open_req).await?;
+        let res = server_rpc.session_open(open_req).await?;
         // TODO: pulse task
         Ok(Session {
             db_name: String::from(db_name),
             session_type,
             network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
             id: res.session_id,
-            rpc_client,
+            server_rpc,
             is_open_atomic: AtomicCell::new(true),
         })
     }
@@ -83,7 +83,7 @@ impl Session {
                     transaction_type,
                     options,
                     self.network_latency,
-                    &self.rpc_client,
+                    &self.server_rpc,
                 )
                 .await
             }
@@ -98,7 +98,7 @@ impl Session {
     pub async fn close(&mut self) {
         if let Ok(true) = self.is_open_atomic.compare_exchange(true, false) {
             // let res = self.session_close_sink.send(self.id.clone());
-            let res = self.rpc_client.session_close(close_req(self.id.clone())).await;
+            let res = self.server_rpc.session_close(close_req(self.id.clone())).await;
             // TODO: the request errors harmlessly if the session is already closed. Protocol should
             //       expose the cause of the error and we can use that to decide whether to warn here.
             if res.is_err() {

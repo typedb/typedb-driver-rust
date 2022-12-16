@@ -47,7 +47,7 @@ impl Transaction {
         transaction_type: TransactionType,
         options: core::Options,
         network_latency: Duration,
-        rpc_client: &ServerRPC,
+        server_rpc: &ServerRPC,
     ) -> Result<Self> {
         let open_req = open_req(
             session_id.to_vec(),
@@ -55,7 +55,7 @@ impl Transaction {
             options.to_proto(),
             network_latency.as_millis() as i32,
         );
-        let rpc = TransactionRPC::new(rpc_client, open_req).await?;
+        let rpc = TransactionRPC::new(server_rpc, open_req).await?;
         Ok(Transaction { type_: transaction_type, options, query: QueryManager::new(&rpc), rpc })
     }
 
