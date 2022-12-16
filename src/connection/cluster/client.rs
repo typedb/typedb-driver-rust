@@ -30,7 +30,7 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn new(init_addresses: &[&str], credential: Credential) -> Result<Self> {
+    pub async fn new<T: AsRef<str>>(init_addresses: &[T], credential: Credential) -> Result<Self> {
         let addresses =
             rpc::ClusterClientManager::fetch_current_addresses(init_addresses, &credential).await?;
         let rpc_cluster_client_manager = rpc::ClusterClientManager::new(addresses, credential)?;

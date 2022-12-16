@@ -49,12 +49,13 @@ pub(crate) struct ClusterClientManager {
 }
 
 impl ClusterClientManager {
-    pub(crate) async fn fetch_current_addresses(
-        addresses: &[&str],
+    pub(crate) async fn fetch_current_addresses<T: AsRef<str>>(
+        addresses: &[T],
         credential: &Credential,
     ) -> Result<HashSet<Address>> {
         for address in addresses {
-            match ClusterClient::new_validated(address.parse()?, credential.clone()).await {
+            match ClusterClient::new_validated(address.as_ref().parse()?, credential.clone()).await
+            {
                 Ok(mut client) => {
                     let servers = client.servers_all().await?.servers;
                     return servers.into_iter().map(|server| server.address.parse()).collect();
