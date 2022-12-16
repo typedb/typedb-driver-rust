@@ -21,12 +21,10 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    future::Future,
-    pin::Pin,
     sync::{Arc, Mutex},
 };
 
-use futures::{channel::mpsc, FutureExt};
+use futures::{channel::mpsc, future::BoxFuture, FutureExt};
 use tonic::Streaming;
 use typedb_protocol::{
     cluster_database_manager, cluster_user, core_database, core_database_manager, session,
@@ -138,7 +136,7 @@ impl ClusterClient {
 
     async fn may_renew_token<F, R>(&mut self, call: F) -> Result<R>
     where
-        for<'a> F: Fn(&'a mut Self) -> Pin<Box<dyn Future<Output = Result<R>> + 'a>>,
+        for<'a> F: Fn(&'a mut Self) -> BoxFuture<'a, Result<R>>,
     {
         match call(self).await {
             Err(Error::Client(ClientError::ClusterTokenCredentialInvalid())) => {
