@@ -35,7 +35,7 @@ const TEST_DATABASE: &str = "test";
 async fn basic() {
     let mut client = cluster::Client::new(
         &["localhost:11729", "localhost:21729", "localhost:31729"],
-        Credential::new_with_tls(
+        Credential::with_tls(
             "admin",
             "password",
             Some(&PathBuf::from(std::env::var("ROOT_CA").unwrap())),

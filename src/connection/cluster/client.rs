@@ -25,8 +25,8 @@ use super::{DatabaseManager, Session};
 use crate::common::{rpc, Credential, Result, SessionType};
 
 pub struct Client {
-    rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
     databases: DatabaseManager,
+    rpc_cluster_client_manager: Arc<rpc::ClusterClientManager>,
 }
 
 impl Client {

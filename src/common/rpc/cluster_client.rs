@@ -54,7 +54,9 @@ impl ClusterClientManager {
         credential: &Credential,
     ) -> Result<HashSet<Address>> {
         for address in addresses {
-            match ClusterClient::new_validated(address.as_ref().parse()?, credential.clone()).await
+            match ClusterClient::new(address.as_ref().parse()?, credential.clone())?
+                .validated()
+                .await
             {
                 Ok(mut client) => {
                     let servers = client.servers_all().await?.servers;
@@ -70,9 +72,7 @@ impl ClusterClientManager {
     pub(crate) fn new(addresses: HashSet<Address>, credential: Credential) -> Result<Arc<Self>> {
         let cluster_clients = addresses
             .into_iter()
-            .map(|address| {
-                Ok((address.clone(), ClusterClient::new_lazy(address, credential.clone())?))
-            })
+            .map(|address| Ok((address.clone(), ClusterClient::new(address, credential.clone())?)))
             .collect::<Result<_>>()?;
         Ok(Arc::new(Self { cluster_clients }))
     }
@@ -97,6 +97,12 @@ impl ClusterClientManager {
     pub(crate) fn iter_cloned(&self) -> impl Iterator<Item = ClusterClient> + '_ {
         self.cluster_clients.values().cloned()
     }
+
+    pub(crate) fn unable_to_connect(&self) -> Error {
+        Error::Client(ClientError::ClusterUnableToConnect(
+            self.addresses().map(Address::to_string).collect::<Vec<_>>().join(","),
+        ))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -109,30 +115,24 @@ pub(crate) struct ClusterClient {
 }
 
 impl ClusterClient {
-    pub(crate) fn new_lazy(address: Address, credential: Credential) -> Result<Self> {
+    pub(crate) fn new(address: Address, credential: Credential) -> Result<Self> {
         let (channel, credential_handler) = Channel::open_encrypted(address.clone(), credential)?;
         Ok(Self {
             address,
-            server_client: rpc::CoreClient::new_lazy(channel.clone())?,
+            server_client: rpc::CoreClient::new(channel.clone())?,
             cluster_client: ProtoTypeDBClusterClient::new(channel.into()),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
             credential_handler,
         })
     }
 
-    pub(crate) async fn new_validated(address: Address, credential: Credential) -> Result<Self> {
-        let mut this = Self::new_lazy(address, credential)?;
-        this.validate_connection().await?;
-        Ok(this)
+    async fn validated(mut self) -> Result<Self> {
+        self.cluster_client.databases_all(cluster::database_manager::all_req()).await?;
+        Ok(self)
     }
 
     pub(crate) fn address(&self) -> &Address {
         &self.address
-    }
-
-    async fn validate_connection(&mut self) -> Result<()> {
-        self.cluster_client.databases_all(cluster::database_manager::all_req()).await?;
-        Ok(())
     }
 
     async fn may_renew_token<F, R>(&mut self, call: F) -> Result<R>

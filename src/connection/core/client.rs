@@ -25,15 +25,11 @@ use crate::{
 };
 
 pub struct Client {
-    pub databases: server::DatabaseManager,
-    pub(crate) rpc_client: rpc::ServerClient,
+    databases: server::DatabaseManager,
+    rpc_client: rpc::ServerClient,
 }
 
 impl Client {
-    pub fn databases(&mut self) -> &mut server::DatabaseManager {
-        &mut self.databases
-    }
-
     pub async fn new(address: &str) -> Result<Self> {
         let rpc_client: rpc::ServerClient =
             rpc::CoreClient::connect(address.parse()?).await?.into();
@@ -42,6 +38,10 @@ impl Client {
 
     pub async fn with_default_address() -> Result<Self> {
         Self::new("http://localhost:1729").await
+    }
+
+    pub fn databases(&mut self) -> &mut server::DatabaseManager {
+        &mut self.databases
     }
 
     pub async fn session(

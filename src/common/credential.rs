@@ -40,7 +40,7 @@ pub struct Credential {
 }
 
 impl Credential {
-    pub fn new_with_tls(username: &str, password: &str, tls_root_ca: Option<&Path>) -> Self {
+    pub fn with_tls(username: &str, password: &str, tls_root_ca: Option<&Path>) -> Self {
         Credential {
             username: username.to_owned(),
             password: password.to_owned(),
@@ -49,7 +49,7 @@ impl Credential {
         }
     }
 
-    pub fn new_without_tls(username: &str, password: &str) -> Self {
+    pub fn without_tls(username: &str, password: &str) -> Self {
         Credential {
             username: username.to_owned(),
             password: password.to_owned(),

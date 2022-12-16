@@ -20,10 +20,9 @@
  */
 
 mod client;
-pub use client::Client;
-
 mod database;
-pub use database::{Database, DatabaseManager};
-
 mod session;
+
+pub use client::Client;
+pub use database::{Database, DatabaseManager};
 pub use session::Session;

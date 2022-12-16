@@ -129,42 +129,11 @@ impl Database {
     }
 
     async fn get(name: &str, rpc_cluster_manager: Arc<rpc::ClusterClientManager>) -> Result<Self> {
-        let mut this =
-            Self { name: name.to_string(), replicas: Vec::default(), rpc_cluster_manager };
-        this.fetch_replicas().await?;
-        Ok(this)
-    }
-
-    async fn fetch_replicas(&mut self) -> Result {
-        for mut client in self.rpc_cluster_manager.iter_cloned() {
-            let res = client.databases_get(get_req(&self.name)).await;
-            match res {
-                Ok(res) => {
-                    self.replicas =
-                        Replica::from_proto(res.database.unwrap(), &self.rpc_cluster_manager);
-                    return Ok(());
-                }
-                Err(Error::Client(ClientError::UnableToConnect())) => {
-                    println!(
-                        "Failed to fetch replica info for database '{}' from {}. Attempting next server.",
-                        self.name,
-                        client.address()
-                    );
-                }
-                Err(err) => return Err(err),
-            }
-        }
-        Err(self.cluster_unable_to_connect())
-    }
-
-    fn cluster_unable_to_connect(&self) -> Error {
-        Error::Client(ClientError::ClusterUnableToConnect(
-            self.rpc_cluster_manager
-                .addresses()
-                .map(Address::to_string)
-                .collect::<Vec<_>>()
-                .join(","),
-        ))
+        Ok(Self {
+            name: name.to_string(),
+            replicas: Replica::fetch_all(name, rpc_cluster_manager.clone()).await?,
+            rpc_cluster_manager,
+        })
     }
 
     pub(crate) fn primary_replica(&mut self) -> Option<Replica> {
@@ -192,7 +161,7 @@ impl Database {
             }
             is_first_run = false;
         }
-        Err(self.cluster_unable_to_connect())
+        Err(self.rpc_cluster_manager.unable_to_connect())
     }
 
     pub(crate) async fn run_on_primary_replica<F, P, R>(&mut self, task: F) -> Result<R>
@@ -225,7 +194,7 @@ impl Database {
                 res => return res,
             }
         }
-        Err(self.cluster_unable_to_connect())
+        Err(self.rpc_cluster_manager.unable_to_connect())
     }
 
     pub(crate) async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
@@ -245,13 +214,14 @@ impl Database {
     async fn seek_primary_replica(&mut self) -> Result<Replica> {
         let fetch_max_retries = 10; // FIXME constant
         for _retry in 0..fetch_max_retries {
-            self.fetch_replicas().await?;
+            self.replicas =
+                Replica::fetch_all(&self.name, self.rpc_cluster_manager.clone()).await?;
             if let Some(replica) = self.primary_replica() {
                 return Ok(replica);
             }
             Self::wait_for_primary_replica_selection().await;
         }
-        Err(self.cluster_unable_to_connect())
+        Err(self.rpc_cluster_manager.unable_to_connect())
     }
 
     async fn wait_for_primary_replica_selection() {
@@ -325,5 +295,28 @@ impl Replica {
                 Replica::new(&proto.name, replica, rpc_client)
             })
             .collect()
+    }
+
+    async fn fetch_all(
+        name: &str,
+        rpc_cluster_manager: Arc<rpc::ClusterClientManager>,
+    ) -> Result<Vec<Self>> {
+        for mut client in rpc_cluster_manager.iter_cloned() {
+            let res = client.databases_get(get_req(&name)).await;
+            match res {
+                Ok(res) => {
+                    return Ok(Replica::from_proto(res.database.unwrap(), &rpc_cluster_manager));
+                }
+                Err(Error::Client(ClientError::UnableToConnect())) => {
+                    println!(
+                        "Failed to fetch replica info for database '{}' from {}. Attempting next server.",
+                        name,
+                        client.address()
+                    );
+                }
+                Err(err) => return Err(err),
+            }
+        }
+        Err(rpc_cluster_manager.unable_to_connect())
     }
 }

@@ -119,26 +119,20 @@ pub(crate) struct CoreClient {
 
 impl CoreClient {
     pub(crate) async fn connect(address: Address) -> Result<Self> {
-        Self::new_validated(Channel::open_plaintext(address)?).await
+        Self::new(Channel::open_plaintext(address)?)?.validated().await
     }
 
-    pub(crate) fn new_lazy(channel: Channel) -> Result<Self> {
+    pub(crate) fn new(channel: Channel) -> Result<Self> {
         Ok(Self {
             client: ProtoTypeDBClient::new(channel),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
         })
     }
 
-    pub(crate) async fn new_validated(channel: Channel) -> Result<Self> {
-        let mut this = Self::new_lazy(channel)?;
-        this.validate_connection().await?;
-        Ok(this)
-    }
-
-    async fn validate_connection(&mut self) -> Result<()> {
+    async fn validated(mut self) -> Result<Self> {
         // TODO: temporary hack to validate connection until we have client pulse
         self.client.databases_all(core::database_manager::all_req()).await?;
-        Ok(())
+        Ok(self)
     }
 
     pub(crate) async fn databases_contains(
