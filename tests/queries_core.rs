@@ -33,7 +33,7 @@ use typedb_client::{
     core, server,
 };
 
-const TEST_DATABASE: &str = "grakn";
+const TEST_DATABASE: &str = "test";
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]

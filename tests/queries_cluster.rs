@@ -28,7 +28,7 @@ use typedb_client::{
     common::{Credential, SessionType::Data, TransactionType::Write},
 };
 
-const TEST_DATABASE: &str = "grakn";
+const TEST_DATABASE: &str = "test";
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
