@@ -22,7 +22,10 @@
 package(default_visibility = ["//visibility:public"])
 
 load("@rules_rust//rust:defs.bzl", "rust_test", "rustfmt_test")
+load("@vaticle_bazel_distribution//artifact:rules.bzl", "artifact_extractor")
 load("@vaticle_dependencies//tool/checkstyle:rules.bzl", "checkstyle_test")
+load("@vaticle_typedb_common//test:rules.bzl", "native_typedb_artifact")
+
 
 rust_test(
     name = "queries_core",
@@ -49,18 +52,6 @@ rust_test(
     ],
 )
 
-rustfmt_test(name = "queries_rustfmt_test", targets = ["queries_core", "queries_cluster"])
-
-checkstyle_test(
-    name = "checkstyle",
-    include = glob(["*"]),
-    license_type = "apache-header",
-    size = "small",
-)
-
-load("@vaticle_typedb_common//test:rules.bzl", "native_typedb_artifact")
-load("@vaticle_bazel_distribution//artifact:rules.bzl", "artifact_extractor")
-
 native_typedb_artifact(
     name = "native-typedb-artifact",
     mac_artifact = "@vaticle_typedb_artifact_mac//file",
@@ -85,4 +76,19 @@ artifact_extractor(
 artifact_extractor(
     name = "typedb-cluster-extractor",
     artifact = ":native-typedb-cluster-artifact",
+)
+
+rustfmt_test(
+    name = "queries_rustfmt_test",
+    targets = [
+        "queries_core",
+        "queries_cluster",
+    ]
+)
+
+checkstyle_test(
+    name = "checkstyle",
+    include = glob(["*"]),
+    license_type = "apache-header",
+    size = "small",
 )
