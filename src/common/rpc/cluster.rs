@@ -49,10 +49,14 @@ pub(crate) struct ClusterRPC {
 
 impl ClusterRPC {
     pub(crate) fn new(addresses: HashSet<Address>, credential: Credential) -> Result<Arc<Self>> {
+        let executor = Executor::new().expect("Failed to create Executor");
         let cluster_clients = addresses
             .into_iter()
             .map(|address| {
-                Ok((address.clone(), ClusterServerRPC::new(address, credential.clone())?))
+                Ok((
+                    address.clone(),
+                    ClusterServerRPC::new(address, credential.clone(), executor.clone())?,
+                ))
             })
             .collect::<Result<_>>()?;
         Ok(Arc::new(Self { server_rpcs: cluster_clients }))
@@ -62,10 +66,15 @@ impl ClusterRPC {
         addresses: &[T],
         credential: &Credential,
     ) -> Result<HashSet<Address>> {
+        let executor = Executor::new().expect("Failed to create Executor");
         for address in addresses {
-            match ClusterServerRPC::new(address.as_ref().parse()?, credential.clone())?
-                .validated()
-                .await
+            match ClusterServerRPC::new(
+                address.as_ref().parse()?,
+                credential.clone(),
+                executor.clone(),
+            )?
+            .validated()
+            .await
             {
                 Ok(mut client) => {
                     let servers = client.servers_all().await?.servers;
@@ -112,19 +121,25 @@ pub(crate) struct ClusterServerRPC {
     core_rpc: CoreRPC,
     cluster_grpc: ClusterGRPC<CallCredChannel>,
     call_credentials: Arc<CallCredentials>,
-    pub(crate) executor: Executor,
 }
 
 impl ClusterServerRPC {
-    pub(crate) fn new(address: Address, credential: Credential) -> Result<Self> {
+    pub(crate) fn new(
+        address: Address,
+        credential: Credential,
+        executor: Executor,
+    ) -> Result<Self> {
         let (channel, call_credentials) = Channel::open_encrypted(address.clone(), credential)?;
         Ok(Self {
             address,
-            core_rpc: CoreRPC::new(channel.clone())?,
+            core_rpc: CoreRPC::with_executor(channel.clone(), executor)?,
             cluster_grpc: ClusterGRPC::new(channel.into()),
-            executor: Executor::new().expect("Failed to create Executor"),
             call_credentials,
         })
+    }
+
+    pub(crate) fn executor(&self) -> &Executor {
+        self.core_rpc.executor()
     }
 
     async fn validated(mut self) -> Result<Self> {

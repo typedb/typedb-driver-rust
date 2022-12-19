@@ -52,8 +52,8 @@ impl From<ClusterServerRPC> for ServerRPC {
 impl ServerRPC {
     pub(crate) fn executor(&self) -> &Executor {
         match self {
-            Self::Core(client) => &client.executor,
-            Self::Cluster(client) => &client.executor,
+            Self::Core(client) => client.executor(),
+            Self::Cluster(client) => client.executor(),
         }
     }
 

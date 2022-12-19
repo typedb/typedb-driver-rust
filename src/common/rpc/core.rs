@@ -115,7 +115,7 @@ impl CoreGRPC {
 #[derive(Clone, Debug)]
 pub(crate) struct CoreRPC {
     core_grpc: CoreGRPC,
-    pub(crate) executor: Executor,
+    executor: Executor,
 }
 
 impl CoreRPC {
@@ -126,8 +126,16 @@ impl CoreRPC {
         })
     }
 
+    pub(super) fn with_executor(channel: Channel, executor: Executor) -> Result<Self> {
+        Ok(Self { core_grpc: CoreGRPC::new(channel), executor })
+    }
+
     pub(crate) async fn connect(address: Address) -> Result<Self> {
         Self::new(Channel::open_plaintext(address)?)?.validated().await
+    }
+
+    pub(crate) fn executor(&self) -> &Executor {
+        &self.executor
     }
 
     async fn validated(mut self) -> Result<Self> {
