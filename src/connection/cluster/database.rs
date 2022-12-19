@@ -72,9 +72,9 @@ impl DatabaseManager {
     pub async fn all(&mut self) -> Result<Vec<Database>> {
         let mut error_buffer = Vec::with_capacity(self.cluster_rpc.len());
         let mut databases = None;
-        for mut server_client in self.cluster_rpc.iter_servers_cloned() {
-            match server_client.databases_all(all_req()).await {
-                Err(err) => error_buffer.push(format!("- {}: {}", server_client.address(), err)),
+        for mut server_rpc in self.cluster_rpc.iter_server_rpcs_cloned() {
+            match server_rpc.databases_all(all_req()).await {
+                Err(err) => error_buffer.push(format!("- {}: {}", server_rpc.address(), err)),
                 Ok(list) => {
                     databases = Some(list.databases);
                     break;
@@ -149,7 +149,7 @@ impl Database {
         for replica in self.replicas.iter() {
             match task(
                 replica.database.clone(),
-                self.cluster_rpc.get_server(&replica.address),
+                self.cluster_rpc.get_server_rpc(&replica.address),
                 is_first_run,
             )
             .await
@@ -178,7 +178,7 @@ impl Database {
         for retry in 0..Self::PRIMARY_REPLICA_TASK_MAX_RETRIES {
             match task(
                 primary_replica.database.clone(),
-                self.cluster_rpc.get_server(&primary_replica.address),
+                self.cluster_rpc.get_server_rpc(&primary_replica.address),
                 retry == 0,
             )
             .await
@@ -285,15 +285,15 @@ impl Replica {
             .replicas
             .into_iter()
             .map(|replica| {
-                let server_rpc = cluster_rpc.get_server(&replica.address.parse().unwrap());
+                let server_rpc = cluster_rpc.get_server_rpc(&replica.address.parse().unwrap());
                 Replica::new(&proto.name, replica, server_rpc)
             })
             .collect()
     }
 
     async fn fetch_all(name: &str, cluster_rpc: Arc<ClusterRPC>) -> Result<Vec<Self>> {
-        for mut client in cluster_rpc.iter_servers_cloned() {
-            let res = client.databases_get(get_req(&name)).await;
+        for mut rpc in cluster_rpc.iter_server_rpcs_cloned() {
+            let res = rpc.databases_get(get_req(&name)).await;
             match res {
                 Ok(res) => {
                     return Ok(Replica::from_proto(res.database.unwrap(), &cluster_rpc));
@@ -302,7 +302,7 @@ impl Replica {
                     println!(
                         "Failed to fetch replica info for database '{}' from {}. Attempting next server.",
                         name,
-                        client.address()
+                        rpc.address()
                     );
                 }
                 Err(err) => return Err(err),

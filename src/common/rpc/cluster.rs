@@ -86,16 +86,16 @@ impl ClusterRPC {
         self.cluster_clients.keys()
     }
 
-    pub(crate) fn get_server(&self, address: &Address) -> ClusterServerRPC {
+    pub(crate) fn get_server_rpc(&self, address: &Address) -> ClusterServerRPC {
         self.cluster_clients.get(address).unwrap().clone()
     }
 
-    pub(crate) fn get_any_server(&self) -> ClusterServerRPC {
+    pub(crate) fn get_any_server_rpc(&self) -> ClusterServerRPC {
         // TODO round robin?
         self.cluster_clients.values().next().unwrap().clone()
     }
 
-    pub(crate) fn iter_servers_cloned(&self) -> impl Iterator<Item = ClusterServerRPC> + '_ {
+    pub(crate) fn iter_server_rpcs_cloned(&self) -> impl Iterator<Item = ClusterServerRPC> + '_ {
         self.cluster_clients.values().cloned()
     }
 
