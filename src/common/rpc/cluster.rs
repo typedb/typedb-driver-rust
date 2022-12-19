@@ -112,7 +112,7 @@ pub(crate) struct ClusterServerRPC {
     core_rpc: CoreRPC,
     cluster_grpc: ClusterGRPC<CallCredChannel>,
     call_credentials: Arc<CallCredentials>,
-    pub(crate) executor: Arc<Executor>,
+    pub(crate) executor: Executor,
 }
 
 impl ClusterServerRPC {
@@ -122,7 +122,7 @@ impl ClusterServerRPC {
             address,
             core_rpc: CoreRPC::new(channel.clone())?,
             cluster_grpc: ClusterGRPC::new(channel.into()),
-            executor: Arc::new(Executor::new().expect("Failed to create Executor")),
+            executor: Executor::new().expect("Failed to create Executor"),
             call_credentials,
         })
     }

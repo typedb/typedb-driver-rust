@@ -19,8 +19,6 @@
  * under the License.
  */
 
-use std::sync::Arc;
-
 use futures::channel::mpsc;
 use tonic::Streaming;
 use typedb_protocol::{core_database, core_database_manager, session, transaction};
@@ -52,7 +50,7 @@ impl From<ClusterServerRPC> for ServerRPC {
 }
 
 impl ServerRPC {
-    pub(crate) fn executor(&self) -> &Arc<Executor> {
+    pub(crate) fn executor(&self) -> &Executor {
         match self {
             Self::Core(client) => &client.executor,
             Self::Cluster(client) => &client.executor,

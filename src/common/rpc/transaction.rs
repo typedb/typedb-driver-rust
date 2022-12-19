@@ -110,7 +110,7 @@ impl TransactionRPC {
 #[derive(Clone, Debug)]
 struct Sender {
     state: Arc<SenderState>,
-    executor: Arc<Executor>,
+    executor: Executor,
 }
 
 #[derive(Debug)]
@@ -187,7 +187,7 @@ impl SenderState {
 impl Sender {
     pub(crate) fn new(
         req_sink: mpsc::Sender<transaction::Client>,
-        executor: Arc<Executor>,
+        executor: Executor,
         close_signal_receiver: CloseSignalReceiver,
     ) -> Self {
         let state = Arc::new(SenderState::new(req_sink));

@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{future::Future, sync::Arc};
+use std::future::Future;
 
 use futures::{channel::mpsc, SinkExt};
 use tonic::{Response, Status, Streaming};
@@ -115,14 +115,14 @@ impl CoreGRPC {
 #[derive(Clone, Debug)]
 pub(crate) struct CoreRPC {
     core_grpc: CoreGRPC,
-    pub(crate) executor: Arc<Executor>,
+    pub(crate) executor: Executor,
 }
 
 impl CoreRPC {
     pub(crate) fn new(channel: Channel) -> Result<Self> {
         Ok(Self {
             core_grpc: CoreGRPC::new(channel),
-            executor: Arc::new(Executor::new().expect("Failed to create Executor")),
+            executor: Executor::new().expect("Failed to create Executor"),
         })
     }
 
