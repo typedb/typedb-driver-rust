@@ -28,7 +28,7 @@ use futures::{channel::mpsc, future::BoxFuture, FutureExt};
 use tonic::Streaming;
 use typedb_protocol::{
     cluster_database_manager, cluster_user, core_database, core_database_manager, session,
-    transaction, type_db_cluster_client::TypeDbClusterClient as ProtoTypeDBClusterClient,
+    transaction, type_db_cluster_client::TypeDbClusterClient as ClusterGRPC,
 };
 
 use crate::common::{
@@ -110,7 +110,7 @@ impl ClusterRPC {
 pub(crate) struct ClusterServerRPC {
     address: Address,
     core_rpc: CoreRPC,
-    cluster_client: ProtoTypeDBClusterClient<CallCredChannel>,
+    cluster_grpc: ClusterGRPC<CallCredChannel>,
     pub(crate) executor: Arc<Executor>,
     call_credentials: CallCredentials,
 }
@@ -121,14 +121,14 @@ impl ClusterServerRPC {
         Ok(Self {
             address,
             core_rpc: CoreRPC::new(channel.clone())?,
-            cluster_client: ProtoTypeDBClusterClient::new(channel.into()),
+            cluster_grpc: ClusterGRPC::new(channel.into()),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
             call_credentials,
         })
     }
 
     async fn validated(mut self) -> Result<Self> {
-        self.cluster_client.databases_all(cluster::database_manager::all_req()).await?;
+        self.cluster_grpc.databases_all(cluster::database_manager::all_req()).await?;
         Ok(self)
     }
 
@@ -161,7 +161,7 @@ impl ClusterServerRPC {
         &mut self,
         username: cluster_user::token::Req,
     ) -> Result<cluster_user::token::Res> {
-        Ok(self.cluster_client.user_token(username).await?.into_inner())
+        Ok(self.cluster_grpc.user_token(username).await?.into_inner())
     }
 
     pub(crate) async fn servers_all(
@@ -169,7 +169,7 @@ impl ClusterServerRPC {
     ) -> Result<typedb_protocol::server_manager::all::Res> {
         self.call_with_auto_renew_token(|this| {
             Box::pin(
-                this.cluster_client
+                this.cluster_grpc
                     .servers_all(cluster::server_manager::all_req())
                     .map(|res| Ok(res?.into_inner())),
             )
@@ -182,9 +182,7 @@ impl ClusterServerRPC {
         req: cluster_database_manager::get::Req,
     ) -> Result<cluster_database_manager::get::Res> {
         self.call_with_auto_renew_token(|this| {
-            Box::pin(
-                this.cluster_client.databases_get(req.clone()).map(|res| Ok(res?.into_inner())),
-            )
+            Box::pin(this.cluster_grpc.databases_get(req.clone()).map(|res| Ok(res?.into_inner())))
         })
         .await
     }
@@ -194,9 +192,7 @@ impl ClusterServerRPC {
         req: cluster_database_manager::all::Req,
     ) -> Result<cluster_database_manager::all::Res> {
         self.call_with_auto_renew_token(|this| {
-            Box::pin(
-                this.cluster_client.databases_all(req.clone()).map(|res| Ok(res?.into_inner())),
-            )
+            Box::pin(this.cluster_grpc.databases_all(req.clone()).map(|res| Ok(res?.into_inner())))
         })
         .await
     }

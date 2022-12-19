@@ -24,7 +24,8 @@ use std::{future::Future, sync::Arc};
 use futures::{channel::mpsc, SinkExt};
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
-    core_database, core_database_manager, session, transaction, type_db_client::TypeDbClient,
+    core_database, core_database_manager, session, transaction,
+    type_db_client::TypeDbClient as RawCoreGRPC,
 };
 
 use crate::{
@@ -40,16 +41,16 @@ use crate::{
 };
 
 #[derive(Clone, Debug)]
-enum ProtoTypeDBRPC {
-    Plaintext(TypeDbClient<TonicChannel>),
-    Encrypted(TypeDbClient<CallCredChannel>),
+enum CoreGRPC {
+    Plaintext(RawCoreGRPC<TonicChannel>),
+    Encrypted(RawCoreGRPC<CallCredChannel>),
 }
 
-impl ProtoTypeDBRPC {
+impl CoreGRPC {
     pub fn new(channel: Channel) -> Self {
         match channel {
-            Channel::Plaintext(channel) => Self::Plaintext(TypeDbClient::new(channel)),
-            Channel::Encrypted(channel) => Self::Encrypted(TypeDbClient::new(channel)),
+            Channel::Plaintext(channel) => Self::Plaintext(RawCoreGRPC::new(channel)),
+            Channel::Encrypted(channel) => Self::Encrypted(RawCoreGRPC::new(channel)),
         }
     }
 
@@ -113,14 +114,14 @@ impl ProtoTypeDBRPC {
 
 #[derive(Clone, Debug)]
 pub(crate) struct CoreRPC {
-    client: ProtoTypeDBRPC,
+    core_grpc: CoreGRPC,
     pub(crate) executor: Arc<Executor>,
 }
 
 impl CoreRPC {
     pub(crate) fn new(channel: Channel) -> Result<Self> {
         Ok(Self {
-            client: ProtoTypeDBRPC::new(channel),
+            core_grpc: CoreGRPC::new(channel),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
         })
     }
@@ -131,7 +132,7 @@ impl CoreRPC {
 
     async fn validated(mut self) -> Result<Self> {
         // TODO: temporary hack to validate connection until we have client pulse
-        self.client.databases_all(core::database_manager::all_req()).await?;
+        self.core_grpc.databases_all(core::database_manager::all_req()).await?;
         Ok(self)
     }
 
@@ -139,63 +140,63 @@ impl CoreRPC {
         &mut self,
         req: core_database_manager::contains::Req,
     ) -> Result<core_database_manager::contains::Res> {
-        single(self.client.databases_contains(req)).await
+        single(self.core_grpc.databases_contains(req)).await
     }
 
     pub(crate) async fn databases_create(
         &mut self,
         req: core_database_manager::create::Req,
     ) -> Result<core_database_manager::create::Res> {
-        single(self.client.databases_create(req)).await
+        single(self.core_grpc.databases_create(req)).await
     }
 
     pub(crate) async fn databases_all(
         &mut self,
         req: core_database_manager::all::Req,
     ) -> Result<core_database_manager::all::Res> {
-        single(self.client.databases_all(req)).await
+        single(self.core_grpc.databases_all(req)).await
     }
 
     pub(crate) async fn database_delete(
         &mut self,
         req: core_database::delete::Req,
     ) -> Result<core_database::delete::Res> {
-        single(self.client.database_delete(req)).await
+        single(self.core_grpc.database_delete(req)).await
     }
 
     pub(crate) async fn database_rule_schema(
         &mut self,
         req: core_database::rule_schema::Req,
     ) -> Result<core_database::rule_schema::Res> {
-        single(self.client.database_rule_schema(req)).await
+        single(self.core_grpc.database_rule_schema(req)).await
     }
 
     pub(crate) async fn database_schema(
         &mut self,
         req: core_database::schema::Req,
     ) -> Result<core_database::schema::Res> {
-        single(self.client.database_schema(req)).await
+        single(self.core_grpc.database_schema(req)).await
     }
 
     pub(crate) async fn database_type_schema(
         &mut self,
         req: core_database::type_schema::Req,
     ) -> Result<core_database::type_schema::Res> {
-        single(self.client.database_type_schema(req)).await
+        single(self.core_grpc.database_type_schema(req)).await
     }
 
     pub(crate) async fn session_open(
         &mut self,
         req: session::open::Req,
     ) -> Result<session::open::Res> {
-        single(self.client.session_open(req)).await
+        single(self.core_grpc.session_open(req)).await
     }
 
     pub(crate) async fn session_close(
         &mut self,
         req: session::close::Req,
     ) -> Result<session::close::Res> {
-        single(self.client.session_close(req)).await
+        single(self.core_grpc.session_close(req)).await
     }
 
     pub(crate) async fn transaction(
@@ -205,7 +206,7 @@ impl CoreRPC {
         // TODO: refactor to crossbeam channel
         let (mut sender, receiver) = mpsc::channel::<transaction::Client>(256);
         sender.send(client_msg(vec![open_req])).await.unwrap();
-        bidi_stream(sender, self.client.transaction(receiver)).await
+        bidi_stream(sender, self.core_grpc.transaction(receiver)).await
     }
 }
 
