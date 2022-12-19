@@ -59,21 +59,16 @@ pub(crate) struct TransactionRPC {
 
 impl TransactionRPC {
     pub(crate) async fn new(rpc_client: &ServerRPC, open_req: transaction::Req) -> Result<Self> {
-        let mut rpc_client_clone = rpc_client.clone();
+        let mut rpc_client = rpc_client.clone();
         let (req_sink, streaming_res): (
             mpsc::Sender<transaction::Client>,
             Streaming<transaction::Server>,
-        ) = rpc_client_clone.transaction(open_req).await?;
+        ) = rpc_client.transaction(open_req).await?;
         let (close_signal_sink, close_signal_receiver) = oneshot::channel::<Option<Error>>();
         Ok(TransactionRPC {
-            rpc_client: rpc_client_clone.clone(),
-            sender: Sender::new(
-                req_sink,
-                rpc_client_clone.executor().clone(),
-                close_signal_receiver,
-            ),
-            receiver: Receiver::new(streaming_res, rpc_client_clone.executor(), close_signal_sink)
-                .await,
+            rpc_client: rpc_client.clone(),
+            sender: Sender::new(req_sink, rpc_client.executor().clone(), close_signal_receiver),
+            receiver: Receiver::new(streaming_res, rpc_client.executor(), close_signal_sink),
         })
     }
 
@@ -354,7 +349,7 @@ fn close_reason(error_str: &Option<String>) -> Error {
 }
 
 impl Receiver {
-    async fn new(
+    fn new(
         grpc_stream: Streaming<transaction::Server>,
         executor: &Executor,
         close_signal_sink: CloseSignalSink,
