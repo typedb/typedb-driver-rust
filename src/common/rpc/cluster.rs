@@ -21,7 +21,7 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use futures::{channel::mpsc, future::BoxFuture, FutureExt};
@@ -112,18 +112,18 @@ pub(crate) struct ClusterServerRPC {
     core_rpc: CoreRPC,
     cluster_client: ProtoTypeDBClusterClient<CallCredChannel>,
     pub(crate) executor: Arc<Executor>,
-    credential_handler: Arc<Mutex<CallCredentials>>,
+    call_credentials: CallCredentials,
 }
 
 impl ClusterServerRPC {
     pub(crate) fn new(address: Address, credential: Credential) -> Result<Self> {
-        let (channel, credential_handler) = Channel::open_encrypted(address.clone(), credential)?;
+        let (channel, call_credentials) = Channel::open_encrypted(address.clone(), credential)?;
         Ok(Self {
             address,
             core_rpc: CoreRPC::new(channel.clone())?,
             cluster_client: ProtoTypeDBClusterClient::new(channel.into()),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
-            credential_handler,
+            call_credentials,
         })
     }
 
@@ -150,10 +150,10 @@ impl ClusterServerRPC {
     }
 
     async fn renew_token(&mut self) -> Result {
-        self.credential_handler.lock().unwrap().reset_token();
-        let req = token_req(self.credential_handler.lock().unwrap().username());
+        self.call_credentials.reset_token();
+        let req = token_req(self.call_credentials.username());
         let token = self.user_token(req).await?.token;
-        self.credential_handler.lock().unwrap().set_token(token);
+        self.call_credentials.set_token(token);
         Ok(())
     }
 

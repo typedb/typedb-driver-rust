@@ -19,8 +19,6 @@
  * under the License.
  */
 
-use std::sync::{Arc, Mutex};
-
 use tonic::{codegen::InterceptedService, service::Interceptor, Request, Status};
 
 use crate::{
@@ -44,20 +42,20 @@ impl Channel {
     pub(crate) fn open_encrypted(
         address: Address,
         credential: Credential,
-    ) -> Result<(Self, Arc<Mutex<CallCredentials>>)> {
+    ) -> Result<(Self, CallCredentials)> {
         let mut builder = TonicChannel::builder(address.into_uri());
         if credential.is_tls_enabled() {
             builder = builder.tls_config(credential.tls_config()?)?;
         }
 
         let channel = builder.connect_lazy();
-        let shared_cred = Arc::new(Mutex::new(CallCredentials::new(credential)));
+        let call_credentials = CallCredentials::new(credential);
         Ok((
             Self::Encrypted(InterceptedService::new(
                 channel,
-                CredentialInjector::new(shared_cred.clone()),
+                CredentialInjector::new(call_credentials.clone()),
             )),
-            shared_cred,
+            call_credentials,
         ))
     }
 }
@@ -82,17 +80,17 @@ impl From<Channel> for CallCredChannel {
 
 #[derive(Clone, Debug)]
 pub(crate) struct CredentialInjector {
-    call_credentials: Arc<Mutex<CallCredentials>>,
+    call_credentials: CallCredentials,
 }
 
 impl CredentialInjector {
-    fn new(credential_handler: Arc<Mutex<CallCredentials>>) -> Self {
-        Self { call_credentials: credential_handler }
+    fn new(call_credentials: CallCredentials) -> Self {
+        Self { call_credentials }
     }
 }
 
 impl Interceptor for CredentialInjector {
     fn call(&mut self, request: Request<()>) -> std::result::Result<Request<()>, Status> {
-        Ok(self.call_credentials.lock().unwrap().inject(request))
+        Ok(self.call_credentials.inject(request))
     }
 }
