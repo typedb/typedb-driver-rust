@@ -118,6 +118,10 @@ impl Debug for Database {
 }
 
 impl Database {
+    const PRIMARY_REPLICA_TASK_MAX_RETRIES: usize = 10;
+    const FETCH_REPLICAS_MAX_RETRIES: usize = 10;
+    const WAIT_FOR_PRIMARY_REPLICA_SELECTION: Duration = Duration::from_secs(2);
+
     fn new(proto: typedb_protocol::ClusterDatabase, cluster_rpc: Arc<ClusterRPC>) -> Result<Self> {
         let name = proto.name.clone();
         let replicas = Replica::from_proto(proto, &cluster_rpc);
@@ -171,8 +175,7 @@ impl Database {
             self.seek_primary_replica().await?
         };
 
-        let max_retries = 10; // FIXME constant
-        for retry in 0..max_retries {
+        for retry in 0..Self::PRIMARY_REPLICA_TASK_MAX_RETRIES {
             match task(
                 primary_replica.database.clone(),
                 self.cluster_rpc.get_server(&primary_replica.address),
@@ -208,8 +211,7 @@ impl Database {
     }
 
     async fn seek_primary_replica(&mut self) -> Result<Replica> {
-        let fetch_max_retries = 10; // FIXME constant
-        for _ in 0..fetch_max_retries {
+        for _ in 0..Self::FETCH_REPLICAS_MAX_RETRIES {
             self.replicas = Replica::fetch_all(&self.name, self.cluster_rpc.clone()).await?;
             if let Some(replica) = self.primary_replica() {
                 return Ok(replica);
@@ -220,7 +222,7 @@ impl Database {
     }
 
     async fn wait_for_primary_replica_selection() {
-        sleep(Duration::from_secs(2)).await; // FIXME constant
+        sleep(Self::WAIT_FOR_PRIMARY_REPLICA_SELECTION).await;
     }
 
     pub async fn delete(mut self) -> Result {
