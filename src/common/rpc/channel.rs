@@ -19,6 +19,8 @@
  * under the License.
  */
 
+use std::sync::Arc;
+
 use tonic::{codegen::InterceptedService, service::Interceptor, Request, Status};
 
 use crate::{
@@ -42,14 +44,14 @@ impl Channel {
     pub(crate) fn open_encrypted(
         address: Address,
         credential: Credential,
-    ) -> Result<(Self, CallCredentials)> {
+    ) -> Result<(Self, Arc<CallCredentials>)> {
         let mut builder = TonicChannel::builder(address.into_uri());
         if credential.is_tls_enabled() {
             builder = builder.tls_config(credential.tls_config()?)?;
         }
 
         let channel = builder.connect_lazy();
-        let call_credentials = CallCredentials::new(credential);
+        let call_credentials = Arc::new(CallCredentials::new(credential));
         Ok((
             Self::Encrypted(InterceptedService::new(
                 channel,
@@ -80,11 +82,11 @@ impl From<Channel> for CallCredChannel {
 
 #[derive(Clone, Debug)]
 pub(crate) struct CredentialInjector {
-    call_credentials: CallCredentials,
+    call_credentials: Arc<CallCredentials>,
 }
 
 impl CredentialInjector {
-    fn new(call_credentials: CallCredentials) -> Self {
+    fn new(call_credentials: Arc<CallCredentials>) -> Self {
         Self { call_credentials }
     }
 }

@@ -112,7 +112,7 @@ pub(crate) struct ClusterServerRPC {
     core_rpc: CoreRPC,
     cluster_grpc: ClusterGRPC<CallCredChannel>,
     pub(crate) executor: Arc<Executor>,
-    call_credentials: CallCredentials,
+    call_credentials: Arc<CallCredentials>,
 }
 
 impl ClusterServerRPC {

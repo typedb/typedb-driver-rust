@@ -22,7 +22,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::{Arc, RwLock},
+    sync::RwLock,
 };
 
 use tonic::{
@@ -81,15 +81,15 @@ impl Credential {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct CallCredentials {
     credential: Credential,
-    token: Arc<RwLock<Option<String>>>,
+    token: RwLock<Option<String>>,
 }
 
 impl CallCredentials {
     pub(super) fn new(credential: Credential) -> Self {
-        Self { credential, token: Arc::new(RwLock::new(None)) }
+        Self { credential, token: RwLock::new(None) }
     }
 
     pub(super) fn username(&self) -> &str {
