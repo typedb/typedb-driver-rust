@@ -71,25 +71,19 @@ impl DatabaseManager {
 
     pub async fn all(&mut self) -> Result<Vec<Database>> {
         let mut error_buffer = Vec::with_capacity(self.cluster_rpc.len());
-        let mut databases = None;
         for mut server_rpc in self.cluster_rpc.iter_server_rpcs_cloned() {
             match server_rpc.databases_all(all_req()).await {
-                Err(err) => error_buffer.push(format!("- {}: {}", server_rpc.address(), err)),
                 Ok(list) => {
-                    databases = Some(list.databases);
-                    break;
+                    return list
+                        .databases
+                        .into_iter()
+                        .map(|proto_db| Database::new(proto_db, self.cluster_rpc.clone()))
+                        .collect()
                 }
+                Err(err) => error_buffer.push(format!("- {}: {}", server_rpc.address(), err)),
             }
         }
-        if databases.is_none() {
-            Err(ClientError::ClusterAllNodesFailed(error_buffer.join("\n")))?;
-        }
-
-        databases
-            .unwrap()
-            .into_iter()
-            .map(|proto_db| Database::new(proto_db, self.cluster_rpc.clone()))
-            .collect()
+        Err(ClientError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
 
     async fn run_failsafe<F, P, R>(&mut self, name: &str, task: F) -> Result<R>
