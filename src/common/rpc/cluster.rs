@@ -201,7 +201,7 @@ impl ClusterServerRPC {
         .await
     }
 
-    // server client pasthrough
+    // server client pass-through
     pub(super) async fn core_databases_all(
         &mut self,
         req: core_database_manager::all::Req,
