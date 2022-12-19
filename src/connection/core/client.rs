@@ -32,7 +32,7 @@ pub struct Client {
 impl Client {
     pub async fn new(address: &str) -> Result<Self> {
         let core_rpc = CoreRPC::connect(address.parse()?).await?;
-        Ok(Self { databases: core::DatabaseManager::new(core_rpc.clone().into()), core_rpc })
+        Ok(Self { databases: core::DatabaseManager::new(core_rpc.clone()), core_rpc })
     }
 
     pub async fn with_default_address() -> Result<Self> {

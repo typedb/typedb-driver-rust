@@ -227,7 +227,7 @@ impl Replica {
 
     async fn fetch_all(name: &str, cluster_rpc: Arc<ClusterRPC>) -> Result<Vec<Self>> {
         for mut rpc in cluster_rpc.iter_server_rpcs_cloned() {
-            let res = rpc.databases_get(get_req(&name)).await;
+            let res = rpc.databases_get(get_req(name)).await;
             match res {
                 Ok(res) => {
                     return Ok(Replica::from_proto(res.database.unwrap(), &cluster_rpc));
