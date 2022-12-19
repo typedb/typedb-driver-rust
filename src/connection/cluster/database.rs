@@ -130,11 +130,37 @@ impl Database {
         })
     }
 
-    pub(crate) fn primary_replica(&mut self) -> Option<Replica> {
-        self.replicas.iter().filter(|r| r.is_primary).max_by_key(|r| r.term).cloned()
+    pub async fn delete(mut self) -> Result {
+        self.run_on_primary_replica(|database, _, _| database.delete()).await
     }
 
-    pub(crate) async fn run_on_any_replica<F, P, R>(&mut self, task: F) -> Result<R>
+    pub async fn schema(&mut self) -> Result<String> {
+        self.run_failsafe(|mut database, _, _| async move { database.schema().await }).await
+    }
+
+    pub async fn rule_schema(&mut self) -> Result<String> {
+        self.run_failsafe(|mut database, _, _| async move { database.rule_schema().await }).await
+    }
+
+    pub async fn type_schema(&mut self) -> Result<String> {
+        self.run_failsafe(|mut database, _, _| async move { database.type_schema().await }).await
+    }
+
+    pub(crate) async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
+        where
+            F: Fn(server::Database, ClusterServerRPC, bool) -> P,
+            P: Future<Output = Result<R>>,
+    {
+        match self.run_on_any_replica(&task).await {
+            Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => {
+                debug!("Attempted to run on a non-primary replica, retrying on primary...");
+                self.run_on_primary_replica(&task).await
+            }
+            res => res,
+        }
+    }
+
+    async fn run_on_any_replica<F, P, R>(&mut self, task: F) -> Result<R>
     where
         F: Fn(server::Database, ClusterServerRPC, bool) -> P,
         P: Future<Output = Result<R>>,
@@ -158,7 +184,7 @@ impl Database {
         Err(self.cluster_rpc.unable_to_connect())
     }
 
-    pub(crate) async fn run_on_primary_replica<F, P, R>(&mut self, task: F) -> Result<R>
+    async fn run_on_primary_replica<F, P, R>(&mut self, task: F) -> Result<R>
     where
         F: Fn(server::Database, ClusterServerRPC, bool) -> P,
         P: Future<Output = Result<R>>,
@@ -190,20 +216,6 @@ impl Database {
         Err(self.cluster_rpc.unable_to_connect())
     }
 
-    pub(crate) async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
-    where
-        F: Fn(server::Database, ClusterServerRPC, bool) -> P,
-        P: Future<Output = Result<R>>,
-    {
-        match self.run_on_any_replica(&task).await {
-            Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => {
-                debug!("Attempted to run on a non-primary replica, retrying on primary...");
-                self.run_on_primary_replica(&task).await
-            }
-            res => res,
-        }
-    }
-
     async fn seek_primary_replica(&mut self) -> Result<Replica> {
         for _ in 0..Self::FETCH_REPLICAS_MAX_RETRIES {
             self.replicas = Replica::fetch_all(&self.name, self.cluster_rpc.clone()).await?;
@@ -215,24 +227,12 @@ impl Database {
         Err(self.cluster_rpc.unable_to_connect())
     }
 
+    fn primary_replica(&mut self) -> Option<Replica> {
+        self.replicas.iter().filter(|r| r.is_primary).max_by_key(|r| r.term).cloned()
+    }
+
     async fn wait_for_primary_replica_selection() {
         sleep(Self::WAIT_FOR_PRIMARY_REPLICA_SELECTION).await;
-    }
-
-    pub async fn delete(mut self) -> Result {
-        self.run_on_primary_replica(|database, _, _| database.delete()).await
-    }
-
-    pub async fn schema(&mut self) -> Result<String> {
-        self.run_failsafe(|mut database, _, _| async move { database.schema().await }).await
-    }
-
-    pub async fn rule_schema(&mut self) -> Result<String> {
-        self.run_failsafe(|mut database, _, _| async move { database.rule_schema().await }).await
-    }
-
-    pub async fn type_schema(&mut self) -> Result<String> {
-        self.run_failsafe(|mut database, _, _| async move { database.type_schema().await }).await
     }
 }
 
