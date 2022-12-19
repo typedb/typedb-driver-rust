@@ -267,7 +267,7 @@ impl Replica {
         name: &str,
         metadata: typedb_protocol::cluster_database::Replica,
         rpc_client: ClusterServerRPC,
-    ) -> Replica {
+    ) -> Self {
         Self {
             address: metadata.address.parse().expect("Invalid URI received from the server"),
             database_name: name.to_owned(),
@@ -278,10 +278,7 @@ impl Replica {
         }
     }
 
-    fn from_proto(
-        proto: typedb_protocol::ClusterDatabase,
-        cluster_rpc: &ClusterRPC,
-    ) -> Vec<Replica> {
+    fn from_proto(proto: typedb_protocol::ClusterDatabase, cluster_rpc: &ClusterRPC) -> Vec<Self> {
         proto
             .replicas
             .into_iter()
