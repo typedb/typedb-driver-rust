@@ -42,13 +42,6 @@ impl Database {
         Ok(())
     }
 
-    pub async fn rule_schema(&mut self) -> Result<String> {
-        self.server_rpc
-            .database_rule_schema(rule_schema_req(self.name.as_str()))
-            .await
-            .map(|res| res.schema)
-    }
-
     pub async fn schema(&mut self) -> Result<String> {
         self.server_rpc.database_schema(schema_req(self.name.as_str())).await.map(|res| res.schema)
     }
@@ -56,6 +49,13 @@ impl Database {
     pub async fn type_schema(&mut self) -> Result<String> {
         self.server_rpc
             .database_type_schema(type_schema_req(self.name.as_str()))
+            .await
+            .map(|res| res.schema)
+    }
+
+    pub async fn rule_schema(&mut self) -> Result<String> {
+        self.server_rpc
+            .database_rule_schema(rule_schema_req(self.name.as_str()))
             .await
             .map(|res| res.schema)
     }

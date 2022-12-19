@@ -164,13 +164,6 @@ impl CoreRPC {
         single(self.core_grpc.database_delete(req)).await
     }
 
-    pub(crate) async fn database_rule_schema(
-        &mut self,
-        req: core_database::rule_schema::Req,
-    ) -> Result<core_database::rule_schema::Res> {
-        single(self.core_grpc.database_rule_schema(req)).await
-    }
-
     pub(crate) async fn database_schema(
         &mut self,
         req: core_database::schema::Req,
@@ -183,6 +176,13 @@ impl CoreRPC {
         req: core_database::type_schema::Req,
     ) -> Result<core_database::type_schema::Res> {
         single(self.core_grpc.database_type_schema(req)).await
+    }
+
+    pub(crate) async fn database_rule_schema(
+        &mut self,
+        req: core_database::rule_schema::Req,
+    ) -> Result<core_database::rule_schema::Res> {
+        single(self.core_grpc.database_rule_schema(req)).await
     }
 
     pub(crate) async fn session_open(

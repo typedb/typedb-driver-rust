@@ -75,11 +75,6 @@ impl ServerRPC {
             req: core_database::delete::Req,
         ) -> Result<core_database::delete::Res>;
 
-        pub(crate) async fn database_rule_schema(
-            &mut self,
-            req: core_database::rule_schema::Req,
-        ) -> Result<core_database::rule_schema::Res>;
-
         pub(crate) async fn database_schema(
             &mut self,
             req: core_database::schema::Req,
@@ -89,6 +84,11 @@ impl ServerRPC {
             &mut self,
             req: core_database::type_schema::Req,
         ) -> Result<core_database::type_schema::Res>;
+
+        pub(crate) async fn database_rule_schema(
+            &mut self,
+            req: core_database::rule_schema::Req,
+        ) -> Result<core_database::rule_schema::Res>;
 
         pub(crate) async fn session_open(
             &mut self,

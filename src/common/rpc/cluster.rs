@@ -78,7 +78,7 @@ impl ClusterRPC {
         Err(ClientError::UnableToConnect())?
     }
 
-    pub(crate) fn len(&self) -> usize {
+    pub(crate) fn server_rpc_count(&self) -> usize {
         self.server_rpcs.len()
     }
 
@@ -111,8 +111,8 @@ pub(crate) struct ClusterServerRPC {
     address: Address,
     core_rpc: CoreRPC,
     cluster_grpc: ClusterGRPC<CallCredChannel>,
-    pub(crate) executor: Arc<Executor>,
     call_credentials: Arc<CallCredentials>,
+    pub(crate) executor: Arc<Executor>,
 }
 
 impl ClusterServerRPC {
@@ -226,6 +226,14 @@ impl ClusterServerRPC {
             .await
     }
 
+    pub(crate) async fn database_schema(
+        &mut self,
+        req: core_database::schema::Req,
+    ) -> Result<core_database::schema::Res> {
+        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.database_schema(req.clone())))
+            .await
+    }
+
     pub(crate) async fn database_rule_schema(
         &mut self,
         req: core_database::rule_schema::Req,
@@ -234,14 +242,6 @@ impl ClusterServerRPC {
             Box::pin(this.core_rpc.database_rule_schema(req.clone()))
         })
         .await
-    }
-
-    pub(crate) async fn database_schema(
-        &mut self,
-        req: core_database::schema::Req,
-    ) -> Result<core_database::schema::Res> {
-        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.database_schema(req.clone())))
-            .await
     }
 
     pub(crate) async fn database_type_schema(

@@ -78,12 +78,12 @@ impl Database {
         self.run_failsafe(|mut database, _, _| async move { database.schema().await }).await
     }
 
-    pub async fn rule_schema(&mut self) -> Result<String> {
-        self.run_failsafe(|mut database, _, _| async move { database.rule_schema().await }).await
-    }
-
     pub async fn type_schema(&mut self) -> Result<String> {
         self.run_failsafe(|mut database, _, _| async move { database.type_schema().await }).await
+    }
+
+    pub async fn rule_schema(&mut self) -> Result<String> {
+        self.run_failsafe(|mut database, _, _| async move { database.rule_schema().await }).await
     }
 
     pub(crate) async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>

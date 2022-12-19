@@ -68,7 +68,7 @@ impl DatabaseManager {
     }
 
     pub async fn all(&mut self) -> Result<Vec<Database>> {
-        let mut error_buffer = Vec::with_capacity(self.cluster_rpc.len());
+        let mut error_buffer = Vec::with_capacity(self.cluster_rpc.server_rpc_count());
         for mut server_rpc in self.cluster_rpc.iter_server_rpcs_cloned() {
             match server_rpc.databases_all(all_req()).await {
                 Ok(list) => {
