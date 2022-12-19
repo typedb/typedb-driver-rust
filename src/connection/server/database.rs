@@ -22,57 +22,9 @@
 use std::fmt::{Display, Formatter};
 
 use crate::common::{
-    error::ClientError,
-    rpc::builder::core::{
-        database::{delete_req, rule_schema_req, schema_req, type_schema_req},
-        database_manager::{all_req, contains_req, create_req},
-    },
+    rpc::builder::core::database::{delete_req, rule_schema_req, schema_req, type_schema_req},
     Result, ServerRPC,
 };
-
-/// An interface for performing database-level operations against the connected server.
-/// These operations include:
-///
-/// - Listing [all databases][DatabaseManager::all]
-/// - Creating a [new database][DatabaseManager::create]
-/// - Checking if a database [exists][DatabaseManager::contains]
-/// - Retrieving a [specific database][DatabaseManager::get] in order to perform further operations on it
-///
-/// These operations all connect to the server to retrieve results. In the event of a connection
-/// failure or other problem executing the operation, they will return an [`Err`][Err] result.
-#[derive(Clone, Debug)]
-pub struct DatabaseManager {
-    pub(crate) server_rpc: ServerRPC,
-}
-
-impl DatabaseManager {
-    pub(crate) fn new(server_rpc: ServerRPC) -> Self {
-        DatabaseManager { server_rpc }
-    }
-
-    /// Retrieves a single [`Database`][Database] by name. Returns an [`Err`][Err] if there does not
-    /// exist a database with the provided name.
-    pub async fn get(&mut self, name: &str) -> Result<Database> {
-        match self.contains(name).await? {
-            true => Ok(Database::new(name, self.server_rpc.clone())),
-            false => Err(ClientError::DatabaseDoesNotExist(name.to_string()))?,
-        }
-    }
-
-    pub async fn contains(&mut self, name: &str) -> Result<bool> {
-        self.server_rpc.databases_contains(contains_req(name)).await.map(|res| res.contains)
-    }
-
-    pub async fn create(&mut self, name: &str) -> Result {
-        self.server_rpc.databases_create(create_req(name)).await.map(|_| ())
-    }
-
-    pub async fn all(&mut self) -> Result<Vec<Database>> {
-        self.server_rpc.databases_all(all_req()).await.map(|res| {
-            res.names.iter().map(|name| Database::new(name, self.server_rpc.clone())).collect()
-        })
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct Database {

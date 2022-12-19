@@ -23,8 +23,4 @@ mod database;
 mod session;
 mod transaction;
 
-pub use self::{
-    database::{Database, DatabaseManager},
-    session::Session,
-    transaction::Transaction,
-};
+pub use self::{database::Database, session::Session, transaction::Transaction};

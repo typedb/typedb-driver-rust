@@ -202,14 +202,6 @@ impl ClusterServerRPC {
     }
 
     // server client pass-through
-    pub(super) async fn core_databases_all(
-        &mut self,
-        req: core_database_manager::all::Req,
-    ) -> Result<core_database_manager::all::Res> {
-        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.databases_all(req.clone())))
-            .await
-    }
-
     pub(crate) async fn databases_contains(
         &mut self,
         req: core_database_manager::contains::Req,

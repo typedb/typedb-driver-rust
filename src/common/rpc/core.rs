@@ -118,15 +118,15 @@ pub(crate) struct CoreRPC {
 }
 
 impl CoreRPC {
-    pub(crate) async fn connect(address: Address) -> Result<Self> {
-        Self::new(Channel::open_plaintext(address)?)?.validated().await
-    }
-
     pub(crate) fn new(channel: Channel) -> Result<Self> {
         Ok(Self {
             client: ProtoTypeDBRPC::new(channel),
             executor: Arc::new(Executor::new().expect("Failed to create Executor")),
         })
+    }
+
+    pub(crate) async fn connect(address: Address) -> Result<Self> {
+        Self::new(Channel::open_plaintext(address)?)?.validated().await
     }
 
     async fn validated(mut self) -> Result<Self> {

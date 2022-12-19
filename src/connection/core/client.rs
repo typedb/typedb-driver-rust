@@ -25,21 +25,21 @@ use crate::{
 };
 
 pub struct Client {
-    databases: server::DatabaseManager,
+    databases: core::DatabaseManager,
     core_rpc: CoreRPC,
 }
 
 impl Client {
     pub async fn new(address: &str) -> Result<Self> {
         let core_rpc = CoreRPC::connect(address.parse()?).await?;
-        Ok(Self { databases: server::DatabaseManager::new(core_rpc.clone().into()), core_rpc })
+        Ok(Self { databases: core::DatabaseManager::new(core_rpc.clone().into()), core_rpc })
     }
 
     pub async fn with_default_address() -> Result<Self> {
         Self::new("http://localhost:1729").await
     }
 
-    pub fn databases(&mut self) -> &mut server::DatabaseManager {
+    pub fn databases(&mut self) -> &mut core::DatabaseManager {
         &mut self.databases
     }
 

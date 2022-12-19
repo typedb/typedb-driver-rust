@@ -20,6 +20,7 @@
  */
 
 mod client;
+mod database_manager;
 mod options;
 
-pub use self::{client::Client, options::Options};
+pub use self::{client::Client, database_manager::DatabaseManager, options::Options};

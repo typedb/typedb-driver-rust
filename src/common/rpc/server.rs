@@ -59,16 +59,6 @@ impl ServerRPC {
         }
     }
 
-    pub(crate) async fn databases_all(
-        &mut self,
-        req: core_database_manager::all::Req,
-    ) -> Result<core_database_manager::all::Res> {
-        match self {
-            Self::Core(client) => client.databases_all(req).await,
-            Self::Cluster(client) => client.core_databases_all(req).await,
-        }
-    }
-
     async_enum_dispatch! { { Core, Cluster }
         pub(crate) async fn databases_contains(
             &mut self,

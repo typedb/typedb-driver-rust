@@ -21,10 +21,9 @@
 
 mod client;
 mod database;
+mod database_manager;
 mod session;
 
 pub use self::{
-    client::Client,
-    database::{Database, DatabaseManager},
-    session::Session,
+    client::Client, database::Database, database_manager::DatabaseManager, session::Session,
 };
