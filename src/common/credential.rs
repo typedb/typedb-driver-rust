@@ -22,7 +22,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
 use tonic::{
@@ -84,12 +84,12 @@ impl Credential {
 #[derive(Clone, Debug)]
 pub(crate) struct CallCredentials {
     credential: Credential,
-    token: Arc<Mutex<Option<String>>>,
+    token: Arc<RwLock<Option<String>>>,
 }
 
 impl CallCredentials {
     pub(super) fn new(credential: Credential) -> Self {
-        Self { credential, token: Arc::new(Mutex::new(None)) }
+        Self { credential, token: Arc::new(RwLock::new(None)) }
     }
 
     pub(super) fn username(&self) -> &str {
@@ -101,16 +101,16 @@ impl CallCredentials {
     }
 
     pub(super) fn set_token(&self, token: String) {
-        *self.token.lock().unwrap() = Some(token);
+        *self.token.write().unwrap() = Some(token);
     }
 
     pub(super) fn reset_token(&self) {
-        *self.token.lock().unwrap() = None;
+        *self.token.write().unwrap() = None;
     }
 
     pub(super) fn inject(&self, mut request: Request<()>) -> Request<()> {
         request.metadata_mut().insert("username", self.credential.username().try_into().unwrap());
-        match &*self.token.lock().unwrap() {
+        match &*self.token.read().unwrap() {
             Some(token) => request.metadata_mut().insert("token", token.try_into().unwrap()),
             None => request
                 .metadata_mut()
