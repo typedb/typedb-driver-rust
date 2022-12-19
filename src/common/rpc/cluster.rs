@@ -44,10 +44,20 @@ use crate::common::{
 
 #[derive(Debug, Clone)]
 pub(crate) struct ClusterRPC {
-    cluster_clients: HashMap<Address, ClusterServerRPC>,
+    server_rpcs: HashMap<Address, ClusterServerRPC>,
 }
 
 impl ClusterRPC {
+    pub(crate) fn new(addresses: HashSet<Address>, credential: Credential) -> Result<Arc<Self>> {
+        let cluster_clients = addresses
+            .into_iter()
+            .map(|address| {
+                Ok((address.clone(), ClusterServerRPC::new(address, credential.clone())?))
+            })
+            .collect::<Result<_>>()?;
+        Ok(Arc::new(Self { server_rpcs: cluster_clients }))
+    }
+
     pub(crate) async fn fetch_current_addresses<T: AsRef<str>>(
         addresses: &[T],
         credential: &Credential,
@@ -68,35 +78,25 @@ impl ClusterRPC {
         Err(ClientError::UnableToConnect())?
     }
 
-    pub(crate) fn new(addresses: HashSet<Address>, credential: Credential) -> Result<Arc<Self>> {
-        let cluster_clients = addresses
-            .into_iter()
-            .map(|address| {
-                Ok((address.clone(), ClusterServerRPC::new(address, credential.clone())?))
-            })
-            .collect::<Result<_>>()?;
-        Ok(Arc::new(Self { cluster_clients }))
-    }
-
     pub(crate) fn len(&self) -> usize {
-        self.cluster_clients.len()
+        self.server_rpcs.len()
     }
 
     pub(crate) fn addresses(&self) -> impl Iterator<Item = &Address> {
-        self.cluster_clients.keys()
+        self.server_rpcs.keys()
     }
 
     pub(crate) fn get_server_rpc(&self, address: &Address) -> ClusterServerRPC {
-        self.cluster_clients.get(address).unwrap().clone()
+        self.server_rpcs.get(address).unwrap().clone()
     }
 
     pub(crate) fn get_any_server_rpc(&self) -> ClusterServerRPC {
         // TODO round robin?
-        self.cluster_clients.values().next().unwrap().clone()
+        self.server_rpcs.values().next().unwrap().clone()
     }
 
     pub(crate) fn iter_server_rpcs_cloned(&self) -> impl Iterator<Item = ClusterServerRPC> + '_ {
-        self.cluster_clients.values().cloned()
+        self.server_rpcs.values().cloned()
     }
 
     pub(crate) fn unable_to_connect(&self) -> Error {
@@ -136,7 +136,7 @@ impl ClusterServerRPC {
         &self.address
     }
 
-    async fn may_renew_token<F, R>(&mut self, call: F) -> Result<R>
+    async fn call_with_auto_renew_token<F, R>(&mut self, call: F) -> Result<R>
     where
         for<'a> F: Fn(&'a mut Self) -> BoxFuture<'a, Result<R>>,
     {
@@ -167,7 +167,7 @@ impl ClusterServerRPC {
     pub(crate) async fn servers_all(
         &mut self,
     ) -> Result<typedb_protocol::server_manager::all::Res> {
-        self.may_renew_token(|this| {
+        self.call_with_auto_renew_token(|this| {
             Box::pin(
                 this.cluster_client
                     .servers_all(cluster::server_manager::all_req())
@@ -181,7 +181,7 @@ impl ClusterServerRPC {
         &mut self,
         req: cluster_database_manager::get::Req,
     ) -> Result<cluster_database_manager::get::Res> {
-        self.may_renew_token(|this| {
+        self.call_with_auto_renew_token(|this| {
             Box::pin(
                 this.cluster_client.databases_get(req.clone()).map(|res| Ok(res?.into_inner())),
             )
@@ -193,7 +193,7 @@ impl ClusterServerRPC {
         &mut self,
         req: cluster_database_manager::all::Req,
     ) -> Result<cluster_database_manager::all::Res> {
-        self.may_renew_token(|this| {
+        self.call_with_auto_renew_token(|this| {
             Box::pin(
                 this.cluster_client.databases_all(req.clone()).map(|res| Ok(res?.into_inner())),
             )
@@ -206,69 +206,87 @@ impl ClusterServerRPC {
         &mut self,
         req: core_database_manager::all::Req,
     ) -> Result<core_database_manager::all::Res> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.databases_all(req.clone()))).await
+        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.databases_all(req.clone())))
+            .await
     }
 
     pub(crate) async fn databases_contains(
         &mut self,
         req: core_database_manager::contains::Req,
     ) -> Result<core_database_manager::contains::Res> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.databases_contains(req.clone()))).await
+        self.call_with_auto_renew_token(|this| {
+            Box::pin(this.core_rpc.databases_contains(req.clone()))
+        })
+        .await
     }
 
     pub(crate) async fn databases_create(
         &mut self,
         req: core_database_manager::create::Req,
     ) -> Result<core_database_manager::create::Res> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.databases_create(req.clone()))).await
+        self.call_with_auto_renew_token(|this| {
+            Box::pin(this.core_rpc.databases_create(req.clone()))
+        })
+        .await
     }
 
     pub(crate) async fn database_delete(
         &mut self,
         req: core_database::delete::Req,
     ) -> Result<core_database::delete::Res> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.database_delete(req.clone()))).await
+        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.database_delete(req.clone())))
+            .await
     }
 
     pub(crate) async fn database_rule_schema(
         &mut self,
         req: core_database::rule_schema::Req,
     ) -> Result<core_database::rule_schema::Res> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.database_rule_schema(req.clone()))).await
+        self.call_with_auto_renew_token(|this| {
+            Box::pin(this.core_rpc.database_rule_schema(req.clone()))
+        })
+        .await
     }
 
     pub(crate) async fn database_schema(
         &mut self,
         req: core_database::schema::Req,
     ) -> Result<core_database::schema::Res> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.database_schema(req.clone()))).await
+        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.database_schema(req.clone())))
+            .await
     }
 
     pub(crate) async fn database_type_schema(
         &mut self,
         req: core_database::type_schema::Req,
     ) -> Result<core_database::type_schema::Res> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.database_type_schema(req.clone()))).await
+        self.call_with_auto_renew_token(|this| {
+            Box::pin(this.core_rpc.database_type_schema(req.clone()))
+        })
+        .await
     }
 
     pub(crate) async fn session_open(
         &mut self,
         req: session::open::Req,
     ) -> Result<session::open::Res> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.session_open(req.clone()))).await
+        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.session_open(req.clone())))
+            .await
     }
 
     pub(crate) async fn session_close(
         &mut self,
         req: session::close::Req,
     ) -> Result<session::close::Res> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.session_close(req.clone()))).await
+        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.session_close(req.clone())))
+            .await
     }
 
     pub(crate) async fn transaction(
         &mut self,
         req: transaction::Req,
     ) -> Result<(mpsc::Sender<transaction::Client>, Streaming<transaction::Server>)> {
-        self.may_renew_token(|this| Box::pin(this.core_rpc.transaction(req.clone()))).await
+        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.transaction(req.clone())))
+            .await
     }
 }

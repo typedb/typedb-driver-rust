@@ -43,13 +43,13 @@ impl Session {
         cluster_rpc: Arc<ClusterRPC>,
     ) -> Result<Self> {
         let server_session = database
-            .run_failsafe(|database, client, _| async {
+            .run_failsafe(|database, server_rpc, _| async {
                 let database_name = database.name;
                 server::Session::new(
                     database_name.as_str(),
                     session_type,
                     core::Options::default(),
-                    client.into(),
+                    server_rpc.into(),
                 )
                 .await
             })
@@ -62,7 +62,7 @@ impl Session {
     pub async fn transaction(&mut self, transaction_type: TransactionType) -> Result<Transaction> {
         let (session, transaction) = self
             .database
-            .run_failsafe(|database, client, is_first_run| {
+            .run_failsafe(|database, server_rpc, is_first_run| {
                 let session_type = self.session_type;
                 let session = &self.server_session;
                 async move {
@@ -74,7 +74,7 @@ impl Session {
                             database.name.as_str(),
                             session_type,
                             core::Options::default(),
-                            client.into(),
+                            server_rpc.into(),
                         )
                         .await?;
                         let transaction = server_session.transaction(transaction_type).await?;

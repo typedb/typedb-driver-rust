@@ -147,9 +147,9 @@ impl Database {
     }
 
     pub(crate) async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
-        where
-            F: Fn(server::Database, ClusterServerRPC, bool) -> P,
-            P: Future<Output = Result<R>>,
+    where
+        F: Fn(server::Database, ClusterServerRPC, bool) -> P,
+        P: Future<Output = Result<R>>,
     {
         match self.run_on_any_replica(&task).await {
             Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => {
@@ -238,7 +238,7 @@ impl Database {
 
 #[derive(Clone)]
 pub struct Replica {
-    pub(crate) address: Address,
+    address: Address,
     database_name: String,
     is_primary: bool,
     term: i64,
@@ -262,7 +262,7 @@ impl Replica {
     fn new(
         name: &str,
         metadata: typedb_protocol::cluster_database::Replica,
-        rpc_client: ClusterServerRPC,
+        server_rpc: ClusterServerRPC,
     ) -> Self {
         Self {
             address: metadata.address.parse().expect("Invalid URI received from the server"),
@@ -270,7 +270,7 @@ impl Replica {
             is_primary: metadata.primary,
             term: metadata.term,
             is_preferred: metadata.preferred,
-            database: server::Database::new(name, rpc_client.into()),
+            database: server::Database::new(name, server_rpc.into()),
         }
     }
 
