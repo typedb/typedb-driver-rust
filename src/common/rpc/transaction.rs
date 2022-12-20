@@ -29,11 +29,13 @@ use std::{
     time::Duration,
 };
 
-use crossbeam::atomic::AtomicCell;
-use futures::{
-    channel::{mpsc, oneshot},
-    SinkExt, Stream, StreamExt,
+use crossbeam::{
+    atomic::AtomicCell,
+    channel::{
+        bounded, unbounded, Receiver as CrossbeamReceiver, Sender as CrossbeamSender, TryRecvError,
+    },
 };
+use futures::{Stream, StreamExt};
 use tonic::Streaming;
 use typedb_protocol::{
     transaction,
@@ -49,26 +51,20 @@ use crate::common::{
     Executor, Result,
 };
 
-// TODO: This structure has become pretty messy - review
 #[derive(Clone, Debug)]
 pub(crate) struct TransactionRPC {
-    rpc_client: ServerRPC,
     sender: Sender,
     receiver: Receiver,
 }
 
 impl TransactionRPC {
-    pub(crate) async fn new(rpc_client: &ServerRPC, open_req: transaction::Req) -> Result<Self> {
-        let mut rpc_client = rpc_client.clone();
-        let (req_sink, streaming_res): (
-            mpsc::Sender<transaction::Client>,
-            Streaming<transaction::Server>,
-        ) = rpc_client.transaction(open_req).await?;
-        let (close_signal_sink, close_signal_receiver) = oneshot::channel::<Option<Error>>();
+    pub(crate) async fn new(server_rpc: &ServerRPC, open_req: transaction::Req) -> Result<Self> {
+        let mut server_rpc = server_rpc.clone();
+        let (req_sink, streaming_res) = server_rpc.transaction(open_req).await?;
+        let (close_signal_sink, close_signal_receiver) = bounded(0);
         Ok(TransactionRPC {
-            rpc_client: rpc_client.clone(),
-            sender: Sender::new(req_sink, rpc_client.executor().clone(), close_signal_receiver),
-            receiver: Receiver::new(streaming_res, rpc_client.executor(), close_signal_sink),
+            sender: Sender::new(req_sink, server_rpc.executor().clone(), close_signal_receiver),
+            receiver: Receiver::new(streaming_res, server_rpc.executor(), close_signal_sink),
         })
     }
 
@@ -76,10 +72,10 @@ impl TransactionRPC {
         if !self.is_open() {
             todo!()
         }
-        let (res_sink, res_receiver) = oneshot::channel::<Result<transaction::Res>>();
+        let (res_sink, res_receiver) = bounded::<Result<transaction::Res>>(0);
         self.receiver.add_single(&req.req_id, res_sink);
         self.sender.submit_message(req);
-        match res_receiver.await {
+        match res_receiver.recv() {
             Ok(result) => result,
             Err(err) => Err(Error::new(err.to_string())),
         }
@@ -88,8 +84,8 @@ impl TransactionRPC {
     pub(crate) fn stream(&mut self, req: transaction::Req) -> ResPartStream {
         const BUFFER_SIZE: usize = 1024;
         let (res_part_sink, res_part_receiver) =
-            mpsc::channel::<Result<transaction::ResPart>>(BUFFER_SIZE);
-        let (stream_req_sink, stream_req_receiver) = std::sync::mpsc::channel::<transaction::Req>();
+            bounded::<Result<transaction::ResPart>>(BUFFER_SIZE);
+        let (stream_req_sink, stream_req_receiver) = unbounded::<transaction::Req>();
         self.receiver.add_stream(&req.req_id, res_part_sink);
         let res_part_stream =
             ResPartStream::new(res_part_receiver, stream_req_sink, req.req_id.clone());
@@ -115,7 +111,7 @@ struct Sender {
 
 #[derive(Debug)]
 struct SenderState {
-    req_sink: mpsc::Sender<transaction::Client>,
+    req_sink: CrossbeamSender<transaction::Client>,
     // TODO: refactor to crossbeam_queue::ArrayQueue?
     queued_messages: Mutex<Vec<transaction::Req>>,
     // TODO: refactor to message passing for these atomics
@@ -126,7 +122,7 @@ struct SenderState {
 type ReqId = Vec<u8>;
 
 impl SenderState {
-    fn new(req_sink: mpsc::Sender<transaction::Client>) -> Self {
+    fn new(req_sink: CrossbeamSender<transaction::Client>) -> Self {
         SenderState {
             req_sink,
             queued_messages: Mutex::new(Vec::new()),
@@ -151,19 +147,15 @@ impl SenderState {
         self.ongoing_task_count.fetch_add(1);
         let messages = mem::take(&mut *self.queued_messages.lock().unwrap());
         if !messages.is_empty() {
-            self.req_sink.clone().send(client_msg(messages)).await.unwrap();
+            self.req_sink.clone().send(client_msg(messages)).unwrap();
         }
         self.ongoing_task_count.fetch_sub(1);
     }
 
     async fn await_close_signal(&self, close_signal_receiver: CloseSignalReceiver) {
-        match close_signal_receiver.await {
-            Ok(close_signal) => {
-                self.close(close_signal).await;
-            }
-            Err(err) => {
-                self.close(Some(Error::new(err.to_string()))).await;
-            }
+        match close_signal_receiver.recv() {
+            Ok(close_signal) => self.close(close_signal).await,
+            Err(err) => self.close(Some(Error::new(err.to_string()))).await,
         }
     }
 
@@ -176,7 +168,6 @@ impl SenderState {
             // TODO: this loop should have a timeout
             loop {
                 if self.ongoing_task_count.load() == 0 {
-                    self.req_sink.clone().close().await.unwrap();
                     break;
                 }
             }
@@ -186,7 +177,7 @@ impl SenderState {
 
 impl Sender {
     pub(crate) fn new(
-        req_sink: mpsc::Sender<transaction::Client>,
+        req_sink: CrossbeamSender<transaction::Client>,
         executor: Executor,
         close_signal_receiver: CloseSignalReceiver,
     ) -> Self {
@@ -213,7 +204,7 @@ impl Sender {
         self.state.submit_message(req);
     }
 
-    fn add_message_provider(&self, provider: std::sync::mpsc::Receiver<transaction::Req>) {
+    fn add_message_provider(&self, provider: CrossbeamReceiver<transaction::Req>) {
         let cloned_state = self.state.clone();
         self.executor.spawn_ok(async move {
             for req in provider.iter() {
@@ -305,9 +296,9 @@ impl ReceiverState {
     async fn collect_res_part(&self, res_part: transaction::ResPart) {
         let value = self.res_part_collectors.lock().unwrap().remove(&res_part.req_id);
         match value {
-            Some(mut collector) => {
+            Some(collector) => {
                 let req_id = res_part.req_id.clone();
-                if collector.send(Ok(res_part)).await.is_ok() {
+                if collector.send(Ok(res_part)).is_ok() {
                     self.res_part_collectors.lock().unwrap().insert(req_id, collector);
                 }
             }
@@ -328,8 +319,8 @@ impl ReceiverState {
             for (_, res_part_collector) in self.res_part_collectors.lock().unwrap().drain() {
                 res_part_collectors.push(res_part_collector)
             }
-            for mut collector in res_part_collectors {
-                collector.send(Err(close_reason(&error_str))).await.ok();
+            for collector in res_part_collectors {
+                collector.send(Err(close_reason(&error_str))).ok();
             }
             close_signal_sink.send(Some(close_reason(&error_str))).unwrap();
         }
@@ -373,22 +364,22 @@ impl Receiver {
     }
 }
 
-type ResCollector = oneshot::Sender<Result<transaction::Res>>;
-type ResPartCollector = mpsc::Sender<Result<transaction::ResPart>>;
-type CloseSignalSink = oneshot::Sender<Option<Error>>;
-type CloseSignalReceiver = oneshot::Receiver<Option<Error>>;
+type ResCollector = CrossbeamSender<Result<transaction::Res>>;
+type ResPartCollector = CrossbeamSender<Result<transaction::ResPart>>;
+type CloseSignalSink = CrossbeamSender<Option<Error>>;
+type CloseSignalReceiver = CrossbeamReceiver<Option<Error>>;
 
 #[derive(Debug)]
 pub(crate) struct ResPartStream {
-    source: mpsc::Receiver<Result<transaction::ResPart>>,
-    stream_req_sink: std::sync::mpsc::Sender<transaction::Req>,
+    source: CrossbeamReceiver<Result<transaction::ResPart>>,
+    stream_req_sink: CrossbeamSender<transaction::Req>,
     req_id: ReqId,
 }
 
 impl ResPartStream {
     fn new(
-        source: mpsc::Receiver<Result<transaction::ResPart>>,
-        stream_req_sink: std::sync::mpsc::Sender<transaction::Req>,
+        source: CrossbeamReceiver<Result<transaction::ResPart>>,
+        stream_req_sink: CrossbeamSender<transaction::Req>,
         req_id: ReqId,
     ) -> Self {
         ResPartStream { source, stream_req_sink, req_id }
@@ -398,10 +389,10 @@ impl ResPartStream {
 impl Stream for ResPartStream {
     type Item = Result<transaction::ResPart>;
 
-    fn poll_next(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let poll = Pin::new(&mut self.source).poll_next(ctx);
+    fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let poll = self.source.try_recv();
         match poll {
-            Poll::Ready(Some(Ok(ref res_part))) => {
+            Ok(Ok(res_part)) => {
                 match &res_part.res {
                     Some(res_part::Res::StreamResPart(stream_res_part)) => {
                         // TODO: unwrap -> expect("enum out of range")
@@ -415,11 +406,16 @@ impl Stream for ResPartStream {
                             }
                         }
                     }
-                    Some(_other) => poll,
+                    Some(_) => Poll::Ready(Some(Ok(res_part))),
                     None => panic!("{}", ClientError::MissingResponseField("res_part.res")),
                 }
             }
-            poll => poll,
+            Ok(err @ Err(_)) => Poll::Ready(Some(err)),
+            Err(TryRecvError::Disconnected) => Poll::Ready(None),
+            Err(TryRecvError::Empty) => {
+                ctx.waker().wake_by_ref();
+                Poll::Pending
+            }
         }
     }
 }

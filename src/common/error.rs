@@ -117,18 +117,6 @@ impl From<Status> for Error {
     }
 }
 
-impl From<futures::channel::mpsc::SendError> for Error {
-    fn from(err: futures::channel::mpsc::SendError) -> Self {
-        Error::Other(err.to_string())
-    }
-}
-
-impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
-    fn from(err: tokio::sync::mpsc::error::SendError<T>) -> Self {
-        Error::Other(err.to_string())
-    }
-}
-
 impl From<tonic::codegen::http::uri::InvalidUri> for Error {
     fn from(err: tonic::codegen::http::uri::InvalidUri) -> Self {
         Error::Other(err.to_string())

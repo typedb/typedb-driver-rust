@@ -19,9 +19,16 @@
  * under the License.
  */
 
-use std::future::Future;
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
-use futures::{channel::mpsc, SinkExt};
+use crossbeam::channel::{
+    bounded, Receiver as CrossbeamReceiver, Sender as CrossbeamSender, TryRecvError,
+};
+use futures::Stream;
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
     core_database, core_database_manager, session, transaction,
@@ -210,11 +217,12 @@ impl CoreRPC {
     pub(crate) async fn transaction(
         &mut self,
         open_req: transaction::Req,
-    ) -> Result<(mpsc::Sender<transaction::Client>, Streaming<transaction::Server>)> {
+    ) -> Result<(CrossbeamSender<transaction::Client>, Streaming<transaction::Server>)> {
         // TODO: refactor to crossbeam channel
-        let (mut sender, receiver) = mpsc::channel::<transaction::Client>(256);
-        sender.send(client_msg(vec![open_req])).await.unwrap();
-        bidi_stream(sender, self.core_grpc.transaction(receiver)).await
+        let (sender, receiver) = bounded::<transaction::Client>(256);
+        sender.send(client_msg(vec![open_req])).unwrap();
+        bidi_stream(sender, self.core_grpc.transaction(CrossbeamReceiverStream::from(receiver)))
+            .await
     }
 }
 
@@ -225,8 +233,33 @@ pub(crate) async fn single<T>(
 }
 
 pub(crate) async fn bidi_stream<T, U>(
-    req_sink: mpsc::Sender<T>,
+    req_sink: CrossbeamSender<T>,
     res: impl Future<Output = StdResult<Response<Streaming<U>>, Status>>,
-) -> Result<(mpsc::Sender<T>, Streaming<U>)> {
+) -> Result<(CrossbeamSender<T>, Streaming<U>)> {
     Ok((req_sink, res.await?.into_inner()))
+}
+
+struct CrossbeamReceiverStream<T> {
+    recv: CrossbeamReceiver<T>,
+}
+
+impl<T> From<CrossbeamReceiver<T>> for CrossbeamReceiverStream<T> {
+    fn from(recv: CrossbeamReceiver<T>) -> Self {
+        Self { recv }
+    }
+}
+
+impl<T> Stream for CrossbeamReceiverStream<T> {
+    type Item = T;
+    fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let poll = self.recv.try_recv();
+        match poll {
+            Ok(res) => Poll::Ready(Some(res)),
+            Err(TryRecvError::Disconnected) => Poll::Ready(None),
+            Err(TryRecvError::Empty) => {
+                ctx.waker().wake_by_ref();
+                Poll::Pending
+            }
+        }
+    }
 }

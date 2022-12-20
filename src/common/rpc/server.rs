@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use futures::channel::mpsc;
+use crossbeam::channel::Sender as CrossbeamSender;
 use tonic::Streaming;
 use typedb_protocol::{core_database, core_database_manager, session, transaction};
 
@@ -101,6 +101,6 @@ impl ServerRPC {
         pub(crate) async fn transaction(
             &mut self,
             req: transaction::Req,
-        ) -> Result<(mpsc::Sender<transaction::Client>, Streaming<transaction::Server>)>;
+        ) -> Result<(CrossbeamSender<transaction::Client>, Streaming<transaction::Server>)>;
     }
 }

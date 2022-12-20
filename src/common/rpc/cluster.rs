@@ -24,7 +24,8 @@ use std::{
     sync::Arc,
 };
 
-use futures::{channel::mpsc, future::BoxFuture, FutureExt};
+use crossbeam::channel::Sender as CrossbeamSender;
+use futures::{future::BoxFuture, FutureExt};
 use tonic::Streaming;
 use typedb_protocol::{
     cluster_database_manager, cluster_user, core_database, core_database_manager, session,
@@ -288,7 +289,7 @@ impl ClusterServerRPC {
     pub(crate) async fn transaction(
         &mut self,
         req: transaction::Req,
-    ) -> Result<(mpsc::Sender<transaction::Client>, Streaming<transaction::Server>)> {
+    ) -> Result<(CrossbeamSender<transaction::Client>, Streaming<transaction::Server>)> {
         self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.transaction(req.clone())))
             .await
     }
