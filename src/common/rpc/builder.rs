@@ -24,11 +24,11 @@ pub(crate) mod core {
         use typedb_protocol::core_database_manager::{all, contains, create};
 
         pub(crate) fn contains_req(name: &str) -> contains::Req {
-            contains::Req { name: name.into() }
+            contains::Req { name: name.to_owned() }
         }
 
         pub(crate) fn create_req(name: &str) -> create::Req {
-            create::Req { name: name.into() }
+            create::Req { name: name.to_owned() }
         }
 
         pub(crate) fn all_req() -> all::Req {
@@ -40,19 +40,19 @@ pub(crate) mod core {
         use typedb_protocol::core_database::{delete, rule_schema, schema, type_schema};
 
         pub(crate) fn delete_req(name: &str) -> delete::Req {
-            delete::Req { name: name.into() }
+            delete::Req { name: name.to_owned() }
         }
 
         pub(crate) fn rule_schema_req(name: &str) -> rule_schema::Req {
-            rule_schema::Req { name: name.into() }
+            rule_schema::Req { name: name.to_owned() }
         }
 
         pub(crate) fn schema_req(name: &str) -> schema::Req {
-            schema::Req { name: name.into() }
+            schema::Req { name: name.to_owned() }
         }
 
         pub(crate) fn type_schema_req(name: &str) -> type_schema::Req {
-            type_schema::Req { name: name.into() }
+            type_schema::Req { name: name.to_owned() }
         }
     }
 }
@@ -70,11 +70,11 @@ pub(crate) mod cluster {
         use typedb_protocol::cluster_user_manager::{all, contains, create};
 
         pub(crate) fn contains_req(username: &str) -> contains::Req {
-            contains::Req { username: username.into() }
+            contains::Req { username: username.to_owned() }
         }
 
         pub(crate) fn create_req(username: &str, password: &str) -> create::Req {
-            create::Req { username: username.into(), password: password.into() }
+            create::Req { username: username.to_owned(), password: password.to_owned() }
         }
 
         pub(crate) fn all_req() -> all::Req {
@@ -86,15 +86,15 @@ pub(crate) mod cluster {
         use typedb_protocol::cluster_user::{delete, password, token};
 
         pub(crate) fn password_req(username: &str, password: &str) -> password::Req {
-            password::Req { username: username.into(), password: password.into() }
+            password::Req { username: username.to_owned(), password: password.to_owned() }
         }
 
         pub(crate) fn token_req(username: &str) -> token::Req {
-            token::Req { username: username.into() }
+            token::Req { username: username.to_owned() }
         }
 
         pub(crate) fn delete_req(username: &str) -> delete::Req {
-            delete::Req { username: username.into() }
+            delete::Req { username: username.to_owned() }
         }
     }
 
@@ -102,7 +102,7 @@ pub(crate) mod cluster {
         use typedb_protocol::cluster_database_manager::{all, get};
 
         pub(crate) fn get_req(name: &str) -> get::Req {
-            get::Req { name: name.into() }
+            get::Req { name: name.to_owned() }
         }
 
         pub(crate) fn all_req() -> all::Req {
@@ -128,9 +128,9 @@ pub(crate) mod session {
         options: Options,
     ) -> open::Req {
         open::Req {
-            database: database.into(),
+            database: database.to_owned(),
             r#type: session_type.into(),
-            options: options.into(),
+            options: Some(options),
         }
     }
 }
@@ -160,7 +160,7 @@ pub(crate) mod transaction {
         req(transaction::req::Req::OpenReq(open::Req {
             session_id,
             r#type: transaction_type.into(),
-            options: options.into(),
+            options: Some(options),
             network_latency_millis,
         }))
     }
@@ -174,11 +174,11 @@ pub(crate) mod transaction {
     }
 
     pub(super) fn req(req: transaction::req::Req) -> transaction::Req {
-        transaction::Req { req_id: new_req_id(), metadata: Default::default(), req: req.into() }
+        transaction::Req { req_id: new_req_id(), metadata: Default::default(), req: Some(req) }
     }
 
     pub(super) fn req_with_id(req: transaction::req::Req, req_id: Vec<u8>) -> transaction::Req {
-        transaction::Req { req_id, metadata: Default::default(), req: req.into() }
+        transaction::Req { req_id, metadata: Default::default(), req: Some(req) }
     }
 
     fn new_req_id() -> Vec<u8> {
@@ -206,44 +206,41 @@ pub(crate) mod query_manager {
     pub(crate) fn define_req(query: &str, options: Option<Options>) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options,
-            req: query_manager::req::Req::DefineReq(define::Req { query: query.to_string() })
-                .into(),
+            req: Some(query_manager::req::Req::DefineReq(define::Req { query: query.to_owned() })),
         })
     }
 
     pub(crate) fn undefine_req(query: &str, options: Option<Options>) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options,
-            req: query_manager::req::Req::UndefineReq(undefine::Req { query: query.to_string() })
-                .into(),
+            req: Some(query_manager::req::Req::UndefineReq(undefine::Req {
+                query: query.to_owned(),
+            })),
         })
     }
 
     pub(crate) fn match_req(query: &str, options: Option<Options>) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options,
-            req: query_manager::req::Req::MatchReq(r#match::Req { query: query.to_string() })
-                .into(),
+            req: Some(query_manager::req::Req::MatchReq(r#match::Req { query: query.to_owned() })),
         })
     }
 
     pub(crate) fn match_aggregate_req(query: &str, options: Option<Options>) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options,
-            req: query_manager::req::Req::MatchAggregateReq(match_aggregate::Req {
-                query: query.to_string(),
-            })
-            .into(),
+            req: Some(query_manager::req::Req::MatchAggregateReq(match_aggregate::Req {
+                query: query.to_owned(),
+            })),
         })
     }
 
     pub(crate) fn match_group_req(query: &str, options: Option<Options>) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options,
-            req: query_manager::req::Req::MatchGroupReq(match_group::Req {
-                query: query.to_string(),
-            })
-            .into(),
+            req: Some(query_manager::req::Req::MatchGroupReq(match_group::Req {
+                query: query.to_owned(),
+            })),
         })
     }
 
@@ -253,41 +250,37 @@ pub(crate) mod query_manager {
     ) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options,
-            req: query_manager::req::Req::MatchGroupAggregateReq(match_group_aggregate::Req {
-                query: query.to_string(),
-            })
-            .into(),
+            req: Some(query_manager::req::Req::MatchGroupAggregateReq(
+                match_group_aggregate::Req { query: query.to_owned() },
+            )),
         })
     }
 
     pub(crate) fn insert_req(query: &str, options: Option<Options>) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options,
-            req: query_manager::req::Req::InsertReq(insert::Req { query: query.to_string() })
-                .into(),
+            req: Some(query_manager::req::Req::InsertReq(insert::Req { query: query.to_owned() })),
         })
     }
 
     pub(crate) fn delete_req(query: &str, options: Option<Options>) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options,
-            req: query_manager::req::Req::DeleteReq(delete::Req { query: query.to_string() })
-                .into(),
+            req: Some(query_manager::req::Req::DeleteReq(delete::Req { query: query.to_owned() })),
         })
     }
 
     pub(crate) fn update_req(query: &str, options: Option<Options>) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options,
-            req: query_manager::req::Req::UpdateReq(update::Req { query: query.to_string() })
-                .into(),
+            req: Some(query_manager::req::Req::UpdateReq(update::Req { query: query.to_owned() })),
         })
     }
 
     pub(crate) fn explain_req(id: i64) -> transaction::Req {
         query_manager_req(query_manager::Req {
             options: None,
-            req: query_manager::req::Req::ExplainReq(explain::Req { explainable_id: id }).into(),
+            req: Some(query_manager::req::Req::ExplainReq(explain::Req { explainable_id: id })),
         })
     }
 }
@@ -306,7 +299,7 @@ pub(crate) mod thing {
     pub(crate) fn attribute_get_owners_req(iid: &[u8]) -> transaction::Req {
         thing_req(thing::Req {
             iid: iid.to_vec(),
-            req: AttributeGetOwnersReq(attribute::get_owners::Req { filter: None }).into(),
+            req: Some(AttributeGetOwnersReq(attribute::get_owners::Req { filter: None })),
         })
     }
 }
