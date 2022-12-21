@@ -21,9 +21,6 @@
 
 use std::{fmt::Debug, time::Duration};
 
-use futures::Stream;
-use typedb_protocol::transaction as transaction_proto;
-
 use crate::{
     common::{
         rpc::builder::transaction::{commit_req, open_req, rollback_req},
@@ -43,14 +40,14 @@ pub struct Transaction {
 
 impl Transaction {
     pub(crate) async fn new(
-        session_id: &[u8],
+        session_id: Vec<u8>,
         transaction_type: TransactionType,
         options: core::Options,
         network_latency: Duration,
-        server_rpc: &ServerRPC,
+        server_rpc: ServerRPC,
     ) -> Result<Self> {
         let open_req = open_req(
-            session_id.to_vec(),
+            session_id,
             transaction_type.to_proto(),
             options.to_proto(),
             network_latency.as_millis() as i32,
@@ -59,30 +56,17 @@ impl Transaction {
         Ok(Transaction { type_: transaction_type, options, query: QueryManager::new(&rpc), rpc })
     }
 
-    pub async fn commit(&mut self) -> Result {
-        self.single_rpc(commit_req()).await.map(|_| ())
+    pub fn commit(&mut self) -> Result {
+        self.rpc.single(commit_req())?;
+        Ok(())
     }
 
-    pub async fn rollback(&mut self) -> Result {
-        self.single_rpc(rollback_req()).await.map(|_| ())
+    pub fn rollback(&mut self) -> Result {
+        self.rpc.single(rollback_req())?;
+        Ok(())
     }
 
-    pub(crate) async fn single_rpc(
-        &mut self,
-        req: transaction_proto::Req,
-    ) -> Result<transaction_proto::Res> {
-        self.rpc.single(req).await
-    }
-
-    pub(crate) fn streaming_rpc(
-        &mut self,
-        req: transaction_proto::Req,
-    ) -> impl Stream<Item = Result<transaction_proto::ResPart>> {
-        self.rpc.stream(req)
-    }
-
-    // TODO: refactor to delegate work to a background process
-    pub async fn close(&self) {
-        self.rpc.close().await;
+    pub fn close(&self) {
+        self.rpc.close();
     }
 }

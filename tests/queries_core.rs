@@ -48,7 +48,7 @@ async fn basic() {
     while let Some(result) = answer_stream.next().await {
         assert!(result.is_ok())
     }
-    transaction.commit().await.unwrap();
+    transaction.commit().unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -98,15 +98,15 @@ async fn query_options() {
     let mut transaction = session.transaction(Write).await.unwrap();
     let data = "insert $x isa person, has name 'Alice'; $y isa person, has name 'Bob';";
     let _ = transaction.query.insert(data);
-    transaction.commit().await.unwrap();
+    transaction.commit().unwrap();
 
     let mut transaction = session.transaction(Read).await.unwrap();
-    let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
+    let age_count = transaction.query.match_aggregate("match $x isa age; count;").unwrap();
     assert_eq!(age_count.into_i64(), 0);
 
     let with_inference = core::Options::new_core().infer(true);
     let mut transaction = session.transaction_with_options(Read, with_inference).await.unwrap();
-    let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
+    let age_count = transaction.query.match_aggregate("match $x isa age; count;").unwrap();
     assert_eq!(age_count.into_i64(), 1);
 }
 
@@ -132,7 +132,7 @@ async fn many_concept_types() {
         $y isa person, has name "Bob", has date-of-birth 1993-04-17;
         (friend: $x, friend: $y) isa friendship;"#;
     let _ = transaction.query.insert(data);
-    transaction.commit().await.unwrap();
+    transaction.commit().unwrap();
 
     let mut transaction = session.transaction(Read).await.unwrap();
     let mut answer_stream = transaction.query.match_(
@@ -172,7 +172,7 @@ async fn streaming_perf() {
         for j in 0..100_000 {
             let _ = transaction.query.insert(format!("insert $x {j} isa age;").as_str());
         }
-        transaction.commit().await.unwrap();
+        transaction.commit().unwrap();
         println!(
             "iteration {i}: inserted and committed 100k attrs in {}ms",
             (Instant::now() - start_time).as_millis()
@@ -223,8 +223,8 @@ async fn create_test_database_with_schema(
 
     let mut session = client.session(TEST_DATABASE, Schema).await.unwrap();
     let mut transaction = session.transaction(Write).await.unwrap();
-    transaction.query.define(schema).await.unwrap();
-    transaction.commit().await.unwrap();
+    transaction.query.define(schema).unwrap();
+    transaction.commit().unwrap();
     session.close().await;
 
     Ok(())

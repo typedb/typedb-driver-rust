@@ -52,7 +52,7 @@ error_messages! { ClientError
         17: "Failed to close session. It may still be open on the server: or it may already have been closed previously.",
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     Client(ClientError),
     Other(String),

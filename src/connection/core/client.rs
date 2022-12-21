@@ -26,6 +26,7 @@ use crate::{
 
 pub struct Client {
     databases: core::DatabaseManager,
+    sessions: server::SessionManager,
     core_rpc: CoreRPC,
 }
 

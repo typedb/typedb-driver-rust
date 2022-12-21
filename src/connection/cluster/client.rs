@@ -24,6 +24,7 @@ use std::sync::Arc;
 use super::{DatabaseManager, Session};
 use crate::common::{ClusterRPC, Credential, Result, SessionType};
 
+#[derive(Debug)]
 pub struct Client {
     databases: DatabaseManager,
     cluster_rpc: Arc<ClusterRPC>,

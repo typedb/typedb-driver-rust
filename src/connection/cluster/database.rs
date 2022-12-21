@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{fmt, fmt::Debug, future::Future, sync::Arc, time::Duration, thread::sleep};
+use std::{fmt, fmt::Debug, future::Future, sync::Arc, thread::sleep, time::Duration};
 
 use log::debug;
 

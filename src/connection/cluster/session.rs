@@ -27,6 +27,7 @@ use crate::{
     connection::{core, server, server::Transaction},
 };
 
+#[derive(Debug)]
 pub struct Session {
     pub database: Database,
     pub session_type: SessionType,
