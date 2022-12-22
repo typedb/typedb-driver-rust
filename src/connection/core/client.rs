@@ -19,9 +19,9 @@
  * under the License.
  */
 
-use super::{DatabaseManager, SessionManager};
+use super::DatabaseManager;
 use crate::{
-    common::{CoreRPC, Result, SessionType},
+    common::{CoreRPC, Result, SessionManager, SessionType},
     connection::{core, server},
 };
 
@@ -36,7 +36,7 @@ impl Client {
         let core_rpc = CoreRPC::connect(address.parse()?).await?;
         Ok(Self {
             databases: DatabaseManager::new(core_rpc.clone()),
-            sessions: SessionManager::new(core_rpc.clone().into()),
+            sessions: SessionManager::new(core_rpc.executor()),
             core_rpc,
         })
     }
@@ -54,7 +54,7 @@ impl Client {
         database_name: &str,
         session_type: SessionType,
     ) -> Result<server::Session> {
-        self.sessions.session(database_name, session_type, core::Options::default()).await
+        self.session_with_options(database_name, session_type, core::Options::default()).await
     }
 
     pub async fn session_with_options(
@@ -63,6 +63,8 @@ impl Client {
         session_type: SessionType,
         options: core::Options,
     ) -> Result<server::Session> {
-        self.sessions.session(database_name, session_type, options).await
+        self.sessions
+            .session(database_name, session_type, self.core_rpc.clone().into(), options)
+            .await
     }
 }

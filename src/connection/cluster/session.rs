@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 use super::Database;
 use crate::{
-    common::{ClusterRPC, Result, SessionType, TransactionType},
+    common::{ClusterRPC, Result, SessionManager, SessionType, TransactionType},
     connection::{core, server, server::Transaction},
 };
 
@@ -31,7 +31,7 @@ use crate::{
 pub struct Session {
     pub database: Database,
     pub session_type: SessionType,
-
+    session_manager: Arc<SessionManager>,
     server_session: server::Session,
     cluster_rpc: Arc<ClusterRPC>,
 }
@@ -42,21 +42,23 @@ impl Session {
         mut database: Database,
         session_type: SessionType,
         cluster_rpc: Arc<ClusterRPC>,
+        session_manager: Arc<SessionManager>,
     ) -> Result<Self> {
         let server_session = database
             .run_failsafe(|database, server_rpc, _| async {
                 let database_name = database.name;
-                server::Session::new(
-                    database_name.as_str(),
-                    session_type,
-                    core::Options::default(),
-                    server_rpc.into(),
-                )
-                .await
+                session_manager
+                    .session(
+                        database_name.as_str(),
+                        session_type,
+                        server_rpc.into(),
+                        core::Options::default(),
+                    )
+                    .await
             })
             .await?;
 
-        Ok(Self { database, session_type, server_session, cluster_rpc })
+        Ok(Self { database, session_type, session_manager, server_session, cluster_rpc })
     }
 
     //TODO options
@@ -66,18 +68,20 @@ impl Session {
             .run_failsafe(|database, server_rpc, is_first_run| {
                 let session_type = self.session_type;
                 let session = &self.server_session;
+                let session_manager = &self.session_manager;
                 async move {
                     if is_first_run {
                         let transaction = session.transaction(transaction_type).await?;
                         Ok((None, transaction))
                     } else {
-                        let server_session = server::Session::new(
-                            database.name.as_str(),
-                            session_type,
-                            core::Options::default(),
-                            server_rpc.into(),
-                        )
-                        .await?;
+                        let server_session = session_manager
+                            .session(
+                                database.name.as_str(),
+                                session_type,
+                                server_rpc.into(),
+                                core::Options::default(),
+                            )
+                            .await?;
                         let transaction = server_session.transaction(transaction_type).await?;
                         Ok((Some(server_session), transaction))
                     }

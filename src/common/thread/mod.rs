@@ -49,6 +49,7 @@ pub(crate) async fn session_pulse_thread(
         }
         let reqs = sessions.read().unwrap().clone();
         join_all(reqs.into_iter().map(|(session_id, mut rpc)| async move {
+            println!("Pulsing session {}", session_id);
             rpc.session_pulse(pulse_req(session_id)).await
         }))
         .await;
@@ -66,6 +67,7 @@ pub(crate) async fn session_close_thread(
 ) {
     loop {
         while let Ok(session_id) = session_close_source.try_recv() {
+            println!("Closing session {}", session_id);
             let mut rpc = session_rpcs.write().unwrap().remove(&session_id).unwrap();
             // TODO: the request errors harmlessly if the session is already closed. Protocol should
             //       expose the cause of the error and we can use that to decide whether to warn here.

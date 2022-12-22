@@ -29,7 +29,7 @@ use crossbeam::channel::{bounded, Sender};
 use crate::{
     common::{
         thread::{session_close_thread, session_pulse_thread},
-        DropGuard, Result, ServerRPC, SessionID, SessionType,
+        DropGuard, Executor, Result, ServerRPC, SessionID, SessionType,
     },
     connection::{core, server},
 };
@@ -37,25 +37,21 @@ use crate::{
 #[derive(Debug)]
 pub(crate) struct SessionManager {
     close_message_sink: Sender<SessionID>,
-
-    server_rpc: ServerRPC,
     session_rpcs: Arc<RwLock<HashMap<SessionID, ServerRPC>>>,
     pulse_thread_guard: DropGuard,
     session_close_thread_guard: DropGuard,
 }
 
 impl SessionManager {
-    pub(crate) fn new(server_rpc: ServerRPC) -> Self {
+    pub(crate) fn new(executor: &Executor) -> Self {
         let session_rpcs = Arc::new(RwLock::new(HashMap::new()));
 
         let (pulse_thread_close_signal, close_signal_source) = bounded(1);
-        server_rpc
-            .executor()
-            .spawn_ok(session_pulse_thread(session_rpcs.clone(), close_signal_source.clone()));
+        executor.spawn_ok(session_pulse_thread(session_rpcs.clone(), close_signal_source.clone()));
 
         let (session_close_thread_close_signal, close_signal_source) = bounded(0);
         let (close_message_sink, close_message_source) = bounded(256);
-        server_rpc.executor().spawn_ok(session_close_thread(
+        executor.spawn_ok(session_close_thread(
             session_rpcs.clone(),
             close_signal_source,
             close_message_source,
@@ -63,7 +59,6 @@ impl SessionManager {
 
         Self {
             session_rpcs,
-            server_rpc,
             pulse_thread_guard: DropGuard::new(pulse_thread_close_signal, ()),
             session_close_thread_guard: DropGuard::new(session_close_thread_close_signal, ()),
             close_message_sink,
@@ -71,20 +66,21 @@ impl SessionManager {
     }
 
     pub(crate) async fn session(
-        &mut self,
+        &self,
         database_name: &str,
         session_type: SessionType,
+        server_rpc: ServerRPC,
         options: core::Options,
     ) -> Result<server::Session> {
         let session = server::Session::new(
             database_name,
             session_type,
             options,
-            self.server_rpc.clone(),
+            server_rpc.clone(),
             self.close_message_sink.clone(),
         )
         .await?;
-        self.session_rpcs.write().unwrap().insert(session.id().clone(), self.server_rpc.clone());
+        self.session_rpcs.write().unwrap().insert(session.id().clone(), server_rpc);
         Ok(session)
     }
 }
