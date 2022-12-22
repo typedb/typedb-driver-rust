@@ -73,7 +73,7 @@ impl fmt::Debug for ID {
 
 impl fmt::Display for ID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.iter().map(|b| write!(f, "{:02x}", b)).collect()
+        self.0.iter().try_for_each(|b| write!(f, "{:02x}", b))
     }
 }
 

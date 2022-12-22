@@ -24,7 +24,7 @@ use std::{fmt::Debug, time::Duration};
 use crate::{
     common::{
         rpc::builder::transaction::{commit_req, open_req, rollback_req},
-        Result, ServerRPC, SessionID, TransactionRPC, TransactionType,
+        Executor, Result, ServerRPC, SessionID, TransactionRPC, TransactionType,
     },
     connection::core,
     query::QueryManager,
@@ -45,6 +45,7 @@ impl Transaction {
         options: core::Options,
         network_latency: Duration,
         server_rpc: ServerRPC,
+        executor: Executor,
     ) -> Result<Self> {
         let open_req = open_req(
             session_id,
@@ -52,7 +53,7 @@ impl Transaction {
             options.to_proto(),
             network_latency.as_millis() as i32,
         );
-        let rpc = TransactionRPC::new(server_rpc, open_req).await?;
+        let rpc = TransactionRPC::new(server_rpc, executor, open_req).await?;
         Ok(Transaction { type_: transaction_type, options, query: QueryManager::new(&rpc), rpc })
     }
 

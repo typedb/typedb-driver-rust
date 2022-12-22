@@ -27,7 +27,7 @@ use crate::{
     async_enum_dispatch,
     common::{
         rpc::{core::CoreRPC, ClusterServerRPC},
-        Executor, Result,
+        Result,
     },
 };
 
@@ -50,13 +50,6 @@ impl From<ClusterServerRPC> for ServerRPC {
 }
 
 impl ServerRPC {
-    pub(crate) fn executor(&self) -> &Executor {
-        match self {
-            Self::Core(client) => client.executor(),
-            Self::Cluster(client) => client.executor(),
-        }
-    }
-
     async_enum_dispatch! { { Core, Cluster }
         pub(crate) async fn databases_contains(
             &mut self,

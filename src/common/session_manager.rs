@@ -38,16 +38,17 @@ use crate::{
 pub(crate) struct SessionManager {
     close_message_sink: Sender<SessionID>,
     session_rpcs: Arc<RwLock<HashMap<SessionID, ServerRPC>>>,
+    executor: Executor,
     pulse_thread_guard: DropGuard,
     session_close_thread_guard: DropGuard,
 }
 
 impl SessionManager {
-    pub(crate) fn new(executor: &Executor) -> Self {
+    pub(crate) fn new(executor: Executor) -> Self {
         let session_rpcs = Arc::new(RwLock::new(HashMap::new()));
 
         let (pulse_thread_close_signal, close_signal_source) = bounded(1);
-        executor.spawn_ok(session_pulse_thread(session_rpcs.clone(), close_signal_source.clone()));
+        executor.spawn_ok(session_pulse_thread(session_rpcs.clone(), close_signal_source));
 
         let (session_close_thread_close_signal, close_signal_source) = bounded(0);
         let (close_message_sink, close_message_source) = bounded(256);
@@ -59,6 +60,7 @@ impl SessionManager {
 
         Self {
             session_rpcs,
+            executor,
             pulse_thread_guard: DropGuard::new(pulse_thread_close_signal, ()),
             session_close_thread_guard: DropGuard::new(session_close_thread_close_signal, ()),
             close_message_sink,
@@ -77,6 +79,7 @@ impl SessionManager {
             session_type,
             options,
             server_rpc.clone(),
+            self.executor.clone(),
             self.close_message_sink.clone(),
         )
         .await?;

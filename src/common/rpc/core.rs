@@ -43,7 +43,7 @@ use crate::{
             channel::CallCredChannel,
             Channel,
         },
-        Address, Executor, Result, StdResult, TonicChannel,
+        Address, Result, StdResult, TonicChannel,
     },
 };
 
@@ -122,27 +122,15 @@ impl CoreGRPC {
 #[derive(Clone, Debug)]
 pub(crate) struct CoreRPC {
     core_grpc: CoreGRPC,
-    executor: Executor,
 }
 
 impl CoreRPC {
-    pub(crate) fn new(channel: Channel) -> Result<Self> {
-        Ok(Self {
-            core_grpc: CoreGRPC::new(channel),
-            executor: Executor::new().expect("Failed to create Executor"),
-        })
-    }
-
-    pub(super) fn with_executor(channel: Channel, executor: Executor) -> Result<Self> {
-        Ok(Self { core_grpc: CoreGRPC::new(channel), executor })
+    pub(crate) fn new(channel: Channel) -> Self {
+        Self { core_grpc: CoreGRPC::new(channel) }
     }
 
     pub(crate) async fn connect(address: Address) -> Result<Self> {
-        Self::new(Channel::open_plaintext(address)?)?.validated().await
-    }
-
-    pub(crate) fn executor(&self) -> &Executor {
-        &self.executor
+        Self::new(Channel::open_plaintext(address)?).validated().await
     }
 
     async fn validated(mut self) -> Result<Self> {

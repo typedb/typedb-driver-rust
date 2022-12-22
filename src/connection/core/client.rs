@@ -21,7 +21,7 @@
 
 use super::DatabaseManager;
 use crate::{
-    common::{CoreRPC, Result, SessionManager, SessionType},
+    common::{CoreRPC, Executor, Result, SessionManager, SessionType},
     connection::{core, server},
 };
 
@@ -36,7 +36,9 @@ impl Client {
         let core_rpc = CoreRPC::connect(address.parse()?).await?;
         Ok(Self {
             databases: DatabaseManager::new(core_rpc.clone()),
-            session_manager: SessionManager::new(core_rpc.executor()),
+            session_manager: SessionManager::new(
+                Executor::new().expect("Failed to create Executor"),
+            ),
             core_rpc,
         })
     }

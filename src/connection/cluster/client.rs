@@ -22,7 +22,7 @@
 use std::sync::Arc;
 
 use super::{DatabaseManager, Session};
-use crate::common::{ClusterRPC, Credential, Result, SessionManager, SessionType};
+use crate::common::{ClusterRPC, Credential, Executor, Result, SessionManager, SessionType};
 
 #[derive(Debug)]
 pub struct Client {
@@ -35,10 +35,10 @@ impl Client {
     pub async fn new<T: AsRef<str>>(init_addresses: &[T], credential: Credential) -> Result<Self> {
         let addresses = ClusterRPC::fetch_current_addresses(init_addresses, &credential).await?;
         let cluster_rpc = ClusterRPC::new(addresses, credential)?;
-        let databases = DatabaseManager::new(cluster_rpc.clone());
+        let executor = Executor::new().expect("Failed to create Executor");
         Ok(Self {
-            session_manager: Arc::new(SessionManager::new(cluster_rpc.get_any_server_rpc().executor())),
-            databases,
+            session_manager: Arc::new(SessionManager::new(executor)),
+            databases: DatabaseManager::new(cluster_rpc.clone()),
             cluster_rpc,
         })
     }

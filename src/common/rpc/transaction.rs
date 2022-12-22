@@ -58,11 +58,15 @@ pub(crate) struct TransactionRPC {
 }
 
 impl TransactionRPC {
-    pub(crate) async fn new(mut server_rpc: ServerRPC, open_req: transaction::Req) -> Result<Self> {
+    pub(crate) async fn new(
+        mut server_rpc: ServerRPC,
+        executor: Executor,
+        open_req: transaction::Req,
+    ) -> Result<Self> {
         let (req_sink, streaming_res) = server_rpc.transaction(open_req).await?;
         Ok(TransactionRPC {
-            sender: Sender::new(req_sink, server_rpc.executor().clone()),
-            receiver: Receiver::new(streaming_res, server_rpc.executor()),
+            receiver: Receiver::new(streaming_res, &executor),
+            sender: Sender::new(req_sink, executor),
         })
     }
 
