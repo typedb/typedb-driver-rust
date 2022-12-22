@@ -286,6 +286,14 @@ impl ClusterServerRPC {
             .await
     }
 
+    pub(crate) async fn session_pulse(
+        &mut self,
+        req: session::pulse::Req,
+    ) -> Result<session::pulse::Res> {
+        self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.session_pulse(req.clone())))
+            .await
+    }
+
     pub(crate) async fn transaction(
         &mut self,
         req: transaction::Req,

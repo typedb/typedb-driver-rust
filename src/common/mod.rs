@@ -21,15 +21,22 @@
 
 mod address;
 pub mod credential;
+mod drop_guard;
 pub mod error;
 mod macros;
 pub(crate) mod rpc;
+pub(crate) mod thread;
+
+use std::fmt;
 
 use tonic::{Response, Status};
 use typedb_protocol::{session as session_proto, transaction as transaction_proto};
 
-pub(crate) use self::rpc::{ClusterRPC, ClusterServerRPC, CoreRPC, ServerRPC, TransactionRPC};
 pub use self::{address::Address, credential::Credential, error::Error};
+pub(crate) use self::{
+    drop_guard::DropGuard,
+    rpc::{ClusterRPC, ClusterServerRPC, CoreRPC, ServerRPC, TransactionRPC},
+};
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
 pub type Result<T = ()> = StdResult<T, Error>;
@@ -37,6 +44,36 @@ pub(crate) type TonicResult<R> = StdResult<Response<R>, Status>;
 
 pub(crate) type TonicChannel = tonic::transport::Channel;
 pub(crate) type Executor = futures::executor::ThreadPool;
+
+pub(crate) type RequestID = ID;
+pub(crate) type SessionID = ID;
+
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub struct ID(Vec<u8>);
+
+impl From<ID> for Vec<u8> {
+    fn from(id: ID) -> Self {
+        id.0
+    }
+}
+
+impl From<Vec<u8>> for ID {
+    fn from(vec: Vec<u8>) -> Self {
+        Self(vec)
+    }
+}
+
+impl fmt::Debug for ID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ID[{}]", self)
+    }
+}
+
+impl fmt::Display for ID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.iter().map(|b| write!(f, "{:02x}", b)).collect()
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 pub enum SessionType {

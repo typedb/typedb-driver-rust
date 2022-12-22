@@ -24,7 +24,7 @@ use std::{fmt::Debug, time::Duration};
 use crate::{
     common::{
         rpc::builder::transaction::{commit_req, open_req, rollback_req},
-        Result, ServerRPC, TransactionRPC, TransactionType,
+        Result, ServerRPC, SessionID, TransactionRPC, TransactionType,
     },
     connection::core,
     query::QueryManager,
@@ -40,7 +40,7 @@ pub struct Transaction {
 
 impl Transaction {
     pub(crate) async fn new(
-        session_id: Vec<u8>,
+        session_id: SessionID,
         transaction_type: TransactionType,
         options: core::Options,
         network_latency: Duration,

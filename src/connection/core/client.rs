@@ -19,28 +19,33 @@
  * under the License.
  */
 
+use super::{DatabaseManager, SessionManager};
 use crate::{
     common::{CoreRPC, Result, SessionType},
     connection::{core, server},
 };
 
 pub struct Client {
-    databases: core::DatabaseManager,
-    sessions: server::SessionManager,
+    databases: DatabaseManager,
+    sessions: SessionManager,
     core_rpc: CoreRPC,
 }
 
 impl Client {
     pub async fn new(address: &str) -> Result<Self> {
         let core_rpc = CoreRPC::connect(address.parse()?).await?;
-        Ok(Self { databases: core::DatabaseManager::new(core_rpc.clone()), core_rpc })
+        Ok(Self {
+            databases: DatabaseManager::new(core_rpc.clone()),
+            sessions: SessionManager::new(core_rpc.clone().into()),
+            core_rpc,
+        })
     }
 
     pub async fn with_default_address() -> Result<Self> {
         Self::new("http://localhost:1729").await
     }
 
-    pub fn databases(&mut self) -> &mut core::DatabaseManager {
+    pub fn databases(&mut self) -> &mut DatabaseManager {
         &mut self.databases
     }
 
@@ -49,7 +54,7 @@ impl Client {
         database_name: &str,
         session_type: SessionType,
     ) -> Result<server::Session> {
-        self.session_with_options(database_name, session_type, core::Options::default()).await
+        self.sessions.session(database_name, session_type, core::Options::default()).await
     }
 
     pub async fn session_with_options(
@@ -58,7 +63,6 @@ impl Client {
         session_type: SessionType,
         options: core::Options,
     ) -> Result<server::Session> {
-        server::Session::new(database_name, session_type, options, self.core_rpc.clone().into())
-            .await
+        self.sessions.session(database_name, session_type, options).await
     }
 }

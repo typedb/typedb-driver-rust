@@ -19,30 +19,30 @@
  * under the License.
  */
 
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
-use crossbeam::atomic::AtomicCell;
-use log::warn;
+use crossbeam::{atomic::AtomicCell, channel::Sender};
 
 use crate::{
     common::{
-        error::ClientError,
-        rpc::builder::session::{close_req, open_req},
-        Result, ServerRPC, SessionType, TransactionType,
+        error::ClientError, rpc::builder::session::open_req, DropGuard, Result, ServerRPC,
+        SessionID, SessionType, TransactionType,
     },
     connection::{core, server::Transaction},
 };
 
-pub(crate) type SessionId = Vec<u8>;
-
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Session {
     database_name: String,
     session_type: SessionType,
-    id: SessionId,
+    id: SessionID,
     server_rpc: ServerRPC,
-    is_open_atomic: AtomicCell<bool>,
+    is_open_atomic: Arc<AtomicCell<bool>>,
     network_latency: Duration,
+    close_guard: DropGuard<SessionID>,
 }
 
 impl Session {
@@ -51,19 +51,29 @@ impl Session {
         session_type: SessionType,
         options: core::Options,
         mut server_rpc: ServerRPC,
+        on_close: Sender<SessionID>,
     ) -> Result<Self> {
         let start_time = Instant::now();
         let open_req = open_req(database_name, session_type.to_proto(), options.to_proto());
         let res = server_rpc.session_open(open_req).await?;
-        // TODO: pulse task
+        let id: SessionID = res.session_id.into();
         Ok(Session {
             database_name: database_name.to_owned(),
             session_type,
-            network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
-            id: res.session_id,
             server_rpc,
-            is_open_atomic: AtomicCell::new(true),
+            close_guard: DropGuard::new(on_close, id.clone()),
+            id,
+            is_open_atomic: Arc::new(AtomicCell::new(true)),
+            network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
         })
+    }
+
+    pub(crate) fn id(&self) -> &SessionID {
+        &self.id
+    }
+
+    pub(crate) fn rpc(&self) -> ServerRPC {
+        self.server_rpc.clone()
     }
 
     pub fn database_name(&self) -> &str {
@@ -100,24 +110,12 @@ impl Session {
         .await
     }
 
-    pub async fn close(&mut self) {
-        if self.is_open_atomic.compare_exchange(true, false).is_ok() {
-            let res = self.server_rpc.session_close(close_req(self.id.clone())).await;
-            // TODO: the request errors harmlessly if the session is already closed. Protocol should
-            //       expose the cause of the error and we can use that to decide whether to warn here.
-            if res.is_err() {
-                warn!("{}", ClientError::SessionCloseFailed())
-            }
-        }
+    pub fn close(self) {
+        self.is_open_atomic.store(false);
+        self.close_guard.release();
     }
 
     fn compute_network_latency(start_time: Instant, server_duration_millis: i32) -> Duration {
         Instant::now() - start_time - Duration::from_millis(server_duration_millis as u64)
-    }
-}
-
-impl Drop for Session {
-    fn drop(&mut self) {
-        // TODO
     }
 }

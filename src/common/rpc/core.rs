@@ -214,6 +214,13 @@ impl CoreRPC {
         single(self.core_grpc.session_close(req)).await
     }
 
+    pub(crate) async fn session_pulse(
+        &mut self,
+        req: session::pulse::Req,
+    ) -> Result<session::pulse::Res> {
+        single(self.core_grpc.session_pulse(req)).await
+    }
+
     pub(crate) async fn transaction(
         &mut self,
         open_req: transaction::Req,

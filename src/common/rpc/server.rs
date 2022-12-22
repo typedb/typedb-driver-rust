@@ -93,6 +93,11 @@ impl ServerRPC {
             req: session::open::Req,
         ) -> Result<session::open::Res>;
 
+        pub(crate) async fn session_pulse(
+            &mut self,
+            req: session::pulse::Req,
+        ) -> Result<session::pulse::Res>;
+
         pub(crate) async fn session_close(
             &mut self,
             req: session::close::Req,

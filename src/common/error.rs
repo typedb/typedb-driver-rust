@@ -24,6 +24,8 @@ use std::{error::Error as StdError, fmt};
 use tonic::{Code, Status};
 use typeql_lang::error_messages;
 
+use crate::common::RequestID;
+
 error_messages! { ClientError
     code: "CLI", type: "Client Error",
     SessionIsClosed() =
@@ -38,7 +40,7 @@ error_messages! { ClientError
         8: "The database '{}' does not exist.",
     MissingResponseField(&'static str) =
         9: "Missing field in message received from server: '{}'.",
-    UnknownRequestId(String) =
+    UnknownRequestId(RequestID) =
         10: "Received a response with unknown request id '{}'",
     ClusterUnableToConnect(String) =
         12: "Unable to connect to TypeDB Cluster. Attempted connecting to the cluster members, but none are available: '{}'.",

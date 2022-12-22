@@ -221,12 +221,10 @@ async fn create_test_database_with_schema(
     }
     client.databases().create(TEST_DATABASE).await.unwrap();
 
-    let mut session = client.session(TEST_DATABASE, Schema).await.unwrap();
+    let session = client.session(TEST_DATABASE, Schema).await.unwrap();
     let mut transaction = session.transaction(Write).await.unwrap();
     transaction.query.define(schema).unwrap();
     transaction.commit().unwrap();
-    session.close().await;
-
     Ok(())
 }
 

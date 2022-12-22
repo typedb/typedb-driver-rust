@@ -22,5 +22,7 @@
 mod client;
 mod database_manager;
 mod options;
+mod session_manager;
 
+pub(crate) use self::session_manager::SessionManager;
 pub use self::{client::Client, database_manager::DatabaseManager, options::Options};

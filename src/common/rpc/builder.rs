@@ -114,12 +114,14 @@ pub(crate) mod cluster {
 pub(crate) mod session {
     use typedb_protocol::{
         session,
-        session::{close, open},
+        session::{close, open, pulse},
         Options,
     };
 
-    pub(crate) fn close_req(session_id: Vec<u8>) -> close::Req {
-        close::Req { session_id }
+    use crate::common::SessionID;
+
+    pub(crate) fn close_req(session_id: SessionID) -> close::Req {
+        close::Req { session_id: session_id.into() }
     }
 
     pub(crate) fn open_req(
@@ -133,6 +135,10 @@ pub(crate) mod session {
             options: Some(options),
         }
     }
+
+    pub(crate) fn pulse_req(session_id: SessionID) -> pulse::Req {
+        pulse::Req { session_id: session_id.into() }
+    }
 }
 
 pub(crate) mod transaction {
@@ -143,22 +149,24 @@ pub(crate) mod transaction {
     };
     use uuid::Uuid;
 
+    use crate::common::{RequestID, SessionID};
+
     pub(crate) fn client_msg(reqs: Vec<transaction::Req>) -> transaction::Client {
         transaction::Client { reqs }
     }
 
-    pub(crate) fn stream_req(req_id: Vec<u8>) -> transaction::Req {
-        req_with_id(transaction::req::Req::StreamReq(stream::Req {}), req_id)
+    pub(crate) fn stream_req(req_id: RequestID) -> transaction::Req {
+        req_with_id(transaction::req::Req::StreamReq(stream::Req {}), req_id.into())
     }
 
     pub(crate) fn open_req(
-        session_id: Vec<u8>,
+        session_id: SessionID,
         transaction_type: transaction::Type,
         options: Options,
         network_latency_millis: i32,
     ) -> transaction::Req {
         req(transaction::req::Req::OpenReq(open::Req {
-            session_id,
+            session_id: session_id.into(),
             r#type: transaction_type.into(),
             options: Some(options),
             network_latency_millis,

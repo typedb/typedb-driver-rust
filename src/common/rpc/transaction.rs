@@ -48,7 +48,7 @@ use crate::common::{
         builder::transaction::{client_msg, stream_req},
         ServerRPC,
     },
-    Executor, Result,
+    Executor, RequestID, Result,
 };
 
 #[derive(Clone, Debug)]
@@ -71,7 +71,7 @@ impl TransactionRPC {
             return Err(ClientError::TransactionIsClosed().into());
         }
         let (res_sink, res_receiver) = bounded::<Result<transaction::Res>>(0);
-        self.receiver.add_single(&req.req_id, res_sink);
+        self.receiver.add_single(req.req_id.clone().into(), res_sink);
         self.sender.submit_message(req);
         match res_receiver.recv() {
             Ok(result) => result,
@@ -83,9 +83,9 @@ impl TransactionRPC {
         const BUFFER_SIZE: usize = 1024;
         let (res_part_sink, res_part_receiver) = bounded(BUFFER_SIZE);
         let (stream_req_sink, stream_req_receiver) = unbounded::<transaction::Req>();
-        self.receiver.add_stream(&req.req_id, res_part_sink);
-        let res_part_stream =
-            ResPartStream::new(res_part_receiver, stream_req_sink, req.req_id.clone());
+        let req_id: RequestID = req.req_id.clone().into();
+        self.receiver.add_stream(req_id.clone(), res_part_sink);
+        let res_part_stream = ResPartStream::new(res_part_receiver, stream_req_sink, req_id);
         self.sender.add_message_provider(stream_req_receiver);
         self.sender.submit_message(req);
         res_part_stream
@@ -145,8 +145,6 @@ struct SenderState {
     ongoing_task_count: AtomicCell<u8>,
     is_open: AtomicCell<bool>,
 }
-
-type ReqId = Vec<u8>;
 
 impl SenderState {
     fn new(req_sink: CrossbeamSender<transaction::Client>) -> Self {
@@ -213,12 +211,12 @@ impl Receiver {
         Receiver { state }
     }
 
-    fn add_single(&mut self, req_id: &ReqId, res_collector: ResCollector) {
-        self.state.res_collectors.lock().unwrap().insert(req_id.clone(), res_collector);
+    fn add_single(&mut self, req_id: RequestID, res_collector: ResCollector) {
+        self.state.res_collectors.lock().unwrap().insert(req_id, res_collector);
     }
 
-    fn add_stream(&mut self, req_id: &ReqId, res_part_sink: ResPartCollector) {
-        self.state.res_part_collectors.lock().unwrap().insert(req_id.clone(), res_part_sink);
+    fn add_stream(&mut self, req_id: RequestID, res_part_sink: ResPartCollector) {
+        self.state.res_part_collectors.lock().unwrap().insert(req_id, res_part_sink);
     }
 
     fn close(&self, error: Option<Error>) {
@@ -228,8 +226,8 @@ impl Receiver {
 
 #[derive(Debug)]
 struct ReceiverState {
-    res_collectors: Mutex<HashMap<ReqId, ResCollector>>,
-    res_part_collectors: Mutex<HashMap<ReqId, ResPartCollector>>,
+    res_collectors: Mutex<HashMap<RequestID, ResCollector>>,
+    res_part_collectors: Mutex<HashMap<RequestID, ResPartCollector>>,
     is_open: AtomicCell<bool>,
 }
 
@@ -273,30 +271,30 @@ impl ReceiverState {
     }
 
     fn collect_res(&self, res: transaction::Res) {
-        match self.res_collectors.lock().unwrap().remove(&res.req_id) {
+        let req_id = res.req_id.clone().into();
+        match self.res_collectors.lock().unwrap().remove(&req_id) {
             Some(collector) => collector.send(Ok(res)).unwrap(),
             None => {
                 if let Res::OpenRes(_) = res.res.unwrap() {
                     // ignore open_res
                 } else {
-                    println!("{}", ClientError::UnknownRequestId(format!("{:?}", &res.req_id)))
+                    println!("{}", ClientError::UnknownRequestId(req_id))
                 }
             }
         }
     }
 
     fn collect_res_part(&self, res_part: transaction::ResPart) {
-        let value = self.res_part_collectors.lock().unwrap().remove(&res_part.req_id);
+        let req_id = res_part.req_id.clone().into();
+        let value = self.res_part_collectors.lock().unwrap().remove(&req_id);
         match value {
             Some(collector) => {
-                let req_id = res_part.req_id.clone();
                 if collector.send(Ok(res_part)).is_ok() {
                     self.res_part_collectors.lock().unwrap().insert(req_id, collector);
                 }
             }
             None => {
-                let req_id_str = hex_string(&res_part.req_id);
-                println!("{}", ClientError::UnknownRequestId(req_id_str));
+                println!("{}", ClientError::UnknownRequestId(req_id));
             }
         }
     }
@@ -318,10 +316,6 @@ impl ReceiverState {
     }
 }
 
-fn hex_string(v: &[u8]) -> String {
-    v.iter().map(|b| format!("{:02X}", b)).collect::<String>()
-}
-
 type ResCollector = CrossbeamSender<Result<transaction::Res>>;
 type ResPartCollector = CrossbeamSender<Result<transaction::ResPart>>;
 type CloseSignalSink = CrossbeamSender<Option<Error>>;
@@ -331,14 +325,14 @@ type CloseSignalReceiver = CrossbeamReceiver<Option<Error>>;
 pub(crate) struct ResPartStream {
     source: CrossbeamReceiver<Result<transaction::ResPart>>,
     stream_req_sink: CrossbeamSender<transaction::Req>,
-    req_id: ReqId,
+    req_id: RequestID,
 }
 
 impl ResPartStream {
     fn new(
         source: CrossbeamReceiver<Result<transaction::ResPart>>,
         stream_req_sink: CrossbeamSender<transaction::Req>,
-        req_id: ReqId,
+        req_id: RequestID,
     ) -> Self {
         ResPartStream { source, stream_req_sink, req_id }
     }
