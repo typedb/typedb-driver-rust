@@ -26,7 +26,7 @@ use crate::common::{ClusterRPC, Credential, Result, SessionManager, SessionType}
 
 #[derive(Debug)]
 pub struct Client {
-    sessions: Arc<SessionManager>,
+    session_manager: Arc<SessionManager>,
     databases: DatabaseManager,
     cluster_rpc: Arc<ClusterRPC>,
 }
@@ -37,7 +37,7 @@ impl Client {
         let cluster_rpc = ClusterRPC::new(addresses, credential)?;
         let databases = DatabaseManager::new(cluster_rpc.clone());
         Ok(Self {
-            sessions: Arc::new(SessionManager::new(cluster_rpc.get_any_server_rpc().executor())),
+            session_manager: Arc::new(SessionManager::new(cluster_rpc.get_any_server_rpc().executor())),
             databases,
             cluster_rpc,
         })
@@ -56,7 +56,7 @@ impl Client {
             self.databases.get(database_name).await?,
             session_type,
             self.cluster_rpc.clone(),
-            self.sessions.clone(),
+            self.session_manager.clone(),
         )
         .await
     }

@@ -65,7 +65,7 @@ impl SessionManager {
         }
     }
 
-    pub(crate) async fn session(
+    pub(crate) async fn new_session(
         &self,
         database_name: &str,
         session_type: SessionType,

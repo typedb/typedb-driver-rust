@@ -27,7 +27,7 @@ use crate::{
 
 pub struct Client {
     databases: DatabaseManager,
-    sessions: SessionManager,
+    session_manager: SessionManager,
     core_rpc: CoreRPC,
 }
 
@@ -36,7 +36,7 @@ impl Client {
         let core_rpc = CoreRPC::connect(address.parse()?).await?;
         Ok(Self {
             databases: DatabaseManager::new(core_rpc.clone()),
-            sessions: SessionManager::new(core_rpc.executor()),
+            session_manager: SessionManager::new(core_rpc.executor()),
             core_rpc,
         })
     }
@@ -63,8 +63,8 @@ impl Client {
         session_type: SessionType,
         options: core::Options,
     ) -> Result<server::Session> {
-        self.sessions
-            .session(database_name, session_type, self.core_rpc.clone().into(), options)
+        self.session_manager
+            .new_session(database_name, session_type, self.core_rpc.clone().into(), options)
             .await
     }
 }

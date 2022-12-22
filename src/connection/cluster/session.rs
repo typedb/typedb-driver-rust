@@ -48,7 +48,7 @@ impl Session {
             .run_failsafe(|database, server_rpc, _| async {
                 let database_name = database.name;
                 session_manager
-                    .session(
+                    .new_session(
                         database_name.as_str(),
                         session_type,
                         server_rpc.into(),
@@ -75,7 +75,7 @@ impl Session {
                         Ok((None, transaction))
                     } else {
                         let server_session = session_manager
-                            .session(
+                            .new_session(
                                 database.name.as_str(),
                                 session_type,
                                 server_rpc.into(),
