@@ -19,9 +19,10 @@
  * under the License.
  */
 
-use std::{fmt, fmt::Debug, future::Future, sync::Arc, thread::sleep, time::Duration};
+use std::{fmt, fmt::Debug, future::Future, sync::Arc, time::Duration};
 
 use log::debug;
+use tokio::time::sleep;
 
 use crate::{
     common::{
@@ -175,7 +176,7 @@ impl Database {
     }
 
     async fn wait_for_primary_replica_selection() {
-        sleep(Self::WAIT_FOR_PRIMARY_REPLICA_SELECTION);
+        sleep(Self::WAIT_FOR_PRIMARY_REPLICA_SELECTION).await;
     }
 }
 
