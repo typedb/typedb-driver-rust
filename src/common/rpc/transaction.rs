@@ -25,7 +25,6 @@ use std::{
     pin::Pin,
     sync::{Arc, Mutex},
     task::{Context, Poll},
-    thread::sleep,
     time::Duration,
 };
 
@@ -36,6 +35,7 @@ use crossbeam::{
     },
 };
 use futures::{Stream, StreamExt};
+use tokio::time::sleep;
 use tonic::Streaming;
 use typedb_protocol::{
     transaction,
@@ -70,17 +70,38 @@ impl TransactionRPC {
         })
     }
 
-    pub(crate) fn single(&mut self, req: transaction::Req) -> Result<transaction::Res> {
+    pub(crate) async fn single_async(&mut self, req: transaction::Req) -> Result<transaction::Res> {
+        let recv = self.send_request(req)?;
+        loop {
+            match recv.try_recv() {
+                Ok(res) => match res {
+                    Ok(result) => break Ok(result),
+                    Err(err) => Err(Error::new(err.to_string()))?,
+                },
+                Err(TryRecvError::Disconnected) => Err(ClientError::TransactionIsClosed())?,
+                Err(TryRecvError::Empty) => sleep(Duration::from_millis(3)).await, // TODO constant
+            }
+        }
+    }
+
+    pub(crate) fn single_blocking(&mut self, req: transaction::Req) -> Result<transaction::Res> {
+        match self.send_request(req)?.recv() {
+            Ok(result) => result,
+            Err(err) => Err(Error::new(err.to_string())),
+        }
+    }
+
+    fn send_request(
+        &mut self,
+        req: transaction::Req,
+    ) -> Result<CrossbeamReceiver<Result<transaction::Res>>> {
         if !self.is_open() {
             return Err(ClientError::TransactionIsClosed().into());
         }
         let (res_sink, res_receiver) = bounded::<Result<transaction::Res>>(0);
         self.receiver.add_single(req.req_id.clone().into(), res_sink);
         self.sender.submit_message(req);
-        match res_receiver.recv() {
-            Ok(result) => result,
-            Err(err) => Err(Error::new(err.to_string())),
-        }
+        Ok(res_receiver)
     }
 
     pub(crate) fn stream(&mut self, req: transaction::Req) -> ResPartStream {
@@ -165,9 +186,9 @@ impl SenderState {
     }
 
     async fn dispatch_loop(self: Arc<Self>) {
+        const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
         while self.is_open.load() {
-            const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
-            sleep(DISPATCH_INTERVAL);
+            std::thread::sleep(DISPATCH_INTERVAL);
             self.dispatch_messages();
         }
     }

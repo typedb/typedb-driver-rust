@@ -75,23 +75,23 @@ impl QueryManager {
         QueryManager { tx: tx.clone() }
     }
 
-    pub fn define(&mut self, query: &str) -> Result {
-        self.single_call(define_req(query, None))?;
+    pub async fn define(&mut self, query: &str) -> Result {
+        self.single_call(define_req(query, None)).await?;
         Ok(())
     }
 
-    pub fn define_with_options(&mut self, query: &str, options: &core::Options) -> Result {
-        self.single_call(define_req(query, Some(options.to_proto())))?;
+    pub async fn define_with_options(&mut self, query: &str, options: &core::Options) -> Result {
+        self.single_call(define_req(query, Some(options.to_proto()))).await?;
         Ok(())
     }
 
-    pub fn delete(&mut self, query: &str) -> Result {
-        self.single_call(delete_req(query, None))?;
+    pub async fn delete(&mut self, query: &str) -> Result {
+        self.single_call(delete_req(query, None)).await?;
         Ok(())
     }
 
-    pub fn delete_with_options(&mut self, query: &str, options: &core::Options) -> Result {
-        self.single_call(delete_req(query, Some(options.to_proto())))?;
+    pub async fn delete_with_options(&mut self, query: &str, options: &core::Options) -> Result {
+        self.single_call(delete_req(query, Some(options.to_proto()))).await?;
         Ok(())
     }
 
@@ -124,31 +124,31 @@ impl QueryManager {
         stream_concept_maps!(self, req, MatchResPart, "match")
     }
 
-    pub fn match_aggregate(&mut self, query: &str) -> Result<Numeric> {
-        match self.single_call(match_aggregate_req(query, None))? {
+    pub async fn match_aggregate(&mut self, query: &str) -> Result<Numeric> {
+        match self.single_call(match_aggregate_req(query, None)).await? {
             MatchAggregateRes(res) => res.answer.unwrap().try_into(),
             _ => Err(ClientError::MissingResponseField("match_aggregate_res"))?,
         }
     }
 
-    pub fn match_aggregate_with_options(
+    pub async fn match_aggregate_with_options(
         &mut self,
         query: &str,
         options: core::Options,
     ) -> Result<Numeric> {
-        match self.single_call(match_aggregate_req(query, Some(options.to_proto())))? {
+        match self.single_call(match_aggregate_req(query, Some(options.to_proto()))).await? {
             MatchAggregateRes(res) => res.answer.unwrap().try_into(),
             _ => Err(ClientError::MissingResponseField("match_aggregate_res"))?,
         }
     }
 
-    pub fn undefine(&mut self, query: &str) -> Result {
-        self.single_call(undefine_req(query, None))?;
+    pub async fn undefine(&mut self, query: &str) -> Result {
+        self.single_call(undefine_req(query, None)).await?;
         Ok(())
     }
 
-    pub fn undefine_with_options(&mut self, query: &str, options: &core::Options) -> Result {
-        self.single_call(undefine_req(query, Some(options.to_proto())))?;
+    pub async fn undefine_with_options(&mut self, query: &str, options: &core::Options) -> Result {
+        self.single_call(undefine_req(query, Some(options.to_proto()))).await?;
         Ok(())
     }
 
@@ -166,8 +166,8 @@ impl QueryManager {
         stream_concept_maps!(self, req, UpdateResPart, "update")
     }
 
-    fn single_call(&mut self, req: transaction::Req) -> Result<query_manager::res::Res> {
-        match self.tx.single(req)?.res {
+    async fn single_call(&mut self, req: transaction::Req) -> Result<query_manager::res::Res> {
+        match self.tx.single_async(req).await?.res {
             Some(transaction::res::Res::QueryManagerRes(res)) => {
                 res.res.ok_or(ClientError::MissingResponseField("res.query_manager_res").into())
             }

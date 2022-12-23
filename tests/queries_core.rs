@@ -101,12 +101,12 @@ async fn query_options() {
     transaction.commit().unwrap();
 
     let mut transaction = session.transaction(Read).await.unwrap();
-    let age_count = transaction.query.match_aggregate("match $x isa age; count;").unwrap();
+    let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
     assert_eq!(age_count.into_i64(), 0);
 
     let with_inference = core::Options::new_core().infer(true);
     let mut transaction = session.transaction_with_options(Read, with_inference).await.unwrap();
-    let age_count = transaction.query.match_aggregate("match $x isa age; count;").unwrap();
+    let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
     assert_eq!(age_count.into_i64(), 1);
 }
 
@@ -223,7 +223,7 @@ async fn create_test_database_with_schema(
 
     let session = client.session(TEST_DATABASE, Schema).await.unwrap();
     let mut transaction = session.transaction(Write).await.unwrap();
-    transaction.query.define(schema).unwrap();
+    transaction.query.define(schema).await.unwrap();
     transaction.commit().unwrap();
     Ok(())
 }

@@ -58,12 +58,12 @@ impl Transaction {
     }
 
     pub fn commit(&mut self) -> Result {
-        self.rpc.single(commit_req())?;
+        self.rpc.single_blocking(commit_req())?;
         Ok(())
     }
 
     pub fn rollback(&mut self) -> Result {
-        self.rpc.single(rollback_req())?;
+        self.rpc.single_blocking(rollback_req())?;
         Ok(())
     }
 }
