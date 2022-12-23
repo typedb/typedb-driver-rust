@@ -25,9 +25,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use crossbeam::channel::{
-    bounded, Receiver as CrossbeamReceiver, Sender as CrossbeamSender, TryRecvError,
-};
+use crossbeam::channel::{bounded, Receiver, Sender, TryRecvError};
 use futures::Stream;
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
@@ -212,12 +210,11 @@ impl CoreRPC {
     pub(crate) async fn transaction(
         &mut self,
         open_req: transaction::Req,
-    ) -> Result<(CrossbeamSender<transaction::Client>, Streaming<transaction::Server>)> {
+    ) -> Result<(Sender<transaction::Client>, Streaming<transaction::Server>)> {
         // TODO: refactor to crossbeam channel
         let (sender, receiver) = bounded::<transaction::Client>(256);
         sender.send(client_msg(vec![open_req])).unwrap();
-        bidi_stream(sender, self.core_grpc.transaction(CrossbeamReceiverStream::from(receiver)))
-            .await
+        bidi_stream(sender, self.core_grpc.transaction(ReceiverStream::from(receiver))).await
     }
 }
 
@@ -228,23 +225,23 @@ pub(crate) async fn single<T>(
 }
 
 pub(crate) async fn bidi_stream<T, U>(
-    req_sink: CrossbeamSender<T>,
+    req_sink: Sender<T>,
     res: impl Future<Output = StdResult<Response<Streaming<U>>, Status>>,
-) -> Result<(CrossbeamSender<T>, Streaming<U>)> {
+) -> Result<(Sender<T>, Streaming<U>)> {
     Ok((req_sink, res.await?.into_inner()))
 }
 
-struct CrossbeamReceiverStream<T> {
-    recv: CrossbeamReceiver<T>,
+struct ReceiverStream<T> {
+    recv: Receiver<T>,
 }
 
-impl<T> From<CrossbeamReceiver<T>> for CrossbeamReceiverStream<T> {
-    fn from(recv: CrossbeamReceiver<T>) -> Self {
+impl<T> From<Receiver<T>> for ReceiverStream<T> {
+    fn from(recv: Receiver<T>) -> Self {
         Self { recv }
     }
 }
 
-impl<T> Stream for CrossbeamReceiverStream<T> {
+impl<T> Stream for ReceiverStream<T> {
     type Item = T;
     fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let poll = self.recv.try_recv();

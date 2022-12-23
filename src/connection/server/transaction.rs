@@ -67,9 +67,3 @@ impl Transaction {
         Ok(())
     }
 }
-
-impl Drop for Transaction {
-    fn drop(&mut self) {
-        self.rpc.close();
-    }
-}

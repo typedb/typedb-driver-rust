@@ -24,7 +24,7 @@ use std::{
     sync::Arc,
 };
 
-use crossbeam::channel::Sender as CrossbeamSender;
+use crossbeam::channel::Sender;
 use futures::{future::BoxFuture, FutureExt};
 use tonic::Streaming;
 use typedb_protocol::{
@@ -280,7 +280,7 @@ impl ClusterServerRPC {
     pub(crate) async fn transaction(
         &mut self,
         req: transaction::Req,
-    ) -> Result<(CrossbeamSender<transaction::Client>, Streaming<transaction::Server>)> {
+    ) -> Result<(Sender<transaction::Client>, Streaming<transaction::Server>)> {
         self.call_with_auto_renew_token(|this| Box::pin(this.core_rpc.transaction(req.clone())))
             .await
     }
