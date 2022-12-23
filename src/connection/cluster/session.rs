@@ -23,15 +23,15 @@ use std::sync::Arc;
 
 use super::Database;
 use crate::{
-    common::{ClusterRPC, Result, SessionManager, SessionType, TransactionType},
-    connection::{core, server, server::Transaction},
+    common::{ClusterRPC, Result, SessionType, TransactionType},
+    connection::{core, server},
 };
 
 #[derive(Debug)]
 pub struct Session {
     pub database: Database,
     pub session_type: SessionType,
-    session_manager: Arc<SessionManager>,
+    session_manager: Arc<server::SessionManager>,
     server_session: server::Session,
     cluster_rpc: Arc<ClusterRPC>,
 }
@@ -42,7 +42,7 @@ impl Session {
         mut database: Database,
         session_type: SessionType,
         cluster_rpc: Arc<ClusterRPC>,
-        session_manager: Arc<SessionManager>,
+        session_manager: Arc<server::SessionManager>,
     ) -> Result<Self> {
         let server_session = database
             .run_failsafe(|database, server_rpc, _| async {
@@ -62,7 +62,10 @@ impl Session {
     }
 
     //TODO options
-    pub async fn transaction(&mut self, transaction_type: TransactionType) -> Result<Transaction> {
+    pub async fn transaction(
+        &mut self,
+        transaction_type: TransactionType,
+    ) -> Result<server::Transaction> {
         let (session, transaction) = self
             .database
             .run_failsafe(|database, server_rpc, is_first_run| {

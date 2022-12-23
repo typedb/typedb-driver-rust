@@ -25,8 +25,6 @@ mod drop_guard;
 pub mod error;
 mod macros;
 pub(crate) mod rpc;
-mod session_manager;
-pub(crate) mod thread;
 
 use std::fmt;
 
@@ -37,7 +35,6 @@ pub use self::{address::Address, credential::Credential, error::Error};
 pub(crate) use self::{
     drop_guard::DropGuard,
     rpc::{ClusterRPC, ClusterServerRPC, CoreRPC, ServerRPC, TransactionRPC},
-    session_manager::SessionManager,
 };
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;

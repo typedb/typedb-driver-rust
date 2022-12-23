@@ -22,13 +22,18 @@
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
+    thread::sleep,
+    time::{Duration, Instant},
 };
 
-use crossbeam::channel::{bounded, Sender};
+use crossbeam::channel::{bounded, Receiver, Sender};
+use futures::future::join_all;
+use log::warn;
 
 use crate::{
     common::{
-        thread::{session_close_thread, session_pulse_thread},
+        error::ClientError,
+        rpc::builder::session::{close_req, pulse_req},
         DropGuard, Executor, Result, ServerRPC, SessionID, SessionType,
     },
     connection::{core, server},
@@ -44,15 +49,19 @@ pub(crate) struct SessionManager {
 }
 
 impl SessionManager {
-    pub(crate) fn new(executor: Executor) -> Self {
+    const PULSE_INTERVAL: Duration = Duration::from_secs(5);
+    const POLL_INTERVAL: Duration = Duration::from_millis(3);
+
+    pub(crate) fn new() -> Self {
         let session_rpcs = Arc::new(RwLock::new(HashMap::new()));
+        let executor = Executor::new().expect("Failed to create Executor");
 
         let (pulse_thread_close_signal, close_signal_source) = bounded(1);
-        executor.spawn_ok(session_pulse_thread(session_rpcs.clone(), close_signal_source));
+        executor.spawn_ok(Self::session_pulse_thread(session_rpcs.clone(), close_signal_source));
 
         let (session_close_thread_close_signal, close_signal_source) = bounded(0);
         let (close_message_sink, close_message_source) = bounded(256);
-        executor.spawn_ok(session_close_thread(
+        executor.spawn_ok(Self::session_close_thread(
             session_rpcs.clone(),
             close_signal_source,
             close_message_source,
@@ -85,5 +94,47 @@ impl SessionManager {
         .await?;
         self.session_rpcs.write().unwrap().insert(session.id().clone(), server_rpc);
         Ok(session)
+    }
+
+    async fn session_pulse_thread(
+        sessions: Arc<RwLock<HashMap<SessionID, ServerRPC>>>,
+        close_signal_source: Receiver<()>,
+    ) {
+        let mut next_run = Instant::now();
+        loop {
+            if close_signal_source.try_recv().is_ok() {
+                break;
+            }
+            let reqs = sessions.read().unwrap().clone();
+            join_all(reqs.into_iter().map(|(session_id, mut rpc)| async move {
+                println!("Pulsing session {}", session_id);
+                rpc.session_pulse(pulse_req(session_id)).await
+            }))
+            .await;
+            next_run += Self::PULSE_INTERVAL;
+            sleep(next_run - Instant::now());
+        }
+    }
+
+    async fn session_close_thread(
+        session_rpcs: Arc<RwLock<HashMap<SessionID, ServerRPC>>>,
+        close_signal_source: Receiver<()>,
+        session_close_source: Receiver<SessionID>,
+    ) {
+        loop {
+            while let Ok(session_id) = session_close_source.try_recv() {
+                println!("Closing session {}", session_id);
+                let mut rpc = session_rpcs.write().unwrap().remove(&session_id).unwrap();
+                // TODO: the request errors harmlessly if the session is already closed. Protocol should
+                //       expose the cause of the error and we can use that to decide whether to warn here.
+                if rpc.session_close(close_req(session_id)).await.is_err() {
+                    warn!("{}", ClientError::SessionCloseFailed())
+                }
+            }
+            if close_signal_source.try_recv().is_ok() {
+                break;
+            }
+            sleep(Self::POLL_INTERVAL);
+        }
     }
 }

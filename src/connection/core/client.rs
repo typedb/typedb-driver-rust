@@ -21,13 +21,13 @@
 
 use super::DatabaseManager;
 use crate::{
-    common::{CoreRPC, Executor, Result, SessionManager, SessionType},
+    common::{CoreRPC, Result, SessionType},
     connection::{core, server},
 };
 
 pub struct Client {
     databases: DatabaseManager,
-    session_manager: SessionManager,
+    session_manager: server::SessionManager,
     core_rpc: CoreRPC,
 }
 
@@ -36,9 +36,7 @@ impl Client {
         let core_rpc = CoreRPC::connect(address.parse()?).await?;
         Ok(Self {
             databases: DatabaseManager::new(core_rpc.clone()),
-            session_manager: SessionManager::new(
-                Executor::new().expect("Failed to create Executor"),
-            ),
+            session_manager: server::SessionManager::new(),
             core_rpc,
         })
     }

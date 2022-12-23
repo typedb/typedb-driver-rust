@@ -31,7 +31,7 @@ use crate::{
         error::ClientError, rpc::builder::session::open_req, DropGuard, Executor, Result,
         ServerRPC, SessionID, SessionType, TransactionType,
     },
-    connection::{core, server::Transaction},
+    connection::{core, server},
 };
 
 #[derive(Clone, Debug)]
@@ -91,7 +91,10 @@ impl Session {
         self.is_open_atomic.load()
     }
 
-    pub async fn transaction(&self, transaction_type: TransactionType) -> Result<Transaction> {
+    pub async fn transaction(
+        &self,
+        transaction_type: TransactionType,
+    ) -> Result<server::Transaction> {
         self.transaction_with_options(transaction_type, core::Options::default()).await
     }
 
@@ -99,11 +102,11 @@ impl Session {
         &self,
         transaction_type: TransactionType,
         options: core::Options,
-    ) -> Result<Transaction> {
+    ) -> Result<server::Transaction> {
         if !self.is_open() {
             Err(ClientError::SessionIsClosed())?
         }
-        Transaction::new(
+        server::Transaction::new(
             self.id.clone(),
             transaction_type,
             options,
