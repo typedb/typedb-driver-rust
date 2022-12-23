@@ -34,7 +34,7 @@ use crate::{
     connection::server,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct DatabaseManager {
     cluster_rpc: Arc<ClusterRPC>,
 }
@@ -51,7 +51,7 @@ impl DatabaseManager {
     pub async fn contains(&mut self, name: &str) -> Result<bool> {
         Ok(self
             .run_failsafe(name, move |database, mut server_rpc, _| {
-                let req = contains_req(&database.name);
+                let req = contains_req(database.name());
                 async move { server_rpc.databases_contains(req).await }
             })
             .await?
@@ -60,7 +60,7 @@ impl DatabaseManager {
 
     pub async fn create(&mut self, name: &str) -> Result {
         self.run_failsafe(name, |database, mut server_rpc, _| {
-            let req = create_req(&database.name);
+            let req = create_req(database.name());
             async move { server_rpc.databases_create(req).await }
         })
         .await?;

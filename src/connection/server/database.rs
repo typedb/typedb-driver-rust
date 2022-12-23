@@ -28,13 +28,17 @@ use crate::common::{
 
 #[derive(Clone, Debug)]
 pub struct Database {
-    pub name: String,
+    name: String,
     server_rpc: ServerRPC,
 }
 
 impl Database {
     pub(crate) fn new(name: &str, server_rpc: ServerRPC) -> Self {
         Database { name: name.into(), server_rpc }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub async fn delete(mut self) -> Result {

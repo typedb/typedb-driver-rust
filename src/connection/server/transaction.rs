@@ -32,8 +32,8 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct Transaction {
-    pub type_: TransactionType,
-    pub options: core::Options,
+    type_: TransactionType,
+    options: core::Options,
     pub query: QueryManager,
     rpc: TransactionRPC,
 }
@@ -66,8 +66,10 @@ impl Transaction {
         self.rpc.single(rollback_req())?;
         Ok(())
     }
+}
 
-    pub fn close(&self) {
+impl Drop for Transaction {
+    fn drop(&mut self) {
         self.rpc.close();
     }
 }

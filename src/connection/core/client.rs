@@ -25,6 +25,7 @@ use crate::{
     connection::{core, server},
 };
 
+#[derive(Debug)]
 pub struct Client {
     databases: DatabaseManager,
     session_manager: server::SessionManager,

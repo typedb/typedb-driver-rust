@@ -19,10 +19,7 @@
  * under the License.
  */
 
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use crossbeam::{atomic::AtomicCell, channel::Sender};
 
@@ -34,14 +31,14 @@ use crate::{
     connection::{core, server},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Session {
     database_name: String,
     session_type: SessionType,
     id: SessionID,
     server_rpc: ServerRPC,
     executor: Executor,
-    is_open_atomic: Arc<AtomicCell<bool>>,
+    is_open_atomic: AtomicCell<bool>,
     network_latency: Duration,
     close_guard: DropGuard<SessionID>,
 }
@@ -62,7 +59,7 @@ impl Session {
         Ok(Session {
             database_name: database_name.to_owned(),
             close_guard: DropGuard::new(on_close, id.clone()),
-            is_open_atomic: Arc::new(AtomicCell::new(true)),
+            is_open_atomic: AtomicCell::new(true),
             network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
             session_type,
             server_rpc,
@@ -115,11 +112,6 @@ impl Session {
             self.executor.clone(),
         )
         .await
-    }
-
-    pub fn close(self) {
-        self.is_open_atomic.store(false);
-        self.close_guard.release();
     }
 
     fn compute_network_latency(start_time: Instant, server_duration_millis: i32) -> Duration {

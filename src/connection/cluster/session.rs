@@ -29,8 +29,8 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Session {
-    pub database: Database,
-    pub session_type: SessionType,
+    database: Database,
+    session_type: SessionType,
     session_manager: Arc<server::SessionManager>,
     server_session: server::Session,
     cluster_rpc: Arc<ClusterRPC>,
@@ -46,10 +46,10 @@ impl Session {
     ) -> Result<Self> {
         let server_session = database
             .run_failsafe(|database, server_rpc, _| async {
-                let database_name = database.name;
+                let database = database;
                 session_manager
                     .new_session(
-                        database_name.as_str(),
+                        database.name(),
                         session_type,
                         server_rpc.into(),
                         core::Options::default(),
@@ -59,6 +59,14 @@ impl Session {
             .await?;
 
         Ok(Self { database, session_type, session_manager, server_session, cluster_rpc })
+    }
+
+    pub fn database_name(&self) -> &str {
+        self.database.name()
+    }
+
+    pub fn type_(&self) -> SessionType {
+        self.session_type
     }
 
     //TODO options
@@ -79,7 +87,7 @@ impl Session {
                     } else {
                         let server_session = session_manager
                             .new_session(
-                                database.name.as_str(),
+                                database.name(),
                                 session_type,
                                 server_rpc.into(),
                                 core::Options::default(),

@@ -33,7 +33,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct Database {
-    pub name: String,
+    name: String,
     replicas: Vec<Replica>,
     cluster_rpc: Arc<ClusterRPC>,
 }
@@ -67,6 +67,10 @@ impl Database {
             replicas: Replica::fetch_all(name, cluster_rpc.clone()).await?,
             cluster_rpc,
         })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub async fn delete(mut self) -> Result {

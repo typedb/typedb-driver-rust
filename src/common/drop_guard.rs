@@ -19,33 +19,20 @@
  * under the License.
  */
 
-use std::sync::Arc;
-
 use crossbeam::{atomic::AtomicCell, channel::Sender};
 
-#[derive(Clone, Debug)]
-pub(crate) struct DropGuard<T: Clone = ()> {
-    inner: Arc<DropGuardInner<T>>,
-}
-
-impl<T: Clone> DropGuard<T> {
-    pub(crate) fn new(sink: Sender<T>, message: T) -> Self {
-        Self { inner: Arc::new(DropGuardInner { sink, message, is_armed: AtomicCell::new(true) }) }
-    }
-
-    pub(crate) fn release(&self) {
-        self.inner.release()
-    }
-}
-
 #[derive(Debug)]
-struct DropGuardInner<T: Clone> {
+pub(crate) struct DropGuard<T: Clone = ()> {
     sink: Sender<T>,
     message: T,
     is_armed: AtomicCell<bool>,
 }
 
-impl<T: Clone> DropGuardInner<T> {
+impl<T: Clone> DropGuard<T> {
+    pub(crate) fn new(sink: Sender<T>, message: T) -> Self {
+        Self { sink, message, is_armed: AtomicCell::new(true) }
+    }
+
     pub(crate) fn release(&self) {
         if self.is_armed.compare_exchange(true, false).is_ok() {
             self.sink.send(self.message.clone()).unwrap()
@@ -53,7 +40,7 @@ impl<T: Clone> DropGuardInner<T> {
     }
 }
 
-impl<T: Clone> Drop for DropGuardInner<T> {
+impl<T: Clone> Drop for DropGuard<T> {
     fn drop(&mut self) {
         self.release()
     }
