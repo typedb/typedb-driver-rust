@@ -50,13 +50,13 @@ pub(crate) struct ClusterRPC {
 
 impl ClusterRPC {
     pub(crate) fn new(addresses: HashSet<Address>, credential: Credential) -> Result<Arc<Self>> {
-        let cluster_clients = addresses
+        let server_rpcs = addresses
             .into_iter()
             .map(|address| {
                 Ok((address.clone(), ClusterServerRPC::new(address, credential.clone())?))
             })
             .collect::<Result<_>>()?;
-        Ok(Arc::new(Self { server_rpcs: cluster_clients }))
+        Ok(Arc::new(Self { server_rpcs }))
     }
 
     pub(crate) async fn fetch_current_addresses<T: AsRef<str>>(
