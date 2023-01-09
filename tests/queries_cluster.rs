@@ -57,5 +57,5 @@ async fn basic() {
     while let Some(result) = answer_stream.next().await {
         assert!(result.is_ok())
     }
-    transaction.commit().unwrap();
+    transaction.commit().await.unwrap();
 }

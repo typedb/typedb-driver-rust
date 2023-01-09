@@ -57,13 +57,13 @@ impl Transaction {
         Ok(Transaction { type_: transaction_type, options, query: QueryManager::new(&rpc), rpc })
     }
 
-    pub fn commit(&mut self) -> Result {
-        self.rpc.single_blocking(commit_req())?;
+    pub async fn commit(&mut self) -> Result {
+        self.rpc.single_async(commit_req()).await?;
         Ok(())
     }
 
-    pub fn rollback(&mut self) -> Result {
-        self.rpc.single_blocking(rollback_req())?;
+    pub async fn rollback(&mut self) -> Result {
+        self.rpc.single_async(rollback_req()).await?;
         Ok(())
     }
 }
