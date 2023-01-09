@@ -97,7 +97,7 @@ impl SessionManager {
     }
 
     async fn session_pulse_thread(
-        sessions: Arc<RwLock<HashMap<SessionID, ServerRPC>>>,
+        session_rpcs: Arc<RwLock<HashMap<SessionID, ServerRPC>>>,
         close_signal_source: Receiver<()>,
     ) {
         let mut next_run = Instant::now();
@@ -105,7 +105,7 @@ impl SessionManager {
             if close_signal_source.try_recv().is_ok() {
                 break;
             }
-            let reqs = sessions.read().unwrap().clone();
+            let reqs = session_rpcs.read().unwrap().clone();
             join_all(reqs.into_iter().map(|(session_id, mut rpc)| async move {
                 rpc.session_pulse(pulse_req(session_id)).await
             }))
@@ -121,14 +121,17 @@ impl SessionManager {
         session_close_source: Receiver<SessionID>,
     ) {
         loop {
-            while let Ok(session_id) = session_close_source.try_recv() {
+            join_all(session_close_source.try_iter().map(|session_id| {
                 let mut rpc = session_rpcs.write().unwrap().remove(&session_id).unwrap();
                 // TODO: the request errors harmlessly if the session is already closed. Protocol should
                 //       expose the cause of the error and we can use that to decide whether to warn here.
-                if rpc.session_close(close_req(session_id)).await.is_err() {
-                    warn!("{}", ClientError::SessionCloseFailed())
+                async move {
+                    if rpc.session_close(close_req(session_id)).await.is_err() {
+                        warn!("{}", ClientError::SessionCloseFailed())
+                    }
                 }
-            }
+            }))
+            .await;
             if close_signal_source.try_recv().is_ok() {
                 break;
             }
