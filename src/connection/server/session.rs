@@ -25,8 +25,8 @@ use crossbeam::{atomic::AtomicCell, channel::Sender};
 
 use crate::{
     common::{
-        error::ClientError, rpc::builder::session::open_req, DropGuard, Executor, Result,
-        ServerRPC, SessionID, SessionType, TransactionType,
+        error::ClientError, rpc::builder::session::open_req, DropGuard, Result, ServerRPC,
+        SessionID, SessionType, TransactionType,
     },
     connection::{core, server},
 };
@@ -37,7 +37,6 @@ pub struct Session {
     session_type: SessionType,
     id: SessionID,
     server_rpc: ServerRPC,
-    executor: Executor,
     is_open_atomic: AtomicCell<bool>,
     network_latency: Duration,
     close_guard: DropGuard<SessionID>,
@@ -49,7 +48,6 @@ impl Session {
         session_type: SessionType,
         options: core::Options,
         mut server_rpc: ServerRPC,
-        executor: Executor,
         on_close: Sender<SessionID>,
     ) -> Result<Self> {
         let start_time = Instant::now();
@@ -58,13 +56,12 @@ impl Session {
         let id: SessionID = res.session_id.into();
         Ok(Session {
             database_name: database_name.to_owned(),
+            session_type,
             close_guard: DropGuard::new(on_close, id.clone()),
+            id,
+            server_rpc,
             is_open_atomic: AtomicCell::new(true),
             network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
-            session_type,
-            server_rpc,
-            id,
-            executor,
         })
     }
 
@@ -109,7 +106,6 @@ impl Session {
             options,
             self.network_latency,
             self.server_rpc.clone(),
-            self.executor.clone(),
         )
         .await
     }

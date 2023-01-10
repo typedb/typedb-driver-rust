@@ -35,7 +35,7 @@ use crossbeam::{
     },
 };
 use futures::{Stream, StreamExt};
-use tokio::time::sleep;
+use tokio::{spawn, time::sleep};
 use tonic::Streaming;
 use typedb_protocol::{
     transaction,
@@ -48,7 +48,7 @@ use crate::common::{
         builder::transaction::{client_msg, stream_req},
         ServerRPC,
     },
-    Executor, RequestID, Result,
+    RequestID, Result,
 };
 
 #[derive(Clone, Debug)]
@@ -58,16 +58,9 @@ pub(crate) struct TransactionRPC {
 }
 
 impl TransactionRPC {
-    pub(crate) async fn new(
-        mut server_rpc: ServerRPC,
-        executor: Executor,
-        open_req: transaction::Req,
-    ) -> Result<Self> {
+    pub(crate) async fn new(mut server_rpc: ServerRPC, open_req: transaction::Req) -> Result<Self> {
         let (req_sink, streaming_res) = server_rpc.transaction(open_req).await?;
-        Ok(TransactionRPC {
-            receiver: Receiver::new(streaming_res, &executor),
-            sender: Sender::new(req_sink, executor),
-        })
+        Ok(TransactionRPC { sender: Sender::new(req_sink), receiver: Receiver::new(streaming_res) })
     }
 
     pub(crate) async fn single_async(&mut self, req: transaction::Req) -> Result<transaction::Res> {
@@ -98,7 +91,7 @@ impl TransactionRPC {
         if !self.is_open() {
             return Err(ClientError::TransactionIsClosed().into());
         }
-        let (res_sink, res_receiver) = bounded::<Result<transaction::Res>>(0);
+        let (res_sink, res_receiver) = bounded::<Result<transaction::Res>>(1);
         self.receiver.add_single(req.req_id.clone().into(), res_sink);
         self.sender.submit_message(req);
         Ok(res_receiver)
@@ -129,14 +122,13 @@ impl TransactionRPC {
 #[derive(Clone, Debug)]
 struct Sender {
     state: Arc<SenderState>,
-    executor: Executor,
 }
 
 impl Sender {
-    pub(crate) fn new(req_sink: CrossbeamSender<transaction::Client>, executor: Executor) -> Self {
+    pub(crate) fn new(req_sink: CrossbeamSender<transaction::Client>) -> Self {
         let state = Arc::new(SenderState::new(req_sink));
-        executor.spawn_ok(state.clone().dispatch_loop());
-        Sender { state, executor }
+        spawn(state.clone().dispatch_loop());
+        Sender { state }
     }
 
     fn submit_message(&self, req: transaction::Req) {
@@ -145,9 +137,13 @@ impl Sender {
 
     fn add_message_provider(&self, provider: CrossbeamReceiver<transaction::Req>) {
         let cloned_state = self.state.clone();
-        self.executor.spawn_ok(async move {
-            for req in provider.iter() {
-                cloned_state.submit_message(req);
+        spawn(async move {
+            loop {
+                match provider.try_recv() {
+                    Ok(req) => cloned_state.submit_message(req),
+                    Err(TryRecvError::Disconnected) => break,
+                    Err(TryRecvError::Empty) => sleep(Duration::from_millis(3)).await, // TODO constant
+                }
             }
         });
     }
@@ -188,7 +184,7 @@ impl SenderState {
     async fn dispatch_loop(self: Arc<Self>) {
         const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
         while self.is_open.load() {
-            std::thread::sleep(DISPATCH_INTERVAL);
+            sleep(DISPATCH_INTERVAL).await;
             self.dispatch_messages();
         }
     }
@@ -230,9 +226,9 @@ struct Receiver {
 }
 
 impl Receiver {
-    fn new(grpc_stream: Streaming<transaction::Server>, executor: &Executor) -> Self {
+    fn new(grpc_stream: Streaming<transaction::Server>) -> Self {
         let state = Arc::new(ReceiverState::new());
-        executor.spawn_ok(state.clone().listen(grpc_stream));
+        spawn(state.clone().listen(grpc_stream));
         Receiver { state }
     }
 

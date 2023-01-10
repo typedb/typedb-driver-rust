@@ -22,19 +22,22 @@
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
-    thread::sleep,
-    time::{Duration, Instant},
 };
 
 use crossbeam::channel::{bounded, Receiver, Sender};
 use futures::future::join_all;
 use log::warn;
+use tokio::{
+    spawn,
+    task::JoinHandle,
+    time::{sleep, sleep_until, Duration, Instant},
+};
 
 use crate::{
     common::{
         error::ClientError,
         rpc::builder::session::{close_req, pulse_req},
-        DropGuard, Executor, Result, ServerRPC, SessionID, SessionType,
+        Result, ServerRPC, SessionID, SessionType,
     },
     connection::{core, server},
 };
@@ -43,9 +46,10 @@ use crate::{
 pub(crate) struct SessionManager {
     close_message_sink: Sender<SessionID>,
     session_rpcs: Arc<RwLock<HashMap<SessionID, ServerRPC>>>,
-    executor: Executor,
-    pulse_thread_guard: DropGuard,
-    session_close_thread_guard: DropGuard,
+    pulse_thread: JoinHandle<()>,
+    pulse_thread_close_signal: Sender<()>,
+    session_close_thread: JoinHandle<()>,
+    session_close_thread_close_signal: Sender<()>,
 }
 
 impl SessionManager {
@@ -54,25 +58,26 @@ impl SessionManager {
 
     pub(crate) fn new() -> Self {
         let session_rpcs = Arc::new(RwLock::new(HashMap::new()));
-        let executor = Executor::new().expect("Failed to create Executor");
 
         let (pulse_thread_close_signal, close_signal_source) = bounded(1);
-        executor.spawn_ok(Self::session_pulse_thread(session_rpcs.clone(), close_signal_source));
+        let pulse_thread =
+            spawn(Self::session_pulse_thread(session_rpcs.clone(), close_signal_source));
 
-        let (session_close_thread_close_signal, close_signal_source) = bounded(0);
+        let (session_close_thread_close_signal, close_signal_source) = bounded(1);
         let (close_message_sink, close_message_source) = bounded(256);
-        executor.spawn_ok(Self::session_close_thread(
+        let session_close_thread = spawn(Self::session_close_thread(
             session_rpcs.clone(),
             close_signal_source,
             close_message_source,
         ));
 
         Self {
-            session_rpcs,
-            executor,
-            pulse_thread_guard: DropGuard::new(pulse_thread_close_signal, ()),
-            session_close_thread_guard: DropGuard::new(session_close_thread_close_signal, ()),
             close_message_sink,
+            session_rpcs,
+            pulse_thread,
+            pulse_thread_close_signal,
+            session_close_thread,
+            session_close_thread_close_signal,
         }
     }
 
@@ -88,7 +93,6 @@ impl SessionManager {
             session_type,
             options,
             server_rpc.clone(),
-            self.executor.clone(),
             self.close_message_sink.clone(),
         )
         .await?;
@@ -111,7 +115,7 @@ impl SessionManager {
             }))
             .await;
             next_run += Self::PULSE_INTERVAL;
-            sleep(next_run - Instant::now());
+            sleep_until(next_run).await;
         }
     }
 
@@ -129,13 +133,24 @@ impl SessionManager {
                     if rpc.session_close(close_req(session_id)).await.is_err() {
                         warn!("{}", ClientError::SessionCloseFailed())
                     }
+                    dbg!("Closed sesh")
                 }
             }))
             .await;
             if close_signal_source.try_recv().is_ok() {
                 break;
             }
-            sleep(Self::POLL_INTERVAL);
+            sleep(Self::POLL_INTERVAL).await;
+        }
+    }
+}
+
+impl Drop for SessionManager {
+    fn drop(&mut self) {
+        self.pulse_thread_close_signal.send(()).unwrap();
+        self.session_close_thread_close_signal.send(()).unwrap();
+        while !self.pulse_thread.is_finished() || !self.session_close_thread.is_finished() {
+            std::thread::sleep(std::time::Duration::from_millis(3))
         }
     }
 }

@@ -42,7 +42,6 @@ pub type Result<T = ()> = StdResult<T, Error>;
 pub(crate) type TonicResult<R> = StdResult<Response<R>, Status>;
 
 pub(crate) type TonicChannel = tonic::transport::Channel;
-pub(crate) type Executor = futures::executor::ThreadPool;
 
 pub(crate) type RequestID = ID;
 pub(crate) type SessionID = ID;

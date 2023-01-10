@@ -21,7 +21,10 @@
 
 use std::sync::Arc;
 
-use tonic::{codegen::InterceptedService, service::Interceptor, Request, Status};
+use tonic::{
+    service::{interceptor::InterceptedService, Interceptor},
+    Request, Status,
+};
 
 use crate::{
     common::{credential::CallCredentials, Address, Credential, TonicChannel},

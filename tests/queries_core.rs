@@ -58,13 +58,12 @@ async fn concurrent_queries() {
     create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
 
     let session = client.session(TEST_DATABASE, Data).await.unwrap();
-    let transaction = session.transaction(Write).await.unwrap();
 
     let (sender, receiver) = mpsc::channel();
 
-    for _ in 0..5 {
+    for _ in 0..8 {
         let sender = sender.clone();
-        let mut transaction = transaction.clone();
+        let mut transaction = session.transaction(Write).await.unwrap();
         tokio::spawn(async move {
             for _ in 0..5 {
                 let mut answer_stream = transaction.query.match_("match $x sub thing;");
