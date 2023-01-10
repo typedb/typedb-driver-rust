@@ -133,7 +133,6 @@ impl SessionManager {
                     if rpc.session_close(close_req(session_id)).await.is_err() {
                         warn!("{}", ClientError::SessionCloseFailed())
                     }
-                    dbg!("Closed sesh")
                 }
             }))
             .await;
