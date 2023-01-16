@@ -33,10 +33,10 @@ rust_test(
     deps = [
         "//:typedb_client",
 
-        "@vaticle_dependencies//library/crates:chrono",
-        "@vaticle_dependencies//library/crates:futures",
-        "@vaticle_dependencies//library/crates:serial_test",
-        "@vaticle_dependencies//library/crates:tokio",
+        "@crates//:chrono",
+        "@crates//:futures",
+        "@crates//:serial_test",
+        "@crates//:tokio",
     ],
 )
 
@@ -46,9 +46,9 @@ rust_test(
     deps = [
         "//:typedb_client",
 
-        "@vaticle_dependencies//library/crates:futures",
-        "@vaticle_dependencies//library/crates:serial_test",
-        "@vaticle_dependencies//library/crates:tokio",
+        "@crates//:futures",
+        "@crates//:serial_test",
+        "@crates//:tokio",
     ],
 )
 
