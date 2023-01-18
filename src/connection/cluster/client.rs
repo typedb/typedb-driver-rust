@@ -21,13 +21,15 @@
 
 use std::sync::Arc;
 
+use tokio::runtime::{Handle, RuntimeFlavor};
+
 use super::{DatabaseManager, Session};
 use crate::{
     common::{ClusterRPC, Credential, Result, SessionType},
     server,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Client {
     session_manager: Arc<server::SessionManager>,
     databases: DatabaseManager,
@@ -36,13 +38,21 @@ pub struct Client {
 
 impl Client {
     pub async fn new<T: AsRef<str>>(init_addresses: &[T], credential: Credential) -> Result<Self> {
+        if Handle::current().runtime_flavor() == RuntimeFlavor::CurrentThread {
+            todo!();
+        }
         let addresses = ClusterRPC::fetch_current_addresses(init_addresses, &credential).await?;
         let cluster_rpc = ClusterRPC::new(addresses, credential)?;
         Ok(Self {
-            session_manager: Arc::new(server::SessionManager::new()),
+            session_manager: server::SessionManager::new(),
             databases: DatabaseManager::new(cluster_rpc.clone()),
             cluster_rpc,
         })
+    }
+
+    pub fn force_close(self) {
+        self.session_manager.force_close();
+        // TODO: also force close database connections
     }
 
     pub fn databases(&mut self) -> &mut DatabaseManager {
@@ -54,12 +64,10 @@ impl Client {
         database_name: &str,
         session_type: SessionType,
     ) -> Result<Session> {
-        Session::new(
-            self.databases.get(database_name).await?,
-            session_type,
-            self.cluster_rpc.clone(),
-            self.session_manager.clone(),
-        )
-        .await
+        Session::new(self.databases.get(database_name).await?, session_type, self.clone()).await
+    }
+
+    pub(super) fn session_manager(&self) -> &Arc<server::SessionManager> {
+        &self.session_manager
     }
 }

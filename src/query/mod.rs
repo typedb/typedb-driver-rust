@@ -71,8 +71,8 @@ pub struct QueryManager {
 }
 
 impl QueryManager {
-    pub(crate) fn new(tx: &TransactionRPC) -> QueryManager {
-        QueryManager { tx: tx.clone() }
+    pub(crate) fn new(tx: TransactionRPC) -> QueryManager {
+        QueryManager { tx }
     }
 
     pub async fn define(&mut self, query: &str) -> Result {

@@ -19,46 +19,44 @@
  * under the License.
  */
 
-use std::sync::Arc;
-
-use super::Database;
+use super::{Client, Database};
 use crate::{
-    common::{ClusterRPC, Result, SessionType, TransactionType},
+    common::{error::ClientError, Result, SessionType, TransactionType},
     connection::{core, server},
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Session {
     database: Database,
     session_type: SessionType,
-    session_manager: Arc<server::SessionManager>,
     server_session: server::Session,
-    cluster_rpc: Arc<ClusterRPC>,
+    client: Client,
 }
 
 impl Session {
-    // TODO options
-    pub(crate) async fn new(
+    pub(super) async fn new(
         mut database: Database,
         session_type: SessionType,
-        cluster_rpc: Arc<ClusterRPC>,
-        session_manager: Arc<server::SessionManager>,
+        client: Client,
+        // TODO options
     ) -> Result<Self> {
         let server_session = database
             .run_failsafe(|database, server_rpc, _| async {
                 let database = database;
-                session_manager
+                client
+                    .session_manager()
                     .new_session(
                         database.name(),
                         session_type,
                         server_rpc.into(),
                         core::Options::default(),
+                        client.clone().into(),
                     )
                     .await
             })
             .await?;
 
-        Ok(Self { database, session_type, session_manager, server_session, cluster_rpc })
+        Ok(Self { database, session_type, server_session, client })
     }
 
     pub fn database_name(&self) -> &str {
@@ -69,41 +67,59 @@ impl Session {
         self.session_type
     }
 
-    //TODO options
+    pub fn is_open(&self) -> bool {
+        self.server_session.is_open()
+    }
+
+    pub fn force_close(&mut self) {
+        self.server_session.force_close();
+    }
+
     pub async fn transaction(
         &mut self,
         transaction_type: TransactionType,
     ) -> Result<server::Transaction> {
+        self.transaction_with_options(transaction_type, core::Options::new_core()).await
+    }
+
+    pub async fn transaction_with_options(
+        &mut self,
+        transaction_type: TransactionType,
+        _options: core::Options, // TODO options
+    ) -> Result<server::Transaction> {
+        if !self.is_open() {
+            Err(ClientError::SessionIsClosed())?
+        }
+
         let (session, transaction) = self
             .database
             .run_failsafe(|database, server_rpc, is_first_run| {
                 let session_type = self.session_type;
-                let session = &self.server_session;
-                let session_manager = &self.session_manager;
+                let mut session = self.server_session.clone();
+                let client = self.client.clone();
                 async move {
                     if is_first_run {
                         let transaction = session.transaction(transaction_type).await?;
-                        Ok((None, transaction))
+                        Ok((session, transaction))
                     } else {
-                        let server_session = session_manager
+                        let mut server_session = client
+                            .session_manager()
                             .new_session(
                                 database.name(),
                                 session_type,
                                 server_rpc.into(),
                                 core::Options::default(),
+                                client.clone().into(),
                             )
                             .await?;
                         let transaction = server_session.transaction(transaction_type).await?;
-                        Ok((Some(server_session), transaction))
+                        Ok((server_session, transaction))
                     }
                 }
             })
             .await?;
 
-        if let Some(session) = session {
-            self.server_session = session;
-        }
-
+        self.server_session = session;
         Ok(transaction)
     }
 }

@@ -19,21 +19,28 @@
  * under the License.
  */
 
+use std::sync::Arc;
+
+use tokio::runtime::{Handle, RuntimeFlavor};
+
 use super::DatabaseManager;
 use crate::{
     common::{CoreRPC, Result, SessionType},
     connection::{core, server},
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Client {
     databases: DatabaseManager,
-    session_manager: server::SessionManager,
+    session_manager: Arc<server::SessionManager>,
     core_rpc: CoreRPC,
 }
 
 impl Client {
     pub async fn new(address: &str) -> Result<Self> {
+        if Handle::current().runtime_flavor() == RuntimeFlavor::CurrentThread {
+            todo!();
+        }
         let core_rpc = CoreRPC::connect(address.parse()?).await?;
         Ok(Self {
             databases: DatabaseManager::new(core_rpc.clone()),
@@ -44,6 +51,11 @@ impl Client {
 
     pub async fn with_default_address() -> Result<Self> {
         Self::new("http://localhost:1729").await
+    }
+
+    pub fn force_close(self) {
+        self.session_manager.force_close()
+        // TODO: also force close database connections
     }
 
     pub fn databases(&mut self) -> &mut DatabaseManager {
@@ -65,7 +77,13 @@ impl Client {
         options: core::Options,
     ) -> Result<server::Session> {
         self.session_manager
-            .new_session(database_name, session_type, self.core_rpc.clone().into(), options)
+            .new_session(
+                database_name,
+                session_type,
+                self.core_rpc.clone().into(),
+                options,
+                self.clone().into(),
+            )
             .await
     }
 }

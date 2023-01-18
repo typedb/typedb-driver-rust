@@ -34,7 +34,7 @@ use crate::{
     connection::server,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DatabaseManager {
     cluster_rpc: Arc<ClusterRPC>,
 }

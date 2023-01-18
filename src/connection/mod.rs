@@ -22,3 +22,21 @@
 pub mod cluster;
 pub mod core;
 pub mod server;
+
+#[derive(Clone, Debug)]
+enum ClientHandle {
+    Cluster(cluster::Client),
+    Core(core::Client),
+}
+
+impl From<cluster::Client> for ClientHandle {
+    fn from(session: cluster::Client) -> Self {
+        Self::Cluster(session)
+    }
+}
+
+impl From<core::Client> for ClientHandle {
+    fn from(session: core::Client) -> Self {
+        Self::Core(session)
+    }
+}

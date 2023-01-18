@@ -42,7 +42,7 @@ async fn basic() {
     create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
     assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
 
-    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
     let mut transaction = session.transaction(Write).await.unwrap();
     let mut answer_stream = transaction.query.match_("match $x sub thing;");
     while let Some(result) = answer_stream.next().await {
@@ -53,7 +53,7 @@ async fn basic() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
-async fn concurrent_queries() {
+async fn concurrent_transactions() {
     let mut client = core::Client::with_default_address().await.unwrap();
     create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
 
@@ -63,9 +63,10 @@ async fn concurrent_queries() {
 
     for _ in 0..8 {
         let sender = sender.clone();
-        let mut transaction = session.transaction(Write).await.unwrap();
+        let mut session = session.clone();
         tokio::spawn(async move {
             for _ in 0..5 {
+                let mut transaction = session.transaction(Read).await.unwrap();
                 let mut answer_stream = transaction.query.match_("match $x sub thing;");
                 while let Some(result) = answer_stream.next().await {
                     sender.send(result).unwrap();
@@ -93,7 +94,7 @@ async fn query_options() {
         rule age-rule: when { $x isa person; } then { $x has age 25; };"#;
     create_test_database_with_schema(&mut client, schema).await.unwrap();
 
-    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
     let mut transaction = session.transaction(Write).await.unwrap();
     let data = "insert $x isa person, has name 'Alice'; $y isa person, has name 'Bob';";
     let _ = transaction.query.insert(data);
@@ -124,7 +125,7 @@ async fn many_concept_types() {
             relates friend;"#;
     create_test_database_with_schema(&mut client, schema).await.unwrap();
 
-    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
     let mut transaction = session.transaction(Write).await.unwrap();
     let data = r#"insert
         $x isa person, has name "Alice", has date-of-birth 1994-10-03;
@@ -166,7 +167,7 @@ async fn streaming_perf() {
         create_test_database_with_schema(&mut client, schema).await.unwrap();
 
         let start_time = Instant::now();
-        let session = client.session(TEST_DATABASE, Data).await.unwrap();
+        let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
         let mut transaction = session.transaction(Write).await.unwrap();
         for j in 0..100_000 {
             let _ = transaction.query.insert(format!("insert $x {j} isa age;").as_str());
@@ -178,7 +179,7 @@ async fn streaming_perf() {
         );
 
         let mut start_time = Instant::now();
-        let session = client.session(TEST_DATABASE, Data).await.unwrap();
+        let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
         let mut transaction = session.transaction(Read).await.unwrap();
         let mut answer_stream = transaction.query.match_("match $x isa attribute;");
         let mut sum: i64 = 0;
@@ -215,15 +216,15 @@ async fn create_test_database_with_schema(
     client: &mut core::Client,
     schema: &str,
 ) -> typedb_client::Result {
-    if client.databases().contains(TEST_DATABASE).await.unwrap() {
-        client.databases().get(TEST_DATABASE).and_then(server::Database::delete).await.unwrap();
+    if client.databases().contains(TEST_DATABASE).await? {
+        client.databases().get(TEST_DATABASE).and_then(server::Database::delete).await?;
     }
-    client.databases().create(TEST_DATABASE).await.unwrap();
+    client.databases().create(TEST_DATABASE).await?;
 
-    let session = client.session(TEST_DATABASE, Schema).await.unwrap();
-    let mut transaction = session.transaction(Write).await.unwrap();
-    transaction.query.define(schema).await.unwrap();
-    transaction.commit().await.unwrap();
+    let mut session = client.session(TEST_DATABASE, Schema).await?;
+    let mut transaction = session.transaction(Write).await?;
+    transaction.query.define(schema).await?;
+    transaction.commit().await?;
     Ok(())
 }
 

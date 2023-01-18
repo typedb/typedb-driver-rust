@@ -19,29 +19,27 @@
  * under the License.
  */
 
-use crossbeam::{atomic::AtomicCell, channel::Sender};
+use std::sync::Mutex;
 
-#[derive(Debug)]
-pub(crate) struct DropGuard<T: Clone = ()> {
-    sink: Sender<T>,
-    message: T,
-    is_armed: AtomicCell<bool>,
+pub(crate) struct DropGuard {
+    callback: Mutex<Option<Box<dyn FnOnce() -> () + Send>>>,
 }
 
-impl<T: Clone> DropGuard<T> {
-    pub(crate) fn new(sink: Sender<T>, message: T) -> Self {
-        Self { sink, message, is_armed: AtomicCell::new(true) }
+impl DropGuard {
+    pub(crate) fn new(callback: impl FnOnce() -> () + 'static + Send) -> Self {
+        Self { callback: Mutex::new(Some(Box::new(callback))) }
     }
 
     pub(crate) fn release(&self) {
-        if self.is_armed.compare_exchange(true, false).is_ok() {
-            self.sink.send(self.message.clone()).unwrap()
+        let mut callback = self.callback.lock().unwrap();
+        if callback.is_some() {
+            (callback.take().unwrap())()
         }
     }
 }
 
-impl<T: Clone> Drop for DropGuard<T> {
+impl Drop for DropGuard {
     fn drop(&mut self) {
-        self.release()
+        self.release();
     }
 }

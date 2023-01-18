@@ -19,8 +19,9 @@
  * under the License.
  */
 
-use std::{fmt::Debug, time::Duration};
+use std::{fmt, time::Duration};
 
+use super::Session;
 use crate::{
     common::{
         rpc::builder::transaction::{commit_req, open_req, rollback_req},
@@ -30,21 +31,32 @@ use crate::{
     query::QueryManager,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Transaction {
     type_: TransactionType,
     options: core::Options,
     pub query: QueryManager,
     rpc: TransactionRPC,
+    session_handle: Session,
+}
+
+impl fmt::Debug for Transaction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("server::Transaction")
+            .field("type_", &self.type_)
+            .field("options", &self.options)
+            .finish()
+    }
 }
 
 impl Transaction {
-    pub(crate) async fn new(
+    pub(in crate::connection) async fn new(
         session_id: SessionID,
         transaction_type: TransactionType,
         options: core::Options,
         network_latency: Duration,
         server_rpc: ServerRPC,
+        session_handle: Session,
     ) -> Result<Self> {
         let open_req = open_req(
             session_id,
@@ -53,7 +65,13 @@ impl Transaction {
             network_latency.as_millis() as i32,
         );
         let rpc = TransactionRPC::new(server_rpc, open_req).await?;
-        Ok(Transaction { type_: transaction_type, options, query: QueryManager::new(&rpc), rpc })
+        Ok(Transaction {
+            type_: transaction_type,
+            options,
+            query: QueryManager::new(rpc.clone()),
+            rpc,
+            session_handle,
+        })
     }
 
     pub async fn commit(&mut self) -> Result {

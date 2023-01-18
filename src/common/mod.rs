@@ -26,7 +26,7 @@ pub mod error;
 mod macros;
 pub(crate) mod rpc;
 
-use std::fmt;
+use std::{fmt, time::Duration};
 
 use tonic::{Response, Status};
 use typedb_protocol::{session as session_proto, transaction as transaction_proto};
@@ -36,6 +36,8 @@ pub(crate) use self::{
     drop_guard::DropGuard,
     rpc::{ClusterRPC, ClusterServerRPC, CoreRPC, ServerRPC, TransactionRPC},
 };
+
+pub(crate) const POLL_INTERVAL: Duration = Duration::from_millis(3);
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
 pub type Result<T = ()> = StdResult<T, Error>;

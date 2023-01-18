@@ -19,6 +19,7 @@
  * under the License.
  */
 
+pub(crate) mod blocking_dispatcher;
 pub(crate) mod builder;
 mod channel;
 mod cluster;
