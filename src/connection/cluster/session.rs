@@ -45,8 +45,6 @@ impl Session {
                 let database = database;
                 client
                     .session_manager()
-                    .lock()
-                    .unwrap()
                     .new_session(
                         database.name(),
                         session_type,
@@ -73,7 +71,7 @@ impl Session {
         self.server_session.is_open()
     }
 
-    pub fn force_close(&mut self) {
+    pub fn force_close(self) {
         self.server_session.force_close();
     }
 
@@ -106,8 +104,6 @@ impl Session {
                     } else {
                         let mut server_session = client
                             .session_manager()
-                            .lock()
-                            .unwrap()
                             .new_session(
                                 database.name(),
                                 session_type,

@@ -21,8 +21,7 @@
 
 use std::{fmt, sync::Arc, time::Duration};
 
-use crossbeam::atomic::AtomicCell;
-use futures::TryFutureExt;
+use crossbeam::{atomic::AtomicCell, channel::Sender};
 use tokio::{
     spawn,
     time::{sleep_until, Instant},
@@ -31,8 +30,8 @@ use tokio::{
 use crate::{
     common::{
         error::ClientError,
-        rpc::builder::session::{close_req, open_req, pulse_req},
-        BlockingDispatcher, DropGuard, Result, ServerRPC, SessionID, SessionType, TransactionType,
+        rpc::builder::session::{open_req, pulse_req},
+        DropGuard, Result, ServerRPC, SessionID, SessionType, TransactionType,
     },
     connection::{core, server, ClientHandle},
 };
@@ -50,7 +49,7 @@ pub struct Session {
 
     // RAII guards
     _close_guard: Arc<DropGuard>,
-    _session_pulse_task_close_guard: Arc<DropGuard>,
+    _pulse_task_guard: Arc<DropGuard>,
     _client_handle: ClientHandle,
 }
 
@@ -75,7 +74,7 @@ impl Session {
         session_type: SessionType,
         options: core::Options,
         mut server_rpc: ServerRPC,
-        close_request_dispatcher: BlockingDispatcher,
+        close_message_sink: Sender<SessionID>,
         _client_handle: ClientHandle,
     ) -> Result<Self> {
         let start_time = Instant::now();
@@ -85,25 +84,15 @@ impl Session {
 
         let pulse_task_handle = spawn(Self::session_pulse_task(server_rpc.clone(), id.clone()));
 
-        let close_callback = {
-            let id = id.clone();
-            let mut server_rpc = server_rpc.clone();
-            move || {
-                close_request_dispatcher.dispatch(Box::pin(async move {
-                    server_rpc.session_close(close_req(id)).map_ok(|_| ()).await
-                }));
-            }
-        };
-
         Ok(Session {
             database_name: database_name.to_owned(),
             session_type,
-            id,
+            id: id.clone(),
             server_rpc,
             network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
             is_open: Arc::new(AtomicCell::new(true)),
-            _close_guard: Arc::new(DropGuard::new(close_callback)),
-            _session_pulse_task_close_guard: Arc::new(DropGuard::new(move || {
+            _close_guard: Arc::new(DropGuard::send_message(close_message_sink, id)),
+            _pulse_task_guard: Arc::new(DropGuard::call_function(move || {
                 pulse_task_handle.abort()
             })),
             _client_handle,
@@ -122,9 +111,9 @@ impl Session {
         self.is_open.load()
     }
 
-    pub fn force_close(&mut self) {
+    pub fn force_close(self) {
         if self.is_open.compare_exchange(true, false).is_ok() {
-            self._session_pulse_task_close_guard.release();
+            self._pulse_task_guard.release();
             self._close_guard.release();
         }
     }

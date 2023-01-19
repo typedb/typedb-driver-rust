@@ -21,13 +21,19 @@
 
 use std::sync::Mutex;
 
+use crossbeam::channel::Sender;
+
 pub(crate) struct DropGuard {
     callback: Mutex<Option<Box<dyn FnOnce() -> () + Send>>>,
 }
 
 impl DropGuard {
-    pub(crate) fn new(callback: impl FnOnce() -> () + 'static + Send) -> Self {
+    pub(crate) fn call_function(callback: impl FnOnce() -> () + 'static + Send) -> Self {
         Self { callback: Mutex::new(Some(Box::new(callback))) }
+    }
+
+    pub(crate) fn send_message<T: 'static + Send>(sink: Sender<T>, payload: T) -> Self {
+        Self::call_function(move || sink.send(payload).unwrap())
     }
 
     pub(crate) fn release(&self) {

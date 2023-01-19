@@ -19,51 +19,54 @@
  * under the License.
  */
 
-use std::{collections::HashMap, fmt};
+use std::{collections::HashMap, fmt, sync::Arc};
 
-use futures::future::try_join_all;
+use crossbeam::channel::{bounded, unbounded, Receiver, Sender};
+use futures::future::join_all;
+use tokio::{spawn, time::sleep};
 
 use super::Session;
 use crate::{
     common::{
-        rpc::builder::session::close_req, BlockingDispatcher, DispatcherThreadHandle, Result,
-        ServerRPC, SessionID, SessionType,
+        rpc::builder::session::close_req, DropGuard, Result, ServerRPC, SessionID, SessionType,
+        POLL_INTERVAL,
     },
     connection::{core, ClientHandle},
 };
 
+#[derive(Clone)]
 pub(crate) struct SessionManager {
-    session_rpcs: HashMap<SessionID, ServerRPC>,
-    dispatcher: BlockingDispatcher,
-    // RAII handle
-    _dispatcher_thread_handle: DispatcherThreadHandle,
+    open_message_sink: Sender<(SessionID, ServerRPC)>,
+    close_message_sink: Sender<SessionID>,
+
+    session_task_guard: Arc<DropGuard>,
 }
 
 impl fmt::Debug for SessionManager {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SessionManager").field("open_sessions", &self.session_rpcs).finish()
+        f.debug_struct("SessionManager").finish()
     }
 }
 
 impl SessionManager {
     pub(crate) fn new() -> Self {
-        let session_rpcs = HashMap::new();
-        let (dispatcher, _dispatcher_thread_handle) = BlockingDispatcher::new();
-        Self { dispatcher, session_rpcs, _dispatcher_thread_handle }
-    }
-
-    pub async fn force_close(&mut self) {
-        try_join_all(
-            self.session_rpcs
-                .drain()
-                .map(|(id, mut rpc)| async move { rpc.session_close(close_req(id)).await }),
-        )
-        .await
-        .unwrap();
+        let (open_message_sink, open_message_source) = unbounded();
+        let (close_message_sink, close_message_source) = unbounded();
+        let (session_task_shutdown_sink, session_task_shutdown_source) = bounded(0);
+        spawn(Self::session_task(
+            open_message_source,
+            close_message_source,
+            session_task_shutdown_source,
+        ));
+        Self {
+            open_message_sink,
+            close_message_sink,
+            session_task_guard: Arc::new(DropGuard::send_message(session_task_shutdown_sink, ())),
+        }
     }
 
     pub(in crate::connection) async fn new_session(
-        &mut self,
+        &self,
         database_name: &str,
         session_type: SessionType,
         server_rpc: ServerRPC,
@@ -75,16 +78,48 @@ impl SessionManager {
             session_type,
             options,
             server_rpc.clone(),
-            self.dispatcher.clone(),
+            self.close_message_sink.clone(),
             client_handle,
         )
         .await?;
-        self.session_rpcs.insert(session.id().clone(), server_rpc);
+        self.open_message_sink.send((session.id().clone(), server_rpc)).unwrap();
         Ok(session)
     }
 
-    pub(super) async fn session_closed(&mut self, id: SessionID) {
-        let mut server_rpc = self.session_rpcs.remove(&id).unwrap();
-        server_rpc.session_close(close_req(id)).await.unwrap();
+    pub fn force_close(self) {
+        self.session_task_guard.release();
+    }
+
+    async fn session_task(
+        open_message_source: Receiver<(SessionID, ServerRPC)>,
+        close_message_source: Receiver<SessionID>,
+        shutdown_source: Receiver<()>,
+    ) {
+        let mut session_rpcs = HashMap::new();
+        loop {
+            session_rpcs.extend(open_message_source.try_iter());
+            if shutdown_source.try_recv().is_ok() {
+                join_all(
+                    session_rpcs
+                        .into_iter()
+                        .map(|(id, mut rpc)| async move { rpc.session_close(close_req(id)).await }),
+                )
+                .await;
+                break;
+            }
+
+            let sessions_to_close: Vec<_> = close_message_source
+                .try_iter()
+                .map(|id| (session_rpcs.remove(&id).unwrap(), id))
+                .collect();
+            join_all(
+                sessions_to_close
+                    .into_iter()
+                    .map(|(mut rpc, id)| async move { rpc.session_close(close_req(id)).await }),
+            )
+            .await;
+
+            sleep(POLL_INTERVAL).await;
+        }
     }
 }
