@@ -78,7 +78,7 @@ impl DispatcherThreadHandle {
     }
 }
 
-pub struct SyncFuture {
-    pub future: Pin<Box<dyn Future<Output = Result<()>> + Send>>,
-    pub backchannel: Sender<()>,
+struct SyncFuture {
+    future: Pin<Box<dyn Future<Output = Result<()>> + Send>>,
+    backchannel: Sender<()>,
 }
