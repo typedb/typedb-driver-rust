@@ -39,7 +39,7 @@ pub(crate) struct SessionManager {
     open_message_sink: Sender<(SessionID, ServerRPC)>,
     close_message_sink: Sender<SessionID>,
 
-    session_task_guard: Arc<DropGuard>,
+    _session_task_guard: Arc<DropGuard>,
 }
 
 impl fmt::Debug for SessionManager {
@@ -53,7 +53,7 @@ impl SessionManager {
         let (open_message_sink, open_message_source) = unbounded();
         let (close_message_sink, close_message_source) = unbounded();
         let (session_task_shutdown_sink, session_task_shutdown_source) = bounded(0);
-        spawn(Self::session_task(
+        let session_task = spawn(Self::session_task(
             open_message_source,
             close_message_source,
             session_task_shutdown_source,
@@ -61,7 +61,12 @@ impl SessionManager {
         Self {
             open_message_sink,
             close_message_sink,
-            session_task_guard: Arc::new(DropGuard::send_message(session_task_shutdown_sink, ())),
+            _session_task_guard: Arc::new(DropGuard::call_function(move || {
+                session_task_shutdown_sink.send(()).unwrap();
+                while !session_task.is_finished() {
+                    std::thread::sleep(POLL_INTERVAL);
+                }
+            })),
         }
     }
 
@@ -87,7 +92,7 @@ impl SessionManager {
     }
 
     pub fn force_close(self) {
-        self.session_task_guard.release();
+        self._session_task_guard.release();
     }
 
     async fn session_task(
@@ -99,27 +104,25 @@ impl SessionManager {
         loop {
             session_rpcs.extend(open_message_source.try_iter());
             if shutdown_source.try_recv().is_ok() {
-                join_all(
-                    session_rpcs
-                        .into_iter()
-                        .map(|(id, mut rpc)| async move { rpc.session_close(close_req(id)).await }),
-                )
-                .await;
+                Self::close_all(session_rpcs.into_iter()).await;
                 break;
             }
 
-            let sessions_to_close: Vec<_> = close_message_source
-                .try_iter()
-                .map(|id| (session_rpcs.remove(&id).unwrap(), id))
-                .collect();
-            join_all(
-                sessions_to_close
-                    .into_iter()
-                    .map(|(mut rpc, id)| async move { rpc.session_close(close_req(id)).await }),
-            )
+            Self::close_all(close_message_source.try_iter().map(|id| {
+                let rpc = session_rpcs.remove(&id).unwrap();
+                (id, rpc)
+            }))
             .await;
 
             sleep(POLL_INTERVAL).await;
         }
+    }
+
+    async fn close_all(sessions_to_close: impl Iterator<Item = (SessionID, ServerRPC)>) {
+        join_all(
+            sessions_to_close
+                .map(|(id, mut rpc)| async move { rpc.session_close(close_req(id)).await }),
+        )
+        .await;
     }
 }
