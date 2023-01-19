@@ -53,8 +53,8 @@ impl Client {
         Self::new("http://localhost:1729").await
     }
 
-    pub fn force_close(self) {
-        self.session_manager.lock().unwrap().force_close()
+    pub async fn force_close(self) {
+        self.session_manager.lock().unwrap().force_close().await;
         // TODO: also force close database connections
     }
 

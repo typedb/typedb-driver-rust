@@ -19,36 +19,46 @@
  * under the License.
  */
 
-use std::{collections::HashSet, fmt};
+use std::{collections::HashMap, fmt};
 
+use futures::future::try_join_all;
+
+use super::Session;
 use crate::{
     common::{
-        BlockingDispatcher, DispatcherThreadHandle, Result, ServerRPC, SessionID, SessionType,
+        rpc::builder::session::close_req, BlockingDispatcher, DispatcherThreadHandle, Result,
+        ServerRPC, SessionID, SessionType,
     },
-    connection::{core, server, ClientHandle},
+    connection::{core, ClientHandle},
 };
 
 pub(crate) struct SessionManager {
-    open_sessions: HashSet<SessionID>,
+    session_rpcs: HashMap<SessionID, ServerRPC>,
     dispatcher: BlockingDispatcher,
-    actor_handle: DispatcherThreadHandle,
+    dispatcher_thread_handle: DispatcherThreadHandle,
 }
 
 impl fmt::Debug for SessionManager {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SessionManager").field("open_sessions", &self.open_sessions).finish()
+        f.debug_struct("SessionManager").field("open_sessions", &self.session_rpcs).finish()
     }
 }
 
 impl SessionManager {
     pub(crate) fn new() -> Self {
-        let open_sessions = HashSet::new();
-        let (dispatcher, actor_handle) = BlockingDispatcher::new();
-        Self { dispatcher, open_sessions, actor_handle }
+        let session_rpcs = HashMap::new();
+        let (dispatcher, dispatcher_thread_handle) = BlockingDispatcher::new();
+        Self { dispatcher, session_rpcs, dispatcher_thread_handle }
     }
 
-    pub fn force_close(&mut self) {
-        todo!()
+    pub async fn force_close(&mut self) {
+        try_join_all(
+            self.session_rpcs
+                .drain()
+                .map(|(id, mut rpc)| async move { rpc.session_close(close_req(id)).await }),
+        )
+        .await
+        .unwrap();
     }
 
     pub(in crate::connection) async fn new_session(
@@ -58,17 +68,22 @@ impl SessionManager {
         server_rpc: ServerRPC,
         options: core::Options,
         client_handle: ClientHandle,
-    ) -> Result<server::Session> {
-        let session = server::Session::new(
+    ) -> Result<Session> {
+        let session = Session::new(
             database_name,
             session_type,
             options,
-            server_rpc,
+            server_rpc.clone(),
             self.dispatcher.clone(),
             client_handle,
         )
         .await?;
-        self.open_sessions.insert(session.id().clone());
+        self.session_rpcs.insert(session.id().clone(), server_rpc);
         Ok(session)
+    }
+
+    pub(super) async fn session_closed(&mut self, id: SessionID) {
+        let mut server_rpc = self.session_rpcs.remove(&id).unwrap();
+        server_rpc.session_close(close_req(id)).await.unwrap();
     }
 }
