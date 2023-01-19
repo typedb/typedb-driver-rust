@@ -20,6 +20,7 @@
  */
 
 mod address;
+mod blocking_dispatcher;
 pub mod credential;
 mod drop_guard;
 pub mod error;
@@ -33,6 +34,7 @@ use typedb_protocol::{session as session_proto, transaction as transaction_proto
 
 pub use self::{address::Address, credential::Credential, error::Error};
 pub(crate) use self::{
+    blocking_dispatcher::{BlockingDispatcher, DispatcherThreadHandle},
     drop_guard::DropGuard,
     rpc::{ClusterRPC, ClusterServerRPC, CoreRPC, ServerRPC, TransactionRPC},
 };

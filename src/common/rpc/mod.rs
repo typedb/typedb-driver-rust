@@ -19,7 +19,6 @@
  * under the License.
  */
 
-mod blocking_dispatcher;
 pub(crate) mod builder;
 mod channel;
 mod cluster;
@@ -28,7 +27,6 @@ mod server;
 mod transaction;
 
 pub(crate) use self::{
-    blocking_dispatcher::{BlockingDispatcher, DispatcherThreadHandle},
     channel::Channel,
     cluster::{ClusterRPC, ClusterServerRPC},
     core::CoreRPC,

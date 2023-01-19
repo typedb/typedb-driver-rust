@@ -27,8 +27,7 @@ use std::{
 
 use crate::{
     common::{
-        rpc::{BlockingDispatcher, DispatcherThreadHandle},
-        Result, ServerRPC, SessionID, SessionType,
+        BlockingDispatcher, DispatcherThreadHandle, Result, ServerRPC, SessionID, SessionType,
     },
     connection::{core, server, ClientHandle},
 };

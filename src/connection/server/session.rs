@@ -31,11 +31,8 @@ use tokio::{
 use crate::{
     common::{
         error::ClientError,
-        rpc::{
-            builder::session::{close_req, open_req, pulse_req},
-            BlockingDispatcher,
-        },
-        DropGuard, Result, ServerRPC, SessionID, SessionType, TransactionType,
+        rpc::builder::session::{close_req, open_req, pulse_req},
+        BlockingDispatcher, DropGuard, Result, ServerRPC, SessionID, SessionType, TransactionType,
     },
     connection::{core, server, ClientHandle},
 };
