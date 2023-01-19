@@ -21,7 +21,7 @@
 
 use std::{fmt, sync::Arc, time::Duration};
 
-use crossbeam::{atomic::AtomicCell, channel::Sender};
+use crossbeam::atomic::AtomicCell;
 use futures::TryFutureExt;
 use tokio::{
     spawn,
@@ -32,9 +32,8 @@ use crate::{
     common::{
         error::ClientError,
         rpc::{
-            blocking_dispatcher,
-            blocking_dispatcher::Request,
             builder::session::{close_req, open_req, pulse_req},
+            BlockingDispatcher,
         },
         DropGuard, Result, ServerRPC, SessionID, SessionType, TransactionType,
     },
@@ -78,7 +77,7 @@ impl Session {
         session_type: SessionType,
         options: core::Options,
         mut server_rpc: ServerRPC,
-        on_close: Sender<Request>,
+        close_request_dispatcher: BlockingDispatcher,
         client_handle: ClientHandle,
     ) -> Result<Self> {
         let start_time = Instant::now();
@@ -92,12 +91,9 @@ impl Session {
             let id = id.clone();
             let mut server_rpc = server_rpc.clone();
             move || {
-                blocking_dispatcher::dispatch(
-                    Box::pin(async move {
-                        server_rpc.session_close(close_req(id)).map_ok(|_| ()).await
-                    }),
-                    on_close,
-                );
+                close_request_dispatcher.dispatch(Box::pin(async move {
+                    server_rpc.session_close(close_req(id)).map_ok(|_| ()).await
+                }));
             }
         };
 

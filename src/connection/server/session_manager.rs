@@ -21,41 +21,37 @@
 
 use std::{
     collections::HashMap,
+    fmt,
     sync::{Arc, RwLock},
 };
 
-use crossbeam::channel::Sender;
-use tokio::task::JoinHandle;
-
 use crate::{
     common::{
-        rpc::{blocking_dispatcher, blocking_dispatcher::Request},
-        Result, ServerRPC, SessionID, SessionType, POLL_INTERVAL,
+        rpc::{BlockingDispatcher, DispatcherThreadHandle},
+        Result, ServerRPC, SessionID, SessionType,
     },
     connection::{core, server, ClientHandle},
 };
 
-#[derive(Debug)]
 pub(crate) struct SessionManager {
-    close_message_sink: Sender<Request>,
     session_rpcs: Arc<RwLock<HashMap<SessionID, ServerRPC>>>,
-    session_close_task: JoinHandle<()>,
-    session_close_task_close_signal: Sender<()>,
+    dispatcher: BlockingDispatcher,
+    actor_handle: DispatcherThreadHandle,
+}
+
+impl fmt::Debug for SessionManager {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("typedb_client::server::SessionManager").finish()
+    }
 }
 
 impl SessionManager {
     pub(crate) fn new() -> Arc<Self> {
         let session_rpcs = Arc::new(RwLock::new(HashMap::new()));
 
-        let (close_message_sink, session_close_task_close_signal, session_close_task) =
-            blocking_dispatcher::new();
+        let (dispatcher, actor_handle) = BlockingDispatcher::new();
 
-        Arc::new(Self {
-            close_message_sink,
-            session_rpcs,
-            session_close_task,
-            session_close_task_close_signal,
-        })
+        Arc::new(Self { dispatcher, session_rpcs, actor_handle })
     }
 
     pub fn force_close(self: Arc<Self>) {
@@ -75,20 +71,11 @@ impl SessionManager {
             session_type,
             options,
             server_rpc.clone(),
-            self.close_message_sink.clone(),
+            self.dispatcher.clone(),
             client_handle,
         )
         .await?;
         self.session_rpcs.write().unwrap().insert(session.id().clone(), server_rpc);
         Ok(session)
-    }
-}
-
-impl Drop for SessionManager {
-    fn drop(&mut self) {
-        self.session_close_task_close_signal.send(()).unwrap();
-        while !self.session_close_task.is_finished() {
-            std::thread::sleep(POLL_INTERVAL)
-        }
     }
 }

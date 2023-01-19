@@ -26,45 +26,59 @@ use futures::future::join_all;
 use log::warn;
 use tokio::{spawn, task::JoinHandle, time::sleep};
 
-use crate::common::{Result, POLL_INTERVAL};
+use crate::common::{DropGuard, Result, POLL_INTERVAL};
 
-// TODO wrap
-//                     ,----this
-//                     v   and these --v-----------v
-pub fn new() -> (Sender<Request>, Sender<()>, JoinHandle<()>) {
-    let (message_sink, message_source) = unbounded();
-    let (shutdown_sink, shutdown_source) = bounded(0);
-    (message_sink, shutdown_sink, spawn(listener_thread(message_source, shutdown_source)))
+#[derive(Clone)]
+pub(crate) struct BlockingDispatcher {
+    message_sink: Sender<SyncFuture>,
 }
 
-pub fn dispatch(
-    future: Pin<Box<dyn Future<Output = Result<()>> + Send>>,
-    message_sink: Sender<Request>,
-) {
-    let (backchannel_sink, backchannel_source) = bounded(0);
-    let request = Request { future, backchannel: backchannel_sink };
-    message_sink.send(request).unwrap();
-    backchannel_source.recv().unwrap();
-}
+impl BlockingDispatcher {
+    pub fn new() -> (Self, DispatcherThreadHandle) {
+        let (message_sink, message_source) = unbounded();
+        (Self { message_sink }, DispatcherThreadHandle::new(message_source))
+    }
 
-async fn listener_thread(message_source: Receiver<Request>, shutdown_source: Receiver<()>) {
-    loop {
-        if shutdown_source.try_recv().is_ok() {
-            break;
-        }
-
-        join_all(message_source.try_iter().map(|request| async move {
-            if let Err(err) = request.future.await {
-                warn!("{}", err);
-            }
-            request.backchannel.send(()).unwrap();
-        }))
-        .await;
-        sleep(POLL_INTERVAL).await;
+    pub fn dispatch(&self, future: Pin<Box<dyn Future<Output = Result<()>> + Send>>) {
+        let (backchannel_sink, backchannel_source) = bounded(0);
+        let request = SyncFuture { future, backchannel: backchannel_sink };
+        self.message_sink.send(request).unwrap();
+        backchannel_source.recv().unwrap();
     }
 }
 
-pub struct Request {
+pub(crate) struct DispatcherThreadHandle {
+    task_handle: JoinHandle<()>,
+    drop_guard: DropGuard,
+}
+
+impl DispatcherThreadHandle {
+    fn new(message_source: Receiver<SyncFuture>) -> Self {
+        let (shutdown_sink, shutdown_source) = bounded(0);
+        let task_handle = spawn(Self::listener_thread(message_source, shutdown_source));
+        let drop_guard = DropGuard::new(move || shutdown_sink.send(()).unwrap());
+        Self { task_handle, drop_guard }
+    }
+
+    async fn listener_thread(message_source: Receiver<SyncFuture>, shutdown_source: Receiver<()>) {
+        loop {
+            if shutdown_source.try_recv().is_ok() {
+                break;
+            }
+
+            join_all(message_source.try_iter().map(|request| async move {
+                if let Err(err) = request.future.await {
+                    warn!("{}", err);
+                }
+                request.backchannel.send(()).unwrap();
+            }))
+            .await;
+            sleep(POLL_INTERVAL).await;
+        }
+    }
+}
+
+pub struct SyncFuture {
     pub future: Pin<Box<dyn Future<Output = Result<()>> + Send>>,
     pub backchannel: Sender<()>,
 }
