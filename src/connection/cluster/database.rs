@@ -41,7 +41,7 @@ pub struct Database {
 
 impl Debug for Database {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("cluster::Database")
+        f.debug_struct("Database")
             .field("name", &self.name)
             .field("replicas", &self.replicas)
             .finish()

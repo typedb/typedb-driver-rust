@@ -42,7 +42,7 @@ pub struct Transaction {
 
 impl fmt::Debug for Transaction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("server::Transaction")
+        f.debug_struct("Transaction")
             .field("type_", &self.type_)
             .field("options", &self.options)
             .finish()

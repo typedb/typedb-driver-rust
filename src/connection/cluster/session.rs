@@ -45,6 +45,8 @@ impl Session {
                 let database = database;
                 client
                     .session_manager()
+                    .lock()
+                    .unwrap()
                     .new_session(
                         database.name(),
                         session_type,
@@ -104,6 +106,8 @@ impl Session {
                     } else {
                         let mut server_session = client
                             .session_manager()
+                            .lock()
+                            .unwrap()
                             .new_session(
                                 database.name(),
                                 session_type,

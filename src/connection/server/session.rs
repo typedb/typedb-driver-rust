@@ -55,7 +55,7 @@ pub struct Session {
 
 impl fmt::Debug for Session {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("typedb_client::server::Session")
+        f.debug_struct("Session")
             .field("database_name", &self.database_name)
             .field("session_type", &self.session_type)
             .field("id", &self.id)

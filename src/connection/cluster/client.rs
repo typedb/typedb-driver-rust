@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use tokio::runtime::{Handle, RuntimeFlavor};
 
@@ -31,7 +31,7 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct Client {
-    session_manager: Arc<server::SessionManager>,
+    session_manager: Arc<Mutex<server::SessionManager>>,
     databases: DatabaseManager,
     cluster_rpc: Arc<ClusterRPC>,
 }
@@ -44,14 +44,14 @@ impl Client {
         let addresses = ClusterRPC::fetch_current_addresses(init_addresses, &credential).await?;
         let cluster_rpc = ClusterRPC::new(addresses, credential)?;
         Ok(Self {
-            session_manager: server::SessionManager::new(),
+            session_manager: Arc::new(Mutex::new(server::SessionManager::new())),
             databases: DatabaseManager::new(cluster_rpc.clone()),
             cluster_rpc,
         })
     }
 
     pub fn force_close(self) {
-        self.session_manager.force_close();
+        self.session_manager.lock().unwrap().force_close();
         // TODO: also force close database connections
     }
 
@@ -67,7 +67,7 @@ impl Client {
         Session::new(self.databases.get(database_name).await?, session_type, self.clone()).await
     }
 
-    pub(super) fn session_manager(&self) -> &Arc<server::SessionManager> {
+    pub(super) fn session_manager(&self) -> &Arc<Mutex<server::SessionManager>> {
         &self.session_manager
     }
 }

@@ -19,11 +19,7 @@
  * under the License.
  */
 
-use std::{
-    collections::HashMap,
-    fmt,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashSet, fmt};
 
 use crate::{
     common::{
@@ -33,32 +29,30 @@ use crate::{
 };
 
 pub(crate) struct SessionManager {
-    session_rpcs: Arc<RwLock<HashMap<SessionID, ServerRPC>>>,
+    open_sessions: HashSet<SessionID>,
     dispatcher: BlockingDispatcher,
     actor_handle: DispatcherThreadHandle,
 }
 
 impl fmt::Debug for SessionManager {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("typedb_client::server::SessionManager").finish()
+        f.debug_struct("SessionManager").field("open_sessions", &self.open_sessions).finish()
     }
 }
 
 impl SessionManager {
-    pub(crate) fn new() -> Arc<Self> {
-        let session_rpcs = Arc::new(RwLock::new(HashMap::new()));
-
+    pub(crate) fn new() -> Self {
+        let open_sessions = HashSet::new();
         let (dispatcher, actor_handle) = BlockingDispatcher::new();
-
-        Arc::new(Self { dispatcher, session_rpcs, actor_handle })
+        Self { dispatcher, open_sessions, actor_handle }
     }
 
-    pub fn force_close(self: Arc<Self>) {
+    pub fn force_close(&mut self) {
         todo!()
     }
 
     pub(in crate::connection) async fn new_session(
-        self: &Arc<Self>,
+        &mut self,
         database_name: &str,
         session_type: SessionType,
         server_rpc: ServerRPC,
@@ -69,12 +63,12 @@ impl SessionManager {
             database_name,
             session_type,
             options,
-            server_rpc.clone(),
+            server_rpc,
             self.dispatcher.clone(),
             client_handle,
         )
         .await?;
-        self.session_rpcs.write().unwrap().insert(session.id().clone(), server_rpc);
+        self.open_sessions.insert(session.id().clone());
         Ok(session)
     }
 }
