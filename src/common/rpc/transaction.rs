@@ -339,8 +339,6 @@ impl ReceiverState {
 
 type ResCollector = CrossbeamSender<Result<transaction::Res>>;
 type ResPartCollector = CrossbeamSender<Result<transaction::ResPart>>;
-type CloseSignalSink = CrossbeamSender<Option<Error>>;
-type CloseSignalReceiver = CrossbeamReceiver<Option<Error>>;
 
 #[derive(Debug)]
 pub(crate) struct ResPartStream {

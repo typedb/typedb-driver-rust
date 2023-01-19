@@ -37,7 +37,8 @@ pub struct Transaction {
     options: core::Options,
     pub query: QueryManager,
     rpc: TransactionRPC,
-    session_handle: Session,
+    // RAII handle
+    _session_handle: Session,
 }
 
 impl fmt::Debug for Transaction {
@@ -56,7 +57,7 @@ impl Transaction {
         options: core::Options,
         network_latency: Duration,
         server_rpc: ServerRPC,
-        session_handle: Session,
+        _session_handle: Session,
     ) -> Result<Self> {
         let open_req = open_req(
             session_id,
@@ -70,7 +71,7 @@ impl Transaction {
             options,
             query: QueryManager::new(rpc.clone()),
             rpc,
-            session_handle,
+            _session_handle,
         })
     }
 

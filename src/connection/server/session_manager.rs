@@ -35,7 +35,8 @@ use crate::{
 pub(crate) struct SessionManager {
     session_rpcs: HashMap<SessionID, ServerRPC>,
     dispatcher: BlockingDispatcher,
-    dispatcher_thread_handle: DispatcherThreadHandle,
+    // RAII handle
+    _dispatcher_thread_handle: DispatcherThreadHandle,
 }
 
 impl fmt::Debug for SessionManager {
@@ -47,8 +48,8 @@ impl fmt::Debug for SessionManager {
 impl SessionManager {
     pub(crate) fn new() -> Self {
         let session_rpcs = HashMap::new();
-        let (dispatcher, dispatcher_thread_handle) = BlockingDispatcher::new();
-        Self { dispatcher, session_rpcs, dispatcher_thread_handle }
+        let (dispatcher, _dispatcher_thread_handle) = BlockingDispatcher::new();
+        Self { dispatcher, session_rpcs, _dispatcher_thread_handle }
     }
 
     pub async fn force_close(&mut self) {

@@ -33,7 +33,6 @@ use crate::{
 pub struct Client {
     session_manager: Arc<Mutex<server::SessionManager>>,
     databases: DatabaseManager,
-    cluster_rpc: Arc<ClusterRPC>,
 }
 
 impl Client {
@@ -45,8 +44,7 @@ impl Client {
         let cluster_rpc = ClusterRPC::new(addresses, credential)?;
         Ok(Self {
             session_manager: Arc::new(Mutex::new(server::SessionManager::new())),
-            databases: DatabaseManager::new(cluster_rpc.clone()),
-            cluster_rpc,
+            databases: DatabaseManager::new(cluster_rpc),
         })
     }
 

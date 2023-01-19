@@ -24,9 +24,9 @@ use std::{future::Future, pin::Pin};
 use crossbeam::channel::{bounded, unbounded, Receiver, Sender};
 use futures::future::join_all;
 use log::warn;
-use tokio::{spawn, task::JoinHandle, time::sleep};
+use tokio::{spawn, time::sleep};
 
-use crate::common::{DropGuard, Result, POLL_INTERVAL};
+use crate::common::{Result, POLL_INTERVAL};
 
 #[derive(Clone)]
 pub(crate) struct BlockingDispatcher {
@@ -48,16 +48,14 @@ impl BlockingDispatcher {
 }
 
 pub(crate) struct DispatcherThreadHandle {
-    task_handle: JoinHandle<()>,
-    drop_guard: DropGuard,
+    shutdown_sink: Sender<()>,
 }
 
 impl DispatcherThreadHandle {
     fn new(message_source: Receiver<SyncFuture>) -> Self {
         let (shutdown_sink, shutdown_source) = bounded(0);
-        let task_handle = spawn(Self::listener_thread(message_source, shutdown_source));
-        let drop_guard = DropGuard::new(move || shutdown_sink.send(()).unwrap());
-        Self { task_handle, drop_guard }
+        spawn(Self::listener_thread(message_source, shutdown_source));
+        Self { shutdown_sink }
     }
 
     async fn listener_thread(message_source: Receiver<SyncFuture>, shutdown_source: Receiver<()>) {
@@ -75,6 +73,12 @@ impl DispatcherThreadHandle {
             .await;
             sleep(POLL_INTERVAL).await;
         }
+    }
+}
+
+impl Drop for DispatcherThreadHandle {
+    fn drop(&mut self) {
+        self.shutdown_sink.send(()).unwrap()
     }
 }
 

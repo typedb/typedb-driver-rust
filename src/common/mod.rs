@@ -29,7 +29,6 @@ pub(crate) mod rpc;
 
 use std::{fmt, time::Duration};
 
-use tonic::{Response, Status};
 use typedb_protocol::{session as session_proto, transaction as transaction_proto};
 
 pub use self::{address::Address, credential::Credential, error::Error};
@@ -43,7 +42,6 @@ pub(crate) const POLL_INTERVAL: Duration = Duration::from_millis(3);
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
 pub type Result<T = ()> = StdResult<T, Error>;
-pub(crate) type TonicResult<R> = StdResult<Response<R>, Status>;
 
 pub(crate) type TonicChannel = tonic::transport::Channel;
 

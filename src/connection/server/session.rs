@@ -48,9 +48,10 @@ pub struct Session {
 
     is_open: Arc<AtomicCell<bool>>,
 
-    close_guard: Arc<DropGuard>,
-    session_pulse_task_close_guard: Arc<DropGuard>,
-    client_handle: ClientHandle,
+    // RAII guards
+    _close_guard: Arc<DropGuard>,
+    _session_pulse_task_close_guard: Arc<DropGuard>,
+    _client_handle: ClientHandle,
 }
 
 impl fmt::Debug for Session {
@@ -75,7 +76,7 @@ impl Session {
         options: core::Options,
         mut server_rpc: ServerRPC,
         close_request_dispatcher: BlockingDispatcher,
-        client_handle: ClientHandle,
+        _client_handle: ClientHandle,
     ) -> Result<Self> {
         let start_time = Instant::now();
         let open_req = open_req(database_name, session_type.to_proto(), options.to_proto());
@@ -101,11 +102,11 @@ impl Session {
             server_rpc,
             network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
             is_open: Arc::new(AtomicCell::new(true)),
-            close_guard: Arc::new(DropGuard::new(close_callback)),
-            session_pulse_task_close_guard: Arc::new(DropGuard::new(move || {
+            _close_guard: Arc::new(DropGuard::new(close_callback)),
+            _session_pulse_task_close_guard: Arc::new(DropGuard::new(move || {
                 pulse_task_handle.abort()
             })),
-            client_handle,
+            _client_handle,
         })
     }
 
@@ -123,17 +124,13 @@ impl Session {
 
     pub fn force_close(&mut self) {
         if self.is_open.compare_exchange(true, false).is_ok() {
-            self.session_pulse_task_close_guard.release();
-            self.close_guard.release();
+            self._session_pulse_task_close_guard.release();
+            self._close_guard.release();
         }
     }
 
     pub(crate) fn id(&self) -> &SessionID {
         &self.id
-    }
-
-    pub(crate) fn rpc(&self) -> ServerRPC {
-        self.server_rpc.clone()
     }
 
     pub async fn transaction(
