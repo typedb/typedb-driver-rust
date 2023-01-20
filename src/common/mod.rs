@@ -73,7 +73,7 @@ impl fmt::Display for ID {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum SessionType {
     Data = 0,
     Schema = 1,
@@ -88,7 +88,7 @@ impl SessionType {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TransactionType {
     Read = 0,
     Write = 1,

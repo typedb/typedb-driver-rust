@@ -74,7 +74,7 @@ impl Session {
         session_type: SessionType,
         options: core::Options,
         mut server_rpc: ServerRPC,
-        close_message_sink: Sender<SessionID>,
+        close_message_sink: server::SessionManager,
         _client_handle: ClientHandle,
     ) -> Result<Self> {
         let start_time = Instant::now();
@@ -91,7 +91,7 @@ impl Session {
             server_rpc,
             network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
             is_open: Arc::new(AtomicCell::new(true)),
-            _close_guard: Arc::new(DropGuard::send_message(close_message_sink, id)),
+            _close_guard: Arc::new(DropGuard::call_function(move || close_message_sink.session_closed(id))),
             _pulse_task_guard: Arc::new(DropGuard::call_function(move || {
                 pulse_task_handle.abort()
             })),

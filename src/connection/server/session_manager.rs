@@ -36,10 +36,10 @@ use crate::{
 
 #[derive(Clone)]
 pub(crate) struct SessionManager {
-    open_message_sink: Sender<(SessionID, ServerRPC)>,
-    close_message_sink: Sender<SessionID>,
+    open_sink: Sender<(SessionID, ServerRPC)>,
+    close_sink: Sender<SessionID>,
 
-    _session_task_guard: Arc<DropGuard>,
+    _background_handler_guard: Arc<DropGuard>,
 }
 
 impl fmt::Debug for SessionManager {
@@ -50,20 +50,20 @@ impl fmt::Debug for SessionManager {
 
 impl SessionManager {
     pub(crate) fn new() -> Self {
-        let (open_message_sink, open_message_source) = unbounded();
-        let (close_message_sink, close_message_source) = unbounded();
+        let (open_sink, open_source) = unbounded();
+        let (close_sink, close_source) = unbounded();
         let (session_task_shutdown_sink, session_task_shutdown_source) = bounded(0);
-        let session_task = spawn(Self::session_task(
-            open_message_source,
-            close_message_source,
+        let background_lifetime_handler = spawn(Self::background_lifetime_handler(
+            open_source,
+            close_source,
             session_task_shutdown_source,
         ));
         Self {
-            open_message_sink,
-            close_message_sink,
-            _session_task_guard: Arc::new(DropGuard::call_function(move || {
+            open_sink,
+            close_sink,
+            _background_handler_guard: Arc::new(DropGuard::call_function(move || {
                 session_task_shutdown_sink.send(()).unwrap();
-                while !session_task.is_finished() {
+                while !background_lifetime_handler.is_finished() {
                     std::thread::sleep(POLL_INTERVAL);
                 }
             })),
@@ -83,32 +83,36 @@ impl SessionManager {
             session_type,
             options,
             server_rpc.clone(),
-            self.close_message_sink.clone(),
+            self.clone(),
             client_handle,
         )
         .await?;
-        self.open_message_sink.send((session.id().clone(), server_rpc)).unwrap();
+        self.open_sink.send((session.id().clone(), server_rpc)).unwrap();
         Ok(session)
     }
 
-    pub fn force_close(self) {
-        self._session_task_guard.release();
+    pub(super) fn session_closed(&self, session_id: SessionID) {
+       self.close_sink.send(session_id).unwrap();
     }
 
-    async fn session_task(
-        open_message_source: Receiver<(SessionID, ServerRPC)>,
-        close_message_source: Receiver<SessionID>,
+    pub fn force_close(self) {
+        self._background_handler_guard.release();
+    }
+
+    async fn background_lifetime_handler(
+        open_source: Receiver<(SessionID, ServerRPC)>,
+        close_source: Receiver<SessionID>,
         shutdown_source: Receiver<()>,
     ) {
         let mut session_rpcs = HashMap::new();
         loop {
-            session_rpcs.extend(open_message_source.try_iter());
+            session_rpcs.extend(open_source.try_iter());
             if shutdown_source.try_recv().is_ok() {
                 Self::close_all(session_rpcs.into_iter()).await;
                 break;
             }
 
-            Self::close_all(close_message_source.try_iter().map(|id| {
+            Self::close_all(close_source.try_iter().map(|id| {
                 let rpc = session_rpcs.remove(&id).unwrap();
                 (id, rpc)
             }))
