@@ -21,7 +21,7 @@
 
 use std::{fmt, sync::Arc, time::Duration};
 
-use crossbeam::{atomic::AtomicCell, channel::Sender};
+use crossbeam::atomic::AtomicCell;
 use tokio::{
     spawn,
     time::{sleep_until, Instant},
@@ -91,7 +91,9 @@ impl Session {
             server_rpc,
             network_latency: Self::compute_network_latency(start_time, res.server_duration_millis),
             is_open: Arc::new(AtomicCell::new(true)),
-            _close_guard: Arc::new(DropGuard::call_function(move || close_message_sink.session_closed(id))),
+            _close_guard: Arc::new(DropGuard::call_function(move || {
+                close_message_sink.session_closed(id)
+            })),
             _pulse_task_guard: Arc::new(DropGuard::call_function(move || {
                 pulse_task_handle.abort()
             })),

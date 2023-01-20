@@ -92,7 +92,7 @@ impl SessionManager {
     }
 
     pub(super) fn session_closed(&self, session_id: SessionID) {
-       self.close_sink.send(session_id).unwrap();
+        self.close_sink.send(session_id).unwrap();
     }
 
     pub fn force_close(self) {

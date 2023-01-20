@@ -37,6 +37,7 @@ pub(crate) use self::{
 };
 
 pub(crate) const POLL_INTERVAL: Duration = Duration::from_millis(3);
+pub(crate) const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
 pub type Result<T = ()> = StdResult<T, Error>;

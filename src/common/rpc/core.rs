@@ -25,7 +25,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use crossbeam::channel::{bounded, Receiver, Sender, TryRecvError};
+use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError};
 use futures::Stream;
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
@@ -211,8 +211,7 @@ impl CoreRPC {
         &mut self,
         open_req: transaction::Req,
     ) -> Result<(Sender<transaction::Client>, Streaming<transaction::Server>)> {
-        // TODO: refactor to crossbeam channel
-        let (sender, receiver) = bounded::<transaction::Client>(256);
+        let (sender, receiver) = unbounded();
         sender.send(client_msg(vec![open_req])).unwrap();
         bidi_stream(sender, self.core_grpc.transaction(ReceiverStream::from(receiver))).await
     }

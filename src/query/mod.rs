@@ -167,7 +167,7 @@ impl QueryManager {
     }
 
     async fn single_call(&mut self, req: transaction::Req) -> Result<query_manager::res::Res> {
-        match self.tx.single_async(req).await?.res {
+        match self.tx.single(req).await?.res {
             Some(transaction::res::Res::QueryManagerRes(res)) => {
                 res.res.ok_or(ClientError::MissingResponseField("res.query_manager_res").into())
             }
@@ -179,7 +179,7 @@ impl QueryManager {
         &mut self,
         req: transaction::Req,
     ) -> impl Stream<Item = Result<query_manager::res_part::Res>> {
-        self.tx.stream(req).map(|result: Result<transaction::ResPart>| match result {
+        self.tx.stream(req).unwrap().map(|result: Result<transaction::ResPart>| match result {
             Ok(tx_res_part) => match tx_res_part.res {
                 Some(transaction::res_part::Res::QueryManagerResPart(res_part)) => {
                     res_part.res.ok_or(
