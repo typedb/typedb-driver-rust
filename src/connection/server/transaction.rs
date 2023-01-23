@@ -33,7 +33,6 @@ use crate::{
     query::QueryManager,
 };
 
-#[derive(Clone)]
 pub struct Transaction {
     type_: TransactionType,
     options: core::Options,

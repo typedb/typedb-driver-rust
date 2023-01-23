@@ -28,6 +28,8 @@ use crate::common::RequestID;
 
 error_messages! { ClientError
     code: "CLI", type: "Client Error",
+    ClientIsClosed() =
+        1: "The client has been closed and no further operation is allowed.",
     SessionIsClosed() =
         2: "The session is closed and no further operation is allowed.",
     TransactionIsClosed() =

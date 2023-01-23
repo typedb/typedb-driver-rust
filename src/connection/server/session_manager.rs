@@ -21,15 +21,18 @@
 
 use std::{collections::HashMap, fmt, sync::Arc};
 
-use crossbeam::channel::{bounded, unbounded, Receiver, Sender};
+use crossbeam::{
+    atomic::AtomicCell,
+    channel::{bounded, unbounded, Receiver, Sender},
+};
 use futures::future::join_all;
 use tokio::{spawn, time::sleep};
 
 use super::Session;
 use crate::{
     common::{
-        rpc::builder::session::close_req, DropGuard, Result, ServerRPC, SessionID, SessionType,
-        POLL_INTERVAL,
+        error::ClientError, rpc::builder::session::close_req, DropGuard, Result, ServerRPC,
+        SessionID, SessionType, POLL_INTERVAL,
     },
     connection::{core, ClientHandle},
 };
@@ -38,6 +41,7 @@ use crate::{
 pub(crate) struct SessionManager {
     open_sink: Sender<(SessionID, ServerRPC)>,
     close_sink: Sender<SessionID>,
+    is_open: Arc<AtomicCell<bool>>,
 
     _background_handler_guard: Arc<DropGuard>,
 }
@@ -61,6 +65,7 @@ impl SessionManager {
         Self {
             open_sink,
             close_sink,
+            is_open: Arc::new(AtomicCell::new(true)),
             _background_handler_guard: Arc::new(DropGuard::call_function(move || {
                 session_task_shutdown_sink.send(()).unwrap();
                 while !background_lifetime_handler.is_finished() {
@@ -68,6 +73,10 @@ impl SessionManager {
                 }
             })),
         }
+    }
+
+    pub(in crate::connection) fn is_open(&self) -> bool {
+        self.is_open.load()
     }
 
     pub(in crate::connection) async fn new_session(
@@ -78,6 +87,9 @@ impl SessionManager {
         options: core::Options,
         client_handle: ClientHandle,
     ) -> Result<Session> {
+        if !self.is_open() {
+            Err(ClientError::ClientIsClosed())?;
+        }
         let session = Session::new(
             database_name,
             session_type,
@@ -92,11 +104,15 @@ impl SessionManager {
     }
 
     pub(super) fn session_closed(&self, session_id: SessionID) {
-        self.close_sink.send(session_id).unwrap();
+        if self.is_open() {
+            self.close_sink.send(session_id).unwrap();
+        }
     }
 
     pub fn force_close(self) {
-        self._background_handler_guard.release();
+        if self.is_open.compare_exchange(true, false).is_ok() {
+            self._background_handler_guard.release();
+        }
     }
 
     async fn background_lifetime_handler(

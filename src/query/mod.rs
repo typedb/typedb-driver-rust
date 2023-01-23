@@ -44,7 +44,7 @@ use crate::{
 
 macro_rules! stream_concept_maps {
     ($self:ident, $req:ident, $res_part_kind:ident, $query_type_str:tt) => {
-        $self.stream_answers($req).flat_map(|result: Result<query_manager::res_part::Res>| {
+        Ok($self.stream_answers($req)?.flat_map(|result: Result<query_manager::res_part::Res>| {
             match result {
                 Ok(res_part) => match res_part {
                     $res_part_kind(x) => {
@@ -61,7 +61,7 @@ macro_rules! stream_concept_maps {
                 },
                 Err(err) => stream::iter(once(Err(err))).right_stream(),
             }
-        })
+        }))
     };
 }
 
@@ -95,7 +95,7 @@ impl QueryManager {
         Ok(())
     }
 
-    pub fn insert(&mut self, query: &str) -> impl Stream<Item = Result<ConceptMap>> {
+    pub fn insert(&mut self, query: &str) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let req = insert_req(query, None);
         stream_concept_maps!(self, req, InsertResPart, "insert")
     }
@@ -104,13 +104,13 @@ impl QueryManager {
         &mut self,
         query: &str,
         options: &core::Options,
-    ) -> impl Stream<Item = Result<ConceptMap>> {
+    ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let req = insert_req(query, Some(options.to_proto()));
         stream_concept_maps!(self, req, InsertResPart, "insert")
     }
 
     // TODO: investigate performance impact of using BoxStream
-    pub fn match_(&mut self, query: &str) -> impl Stream<Item = Result<ConceptMap>> {
+    pub fn match_(&mut self, query: &str) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let req = match_req(query, None);
         stream_concept_maps!(self, req, MatchResPart, "match")
     }
@@ -119,7 +119,7 @@ impl QueryManager {
         &mut self,
         query: &str,
         options: &core::Options,
-    ) -> impl Stream<Item = Result<ConceptMap>> {
+    ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let req = match_req(query, Some(options.to_proto()));
         stream_concept_maps!(self, req, MatchResPart, "match")
     }
@@ -152,7 +152,7 @@ impl QueryManager {
         Ok(())
     }
 
-    pub fn update(&mut self, query: &str) -> impl Stream<Item = Result<ConceptMap>> {
+    pub fn update(&mut self, query: &str) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let req = update_req(query, None);
         stream_concept_maps!(self, req, UpdateResPart, "update")
     }
@@ -161,7 +161,7 @@ impl QueryManager {
         &mut self,
         query: &str,
         options: &core::Options,
-    ) -> impl Stream<Item = Result<ConceptMap>> {
+    ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let req = update_req(query, Some(options.to_proto()));
         stream_concept_maps!(self, req, UpdateResPart, "update")
     }
@@ -178,8 +178,8 @@ impl QueryManager {
     fn stream_answers(
         &mut self,
         req: transaction::Req,
-    ) -> impl Stream<Item = Result<query_manager::res_part::Res>> {
-        self.tx.stream(req).unwrap().map(|result: Result<transaction::ResPart>| match result {
+    ) -> Result<impl Stream<Item = Result<query_manager::res_part::Res>>> {
+        Ok(self.tx.stream(req)?.map(|result: Result<transaction::ResPart>| match result {
             Ok(tx_res_part) => match tx_res_part.res {
                 Some(transaction::res_part::Res::QueryManagerResPart(res_part)) => {
                     res_part.res.ok_or(
@@ -189,6 +189,6 @@ impl QueryManager {
                 _ => Err(ClientError::MissingResponseField("res_part.query_manager_res_part"))?,
             },
             Err(err) => Err(err),
-        })
+        }))
     }
 }
