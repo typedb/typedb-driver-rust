@@ -40,7 +40,7 @@ pub struct DatabaseManager {
 }
 
 impl DatabaseManager {
-    pub(crate) fn new(cluster_rpc: Arc<ClusterRPC>) -> Self {
+    pub(super) fn new(cluster_rpc: Arc<ClusterRPC>) -> Self {
         Self { cluster_rpc }
     }
 

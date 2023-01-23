@@ -38,7 +38,7 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub(crate) struct SessionManager {
+pub(in crate::connection) struct SessionManager {
     open_sink: Sender<(SessionID, ServerRPC)>,
     close_sink: Sender<SessionID>,
     is_open: Arc<AtomicCell<bool>>,
@@ -53,7 +53,7 @@ impl fmt::Debug for SessionManager {
 }
 
 impl SessionManager {
-    pub(crate) fn new() -> Self {
+    pub(in crate::connection) fn new() -> Self {
         let (open_sink, open_source) = unbounded();
         let (close_sink, close_source) = unbounded();
         let (session_task_shutdown_sink, session_task_shutdown_source) = bounded(0);
@@ -109,7 +109,7 @@ impl SessionManager {
         }
     }
 
-    pub fn force_close(self) {
+    pub(in crate::connection) fn force_close(self) {
         if self.is_open.compare_exchange(true, false).is_ok() {
             self._background_handler_guard.release();
         }

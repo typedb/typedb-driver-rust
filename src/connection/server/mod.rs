@@ -24,5 +24,5 @@ mod session;
 pub mod session_manager;
 mod transaction;
 
-pub(crate) use self::session_manager::SessionManager;
+pub(super) use self::session_manager::SessionManager;
 pub use self::{database::Database, session::Session, transaction::Transaction};

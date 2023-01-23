@@ -20,12 +20,15 @@
  */
 
 use std::{
-    future::Future,
     pin::Pin,
+    sync::Arc,
     task::{Context, Poll},
 };
 
-use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError};
+use crossbeam::{
+    atomic::AtomicCell,
+    channel::{unbounded, Receiver, Sender, TryRecvError},
+};
 use futures::Stream;
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
@@ -36,6 +39,7 @@ use typedb_protocol::{
 use crate::{
     async_enum_dispatch,
     common::{
+        error::ClientError,
         rpc::{
             builder::{core, transaction::client_msg},
             channel::CallCredChannel,
@@ -117,94 +121,122 @@ impl CoreGRPC {
     }
 }
 
+macro_rules! single {
+    ($self:ident, $future:expr) => {{
+        if !$self.is_open() {
+            Err(ClientError::ClientIsClosed())?;
+        }
+        Ok($future.await?.into_inner())
+    }};
+}
+
+macro_rules! bidi_stream {
+    ($self:ident, $sink:ident, $future:expr) => {{
+        if !$self.is_open() {
+            Err(ClientError::ClientIsClosed())?;
+        }
+        Ok(($sink, $future.await?.into_inner()))
+    }};
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct CoreRPC {
     core_grpc: CoreGRPC,
+    is_open: Arc<AtomicCell<bool>>,
 }
 
 impl CoreRPC {
-    pub(crate) fn new(channel: Channel) -> Self {
-        Self { core_grpc: CoreGRPC::new(channel) }
+    pub(super) fn new(channel: Channel, is_open: Arc<AtomicCell<bool>>) -> Self {
+        Self { core_grpc: CoreGRPC::new(channel), is_open }
     }
 
     pub(crate) async fn connect(address: Address) -> Result<Self> {
-        Self::new(Channel::open_plaintext(address)?).validated().await
+        let is_open = Arc::new(AtomicCell::new(true));
+        Self::new(Channel::open_plaintext(address)?, is_open).validated().await
     }
 
     async fn validated(mut self) -> Result<Self> {
         // TODO: temporary hack to validate connection until we have client pulse
-        self.core_grpc.databases_all(core::database_manager::all_req()).await?;
+        self.databases_all(core::database_manager::all_req()).await?;
         Ok(self)
+    }
+
+    fn is_open(&self) -> bool {
+        self.is_open.load()
+    }
+
+    pub(crate) fn force_close(&self) {
+        self.is_open.store(false);
     }
 
     pub(crate) async fn databases_contains(
         &mut self,
         req: core_database_manager::contains::Req,
     ) -> Result<core_database_manager::contains::Res> {
-        single(self.core_grpc.databases_contains(req)).await
+        single!(self, self.core_grpc.databases_contains(req))
     }
 
     pub(crate) async fn databases_create(
         &mut self,
         req: core_database_manager::create::Req,
     ) -> Result<core_database_manager::create::Res> {
-        single(self.core_grpc.databases_create(req)).await
+        single!(self, self.core_grpc.databases_create(req))
     }
 
     pub(crate) async fn databases_all(
         &mut self,
         req: core_database_manager::all::Req,
     ) -> Result<core_database_manager::all::Res> {
-        single(self.core_grpc.databases_all(req)).await
+        single!(self, self.core_grpc.databases_all(req))
     }
 
     pub(crate) async fn database_delete(
         &mut self,
         req: core_database::delete::Req,
     ) -> Result<core_database::delete::Res> {
-        single(self.core_grpc.database_delete(req)).await
+        single!(self, self.core_grpc.database_delete(req))
     }
 
     pub(crate) async fn database_schema(
         &mut self,
         req: core_database::schema::Req,
     ) -> Result<core_database::schema::Res> {
-        single(self.core_grpc.database_schema(req)).await
+        single!(self, self.core_grpc.database_schema(req))
     }
 
     pub(crate) async fn database_type_schema(
         &mut self,
         req: core_database::type_schema::Req,
     ) -> Result<core_database::type_schema::Res> {
-        single(self.core_grpc.database_type_schema(req)).await
+        single!(self, self.core_grpc.database_type_schema(req))
     }
 
     pub(crate) async fn database_rule_schema(
         &mut self,
         req: core_database::rule_schema::Req,
     ) -> Result<core_database::rule_schema::Res> {
-        single(self.core_grpc.database_rule_schema(req)).await
+        single!(self, self.core_grpc.database_rule_schema(req))
     }
 
     pub(crate) async fn session_open(
         &mut self,
         req: session::open::Req,
     ) -> Result<session::open::Res> {
-        single(self.core_grpc.session_open(req)).await
+        single!(self, self.core_grpc.session_open(req))
     }
 
     pub(crate) async fn session_close(
         &mut self,
         req: session::close::Req,
     ) -> Result<session::close::Res> {
-        single(self.core_grpc.session_close(req)).await
+        single!(self, self.core_grpc.session_close(req))
     }
 
     pub(crate) async fn session_pulse(
         &mut self,
         req: session::pulse::Req,
     ) -> Result<session::pulse::Res> {
-        single(self.core_grpc.session_pulse(req)).await
+        single!(self, self.core_grpc.session_pulse(req))
     }
 
     pub(crate) async fn transaction(
@@ -213,21 +245,8 @@ impl CoreRPC {
     ) -> Result<(Sender<transaction::Client>, Streaming<transaction::Server>)> {
         let (sender, receiver) = unbounded();
         sender.send(client_msg(vec![open_req])).unwrap();
-        bidi_stream(sender, self.core_grpc.transaction(ReceiverStream::from(receiver))).await
+        bidi_stream!(self, sender, self.core_grpc.transaction(ReceiverStream::from(receiver)))
     }
-}
-
-pub(crate) async fn single<T>(
-    res: impl Future<Output = StdResult<Response<T>, Status>>,
-) -> Result<T> {
-    Ok(res.await?.into_inner())
-}
-
-pub(crate) async fn bidi_stream<T, U>(
-    req_sink: Sender<T>,
-    res: impl Future<Output = StdResult<Response<Streaming<U>>, Status>>,
-) -> Result<(Sender<T>, Streaming<U>)> {
-    Ok((req_sink, res.await?.into_inner()))
 }
 
 struct ReceiverStream<T> {

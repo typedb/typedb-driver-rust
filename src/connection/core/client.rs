@@ -53,7 +53,7 @@ impl Client {
 
     pub fn force_close(self) {
         self.session_manager.force_close();
-        // TODO: also force close database connections
+        self.core_rpc.force_close();
     }
 
     pub fn databases(&mut self) -> &mut DatabaseManager {

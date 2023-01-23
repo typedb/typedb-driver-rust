@@ -38,7 +38,7 @@ use crate::{
 ///
 /// These operations all connect to the server to retrieve results. In the event of a connection
 /// failure or other problem executing the operation, they will return an [`Err`][Err] result.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct DatabaseManager {
     core_rpc: CoreRPC,
 }

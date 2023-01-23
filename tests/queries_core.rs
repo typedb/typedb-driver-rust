@@ -165,13 +165,24 @@ async fn force_close_client() {
     create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
     assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
 
+    let mut database = client.databases().get(TEST_DATABASE).await.unwrap();
+    assert!(database.schema().await.is_ok());
+
     let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
     let client2 = client.clone();
     client2.force_close();
 
+    let schema = database.schema().await;
+    assert!(schema.is_err());
+    assert_eq!(schema.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+
+    let database = client.databases().get(TEST_DATABASE).await;
+    assert!(database.is_err());
+    assert_eq!(database.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
-    assert!(transaction.unwrap_err().to_string().contains("[SSN01]"));
+    assert_eq!(transaction.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
 
     let session = client.session(TEST_DATABASE, Data).await;
     assert!(session.is_err());
@@ -199,6 +210,8 @@ async fn force_close_session() {
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
     assert_eq!(transaction.unwrap_err(), Error::Client(ClientError::SessionIsClosed()));
+
+    assert!(client.session(TEST_DATABASE, Data).await.is_ok());
 }
 
 #[tokio::test(flavor = "multi_thread")]

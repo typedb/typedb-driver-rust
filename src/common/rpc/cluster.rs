@@ -24,7 +24,7 @@ use std::{
     sync::Arc,
 };
 
-use crossbeam::channel::Sender;
+use crossbeam::{atomic::AtomicCell, channel::Sender};
 use futures::{future::BoxFuture, FutureExt};
 use tonic::Streaming;
 use typedb_protocol::{
@@ -46,27 +46,37 @@ use crate::common::{
 #[derive(Debug, Clone)]
 pub(crate) struct ClusterRPC {
     server_rpcs: HashMap<Address, ClusterServerRPC>,
+    is_open: Arc<AtomicCell<bool>>,
 }
 
 impl ClusterRPC {
     pub(crate) fn new(addresses: HashSet<Address>, credential: Credential) -> Result<Arc<Self>> {
+        let is_open = Arc::new(AtomicCell::new(true));
         let server_rpcs = addresses
             .into_iter()
             .map(|address| {
-                Ok((address.clone(), ClusterServerRPC::new(address, credential.clone())?))
+                Ok((
+                    address.clone(),
+                    ClusterServerRPC::new(address, is_open.clone(), credential.clone())?,
+                ))
             })
             .collect::<Result<_>>()?;
-        Ok(Arc::new(Self { server_rpcs }))
+        Ok(Arc::new(Self { server_rpcs, is_open }))
     }
 
     pub(crate) async fn fetch_current_addresses<T: AsRef<str>>(
         addresses: &[T],
         credential: &Credential,
     ) -> Result<HashSet<Address>> {
+        let is_open = Arc::new(AtomicCell::new(true));
         for address in addresses {
-            match ClusterServerRPC::new(address.as_ref().parse()?, credential.clone())?
-                .validated()
-                .await
+            match ClusterServerRPC::new(
+                address.as_ref().parse()?,
+                is_open.clone(),
+                credential.clone(),
+            )?
+            .validated()
+            .await
             {
                 Ok(mut client) => {
                     let servers = client.servers_all().await?.servers;
@@ -77,6 +87,10 @@ impl ClusterRPC {
             }
         }
         Err(ClientError::UnableToConnect())?
+    }
+
+    pub(crate) fn force_close(&self) {
+        self.is_open.store(false);
     }
 
     pub(crate) fn server_rpc_count(&self) -> usize {
@@ -112,22 +126,28 @@ pub(crate) struct ClusterServerRPC {
     address: Address,
     core_rpc: CoreRPC,
     cluster_grpc: ClusterGRPC<CallCredChannel>,
+    is_open: Arc<AtomicCell<bool>>,
     call_credentials: Arc<CallCredentials>,
 }
 
 impl ClusterServerRPC {
-    pub(crate) fn new(address: Address, credential: Credential) -> Result<Self> {
+    pub(crate) fn new(
+        address: Address,
+        is_open: Arc<AtomicCell<bool>>,
+        credential: Credential,
+    ) -> Result<Self> {
         let (channel, call_credentials) = Channel::open_encrypted(address.clone(), credential)?;
         Ok(Self {
             address,
-            core_rpc: CoreRPC::new(channel.clone()),
+            core_rpc: CoreRPC::new(channel.clone(), is_open.clone()),
             cluster_grpc: ClusterGRPC::new(channel.into()),
+            is_open,
             call_credentials,
         })
     }
 
     async fn validated(mut self) -> Result<Self> {
-        self.cluster_grpc.databases_all(cluster::database_manager::all_req()).await?;
+        self.databases_all(cluster::database_manager::all_req()).await?;
         Ok(self)
     }
 
@@ -135,10 +155,17 @@ impl ClusterServerRPC {
         &self.address
     }
 
+    fn is_open(&self) -> bool {
+        self.is_open.load()
+    }
+
     async fn call_with_auto_renew_token<F, R>(&mut self, call: F) -> Result<R>
     where
         for<'a> F: Fn(&'a mut Self) -> BoxFuture<'a, Result<R>>,
     {
+        if !self.is_open() {
+            Err(ClientError::ClientIsClosed())?;
+        }
         match call(self).await {
             Err(Error::Client(ClientError::ClusterTokenCredentialInvalid())) => {
                 self.renew_token().await?;

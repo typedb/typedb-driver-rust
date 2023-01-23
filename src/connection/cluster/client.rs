@@ -19,6 +19,8 @@
  * under the License.
  */
 
+use std::sync::Arc;
+
 use tokio::runtime::{Handle, RuntimeFlavor};
 
 use super::{DatabaseManager, Session};
@@ -31,6 +33,7 @@ use crate::{
 pub struct Client {
     session_manager: server::SessionManager,
     databases: DatabaseManager,
+    cluster_rpc: Arc<ClusterRPC>,
 }
 
 impl Client {
@@ -42,13 +45,14 @@ impl Client {
         let cluster_rpc = ClusterRPC::new(addresses, credential)?;
         Ok(Self {
             session_manager: server::SessionManager::new(),
-            databases: DatabaseManager::new(cluster_rpc),
+            databases: DatabaseManager::new(cluster_rpc.clone()),
+            cluster_rpc,
         })
     }
 
     pub fn force_close(self) {
         self.session_manager.force_close();
-        // TODO: also force close database connections
+        self.cluster_rpc.force_close();
     }
 
     pub fn databases(&mut self) -> &mut DatabaseManager {

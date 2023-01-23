@@ -275,8 +275,7 @@ impl Stream for ResPartStream {
     type Item = Result<transaction::ResPart>;
 
     fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let poll = self.source.try_recv();
-        match poll {
+        match self.source.try_recv() {
             Ok(Ok(res_part)) => match &res_part.res {
                 Some(res_part::Res::StreamResPart(stream_res_part)) => {
                     match State::from_i32(stream_res_part.state).expect("enum out of range") {
