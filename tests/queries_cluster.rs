@@ -25,7 +25,9 @@ use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
 use typedb_client::{
     cluster,
-    common::{Credential, SessionType::Data, TransactionType::Write},
+    common::{error::ClientError, Credential, SessionType::Data, TransactionType::Write},
+    Error,
+    SessionType::Schema,
 };
 
 const TEST_DATABASE: &str = "test";
@@ -33,7 +35,77 @@ const TEST_DATABASE: &str = "test";
 #[tokio::test(flavor = "multi_thread")]
 #[serial]
 async fn basic() {
-    let mut client = cluster::Client::new(
+    let mut client = new_cluster_client().await.unwrap();
+    create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
+    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
+
+    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let mut transaction = session.transaction(Write).await.unwrap();
+    let mut answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
+    while let Some(result) = answer_stream.next().await {
+        assert!(result.is_ok())
+    }
+    transaction.commit().await.unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn force_close_client() {
+    let mut client = new_cluster_client().await.unwrap();
+    create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
+    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
+
+    let mut database = client.databases().get(TEST_DATABASE).await.unwrap();
+    assert!(database.schema().await.is_ok());
+
+    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let client2 = client.clone();
+    client2.force_close();
+
+    let schema = database.schema().await;
+    assert!(schema.is_err());
+    assert_eq!(schema.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+
+    let database = client.databases().get(TEST_DATABASE).await;
+    assert!(database.is_err());
+    assert_eq!(database.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+
+    let transaction = session.transaction(Write).await;
+    assert!(transaction.is_err());
+    assert_eq!(transaction.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+
+    let session = client.session(TEST_DATABASE, Data).await;
+    assert!(session.is_err());
+    assert_eq!(session.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[serial]
+async fn force_close_session() {
+    let mut client = new_cluster_client().await.unwrap();
+    create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
+    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
+
+    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let mut transaction = session.transaction(Write).await.unwrap();
+
+    let session2 = session.clone();
+    session2.force_close();
+
+    let mut answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
+    assert!(matches!(answer_stream.next().await, Some(Err(_))));
+    assert!(answer_stream.next().await.is_none());
+    assert!(transaction.query.match_("match $x sub thing;").is_err());
+
+    let transaction = session.transaction(Write).await;
+    assert!(transaction.is_err());
+    assert_eq!(transaction.unwrap_err(), Error::Client(ClientError::SessionIsClosed()));
+
+    assert!(client.session(TEST_DATABASE, Data).await.is_ok());
+}
+
+async fn new_cluster_client() -> typedb_client::Result<cluster::Client> {
+    cluster::Client::new(
         &["localhost:11729", "localhost:21729", "localhost:31729"],
         Credential::with_tls(
             "admin",
@@ -42,20 +114,20 @@ async fn basic() {
         ),
     )
     .await
-    .unwrap();
+}
 
-    if client.databases().contains(TEST_DATABASE).await.unwrap() {
-        client.databases().get(TEST_DATABASE).and_then(|db| db.delete()).await.unwrap();
+async fn create_test_database_with_schema(
+    client: &mut cluster::Client,
+    schema: &str,
+) -> typedb_client::Result {
+    if client.databases().contains(TEST_DATABASE).await? {
+        client.databases().get(TEST_DATABASE).and_then(cluster::Database::delete).await?;
     }
-    client.databases().create(TEST_DATABASE).await.unwrap();
+    client.databases().create(TEST_DATABASE).await?;
 
-    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
-
-    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
-    let mut transaction = session.transaction(Write).await.unwrap();
-    let mut answer_stream = transaction.query.match_("match $x sub thing;");
-    while let Some(result) = answer_stream.next().await {
-        assert!(result.is_ok())
-    }
-    transaction.commit().await.unwrap();
+    let mut session = client.session(TEST_DATABASE, Schema).await?;
+    let mut transaction = session.transaction(Write).await?;
+    transaction.query.define(schema).await?;
+    transaction.commit().await?;
+    Ok(())
 }
