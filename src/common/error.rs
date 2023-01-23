@@ -56,9 +56,16 @@ error_messages! { ClientError
         17: "Failed to close session. It may still be open on the server: or it may already have been closed previously.",
 }
 
+error_messages! { InternalError
+    code: "INT", type: "Internal Error",
+    CurrentThreadUnsupported() =
+        1: "Current-thread async runtimes are currently unsupported.",
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     Client(ClientError),
+    Internal(InternalError),
     Other(String),
 }
 
@@ -72,6 +79,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Client(error) => write!(f, "{}", error),
+            Error::Internal(error) => write!(f, "{}", error),
             Error::Other(message) => write!(f, "{}", message),
         }
     }
@@ -81,6 +89,7 @@ impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             Error::Client(error) => Some(error),
+            Error::Internal(error) => Some(error),
             Error::Other(_) => None,
         }
     }
@@ -89,6 +98,12 @@ impl StdError for Error {
 impl From<ClientError> for Error {
     fn from(error: ClientError) -> Self {
         Error::Client(error)
+    }
+}
+
+impl From<InternalError> for Error {
+    fn from(error: InternalError) -> Self {
+        Error::Internal(error)
     }
 }
 

@@ -25,7 +25,7 @@ use tokio::runtime::{Handle, RuntimeFlavor};
 
 use super::{DatabaseManager, Session};
 use crate::{
-    common::{ClusterRPC, Credential, Result, SessionType},
+    common::{error::InternalError, ClusterRPC, Credential, Result, SessionType},
     server,
 };
 
@@ -39,7 +39,7 @@ pub struct Client {
 impl Client {
     pub async fn new<T: AsRef<str>>(init_addresses: &[T], credential: Credential) -> Result<Self> {
         if Handle::current().runtime_flavor() == RuntimeFlavor::CurrentThread {
-            todo!();
+            Err(InternalError::CurrentThreadUnsupported())?;
         }
         let addresses = ClusterRPC::fetch_current_addresses(init_addresses, &credential).await?;
         let cluster_rpc = ClusterRPC::new(addresses, credential)?;

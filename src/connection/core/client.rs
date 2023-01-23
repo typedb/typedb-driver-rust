@@ -23,7 +23,7 @@ use tokio::runtime::{Handle, RuntimeFlavor};
 
 use super::DatabaseManager;
 use crate::{
-    common::{CoreRPC, Result, SessionType},
+    common::{error::InternalError, CoreRPC, Result, SessionType},
     connection::{core, server},
 };
 
@@ -37,7 +37,7 @@ pub struct Client {
 impl Client {
     pub async fn new(address: &str) -> Result<Self> {
         if Handle::current().runtime_flavor() == RuntimeFlavor::CurrentThread {
-            todo!();
+            Err(InternalError::CurrentThreadUnsupported())?;
         }
         let core_rpc = CoreRPC::connect(address.parse()?).await?;
         Ok(Self {
