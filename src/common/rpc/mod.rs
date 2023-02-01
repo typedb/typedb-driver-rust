@@ -19,17 +19,22 @@
  * under the License.
  */
 
-pub(crate) mod builder;
 mod channel;
 mod cluster;
+mod connection;
 mod core;
+mod message;
 mod server;
 mod transaction;
 
+use tonic::{Response, Status};
+
+use crate::common::StdResult;
+
+type TonicResult<T> = StdResult<Response<T>, Status>;
+
 pub(crate) use self::{
-    channel::Channel,
-    cluster::{ClusterRPC, ClusterServerRPC},
-    core::CoreRPC,
-    server::ServerRPC,
-    transaction::TransactionRPC,
+    connection::{ClusterConnection, ClusterServerConnection, Connection, CoreConnection},
+    message::{DatabaseProto, ReplicaProto},
+    transaction::TransactionStream,
 };

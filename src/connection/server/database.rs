@@ -21,47 +21,37 @@
 
 use std::fmt::{Display, Formatter};
 
-use crate::common::{
-    rpc::builder::core::database::{delete_req, rule_schema_req, schema_req, type_schema_req},
-    Result, ServerRPC,
-};
+use crate::common::{Connection, Result};
 
 #[derive(Clone, Debug)]
 pub struct Database {
     name: String,
-    server_rpc: ServerRPC,
+    connection: Connection,
 }
 
 impl Database {
-    pub(crate) fn new(name: &str, server_rpc: ServerRPC) -> Self {
-        Database { name: name.into(), server_rpc }
+    pub(crate) fn new(name: String, connection: Connection) -> Self {
+        Database { name, connection }
     }
 
     pub fn name(&self) -> &str {
-        &self.name
+        self.name.as_str()
     }
 
-    pub async fn delete(mut self) -> Result {
-        self.server_rpc.database_delete(delete_req(self.name.as_str())).await?;
-        Ok(())
+    pub async fn delete(self) -> Result {
+        self.connection.delete_database(self.name).await
     }
 
-    pub async fn schema(&mut self) -> Result<String> {
-        self.server_rpc.database_schema(schema_req(self.name.as_str())).await.map(|res| res.schema)
+    pub async fn schema(&self) -> Result<String> {
+        self.connection.database_schema(self.name.clone()).await
     }
 
-    pub async fn type_schema(&mut self) -> Result<String> {
-        self.server_rpc
-            .database_type_schema(type_schema_req(self.name.as_str()))
-            .await
-            .map(|res| res.schema)
+    pub async fn type_schema(&self) -> Result<String> {
+        self.connection.database_type_schema(self.name.clone()).await
     }
 
-    pub async fn rule_schema(&mut self) -> Result<String> {
-        self.server_rpc
-            .database_rule_schema(rule_schema_req(self.name.as_str()))
-            .await
-            .map(|res| res.schema)
+    pub async fn rule_schema(&self) -> Result<String> {
+        self.connection.database_rule_schema(self.name.clone()).await
     }
 }
 

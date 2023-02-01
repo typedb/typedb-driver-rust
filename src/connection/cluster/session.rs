@@ -19,18 +19,20 @@
  * under the License.
  */
 
+use std::{ops::Deref, pin::Pin};
+
 use super::{Client, Database};
 use crate::{
     common::{error::ClientError, Result, SessionType, TransactionType},
-    connection::{core, server},
+    connection::{core, server, ClientHandle},
 };
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Session {
     database: Database,
     session_type: SessionType,
-    server_session: server::Session,
-    client: Client,
+    server_session: Pin<Box<server::Session>>,
+    client: ClientHandle,
 }
 
 impl Session {
@@ -40,19 +42,23 @@ impl Session {
         client: Client,
         // TODO options
     ) -> Result<Self> {
+        let client: ClientHandle = client.into();
         let server_session = database
-            .run_failsafe(|database, server_rpc, _| async {
-                let database = database;
-                client
-                    .session_manager()
-                    .new_session(
-                        database.name(),
+            .run_failsafe(|database, server_connection, _| {
+                let database_name = database.name().to_owned();
+                async {
+                    let server_connection = server_connection;
+                    let database_name = database_name;
+                    server::Session::new(
+                        database_name.as_str(),
                         session_type,
-                        server_rpc.into(),
                         core::Options::default(),
-                        client.clone().into(),
+                        server_connection.deref().clone(),
+                        client.clone(),
                     )
                     .await
+                    .map(Box::pin)
+                }
             })
             .await?;
 
@@ -91,35 +97,38 @@ impl Session {
             Err(ClientError::SessionIsClosed())?
         }
 
-        let (session, transaction) = self
+        let session = self
             .database
-            .run_failsafe(|database, server_rpc, is_first_run| {
+            .run_failsafe(|database, server_connection, is_first_run| {
                 let session_type = self.session_type;
-                let mut session = self.server_session.clone();
+                // let session = &self.server_session;
                 let client = self.client.clone();
                 async move {
                     if is_first_run {
-                        let transaction = session.transaction(transaction_type).await?;
-                        Ok((session, transaction))
+                        // let _ = session.transaction(transaction_type).await?;
+                        Ok(None)
                     } else {
-                        let mut server_session = client
-                            .session_manager()
-                            .new_session(
+                        let server_session = Box::pin(
+                            server::Session::new(
                                 database.name(),
                                 session_type,
-                                server_rpc.into(),
                                 core::Options::default(),
-                                client.clone().into(),
+                                server_connection.deref().clone(),
+                                client.clone(),
                             )
-                            .await?;
-                        let transaction = server_session.transaction(transaction_type).await?;
-                        Ok((server_session, transaction))
+                            .await?,
+                        );
+                        // let _ = server_session.transaction(transaction_type).await?;
+                        Ok(Some(server_session))
                     }
                 }
             })
             .await?;
 
-        self.server_session = session;
-        Ok(transaction)
+        if let Some(session) = session {
+            self.server_session = session;
+        }
+
+        Ok(self.server_session.transaction(transaction_type).await?)
     }
 }

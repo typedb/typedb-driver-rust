@@ -19,11 +19,12 @@
  * under the License.
  */
 
-use std::{sync::mpsc, time::Instant};
+use std::{sync::Arc, time::Instant};
 
 use chrono::{NaiveDate, NaiveDateTime};
 use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
+use tokio::sync::mpsc;
 use typedb_client::{
     common::{
         error::ClientError,
@@ -36,56 +37,59 @@ use typedb_client::{
 
 const TEST_DATABASE: &str = "test";
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 #[serial]
 async fn basic() {
-    let mut client = core::Client::with_default_address().await.unwrap();
+    let mut client = core::Client::with_default_address().unwrap();
     create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
     assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
 
-    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
-    let mut transaction = session.transaction(Write).await.unwrap();
-    let mut answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
-    while let Some(result) = answer_stream.next().await {
-        assert!(result.is_ok())
-    }
+    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let transaction = session.transaction(Write).await.unwrap();
+    let answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
+    let results: Vec<_> = answer_stream.collect().await;
     transaction.commit().await.unwrap();
+    assert_eq!(results.len(), 5);
+    assert!(results.into_iter().all(|res| res.is_ok()));
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 #[serial]
 async fn concurrent_transactions() {
-    let mut client = core::Client::with_default_address().await.unwrap();
+    let mut client = core::Client::with_default_address().unwrap();
     create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
 
-    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let session = Arc::new(client.session(TEST_DATABASE, Data).await.unwrap());
 
-    let (sender, receiver) = mpsc::channel();
+    let (sender, mut receiver) = mpsc::channel(5 * 5 * 8);
 
     for _ in 0..8 {
         let sender = sender.clone();
-        let mut session = session.clone();
+        let session = session.clone();
         tokio::spawn(async move {
             for _ in 0..5 {
-                let mut transaction = session.transaction(Read).await.unwrap();
+                let transaction = session.transaction(Read).await.unwrap();
                 let mut answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
                 while let Some(result) = answer_stream.next().await {
-                    sender.send(result).unwrap();
+                    sender.send(result).await.unwrap();
                 }
             }
         });
     }
     drop(sender); // receiver expects data while any sender is live
 
-    for received in receiver {
-        assert!(received.is_ok());
+    let mut results = Vec::with_capacity(5 * 5 * 8);
+    while let Some(result) = receiver.recv().await {
+        results.push(result);
     }
+    assert_eq!(results.len(), 5 * 5 * 8);
+    assert!(results.into_iter().all(|res| res.is_ok()));
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 #[serial]
 async fn query_options() {
-    let mut client = core::Client::with_default_address().await.unwrap();
+    let mut client = core::Client::with_default_address().unwrap();
     let schema = r#"define
         person sub entity,
             owns name,
@@ -95,26 +99,26 @@ async fn query_options() {
         rule age-rule: when { $x isa person; } then { $x has age 25; };"#;
     create_test_database_with_schema(&mut client, schema).await.unwrap();
 
-    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
-    let mut transaction = session.transaction(Write).await.unwrap();
+    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let transaction = session.transaction(Write).await.unwrap();
     let data = "insert $x isa person, has name 'Alice'; $y isa person, has name 'Bob';";
     let _ = transaction.query.insert(data);
     transaction.commit().await.unwrap();
 
-    let mut transaction = session.transaction(Read).await.unwrap();
+    let transaction = session.transaction(Read).await.unwrap();
     let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
     assert_eq!(age_count.into_i64(), 0);
 
     let with_inference = core::Options::new_core().infer(true);
-    let mut transaction = session.transaction_with_options(Read, with_inference).await.unwrap();
+    let transaction = session.transaction_with_options(Read, with_inference).await.unwrap();
     let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
     assert_eq!(age_count.into_i64(), 1);
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 #[serial]
 async fn many_concept_types() {
-    let mut client = core::Client::with_default_address().await.unwrap();
+    let mut client = core::Client::with_default_address().unwrap();
     let schema = r#"define
         person sub entity,
             owns name,
@@ -126,8 +130,8 @@ async fn many_concept_types() {
             relates friend;"#;
     create_test_database_with_schema(&mut client, schema).await.unwrap();
 
-    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
-    let mut transaction = session.transaction(Write).await.unwrap();
+    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let transaction = session.transaction(Write).await.unwrap();
     let data = r#"insert
         $x isa person, has name "Alice", has date-of-birth 1994-10-03;
         $y isa person, has name "Bob", has date-of-birth 1993-04-17;
@@ -135,7 +139,7 @@ async fn many_concept_types() {
     let _ = transaction.query.insert(data);
     transaction.commit().await.unwrap();
 
-    let mut transaction = session.transaction(Read).await.unwrap();
+    let transaction = session.transaction(Read).await.unwrap();
     let mut answer_stream = transaction
         .query
         .match_(
@@ -158,17 +162,17 @@ async fn many_concept_types() {
     }
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 #[serial]
 async fn force_close_client() {
-    let mut client = core::Client::with_default_address().await.unwrap();
+    let mut client = core::Client::with_default_address().unwrap();
     create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
     assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
 
-    let mut database = client.databases().get(TEST_DATABASE).await.unwrap();
+    let database = client.databases().get(TEST_DATABASE).await.unwrap();
     assert!(database.schema().await.is_ok());
 
-    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let session = client.session(TEST_DATABASE, Data).await.unwrap();
     let client2 = client.clone();
     client2.force_close();
 
@@ -189,22 +193,21 @@ async fn force_close_client() {
     assert_eq!(session.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 #[serial]
 async fn force_close_session() {
-    let mut client = core::Client::with_default_address().await.unwrap();
+    let mut client = core::Client::with_default_address().unwrap();
     create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
     assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
 
-    let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
-    let mut transaction = session.transaction(Write).await.unwrap();
+    let session = Arc::new(client.session(TEST_DATABASE, Data).await.unwrap());
+    let transaction = session.transaction(Write).await.unwrap();
 
     let session2 = session.clone();
     session2.force_close();
 
-    let mut answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
-    assert!(matches!(answer_stream.next().await, Some(Err(_))));
-    assert!(answer_stream.next().await.is_none());
+    let answer_stream = transaction.query.match_("match $x sub thing;");
+    assert!(answer_stream.is_err());
     assert!(transaction.query.match_("match $x sub thing;").is_err());
 
     let transaction = session.transaction(Write).await;
@@ -214,11 +217,11 @@ async fn force_close_session() {
     assert!(client.session(TEST_DATABASE, Data).await.is_ok());
 }
 
-#[tokio::test(flavor = "multi_thread")]
+#[tokio::test]
 #[serial]
 #[ignore]
 async fn streaming_perf() {
-    let mut client = core::Client::with_default_address().await.unwrap();
+    let mut client = core::Client::with_default_address().unwrap();
     for i in 0..5 {
         let schema = r#"define
             person sub entity, owns name, owns age;
@@ -227,20 +230,20 @@ async fn streaming_perf() {
         create_test_database_with_schema(&mut client, schema).await.unwrap();
 
         let start_time = Instant::now();
-        let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
-        let mut transaction = session.transaction(Write).await.unwrap();
+        let session = client.session(TEST_DATABASE, Data).await.unwrap();
+        let transaction = session.transaction(Write).await.unwrap();
         for j in 0..100_000 {
-            let _ = transaction.query.insert(format!("insert $x {j} isa age;").as_str()).unwrap();
+            drop(transaction.query.insert(format!("insert $x {j} isa age;").as_str()).unwrap());
         }
         transaction.commit().await.unwrap();
         println!(
             "iteration {i}: inserted and committed 100k attrs in {}ms",
-            (Instant::now() - start_time).as_millis()
+            start_time.elapsed().as_millis()
         );
 
         let mut start_time = Instant::now();
-        let mut session = client.session(TEST_DATABASE, Data).await.unwrap();
-        let mut transaction = session.transaction(Read).await.unwrap();
+        let session = client.session(TEST_DATABASE, Data).await.unwrap();
+        let transaction = session.transaction(Read).await.unwrap();
         let mut answer_stream = transaction.query.match_("match $x isa attribute;").unwrap();
         let mut sum: i64 = 0;
         let mut idx = 0;
@@ -263,7 +266,7 @@ async fn streaming_perf() {
             if idx == 100_000 {
                 println!(
                     "iteration {i}: retrieved and summed 100k attrs in {}ms",
-                    (Instant::now() - start_time).as_millis()
+                    start_time.elapsed().as_millis()
                 );
                 start_time = Instant::now();
             }
@@ -281,8 +284,8 @@ async fn create_test_database_with_schema(
     }
     client.databases().create(TEST_DATABASE).await?;
 
-    let mut session = client.session(TEST_DATABASE, Schema).await?;
-    let mut transaction = session.transaction(Write).await?;
+    let session = client.session(TEST_DATABASE, Schema).await?;
+    let transaction = session.transaction(Write).await?;
     transaction.query.define(schema).await?;
     transaction.commit().await?;
     Ok(())

@@ -19,13 +19,10 @@
  * under the License.
  */
 
-#![allow(dead_code)]
-
 pub mod answer;
 pub mod common;
 pub mod concept;
 pub(crate) mod connection;
-pub mod query;
 
 pub use self::{
     common::{Credential, Error, Result, SessionType, TransactionType},

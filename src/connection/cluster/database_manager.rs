@@ -19,76 +19,65 @@
  * under the License.
  */
 
-use std::{fmt::Debug, future::Future, sync::Arc};
+use std::future::Future;
 
 use super::Database;
 use crate::{
-    common::{
-        error::ClientError,
-        rpc::builder::{
-            cluster::database_manager::all_req,
-            core::database_manager::{contains_req, create_req},
-        },
-        ClusterRPC, ClusterServerRPC, Result,
-    },
+    common::{error::ClientError, ClusterConnection, ClusterServerConnection, Result},
     connection::server,
 };
 
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {
-    cluster_rpc: Arc<ClusterRPC>,
+    cluster_connection: ClusterConnection,
 }
 
 impl DatabaseManager {
-    pub(super) fn new(cluster_rpc: Arc<ClusterRPC>) -> Self {
-        Self { cluster_rpc }
+    pub(super) fn new(cluster_connection: ClusterConnection) -> Self {
+        Self { cluster_connection }
     }
 
-    pub async fn get(&mut self, name: &str) -> Result<Database> {
-        Database::get(name, self.cluster_rpc.clone()).await
+    pub async fn get(&mut self, name: String) -> Result<Database> {
+        Database::get(name, self.cluster_connection.clone()).await
     }
 
-    pub async fn contains(&mut self, name: &str) -> Result<bool> {
-        Ok(self
-            .run_failsafe(name, move |database, mut server_rpc, _| {
-                let req = contains_req(database.name());
-                async move { server_rpc.databases_contains(req).await }
-            })
-            .await?
-            .contains)
-    }
-
-    pub async fn create(&mut self, name: &str) -> Result {
-        self.run_failsafe(name, |database, mut server_rpc, _| {
-            let req = create_req(database.name());
-            async move { server_rpc.databases_create(req).await }
+    pub async fn contains(&mut self, name: String) -> Result<bool> {
+        self.run_failsafe(name, move |database, server_connection, _| async move {
+            server_connection.database_exists(database.name().to_owned()).await
         })
-        .await?;
-        Ok(())
+        .await
+    }
+
+    pub async fn create(&mut self, name: String) -> Result {
+        self.run_failsafe(name, |database, server_connection, _| async move {
+            server_connection.create_database(database.name().to_owned()).await
+        })
+        .await
     }
 
     pub async fn all(&mut self) -> Result<Vec<Database>> {
-        let mut error_buffer = Vec::with_capacity(self.cluster_rpc.server_rpc_count());
-        for mut server_rpc in self.cluster_rpc.iter_server_rpcs_cloned() {
-            match server_rpc.databases_all(all_req()).await {
+        let mut error_buffer = Vec::with_capacity(self.cluster_connection.server_count());
+        for server_connection in self.cluster_connection.iter_server_connections_cloned() {
+            match server_connection.all_databases().await {
                 Ok(list) => {
                     return list
-                        .databases
                         .into_iter()
-                        .map(|proto_db| Database::new(proto_db, self.cluster_rpc.clone()))
+                        .map(|proto_db| Database::new(proto_db, self.cluster_connection.clone()))
                         .collect()
                 }
-                Err(err) => error_buffer.push(format!("- {}: {}", server_rpc.address(), err)),
+                Err(err) => {
+                    error_buffer.push(format!("- {}: {}", server_connection.address(), err))
+                }
             }
         }
         Err(ClientError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
 
-    async fn run_failsafe<F, P, R>(&mut self, name: &str, task: F) -> Result<R>
+    async fn run_failsafe<F, P, R>(&mut self, name: String, task: F) -> Result<R>
     where
-        F: Fn(server::Database, ClusterServerRPC, bool) -> P,
+        F: Fn(server::Database, ClusterServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
-        Database::get(name, self.cluster_rpc.clone()).await?.run_failsafe(&task).await
+        Database::get(name, self.cluster_connection.clone()).await?.run_failsafe(&task).await
     }
 }

@@ -22,80 +22,86 @@
 use std::sync::Arc;
 
 use tonic::{
-    service::{interceptor::InterceptedService, Interceptor},
+    self,
+    body::BoxBody,
+    client::GrpcService,
+    service::{
+        interceptor::{self, InterceptedService},
+        Interceptor,
+    },
+    transport::{channel, Error as TonicError},
     Request, Status,
 };
 
 use crate::{
-    common::{credential::CallCredentials, Address, Credential, TonicChannel},
-    Result,
+    common::{credential::CallCredentials, Address, Result, StdResult},
+    Credential,
 };
 
-pub(crate) type CallCredChannel = InterceptedService<TonicChannel, CredentialInjector>;
+type TonicChannel = tonic::transport::Channel;
+type ResponseFuture = interceptor::ResponseFuture<channel::ResponseFuture>;
+
+pub(super) trait GRPCChannel:
+    GrpcService<BoxBody, Error = TonicError, ResponseBody = BoxBody, Future = ResponseFuture>
+    + Clone
+    + Send
+    + 'static
+{
+}
+
+impl<T> GRPCChannel for T where
+    T: GrpcService<BoxBody, Error = TonicError, ResponseBody = BoxBody, Future = ResponseFuture>
+        + Clone
+        + Send
+        + 'static
+{
+}
 
 #[derive(Clone, Debug)]
-pub(crate) enum Channel {
-    Plaintext(TonicChannel),
-    Encrypted(CallCredChannel),
-}
+pub(crate) struct PlainTextFacade;
 
-impl Channel {
-    pub(crate) fn open_plaintext(address: Address) -> Result<Self> {
-        Ok(Self::Plaintext(TonicChannel::builder(address.into_uri()).connect_lazy()))
-    }
-
-    pub(crate) fn open_encrypted(
-        address: Address,
-        credential: Credential,
-    ) -> Result<(Self, Arc<CallCredentials>)> {
-        let mut builder = TonicChannel::builder(address.into_uri());
-        if credential.is_tls_enabled() {
-            builder = builder.tls_config(credential.tls_config()?)?;
-        }
-
-        let channel = builder.connect_lazy();
-        let call_credentials = Arc::new(CallCredentials::new(credential));
-        Ok((
-            Self::Encrypted(InterceptedService::new(
-                channel,
-                CredentialInjector::new(call_credentials.clone()),
-            )),
-            call_credentials,
-        ))
+impl Interceptor for PlainTextFacade {
+    fn call(&mut self, request: Request<()>) -> StdResult<Request<()>, Status> {
+        Ok(request)
     }
 }
 
-impl From<Channel> for TonicChannel {
-    fn from(channel: Channel) -> Self {
-        match channel {
-            Channel::Plaintext(channel) => channel,
-            _ => panic!(),
-        }
-    }
-}
+pub(crate) type PlainTextChannel = InterceptedService<TonicChannel, PlainTextFacade>;
 
-impl From<Channel> for CallCredChannel {
-    fn from(channel: Channel) -> Self {
-        match channel {
-            Channel::Encrypted(channel) => channel,
-            _ => panic!(),
-        }
-    }
+pub(crate) fn open_plaintext_channel(address: Address) -> PlainTextChannel {
+    PlainTextChannel::new(TonicChannel::builder(address.into_uri()).connect_lazy(), PlainTextFacade)
 }
-
 #[derive(Clone, Debug)]
 pub(crate) struct CredentialInjector {
     call_credentials: Arc<CallCredentials>,
 }
 
 impl CredentialInjector {
-    fn new(call_credentials: Arc<CallCredentials>) -> Self {
+    pub(super) fn new(call_credentials: Arc<CallCredentials>) -> Self {
         Self { call_credentials }
     }
 }
 
 impl Interceptor for CredentialInjector {
-    fn call(&mut self, request: Request<()>) -> std::result::Result<Request<()>, Status> {
+    fn call(&mut self, request: Request<()>) -> StdResult<Request<()>, Status> {
         Ok(self.call_credentials.inject(request))
     }
+}
+
+pub(crate) type CallCredChannel = InterceptedService<TonicChannel, CredentialInjector>;
+
+pub(crate) fn open_encrypted_channel(
+    address: Address,
+    credential: Credential,
+) -> Result<(CallCredChannel, Arc<CallCredentials>)> {
+    let mut builder = TonicChannel::builder(address.into_uri());
+    if credential.is_tls_enabled() {
+        builder = builder.tls_config(credential.tls_config()?)?;
+    }
+    let channel = builder.connect_lazy();
+    let call_credentials = Arc::new(CallCredentials::new(credential));
+    Ok((
+        CallCredChannel::new(channel, CredentialInjector::new(call_credentials.clone())),
+        call_credentials,
+    ))
 }

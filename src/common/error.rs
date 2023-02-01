@@ -58,8 +58,10 @@ error_messages! { ClientError
 
 error_messages! { InternalError
     code: "INT", type: "Internal Error",
-    CurrentThreadUnsupported() =
-        1: "Current-thread async runtimes are currently unsupported.",
+    RecvError() =  // TODO rename
+        1: "Channel is closed",
+    SendError() =  // TODO rename
+        2: "Channel is closed",
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -67,12 +69,6 @@ pub enum Error {
     Client(ClientError),
     Internal(InternalError),
     Other(String),
-}
-
-impl Error {
-    pub(crate) fn new(msg: String) -> Self {
-        Error::Other(msg)
-    }
 }
 
 impl fmt::Display for Error {
@@ -145,6 +141,36 @@ impl From<tonic::codegen::http::uri::InvalidUri> for Error {
 impl From<tonic::transport::Error> for Error {
     fn from(err: tonic::transport::Error) -> Self {
         Error::Other(err.to_string())
+    }
+}
+
+impl<T> From<tokio::sync::mpsc::error::SendError<T>> for Error {
+    fn from(err: tokio::sync::mpsc::error::SendError<T>) -> Self {
+        Error::Other(err.to_string())
+    }
+}
+
+impl From<tokio::sync::oneshot::error::RecvError> for Error {
+    fn from(_err: tokio::sync::oneshot::error::RecvError) -> Self {
+        Error::Internal(InternalError::RecvError())
+    }
+}
+
+impl From<crossbeam::channel::RecvError> for Error {
+    fn from(_err: crossbeam::channel::RecvError) -> Self {
+        Error::Internal(InternalError::RecvError())
+    }
+}
+
+impl<T> From<crossbeam::channel::SendError<T>> for Error {
+    fn from(_err: crossbeam::channel::SendError<T>) -> Self {
+        Error::Internal(InternalError::SendError())
+    }
+}
+
+impl From<String> for Error {
+    fn from(err: String) -> Self {
+        Error::Other(err)
     }
 }
 

@@ -19,31 +19,25 @@
  * under the License.
  */
 
-use std::{fmt, sync::Arc, time::Duration};
+use std::{fmt, marker::PhantomData, sync::Arc};
 
-use crossbeam::atomic::AtomicCell;
-
-use super::Session;
 use crate::{
-    common::{
-        rpc::builder::transaction::{commit_req, open_req, rollback_req},
-        Result, ServerRPC, SessionID, TransactionRPC, TransactionType,
-    },
-    connection::core,
-    query::QueryManager,
+    common::{Result, TransactionStream, TransactionType},
+    connection::{core, server::query::QueryManager},
 };
 
-pub struct Transaction {
+pub struct Transaction<'a> {
     type_: TransactionType,
     options: core::Options,
+
+    transaction_stream: Arc<TransactionStream>,
+
     pub query: QueryManager,
-    rpc: TransactionRPC,
-    is_open: Arc<AtomicCell<bool>>,
-    // RAII guard
-    _session_handle: Session,
+
+    _lifetime_guard: PhantomData<&'a ()>,
 }
 
-impl fmt::Debug for Transaction {
+impl fmt::Debug for Transaction<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Transaction")
             .field("type_", &self.type_)
@@ -52,44 +46,23 @@ impl fmt::Debug for Transaction {
     }
 }
 
-impl Transaction {
-    pub(super) async fn new(
-        session_id: SessionID,
-        transaction_type: TransactionType,
-        options: core::Options,
-        network_latency: Duration,
-        server_rpc: ServerRPC,
-        _session_handle: Session,
-    ) -> Result<Self> {
-        let open_req = open_req(
-            session_id,
-            transaction_type.to_proto(),
-            options.to_proto(),
-            network_latency.as_millis() as i32,
-        );
-        let rpc = TransactionRPC::new(server_rpc, open_req).await?;
-        let is_open = Arc::new(AtomicCell::new(true));
+impl<'a> Transaction<'a> {
+    pub(in crate::connection) fn new(transaction_stream: TransactionStream) -> Result<Self> {
+        let transaction_stream = Arc::new(transaction_stream);
         Ok(Transaction {
-            type_: transaction_type,
-            options,
-            query: QueryManager::new(rpc.clone()),
-            rpc,
-            is_open,
-            _session_handle,
+            type_: transaction_stream.type_(),
+            options: transaction_stream.options().clone(),
+            query: QueryManager::new(transaction_stream.clone()),
+            transaction_stream,
+            _lifetime_guard: PhantomData::default(),
         })
     }
 
-    pub async fn commit(mut self) -> Result {
-        if self.is_open.compare_exchange(true, false).is_ok() {
-            self.rpc.single(commit_req()).await?;
-        }
-        Ok(())
+    pub async fn commit(self) -> Result {
+        self.transaction_stream.commit().await
     }
 
-    pub async fn rollback(&mut self) -> Result {
-        if self.is_open.compare_exchange(true, false).is_ok() {
-            self.rpc.single(rollback_req()).await?;
-        }
-        Ok(())
+    pub async fn rollback(&self) -> Result {
+        self.transaction_stream.rollback().await
     }
 }

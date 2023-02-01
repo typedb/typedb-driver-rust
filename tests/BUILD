@@ -32,7 +32,6 @@ rust_test(
     srcs = ["queries_core.rs"],
     deps = [
         "//:typedb_client",
-
         "@crates//:chrono",
         "@crates//:futures",
         "@crates//:serial_test",
@@ -45,7 +44,6 @@ rust_test(
     srcs = ["queries_cluster.rs"],
     deps = [
         "//:typedb_client",
-
         "@crates//:futures",
         "@crates//:serial_test",
         "@crates//:tokio",

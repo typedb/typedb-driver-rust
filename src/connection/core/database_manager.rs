@@ -20,11 +20,7 @@
  */
 
 use crate::{
-    common::{
-        error::ClientError,
-        rpc::builder::core::database_manager::{all_req, contains_req, create_req},
-        CoreRPC, Result,
-    },
+    common::{error::ClientError, Connection, Result},
     connection::server,
 };
 
@@ -40,37 +36,40 @@ use crate::{
 /// failure or other problem executing the operation, they will return an [`Err`][Err] result.
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {
-    core_rpc: CoreRPC,
+    connection: Connection,
 }
 
 impl DatabaseManager {
-    pub(crate) fn new(core_rpc: CoreRPC) -> Self {
-        DatabaseManager { core_rpc }
+    pub(crate) fn new(connection: Connection) -> Self {
+        Self { connection }
     }
 
     /// Retrieves a single [`Database`][Database] by name. Returns an [`Err`][Err] if there does not
     /// exist a database with the provided name.
-    pub async fn get(&mut self, name: &str) -> Result<server::Database> {
-        match self.contains(name).await? {
-            true => Ok(server::Database::new(name, self.core_rpc.clone().into())),
-            false => Err(ClientError::DatabaseDoesNotExist(name.to_string()))?,
+    pub async fn get(&mut self, name: impl Into<String> + 'static) -> Result<server::Database> {
+        let name = name.into();
+        if self.contains(name.clone()).await? {
+            Ok(server::Database::new(name, self.connection.clone()))
+        } else {
+            Err(ClientError::DatabaseDoesNotExist(name).into())
         }
     }
 
-    pub async fn contains(&mut self, name: &str) -> Result<bool> {
-        self.core_rpc.databases_contains(contains_req(name)).await.map(|res| res.contains)
+    pub async fn contains(&mut self, name: impl Into<String> + 'static) -> Result<bool> {
+        self.connection.database_exists(name.into()).await
     }
 
-    pub async fn create(&mut self, name: &str) -> Result {
-        self.core_rpc.databases_create(create_req(name)).await.map(|_| ())
+    pub async fn create(&mut self, name: impl Into<String> + 'static) -> Result {
+        self.connection.create_database(name.into()).await
     }
 
     pub async fn all(&mut self) -> Result<Vec<server::Database>> {
-        self.core_rpc.databases_all(all_req()).await.map(|res| {
-            res.names
-                .iter()
-                .map(|name| server::Database::new(name, self.core_rpc.clone().into()))
-                .collect()
-        })
+        Ok(self
+            .connection
+            .all_databases()
+            .await?
+            .into_iter()
+            .map(|name| server::Database::new(name, self.connection.clone()))
+            .collect())
     }
 }

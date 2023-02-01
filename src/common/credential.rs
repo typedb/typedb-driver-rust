@@ -20,7 +20,7 @@
  */
 
 use std::{
-    fs,
+    fmt, fs,
     path::{Path, PathBuf},
     sync::RwLock,
 };
@@ -32,12 +32,22 @@ use tonic::{
 
 use crate::Result;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Credential {
     username: String,
     password: String,
     is_tls_enabled: bool,
     tls_root_ca: Option<PathBuf>,
+}
+
+impl fmt::Debug for Credential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Credential")
+            .field("username", &self.username)
+            .field("is_tls_enabled", &self.is_tls_enabled)
+            .field("tls_root_ca", &self.tls_root_ca)
+            .finish()
+    }
 }
 
 impl Credential {
@@ -98,6 +108,10 @@ impl CallCredentials {
 
     pub(super) fn password(&self) -> &str {
         self.credential.password()
+    }
+
+    pub(super) fn has_token(&self) -> bool {
+        self.token.write().unwrap().is_some()
     }
 
     pub(super) fn set_token(&self, token: String) {

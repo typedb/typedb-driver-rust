@@ -21,34 +21,38 @@
 
 mod address;
 pub mod credential;
-mod drop_guard;
 pub mod error;
-mod macros;
-pub(crate) mod rpc;
+mod rpc;
 
 use std::{fmt, time::Duration};
 
 use typedb_protocol::{session as session_proto, transaction as transaction_proto};
+use uuid::Uuid;
 
-pub use self::{address::Address, credential::Credential, error::Error};
-pub(crate) use self::{
-    drop_guard::DropGuard,
-    rpc::{ClusterRPC, ClusterServerRPC, CoreRPC, ServerRPC, TransactionRPC},
+pub(crate) use self::rpc::{
+    ClusterConnection, ClusterServerConnection, Connection, CoreConnection, DatabaseProto,
+    ReplicaProto, TransactionStream,
 };
+pub use self::{address::Address, credential::Credential, error::Error};
 
 pub(crate) const POLL_INTERVAL: Duration = Duration::from_millis(3);
 pub(crate) const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
+pub(crate) const PULSE_INTERVAL: Duration = Duration::from_secs(5);
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
 pub type Result<T = ()> = StdResult<T, Error>;
-
-pub(crate) type TonicChannel = tonic::transport::Channel;
 
 pub(crate) type RequestID = ID;
 pub(crate) type SessionID = ID;
 
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub struct ID(Vec<u8>);
+
+impl ID {
+    fn generate() -> Self {
+        Uuid::new_v4().as_bytes().to_vec().into()
+    }
+}
 
 impl From<ID> for Vec<u8> {
     fn from(id: ID) -> Self {

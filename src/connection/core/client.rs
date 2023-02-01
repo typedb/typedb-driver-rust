@@ -19,41 +19,32 @@
  * under the License.
  */
 
-use tokio::runtime::{Handle, RuntimeFlavor};
+use std::ops::Deref;
 
 use super::DatabaseManager;
 use crate::{
-    common::{error::InternalError, CoreRPC, Result, SessionType},
+    common::{CoreConnection, Result, SessionType},
     connection::{core, server},
 };
 
 #[derive(Clone, Debug)]
 pub struct Client {
     databases: DatabaseManager,
-    session_manager: server::SessionManager,
-    core_rpc: CoreRPC,
+    connection: CoreConnection,
 }
 
 impl Client {
-    pub async fn new(address: &str) -> Result<Self> {
-        if Handle::current().runtime_flavor() == RuntimeFlavor::CurrentThread {
-            Err(InternalError::CurrentThreadUnsupported())?;
-        }
-        let core_rpc = CoreRPC::connect(address.parse()?).await?;
-        Ok(Self {
-            databases: DatabaseManager::new(core_rpc.clone()),
-            session_manager: server::SessionManager::new(),
-            core_rpc,
-        })
+    pub fn new(address: &str) -> Result<Self> {
+        let connection = CoreConnection::new(address.parse()?)?;
+        Ok(Self { databases: DatabaseManager::new(connection.deref().clone()), connection })
     }
 
-    pub async fn with_default_address() -> Result<Self> {
-        Self::new("http://localhost:1729").await
+    pub fn with_default_address() -> Result<Self> {
+        Self::new("http://localhost:1729")
     }
 
     pub fn force_close(self) {
-        self.session_manager.force_close();
-        self.core_rpc.force_close();
+        self.connection.force_close();
     }
 
     pub fn databases(&mut self) -> &mut DatabaseManager {
@@ -74,14 +65,13 @@ impl Client {
         session_type: SessionType,
         options: core::Options,
     ) -> Result<server::Session> {
-        self.session_manager
-            .new_session(
-                database_name,
-                session_type,
-                self.core_rpc.clone().into(),
-                options,
-                self.clone().into(),
-            )
-            .await
+        server::Session::new(
+            database_name,
+            session_type,
+            options,
+            self.connection.deref().clone(),
+            self.clone().into(),
+        )
+        .await
     }
 }

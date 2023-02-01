@@ -19,40 +19,26 @@
  * under the License.
  */
 
-use std::sync::Arc;
-
-use tokio::runtime::{Handle, RuntimeFlavor};
-
 use super::{DatabaseManager, Session};
-use crate::{
-    common::{error::InternalError, ClusterRPC, Credential, Result, SessionType},
-    server,
-};
+use crate::common::{ClusterConnection, Credential, Result, SessionType};
 
 #[derive(Clone, Debug)]
 pub struct Client {
-    session_manager: server::SessionManager,
     databases: DatabaseManager,
-    cluster_rpc: Arc<ClusterRPC>,
+    cluster_connection: ClusterConnection,
 }
 
 impl Client {
-    pub async fn new<T: AsRef<str>>(init_addresses: &[T], credential: Credential) -> Result<Self> {
-        if Handle::current().runtime_flavor() == RuntimeFlavor::CurrentThread {
-            Err(InternalError::CurrentThreadUnsupported())?;
-        }
-        let addresses = ClusterRPC::fetch_current_addresses(init_addresses, &credential).await?;
-        let cluster_rpc = ClusterRPC::new(addresses, credential)?;
-        Ok(Self {
-            session_manager: server::SessionManager::new(),
-            databases: DatabaseManager::new(cluster_rpc.clone()),
-            cluster_rpc,
-        })
+    pub async fn new<T: AsRef<str> + Sync>(
+        init_addresses: &[T],
+        credential: Credential,
+    ) -> Result<Self> {
+        let cluster_connection = ClusterConnection::from_init(init_addresses, credential)?;
+        Ok(Self { databases: DatabaseManager::new(cluster_connection.clone()), cluster_connection })
     }
 
     pub fn force_close(self) {
-        self.session_manager.force_close();
-        self.cluster_rpc.force_close();
+        self.cluster_connection.force_close();
     }
 
     pub fn databases(&mut self) -> &mut DatabaseManager {
@@ -61,13 +47,9 @@ impl Client {
 
     pub async fn session(
         &mut self,
-        database_name: &str,
+        database_name: String,
         session_type: SessionType,
     ) -> Result<Session> {
         Session::new(self.databases.get(database_name).await?, session_type, self.clone()).await
-    }
-
-    pub(super) fn session_manager(&self) -> &server::SessionManager {
-        &self.session_manager
     }
 }
