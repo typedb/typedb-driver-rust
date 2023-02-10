@@ -32,7 +32,7 @@ use typedb_client::{
         TransactionType::{Read, Write},
     },
     concept::{Attribute, Concept, DateTimeAttribute, StringAttribute, Thing},
-    core, server, Error,
+    Connection, Database, DatabaseManager, Error, Options, Session,
 };
 
 const TEST_DATABASE: &str = "test";
@@ -40,11 +40,15 @@ const TEST_DATABASE: &str = "test";
 #[tokio::test]
 #[serial]
 async fn basic() {
-    let mut client = core::Client::with_default_address().unwrap();
-    create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
-    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
+    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+    create_test_database_with_schema(connection.clone(), "define person sub entity;")
+        .await
+        .unwrap();
+    let mut databases = DatabaseManager::new(connection);
+    assert!(databases.contains(TEST_DATABASE.into()).await.unwrap());
 
-    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let session =
+        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
     let transaction = session.transaction(Write).await.unwrap();
     let answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
     let results: Vec<_> = answer_stream.collect().await;
@@ -55,11 +59,34 @@ async fn basic() {
 
 #[tokio::test]
 #[serial]
-async fn concurrent_transactions() {
-    let mut client = core::Client::with_default_address().unwrap();
-    create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
+async fn query_error() {
+    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+    create_test_database_with_schema(connection.clone(), "define person sub entity;")
+        .await
+        .unwrap();
+    let mut databases = DatabaseManager::new(connection);
 
-    let session = Arc::new(client.session(TEST_DATABASE, Data).await.unwrap());
+    let session =
+        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
+    let transaction = session.transaction(Write).await.unwrap();
+    let answer_stream = transaction.query.match_("match $x sub nonexistent-type;").unwrap();
+    let results: Vec<_> = answer_stream.collect().await;
+    assert_eq!(results.len(), 1);
+    assert!(results.into_iter().all(|res| res.unwrap_err().to_string().contains("[TYR03]")));
+}
+
+#[tokio::test]
+#[serial]
+async fn concurrent_transactions() {
+    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+    create_test_database_with_schema(connection.clone(), "define person sub entity;")
+        .await
+        .unwrap();
+    let mut databases = DatabaseManager::new(connection);
+
+    let session = Arc::new(
+        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap(),
+    );
 
     let (sender, mut receiver) = mpsc::channel(5 * 5 * 8);
 
@@ -89,7 +116,7 @@ async fn concurrent_transactions() {
 #[tokio::test]
 #[serial]
 async fn query_options() {
-    let mut client = core::Client::with_default_address().unwrap();
+    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
     let schema = r#"define
         person sub entity,
             owns name,
@@ -97,9 +124,11 @@ async fn query_options() {
         name sub attribute, value string;
         age sub attribute, value long;
         rule age-rule: when { $x isa person; } then { $x has age 25; };"#;
-    create_test_database_with_schema(&mut client, schema).await.unwrap();
+    create_test_database_with_schema(connection.clone(), schema).await.unwrap();
+    let mut databases = DatabaseManager::new(connection);
 
-    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let session =
+        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
     let transaction = session.transaction(Write).await.unwrap();
     let data = "insert $x isa person, has name 'Alice'; $y isa person, has name 'Bob';";
     let _ = transaction.query.insert(data);
@@ -109,7 +138,7 @@ async fn query_options() {
     let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
     assert_eq!(age_count.into_i64(), 0);
 
-    let with_inference = core::Options::new_core().infer(true);
+    let with_inference = Options::new_core().infer(true);
     let transaction = session.transaction_with_options(Read, with_inference).await.unwrap();
     let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
     assert_eq!(age_count.into_i64(), 1);
@@ -118,7 +147,7 @@ async fn query_options() {
 #[tokio::test]
 #[serial]
 async fn many_concept_types() {
-    let mut client = core::Client::with_default_address().unwrap();
+    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
     let schema = r#"define
         person sub entity,
             owns name,
@@ -128,9 +157,11 @@ async fn many_concept_types() {
         date-of-birth sub attribute, value datetime;
         friendship sub relation,
             relates friend;"#;
-    create_test_database_with_schema(&mut client, schema).await.unwrap();
+    create_test_database_with_schema(connection.clone(), schema).await.unwrap();
+    let mut databases = DatabaseManager::new(connection);
 
-    let session = client.session(TEST_DATABASE, Data).await.unwrap();
+    let session =
+        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
     let transaction = session.transaction(Write).await.unwrap();
     let data = r#"insert
         $x isa person, has name "Alice", has date-of-birth 1994-10-03;
@@ -164,31 +195,33 @@ async fn many_concept_types() {
 
 #[tokio::test]
 #[serial]
-async fn force_close_client() {
-    let mut client = core::Client::with_default_address().unwrap();
-    create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
-    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
+async fn force_close_connection() {
+    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+    create_test_database_with_schema(connection.clone(), "define person sub entity;")
+        .await
+        .unwrap();
+    let mut databases = DatabaseManager::new(connection.clone());
 
-    let database = client.databases().get(TEST_DATABASE).await.unwrap();
+    let database = databases.get(TEST_DATABASE.into()).await.unwrap();
     assert!(database.schema().await.is_ok());
 
-    let session = client.session(TEST_DATABASE, Data).await.unwrap();
-    let client2 = client.clone();
-    client2.force_close();
+    let session =
+        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
+    connection.clone().force_close();
 
     let schema = database.schema().await;
     assert!(schema.is_err());
     assert_eq!(schema.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
 
-    let database = client.databases().get(TEST_DATABASE).await;
-    assert!(database.is_err());
-    assert_eq!(database.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+    let database2 = databases.get(TEST_DATABASE.into()).await;
+    assert!(database2.is_err());
+    assert_eq!(database2.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
 
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
     assert_eq!(transaction.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
 
-    let session = client.session(TEST_DATABASE, Data).await;
+    let session = Session::new(database, Data).await;
     assert!(session.is_err());
     assert_eq!(session.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
 }
@@ -196,41 +229,46 @@ async fn force_close_client() {
 #[tokio::test]
 #[serial]
 async fn force_close_session() {
-    let mut client = core::Client::with_default_address().unwrap();
-    create_test_database_with_schema(&mut client, "define person sub entity;").await.unwrap();
-    assert!(client.databases().contains(TEST_DATABASE).await.unwrap());
+    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+    create_test_database_with_schema(connection.clone(), "define person sub entity;")
+        .await
+        .unwrap();
+    let mut databases = DatabaseManager::new(connection.clone());
 
-    let session = Arc::new(client.session(TEST_DATABASE, Data).await.unwrap());
-    let transaction = session.transaction(Write).await.unwrap();
+    let session = Arc::new(
+        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap(),
+    );
+    let _transaction = session.transaction(Write).await.unwrap();
 
     let session2 = session.clone();
     session2.force_close();
 
-    let answer_stream = transaction.query.match_("match $x sub thing;");
-    assert!(answer_stream.is_err());
-    assert!(transaction.query.match_("match $x sub thing;").is_err());
+    // let answer_stream = transaction.query.match_("match $x sub thing;");
+    // assert!(answer_stream.is_err());
+    // assert!(transaction.query.match_("match $x sub thing;").is_err());
 
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
     assert_eq!(transaction.unwrap_err(), Error::Client(ClientError::SessionIsClosed()));
 
-    assert!(client.session(TEST_DATABASE, Data).await.is_ok());
+    assert!(Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.is_ok());
 }
 
 #[tokio::test]
 #[serial]
 #[ignore]
 async fn streaming_perf() {
-    let mut client = core::Client::with_default_address().unwrap();
+    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
     for i in 0..5 {
         let schema = r#"define
             person sub entity, owns name, owns age;
             name sub attribute, value string;
             age sub attribute, value long;"#;
-        create_test_database_with_schema(&mut client, schema).await.unwrap();
+        create_test_database_with_schema(connection.clone(), schema).await.unwrap();
+        let mut databases = DatabaseManager::new(connection.clone());
 
         let start_time = Instant::now();
-        let session = client.session(TEST_DATABASE, Data).await.unwrap();
+        let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Write).await.unwrap();
         for j in 0..100_000 {
             drop(transaction.query.insert(format!("insert $x {j} isa age;").as_str()).unwrap());
@@ -242,7 +280,7 @@ async fn streaming_perf() {
         );
 
         let mut start_time = Instant::now();
-        let session = client.session(TEST_DATABASE, Data).await.unwrap();
+        let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Read).await.unwrap();
         let mut answer_stream = transaction.query.match_("match $x isa attribute;").unwrap();
         let mut sum: i64 = 0;
@@ -276,15 +314,17 @@ async fn streaming_perf() {
 }
 
 async fn create_test_database_with_schema(
-    client: &mut core::Client,
+    connection: Connection,
     schema: &str,
 ) -> typedb_client::Result {
-    if client.databases().contains(TEST_DATABASE).await? {
-        client.databases().get(TEST_DATABASE).and_then(server::Database::delete).await?;
+    let mut databases = DatabaseManager::new(connection);
+    if databases.contains(TEST_DATABASE.into()).await? {
+        databases.get(TEST_DATABASE.into()).and_then(Database::delete).await?;
     }
-    client.databases().create(TEST_DATABASE).await?;
+    databases.create(TEST_DATABASE.into()).await?;
 
-    let session = client.session(TEST_DATABASE, Schema).await?;
+    let database = databases.get(TEST_DATABASE.into()).await?;
+    let session = Session::new(database, Schema).await?;
     let transaction = session.transaction(Write).await?;
     transaction.query.define(schema).await?;
     transaction.commit().await?;

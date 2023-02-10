@@ -25,6 +25,6 @@ pub mod concept;
 pub(crate) mod connection;
 
 pub use self::{
-    common::{Credential, Error, Result, SessionType, TransactionType},
-    connection::{cluster, core, server},
+    common::{Connection, Credential, Error, Result, SessionType, TransactionType},
+    connection::{Database, DatabaseManager, Options, Session},
 };

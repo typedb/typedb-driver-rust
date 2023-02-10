@@ -29,11 +29,11 @@ use std::{fmt, time::Duration};
 use typedb_protocol::{session as session_proto, transaction as transaction_proto};
 use uuid::Uuid;
 
-pub(crate) use self::rpc::{
-    ClusterConnection, ClusterServerConnection, Connection, CoreConnection, DatabaseProto,
-    ReplicaProto, TransactionStream,
+pub(crate) use self::{
+    address::Address,
+    rpc::{DatabaseProto, ReplicaProto, ServerConnection, TransactionStream},
 };
-pub use self::{address::Address, credential::Credential, error::Error};
+pub use self::{credential::Credential, error::Error, rpc::Connection};
 
 pub(crate) const POLL_INTERVAL: Duration = Duration::from_millis(3);
 pub(crate) const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);

@@ -23,7 +23,6 @@ use std::{
     collections::{HashMap, HashSet},
     fmt,
     future::Future,
-    ops::Deref,
     sync::{Arc, Mutex},
     thread,
     thread::JoinHandle,
@@ -34,6 +33,7 @@ use crossbeam::{
     atomic::AtomicCell,
     channel::{bounded as bounded_blocking, Sender as SyncSender},
 };
+use futures::TryFutureExt;
 use tokio::{
     runtime, select,
     sync::{
@@ -45,8 +45,6 @@ use tokio::{
 
 use super::{
     channel::GRPCChannel,
-    cluster::ClusterServerRPC,
-    core::CoreRPC,
     message::{DatabaseProto, Request, Response, TransactionRequest},
     server::ServerRPC,
     transaction::TransactionStream,
@@ -54,9 +52,10 @@ use super::{
 use crate::{
     common::{
         error::{ClientError, Error, InternalError},
+        rpc::channel::{open_encrypted_channel, open_plaintext_channel},
         Address, Result, SessionID, SessionType, TransactionType, POLL_INTERVAL, PULSE_INTERVAL,
     },
-    connection::core,
+    connection::Options,
     Credential,
 };
 
@@ -75,223 +74,6 @@ impl<T> OneShotSender<T> {
     }
 }
 
-#[derive(Clone)]
-pub struct ClusterConnection {
-    server_connections: HashMap<Address, ClusterServerConnection>,
-    background_runtime: Arc<BackgroundRuntime>,
-}
-
-impl fmt::Debug for ClusterConnection {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ClusterConnection").finish()
-    }
-}
-
-async fn fetch_current_addresses(
-    addresses: Vec<Address>,
-    credential: Credential,
-) -> Result<HashSet<Address>> {
-    for address in addresses {
-        match ClusterServerRPC::new(address, credential.clone()).await?.validated().await {
-            Ok(mut client) => {
-                return match client.servers_all(Request::ServersAll.into()).await?.into() {
-                    Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
-                    _ => unreachable!(),
-                }
-            }
-            Err(Error::Client(ClientError::UnableToConnect())) => (),
-            Err(err) => Err(err)?,
-        }
-    }
-    Err(ClientError::UnableToConnect())?
-}
-
-impl ClusterConnection {
-    pub fn from_init<T: AsRef<str> + Sync>(
-        init_addresses: &[T],
-        credential: Credential,
-    ) -> Result<Self> {
-        let background_runtime = Arc::new(BackgroundRuntime::new()?);
-        let init_addresses: Result<Vec<Address>> =
-            init_addresses.iter().map(|addr| addr.as_ref().parse()).collect();
-        let addresses = background_runtime
-            .block_on(fetch_current_addresses(init_addresses?, credential.clone()))?;
-        Self::new(background_runtime, addresses, credential)
-    }
-
-    fn new(
-        background_runtime: Arc<BackgroundRuntime>,
-        addresses: HashSet<Address>,
-        credential: Credential,
-    ) -> Result<Self> {
-        let server_connections = addresses
-            .into_iter()
-            .map(|address| {
-                Ok((
-                    address.clone(),
-                    ClusterServerConnection::new(
-                        background_runtime.clone(),
-                        address,
-                        credential.clone(),
-                    )?,
-                ))
-            })
-            .collect::<Result<HashMap<Address, ClusterServerConnection>>>()?;
-
-        Ok(Self { server_connections, background_runtime })
-    }
-
-    pub(crate) fn force_close(&self) {
-        self.server_connections.values().for_each(ClusterServerConnection::force_close);
-        self.background_runtime.force_close();
-    }
-
-    pub(crate) fn server_count(&self) -> usize {
-        self.server_connections.len()
-    }
-
-    pub(crate) fn addresses(&self) -> impl Iterator<Item = &Address> {
-        self.server_connections.keys()
-    }
-
-    pub(crate) fn get_server_connection(&self, address: &Address) -> ClusterServerConnection {
-        self.server_connections.get(address).cloned().unwrap()
-    }
-
-    pub(crate) fn iter_server_connections_cloned(
-        &self,
-    ) -> impl Iterator<Item = ClusterServerConnection> + '_ {
-        self.server_connections.values().cloned()
-    }
-
-    pub(crate) fn unable_to_connect(&self) -> Error {
-        Error::Client(ClientError::ClusterUnableToConnect(
-            self.addresses().map(Address::to_string).collect::<Vec<_>>().join(","),
-        ))
-    }
-}
-
-#[derive(Clone)]
-pub struct ClusterServerConnection {
-    address: Address,
-    inner: Connection,
-    cluster_request_sink: UnboundedSender<(Request, OneShotSender<Response>)>,
-    shutdown_sink: UnboundedSender<()>,
-}
-
-impl ClusterServerConnection {
-    fn new(
-        background_runtime: Arc<BackgroundRuntime>,
-        address: Address,
-        credential: Credential,
-    ) -> Result<Self> {
-        let (shutdown_sink, shutdown_source) = unbounded_async();
-        let (core_request_sink, core_request_source) = unbounded_async();
-        let (cluster_request_sink, cluster_request_source) = unbounded_async();
-        let rpc =
-            background_runtime.block_on(ClusterServerRPC::new(address.clone(), credential))?;
-        background_runtime.spawn(cluster_grpc_worker(
-            rpc,
-            core_request_source,
-            cluster_request_source,
-            shutdown_source,
-        ));
-        Ok(Self {
-            address,
-            inner: Connection::new(background_runtime.clone(), core_request_sink),
-            cluster_request_sink,
-            shutdown_sink,
-        })
-    }
-
-    pub(crate) fn address(&self) -> &Address {
-        &self.address
-    }
-
-    async fn cluster_request_async(&self, request: Request) -> Result<Response> {
-        if !self.background_runtime.is_open() {
-            return Err(ClientError::ClientIsClosed().into());
-        }
-        let (response_sink, response) = oneshot_async();
-        self.cluster_request_sink.send((request, OneShotSender::Async(response_sink)))?;
-        response.await?
-    }
-
-    pub(crate) fn force_close(&self) {
-        self.inner.force_close();
-        self.shutdown_sink.send(()).ok();
-    }
-
-    pub(crate) async fn all_databases(&self) -> Result<Vec<DatabaseProto>> {
-        match self.cluster_request_async(Request::DatabasesAll).await? {
-            Response::DatabasesAll { databases } => Ok(databases),
-            _ => unreachable!(),
-        }
-    }
-    pub(crate) async fn get_database_replicas(
-        &self,
-        database_name: String,
-    ) -> Result<DatabaseProto> {
-        match self.cluster_request_async(Request::DatabaseGet { database_name }).await? {
-            Response::DatabaseGet { database } => Ok(database),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl Deref for ClusterServerConnection {
-    type Target = Connection;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-#[derive(Clone)]
-pub struct CoreConnection {
-    address: Address,
-    inner: Connection,
-    background_runtime: Arc<BackgroundRuntime>,
-    shutdown_sink: UnboundedSender<()>,
-}
-
-impl fmt::Debug for CoreConnection {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CoreConnection").finish()
-    }
-}
-
-impl CoreConnection {
-    pub fn new(address: Address) -> Result<Self> {
-        let background_runtime = Arc::new(BackgroundRuntime::new()?);
-
-        let (shutdown_sink, shutdown_source) = unbounded_async();
-        let (request_sink, request_source) = unbounded_async();
-        let rpc = background_runtime.block_on(CoreRPC::connect(address.clone()))?;
-
-        background_runtime.spawn(grpc_worker(rpc, request_source, shutdown_source));
-
-        Ok(Self {
-            address,
-            inner: Connection::new(background_runtime.clone(), request_sink),
-            background_runtime,
-            shutdown_sink,
-        })
-    }
-
-    pub(crate) fn force_close(&self) {
-        self.inner.force_close();
-        self.shutdown_sink.send(()).ok();
-        self.background_runtime.force_close();
-    }
-}
-
-impl Deref for CoreConnection {
-    type Target = Connection;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
 pub(super) struct BackgroundRuntime {
     async_runtime_handle: runtime::Handle,
     is_open: AtomicCell<bool>,
@@ -306,12 +88,10 @@ impl BackgroundRuntime {
         let async_runtime =
             runtime::Builder::new_current_thread().enable_time().enable_io().build()?;
         let async_runtime_handle = async_runtime.handle().clone();
-        let bg = thread::Builder::new().name("gRPC worker".to_string()).spawn({
-            move || {
-                async_runtime.block_on(async move {
-                    shutdown_source.recv().await;
-                })
-            }
+        let bg = thread::Builder::new().name("gRPC worker".to_string()).spawn(move || {
+            async_runtime.block_on(async move {
+                shutdown_source.recv().await;
+            })
         })?;
         Ok(Self { async_runtime_handle, is_open, shutdown_sink, bg })
     }
@@ -360,9 +140,8 @@ impl Drop for BackgroundRuntime {
 
 #[derive(Clone)]
 pub struct Connection {
+    server_connections: HashMap<Address, ServerConnection>,
     background_runtime: Arc<BackgroundRuntime>,
-    request_sink: UnboundedSender<(Request, OneShotSender<Response>)>,
-    open_sessions: Arc<Mutex<HashMap<SessionID, UnboundedSender<()>>>>,
 }
 
 impl fmt::Debug for Connection {
@@ -371,20 +150,150 @@ impl fmt::Debug for Connection {
     }
 }
 
+async fn fetch_current_addresses(
+    addresses: Vec<Address>,
+    credential: Credential,
+) -> Result<HashSet<Address>> {
+    for address in addresses {
+        let (channel, callcreds) = open_encrypted_channel(address.clone(), credential.clone())?;
+        match ServerRPC::new(address, channel, Some(callcreds)).await?.validated().await {
+            Ok(mut client) => {
+                return match client.servers_all(Request::ServersAll.into()).await?.into() {
+                    Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
+                    _ => unreachable!(),
+                }
+            }
+            Err(Error::Client(ClientError::UnableToConnect())) => (),
+            Err(err) => Err(err)?,
+        }
+    }
+    Err(ClientError::UnableToConnect())?
+}
+
 impl Connection {
-    fn new(
-        background_runtime: Arc<BackgroundRuntime>,
-        request_sink: UnboundedSender<(Request, OneShotSender<Response>)>,
-    ) -> Self {
-        Self { background_runtime, request_sink, open_sessions: Default::default() }
+    pub fn from_init<T: AsRef<str> + Sync>(
+        init_addresses: &[T],
+        credential: Credential,
+    ) -> Result<Self> {
+        let background_runtime = Arc::new(BackgroundRuntime::new()?);
+        let init_addresses: Result<Vec<Address>> =
+            init_addresses.iter().map(|addr| addr.as_ref().parse()).collect();
+        let addresses = background_runtime
+            .block_on(fetch_current_addresses(init_addresses?, credential.clone()))?;
+        Self::new_encrypted(background_runtime, addresses, credential)
     }
 
-    fn force_close(&self) {
-        let session_ids: Vec<SessionID> =
-            self.open_sessions.lock().unwrap().keys().cloned().collect();
-        for session_id in session_ids.into_iter() {
-            self.close_session(session_id).ok();
+    pub fn new_plaintext(address: impl AsRef<str>) -> Result<Self> {
+        let address: Address = address.as_ref().parse()?;
+        let background_runtime = Arc::new(BackgroundRuntime::new()?);
+        let server_connection =
+            ServerConnection::new_plaintext(background_runtime.clone(), address.clone())?;
+        Ok(Self { server_connections: [(address, server_connection)].into(), background_runtime })
+    }
+
+    fn new_encrypted(
+        background_runtime: Arc<BackgroundRuntime>,
+        addresses: HashSet<Address>,
+        credential: Credential,
+    ) -> Result<Self> {
+        let mut server_connections = HashMap::with_capacity(addresses.len());
+        for address in addresses {
+            let server_connection = ServerConnection::new_encrypted(
+                background_runtime.clone(),
+                address.clone(),
+                credential.clone(),
+            )?;
+            server_connections.insert(address, server_connection);
         }
+        Ok(Self { server_connections, background_runtime })
+    }
+
+    pub fn force_close(self) {
+        self.server_connections.values().for_each(ServerConnection::force_close);
+        self.background_runtime.force_close();
+    }
+
+    pub(crate) fn server_count(&self) -> usize {
+        self.server_connections.len()
+    }
+
+    pub(crate) fn addresses(&self) -> impl Iterator<Item = &Address> {
+        self.server_connections.keys()
+    }
+
+    pub(crate) fn get_server_connection(&self, address: &Address) -> ServerConnection {
+        self.server_connections.get(address).cloned().unwrap()
+    }
+
+    pub(crate) fn iter_server_connections_cloned(
+        &self,
+    ) -> impl Iterator<Item = ServerConnection> + '_ {
+        self.server_connections.values().cloned()
+    }
+
+    pub(crate) fn unable_to_connect(&self) -> Error {
+        Error::Client(ClientError::ClusterUnableToConnect(
+            self.addresses().map(Address::to_string).collect::<Vec<_>>().join(","),
+        ))
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct ServerConnection {
+    address: Address,
+    background_runtime: Arc<BackgroundRuntime>,
+    open_sessions: Arc<Mutex<HashMap<SessionID, UnboundedSender<()>>>>,
+    request_sink: UnboundedSender<(Request, OneShotSender<Response>)>,
+    shutdown_sink: UnboundedSender<()>,
+}
+
+impl fmt::Debug for ServerConnection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ServerConnection").field("address", &self.address).finish()
+    }
+}
+
+impl ServerConnection {
+    fn new_plaintext(background_runtime: Arc<BackgroundRuntime>, address: Address) -> Result<Self> {
+        let (shutdown_sink, shutdown_source) = unbounded_async();
+        let (request_sink, request_source) = unbounded_async();
+        let channel = open_plaintext_channel(address.clone());
+        let rpc = background_runtime.block_on(ServerRPC::new(address.clone(), channel, None))?;
+        background_runtime.spawn(grpc_worker(rpc, request_source, shutdown_source));
+        Ok(Self {
+            address,
+            background_runtime,
+            open_sessions: Default::default(),
+            request_sink,
+            shutdown_sink,
+        })
+    }
+
+    fn new_encrypted(
+        background_runtime: Arc<BackgroundRuntime>,
+        address: Address,
+        credential: Credential,
+    ) -> Result<Self> {
+        let (shutdown_sink, shutdown_source) = unbounded_async();
+        let (request_sink, request_source) = unbounded_async();
+        let (channel, callcreds) = open_encrypted_channel(address.clone(), credential)?;
+        let rpc = background_runtime.block_on(ServerRPC::new(
+            address.clone(),
+            channel,
+            Some(callcreds),
+        ))?;
+        background_runtime.spawn(grpc_worker(rpc, request_source, shutdown_source));
+        Ok(Self {
+            address,
+            background_runtime,
+            open_sessions: Default::default(),
+            request_sink,
+            shutdown_sink,
+        })
+    }
+
+    pub(crate) fn address(&self) -> &Address {
+        &self.address
     }
 
     async fn request_async(&self, request: Request) -> Result<Response> {
@@ -400,16 +309,81 @@ impl Connection {
         if !self.background_runtime.is_open() {
             return Err(ClientError::ClientIsClosed().into());
         }
-        let (response_sink, response) = bounded_blocking(1);
+        let (response_sink, _response) = bounded_blocking(1); // FIXME
         self.request_sink.send((request, OneShotSender::Blocking(response_sink)))?;
-        response.recv()?
+        // response.recv()?  // FIXME
+        Ok(Response::SessionClose)
+    }
+
+    pub(crate) fn force_close(&self) {
+        let session_ids: Vec<SessionID> =
+            self.open_sessions.lock().unwrap().keys().cloned().collect();
+        for session_id in session_ids.into_iter() {
+            self.close_session(session_id).ok();
+        }
+        self.shutdown_sink.send(()).ok();
+    }
+
+    pub(crate) async fn database_exists(&self, database_name: String) -> Result<bool> {
+        match self.request_async(Request::DatabasesContains { database_name }).await? {
+            Response::DatabasesContains { contains } => Ok(contains),
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) async fn create_database(&self, database_name: String) -> Result {
+        self.request_async(Request::DatabaseCreate { database_name }).await?;
+        Ok(())
+    }
+
+    pub(crate) async fn get_database_replicas(
+        &self,
+        database_name: String,
+    ) -> Result<DatabaseProto> {
+        match self.request_async(Request::DatabaseGet { database_name }).await? {
+            Response::DatabaseGet { database } => Ok(database),
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) async fn all_databases(&self) -> Result<Vec<DatabaseProto>> {
+        match self.request_async(Request::DatabasesAll).await? {
+            Response::DatabasesAll { databases } => Ok(databases),
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) async fn database_schema(&self, database_name: String) -> Result<String> {
+        match self.request_async(Request::DatabaseSchema { database_name }).await? {
+            Response::DatabaseSchema { schema } => Ok(schema),
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) async fn database_type_schema(&self, database_name: String) -> Result<String> {
+        match self.request_async(Request::DatabaseTypeSchema { database_name }).await? {
+            Response::DatabaseTypeSchema { schema } => Ok(schema),
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) async fn database_rule_schema(&self, database_name: String) -> Result<String> {
+        match self.request_async(Request::DatabaseRuleSchema { database_name }).await? {
+            Response::DatabaseRuleSchema { schema } => Ok(schema),
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) async fn delete_database(&self, database_name: String) -> Result {
+        self.request_async(Request::DatabaseDelete { database_name }).await?;
+        Ok(())
     }
 
     pub(crate) async fn open_session(
         &self,
         database_name: String,
         session_type: SessionType,
-        options: core::Options,
+        options: Options,
     ) -> Result<(SessionID, Duration)> {
         match self
             .request_async(Request::SessionOpen { database_name, session_type, options })
@@ -441,7 +415,7 @@ impl Connection {
         &self,
         session_id: SessionID,
         transaction_type: TransactionType,
-        options: core::Options,
+        options: Options,
         network_latency: Duration,
     ) -> Result<TransactionStream> {
         let response = self
@@ -454,67 +428,23 @@ impl Connection {
             .await?;
         Ok(TransactionStream::new(&self.background_runtime, transaction_type, options, response))
     }
-
-    pub(crate) async fn all_databases(&self) -> Result<Vec<String>> {
-        match self.request_async(Request::DatabasesAll).await? {
-            Response::DatabasesAll { databases } => {
-                Ok(databases.into_iter().map(|db| db.name).collect())
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    pub(crate) async fn database_exists(&self, database_name: String) -> Result<bool> {
-        match self.request_async(Request::DatabasesContains { database_name }).await? {
-            Response::DatabasesContains { contains } => Ok(contains),
-            _ => unreachable!(),
-        }
-    }
-
-    pub(crate) async fn create_database(&self, database_name: String) -> Result {
-        self.request_async(Request::DatabaseCreate { database_name }).await?;
-        Ok(())
-    }
-
-    pub(crate) async fn delete_database(&self, database_name: String) -> Result {
-        self.request_async(Request::DatabaseDelete { database_name }).await?;
-        Ok(())
-    }
-
-    pub(crate) async fn database_schema(&self, database_name: String) -> Result<String> {
-        match self.request_async(Request::DatabaseSchema { database_name }).await? {
-            Response::DatabaseSchema { schema } => Ok(schema),
-            _ => unreachable!(),
-        }
-    }
-
-    pub(crate) async fn database_type_schema(&self, database_name: String) -> Result<String> {
-        match self.request_async(Request::DatabaseTypeSchema { database_name }).await? {
-            Response::DatabaseTypeSchema { schema } => Ok(schema),
-            _ => unreachable!(),
-        }
-    }
-
-    pub(crate) async fn database_rule_schema(&self, database_name: String) -> Result<String> {
-        match self.request_async(Request::DatabaseRuleSchema { database_name }).await? {
-            Response::DatabaseRuleSchema { schema } => Ok(schema),
-            _ => unreachable!(),
-        }
-    }
 }
 
 pub(super) async fn send_request<Channel: GRPCChannel>(
-    mut rpc: impl ServerRPC<Channel>,
+    mut rpc: ServerRPC<Channel>,
     request: Request,
 ) -> Result<Response> {
     match request {
-        Request::DatabaseCreate { .. } => {
-            rpc.databases_create(request.into()).await.map(Response::from)
-        }
+        Request::ServersAll => rpc.servers_all(request.into()).await.map(Response::from),
+
         Request::DatabasesContains { .. } => {
             rpc.databases_contains(request.into()).await.map(Response::from)
         }
-        Request::DatabasesAll => rpc.databases_contains(request.into()).await.map(Response::from),
+        Request::DatabaseCreate { .. } => {
+            rpc.databases_create(request.into()).await.map(Response::from)
+        }
+        Request::DatabaseGet { .. } => rpc.databases_get(request.into()).await.map(Response::from),
+        Request::DatabasesAll => rpc.databases_all(request.into()).await.map(Response::from),
 
         Request::DatabaseDelete { .. } => {
             rpc.database_delete(request.into()).await.map(Response::from)
@@ -531,30 +461,18 @@ pub(super) async fn send_request<Channel: GRPCChannel>(
 
         Request::SessionOpen { .. } => rpc.session_open(request.into()).await.map(Response::from),
         Request::SessionPulse { .. } => rpc.session_pulse(request.into()).await.map(Response::from),
-        Request::SessionClose { .. } => rpc.session_close(request.into()).await.map(Response::from),
+        Request::SessionClose { .. } => {
+            rpc.session_close(request.into()).map_ok(Response::from).await
+        }
 
         Request::Transaction(transaction_request) => {
             rpc.transaction(transaction_request.into()).await.map(Response::from)
         }
-        _ => unreachable!(),
-    }
-}
-
-pub(super) async fn send_cluster_request(
-    mut rpc: ClusterServerRPC,
-    request: Request,
-) -> Result<Response> {
-    match request {
-        Request::DatabasesAll => rpc.databases_all(request.into()).await.map(Response::from),
-        Request::DatabaseGet { .. } => rpc.databases_get(request.into()).await.map(Response::from),
-
-        Request::ServersAll => rpc.servers_all(request.into()).await.map(Response::from),
-        _ => unreachable!(),
     }
 }
 
 async fn grpc_worker<Channel: GRPCChannel>(
-    rpc: impl ServerRPC<Channel>,
+    rpc: ServerRPC<Channel>,
     mut request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
     mut shutdown_signal: UnboundedReceiver<()>,
 ) {
@@ -565,27 +483,6 @@ async fn grpc_worker<Channel: GRPCChannel>(
         let rpc = rpc.clone();
         tokio::spawn(async move {
             let response = send_request(rpc, request).await;
-            response_sink.send(response).ok();
-        });
-    }
-}
-
-async fn cluster_grpc_worker(
-    rpc: ClusterServerRPC,
-    core_request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
-    mut cluster_request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
-    mut shutdown_signal: UnboundedReceiver<()>,
-) {
-    let (shutdown_sink, shutdown_source) = unbounded_async();
-    tokio::spawn(grpc_worker(rpc.clone(), core_request_source, shutdown_source));
-
-    while let Some((request, response_sink)) = select! {
-        request = cluster_request_source.recv() => request,
-        _ = shutdown_signal.recv() => { shutdown_sink.send(()).ok(); None },
-    } {
-        let rpc = rpc.clone();
-        tokio::spawn(async move {
-            let response = send_cluster_request(rpc, request).await;
             response_sink.send(response).ok();
         });
     }

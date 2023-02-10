@@ -19,24 +19,23 @@
  * under the License.
  */
 
-use std::{fmt, future::Future, ops::Deref, time::Duration};
+use std::{fmt, future::Future, sync::RwLock, time::Duration};
 
 use log::debug;
 use tokio::time::sleep;
 
 use crate::{
     common::{
-        error::ClientError, Address, ClusterConnection, ClusterServerConnection, DatabaseProto,
-        Error, ReplicaProto, Result,
+        error::ClientError, Address, Connection, DatabaseProto, Error, ReplicaProto, Result,
+        ServerConnection, SessionID,
     },
     connection::server,
 };
 
-#[derive(Clone)]
 pub struct Database {
     name: String,
-    replicas: Vec<Replica>,
-    cluster_connection: ClusterConnection,
+    replicas: RwLock<Vec<Replica>>,
+    connection: Connection,
 }
 
 impl fmt::Debug for Database {
@@ -53,43 +52,51 @@ impl Database {
     const FETCH_REPLICAS_MAX_RETRIES: usize = 10;
     const WAIT_FOR_PRIMARY_REPLICA_SELECTION: Duration = Duration::from_secs(2);
 
-    pub(super) fn new(proto: DatabaseProto, cluster_connection: ClusterConnection) -> Result<Self> {
+    pub(in crate::connection) fn new(proto: DatabaseProto, connection: Connection) -> Result<Self> {
         let name = proto.name.clone();
-        let replicas = Replica::from_proto(proto, &cluster_connection);
-        Ok(Self { name, replicas, cluster_connection })
+        let replicas = RwLock::new(Replica::from_proto(proto, &connection));
+        Ok(Self { name, replicas, connection })
     }
 
-    pub(super) async fn get(name: String, cluster_connection: ClusterConnection) -> Result<Self> {
+    pub(in crate::connection) async fn get(name: String, connection: Connection) -> Result<Self> {
         Ok(Self {
             name: name.to_string(),
-            replicas: Replica::fetch_all(name, cluster_connection.clone()).await?,
-            cluster_connection,
+            replicas: RwLock::new(Replica::fetch_all(name, connection.clone()).await?),
+            connection,
         })
+    }
+
+    pub(crate) fn close_session(&self, session_id: SessionID) -> Result {
+        // FIXME
+        for sc in self.connection.iter_server_connections_cloned() {
+            sc.close_session(session_id.clone()).ok();
+        }
+        Ok(())
     }
 
     pub fn name(&self) -> &str {
         self.name.as_str()
     }
 
-    pub async fn delete(mut self) -> Result {
+    pub async fn delete(self) -> Result {
         self.run_on_primary_replica(|database, _, _| database.delete()).await
     }
 
-    pub async fn schema(&mut self) -> Result<String> {
+    pub async fn schema(&self) -> Result<String> {
         self.run_failsafe(|database, _, _| async move { database.schema().await }).await
     }
 
-    pub async fn type_schema(&mut self) -> Result<String> {
+    pub async fn type_schema(&self) -> Result<String> {
         self.run_failsafe(|database, _, _| async move { database.type_schema().await }).await
     }
 
-    pub async fn rule_schema(&mut self) -> Result<String> {
+    pub async fn rule_schema(&self) -> Result<String> {
         self.run_failsafe(|database, _, _| async move { database.rule_schema().await }).await
     }
 
-    pub(crate) async fn run_failsafe<F, P, R>(&mut self, task: F) -> Result<R>
+    pub(crate) async fn run_failsafe<F, P, R>(&self, task: F) -> Result<R>
     where
-        F: Fn(server::Database, ClusterServerConnection, bool) -> P,
+        F: Fn(server::Database, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         match self.run_on_any_replica(&task).await {
@@ -101,16 +108,17 @@ impl Database {
         }
     }
 
-    async fn run_on_any_replica<F, P, R>(&mut self, task: F) -> Result<R>
+    async fn run_on_any_replica<F, P, R>(&self, task: F) -> Result<R>
     where
-        F: Fn(server::Database, ClusterServerConnection, bool) -> P,
+        F: Fn(server::Database, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         let mut is_first_run = true;
-        for replica in self.replicas.iter() {
+        let replicas = self.replicas.read().unwrap().clone();
+        for replica in replicas.iter() {
             match task(
                 replica.database.clone(),
-                self.cluster_connection.get_server_connection(&replica.address),
+                self.connection.get_server_connection(&replica.address),
                 is_first_run,
             )
             .await
@@ -122,12 +130,12 @@ impl Database {
             }
             is_first_run = false;
         }
-        Err(self.cluster_connection.unable_to_connect())
+        Err(self.connection.unable_to_connect())
     }
 
-    async fn run_on_primary_replica<F, P, R>(&mut self, task: F) -> Result<R>
+    async fn run_on_primary_replica<F, P, R>(&self, task: F) -> Result<R>
     where
-        F: Fn(server::Database, ClusterServerConnection, bool) -> P,
+        F: Fn(server::Database, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         let mut primary_replica = if let Some(replica) = self.primary_replica() {
@@ -139,7 +147,7 @@ impl Database {
         for retry in 0..Self::PRIMARY_REPLICA_TASK_MAX_RETRIES {
             match task(
                 primary_replica.database.clone(),
-                self.cluster_connection.get_server_connection(&primary_replica.address),
+                self.connection.get_server_connection(&primary_replica.address),
                 retry == 0,
             )
             .await
@@ -154,23 +162,29 @@ impl Database {
                 res => return res,
             }
         }
-        Err(self.cluster_connection.unable_to_connect())
+        Err(self.connection.unable_to_connect())
     }
 
-    async fn seek_primary_replica(&mut self) -> Result<Replica> {
+    async fn seek_primary_replica(&self) -> Result<Replica> {
         for _ in 0..Self::FETCH_REPLICAS_MAX_RETRIES {
-            self.replicas =
-                Replica::fetch_all(self.name.clone(), self.cluster_connection.clone()).await?;
+            let replicas = Replica::fetch_all(self.name.clone(), self.connection.clone()).await?;
+            *self.replicas.write().unwrap() = replicas;
             if let Some(replica) = self.primary_replica() {
                 return Ok(replica);
             }
             Self::wait_for_primary_replica_selection().await;
         }
-        Err(self.cluster_connection.unable_to_connect())
+        Err(self.connection.unable_to_connect())
     }
 
-    fn primary_replica(&mut self) -> Option<Replica> {
-        self.replicas.iter().filter(|r| r.is_primary).max_by_key(|r| r.term).cloned()
+    fn primary_replica(&self) -> Option<Replica> {
+        self.replicas
+            .read()
+            .unwrap()
+            .iter()
+            .filter(|r| r.is_primary)
+            .max_by_key(|r| r.term)
+            .cloned()
     }
 
     async fn wait_for_primary_replica_selection() {
@@ -201,49 +215,45 @@ impl fmt::Debug for Replica {
 }
 
 impl Replica {
-    fn new(
-        name: String,
-        metadata: ReplicaProto,
-        server_connection: ClusterServerConnection,
-    ) -> Self {
+    fn new(name: String, metadata: ReplicaProto, server_connection: ServerConnection) -> Self {
         Self {
             address: metadata.address,
             database_name: name.clone(),
             is_primary: metadata.is_primary,
             term: metadata.term,
             is_preferred: metadata.is_preferred,
-            database: server::Database::new(name, server_connection.deref().clone()), // FIXME haxx
+            database: server::Database::new(name, server_connection.clone()),
         }
     }
 
-    fn from_proto(proto: DatabaseProto, cluster_connection: &ClusterConnection) -> Vec<Self> {
+    fn from_proto(proto: DatabaseProto, connection: &Connection) -> Vec<Self> {
         proto
             .replicas
             .into_iter()
             .map(|replica| {
-                let server_connection = cluster_connection.get_server_connection(&replica.address);
+                let server_connection = connection.get_server_connection(&replica.address);
                 Replica::new(proto.name.clone(), replica, server_connection)
             })
             .collect()
     }
 
-    async fn fetch_all(name: String, cluster_connection: ClusterConnection) -> Result<Vec<Self>> {
-        for connection in cluster_connection.iter_server_connections_cloned() {
-            let res = connection.get_database_replicas(name.clone()).await;
+    async fn fetch_all(name: String, connection: Connection) -> Result<Vec<Self>> {
+        for server_connection in connection.iter_server_connections_cloned() {
+            let res = server_connection.get_database_replicas(name.clone()).await;
             match res {
                 Ok(res) => {
-                    return Ok(Replica::from_proto(res, &cluster_connection));
+                    return Ok(Replica::from_proto(res, &connection));
                 }
                 Err(Error::Client(ClientError::UnableToConnect())) => {
                     println!(
                         "Failed to fetch replica info for database '{}' from {}. Attempting next server.",
                         name,
-                        connection.address()
+                        server_connection.address()
                     );
                 }
                 Err(err) => return Err(err),
             }
         }
-        Err(cluster_connection.unable_to_connect())
+        Err(connection.unable_to_connect())
     }
 }

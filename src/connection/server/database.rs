@@ -19,18 +19,25 @@
  * under the License.
  */
 
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    time::{Duration, Instant},
+};
 
-use crate::common::{Connection, Result};
+use crate::{
+    common::{Result, ServerConnection, SessionID, TransactionStream},
+    connection::Options,
+    SessionType, TransactionType,
+};
 
 #[derive(Clone, Debug)]
 pub struct Database {
     name: String,
-    connection: Connection,
+    connection: ServerConnection,
 }
 
 impl Database {
-    pub(crate) fn new(name: String, connection: Connection) -> Self {
+    pub(crate) fn new(name: String, connection: ServerConnection) -> Self {
         Database { name, connection }
     }
 
@@ -52,6 +59,29 @@ impl Database {
 
     pub async fn rule_schema(&self) -> Result<String> {
         self.connection.database_rule_schema(self.name.clone()).await
+    }
+
+    pub(crate) async fn open_session(
+        &self,
+        session_type: SessionType,
+        options: Options,
+    ) -> Result<(SessionID, Duration)> {
+        let start = Instant::now();
+        let (session_id, server_duration) =
+            self.connection.open_session(self.name.clone(), session_type, options).await?;
+        Ok((session_id, start.elapsed() - server_duration))
+    }
+
+    pub(crate) async fn open_transaction(
+        &self,
+        session_id: SessionID,
+        transaction_type: TransactionType,
+        options: Options,
+        network_latency: Duration,
+    ) -> Result<TransactionStream> {
+        self.connection
+            .open_transaction(session_id, transaction_type, options, network_latency)
+            .await
     }
 }
 

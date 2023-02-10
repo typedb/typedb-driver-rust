@@ -48,7 +48,7 @@ use super::{
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{error::ClientError, RequestID, Result, DISPATCH_INTERVAL},
-    connection::core,
+    connection::Options,
     TransactionType,
 };
 
@@ -70,7 +70,7 @@ impl TransactionCallback {
 #[derive(Debug)]
 pub(crate) struct TransactionStream {
     type_: TransactionType,
-    options: core::Options,
+    options: Options,
     request_sink: UnboundedSender<(TransactionRequest, Option<TransactionCallback>)>,
     is_open: Arc<AtomicCell<bool>>,
     shutdown_sink: UnboundedSender<()>,
@@ -87,7 +87,7 @@ impl TransactionStream {
     pub(super) fn new(
         background_runtime: &BackgroundRuntime,
         type_: TransactionType,
-        options: core::Options,
+        options: Options,
         response: Response,
     ) -> Self {
         let (request_sink, grpc_stream) = match response {
@@ -112,7 +112,7 @@ impl TransactionStream {
         self.type_
     }
 
-    pub(crate) fn options(&self) -> &core::Options {
+    pub(crate) fn options(&self) -> &Options {
         &self.options
     }
 
@@ -126,17 +126,17 @@ impl TransactionStream {
         Ok(())
     }
 
-    pub(crate) async fn define(&self, query: String, options: core::Options) -> Result {
+    pub(crate) async fn define(&self, query: String, options: Options) -> Result {
         self.single(TransactionRequest::Query(QueryRequest::Define { query, options })).await?;
         Ok(())
     }
 
-    pub(crate) async fn undefine(&self, query: String, options: core::Options) -> Result {
+    pub(crate) async fn undefine(&self, query: String, options: Options) -> Result {
         self.single(TransactionRequest::Query(QueryRequest::Undefine { query, options })).await?;
         Ok(())
     }
 
-    pub(crate) async fn delete(&self, query: String, options: core::Options) -> Result {
+    pub(crate) async fn delete(&self, query: String, options: Options) -> Result {
         self.single(TransactionRequest::Query(QueryRequest::Delete { query, options })).await?;
         Ok(())
     }
@@ -144,7 +144,7 @@ impl TransactionStream {
     pub(crate) fn match_(
         &self,
         query: String,
-        options: core::Options,
+        options: Options,
     ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let stream = self.query_stream(QueryRequest::Match { query, options })?;
         Ok(stream.flat_map(|result| match result {
@@ -157,7 +157,7 @@ impl TransactionStream {
     pub(crate) fn insert(
         &self,
         query: String,
-        options: core::Options,
+        options: Options,
     ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let stream = self.query_stream(QueryRequest::Insert { query, options })?;
         Ok(stream.flat_map(|result| match result {
@@ -170,7 +170,7 @@ impl TransactionStream {
     pub(crate) fn update(
         &self,
         query: String,
-        options: core::Options,
+        options: Options,
     ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let stream = self.query_stream(QueryRequest::Update { query, options })?;
         Ok(stream.flat_map(|result| match result {
@@ -180,11 +180,7 @@ impl TransactionStream {
         }))
     }
 
-    pub(crate) async fn match_aggregate(
-        &self,
-        query: String,
-        options: core::Options,
-    ) -> Result<Numeric> {
+    pub(crate) async fn match_aggregate(&self, query: String, options: Options) -> Result<Numeric> {
         match self.query_single(QueryRequest::MatchAggregate { query, options }).await? {
             QueryResponse::MatchAggregate { answer } => Ok(answer),
             _ => Err(ClientError::MissingResponseField("match_aggregate_res"))?,

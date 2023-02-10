@@ -20,21 +20,14 @@
  */
 
 mod channel;
-mod cluster;
 mod connection;
-mod core;
 mod message;
 mod server;
 mod transaction;
 
-use tonic::{Response, Status};
-
-use crate::common::StdResult;
-
-type TonicResult<T> = StdResult<Response<T>, Status>;
-
+pub use self::connection::Connection;
 pub(crate) use self::{
-    connection::{ClusterConnection, ClusterServerConnection, Connection, CoreConnection},
+    connection::ServerConnection,
     message::{DatabaseProto, ReplicaProto},
     transaction::TransactionStream,
 };

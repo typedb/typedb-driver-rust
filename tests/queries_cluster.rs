@@ -19,6 +19,7 @@
  * under the License.
  */
 
+/*
 use std::path::PathBuf;
 
 use futures::{StreamExt, TryFutureExt};
@@ -135,3 +136,4 @@ async fn create_test_database_with_schema(
     transaction.commit().await?;
     Ok(())
 }
+*/

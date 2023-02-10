@@ -29,7 +29,7 @@ use tonic::{
         interceptor::{self, InterceptedService},
         Interceptor,
     },
-    transport::{channel, Error as TonicError},
+    transport::{channel, Channel, Error as TonicError},
     Request, Status,
 };
 
@@ -38,8 +38,10 @@ use crate::{
     Credential,
 };
 
-type TonicChannel = tonic::transport::Channel;
 type ResponseFuture = interceptor::ResponseFuture<channel::ResponseFuture>;
+
+pub(super) type PlainTextChannel = InterceptedService<Channel, PlainTextFacade>;
+pub(super) type CallCredChannel = InterceptedService<Channel, CredentialInjector>;
 
 pub(super) trait GRPCChannel:
     GrpcService<BoxBody, Error = TonicError, ResponseBody = BoxBody, Future = ResponseFuture>
@@ -47,18 +49,22 @@ pub(super) trait GRPCChannel:
     + Send
     + 'static
 {
+    fn is_plaintext(&self) -> bool;
 }
 
-impl<T> GRPCChannel for T where
-    T: GrpcService<BoxBody, Error = TonicError, ResponseBody = BoxBody, Future = ResponseFuture>
-        + Clone
-        + Send
-        + 'static
-{
+impl GRPCChannel for PlainTextChannel {
+    fn is_plaintext(&self) -> bool {
+        true
+    }
+}
+impl GRPCChannel for CallCredChannel {
+    fn is_plaintext(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PlainTextFacade;
+pub(super) struct PlainTextFacade;
 
 impl Interceptor for PlainTextFacade {
     fn call(&mut self, request: Request<()>) -> StdResult<Request<()>, Status> {
@@ -66,13 +72,12 @@ impl Interceptor for PlainTextFacade {
     }
 }
 
-pub(crate) type PlainTextChannel = InterceptedService<TonicChannel, PlainTextFacade>;
-
-pub(crate) fn open_plaintext_channel(address: Address) -> PlainTextChannel {
-    PlainTextChannel::new(TonicChannel::builder(address.into_uri()).connect_lazy(), PlainTextFacade)
+pub(super) fn open_plaintext_channel(address: Address) -> PlainTextChannel {
+    PlainTextChannel::new(Channel::builder(address.into_uri()).connect_lazy(), PlainTextFacade)
 }
+
 #[derive(Clone, Debug)]
-pub(crate) struct CredentialInjector {
+pub(super) struct CredentialInjector {
     call_credentials: Arc<CallCredentials>,
 }
 
@@ -88,13 +93,11 @@ impl Interceptor for CredentialInjector {
     }
 }
 
-pub(crate) type CallCredChannel = InterceptedService<TonicChannel, CredentialInjector>;
-
-pub(crate) fn open_encrypted_channel(
+pub(super) fn open_encrypted_channel(
     address: Address,
     credential: Credential,
 ) -> Result<(CallCredChannel, Arc<CallCredentials>)> {
-    let mut builder = TonicChannel::builder(address.into_uri());
+    let mut builder = Channel::builder(address.into_uri());
     if credential.is_tls_enabled() {
         builder = builder.tls_config(credential.tls_config()?)?;
     }

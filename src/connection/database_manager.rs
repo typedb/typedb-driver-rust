@@ -23,22 +23,22 @@ use std::future::Future;
 
 use super::Database;
 use crate::{
-    common::{error::ClientError, ClusterConnection, ClusterServerConnection, Result},
+    common::{error::ClientError, Connection, Result, ServerConnection},
     connection::server,
 };
 
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {
-    cluster_connection: ClusterConnection,
+    connection: Connection,
 }
 
 impl DatabaseManager {
-    pub(super) fn new(cluster_connection: ClusterConnection) -> Self {
-        Self { cluster_connection }
+    pub fn new(connection: Connection) -> Self {
+        Self { connection }
     }
 
     pub async fn get(&mut self, name: String) -> Result<Database> {
-        Database::get(name, self.cluster_connection.clone()).await
+        Database::get(name, self.connection.clone()).await
     }
 
     pub async fn contains(&mut self, name: String) -> Result<bool> {
@@ -56,13 +56,13 @@ impl DatabaseManager {
     }
 
     pub async fn all(&mut self) -> Result<Vec<Database>> {
-        let mut error_buffer = Vec::with_capacity(self.cluster_connection.server_count());
-        for server_connection in self.cluster_connection.iter_server_connections_cloned() {
+        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
+        for server_connection in self.connection.iter_server_connections_cloned() {
             match server_connection.all_databases().await {
                 Ok(list) => {
                     return list
                         .into_iter()
-                        .map(|proto_db| Database::new(proto_db, self.cluster_connection.clone()))
+                        .map(|proto_db| Database::new(proto_db, self.connection.clone()))
                         .collect()
                 }
                 Err(err) => {
@@ -75,9 +75,9 @@ impl DatabaseManager {
 
     async fn run_failsafe<F, P, R>(&mut self, name: String, task: F) -> Result<R>
     where
-        F: Fn(server::Database, ClusterServerConnection, bool) -> P,
+        F: Fn(server::Database, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
-        Database::get(name, self.cluster_connection.clone()).await?.run_failsafe(&task).await
+        Database::get(name, self.connection.clone()).await?.run_failsafe(&task).await
     }
 }

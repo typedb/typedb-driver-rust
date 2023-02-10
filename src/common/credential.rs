@@ -110,10 +110,6 @@ impl CallCredentials {
         self.credential.password()
     }
 
-    pub(super) fn has_token(&self) -> bool {
-        self.token.write().unwrap().is_some()
-    }
-
     pub(super) fn set_token(&self, token: String) {
         *self.token.write().unwrap() = Some(token);
     }

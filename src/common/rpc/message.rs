@@ -31,9 +31,40 @@ use typedb_protocol::{
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{error::ClientError, Address, RequestID, Result, SessionID, SessionType},
-    connection::core,
+    connection::Options,
     TransactionType,
 };
+
+#[derive(Debug)]
+pub(crate) struct DatabaseProto {
+    pub name: String,
+    pub replicas: Vec<ReplicaProto>,
+}
+
+impl From<ClusterDatabase> for DatabaseProto {
+    fn from(proto: ClusterDatabase) -> Self {
+        Self { name: proto.name, replicas: proto.replicas.into_iter().map(Into::into).collect() }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct ReplicaProto {
+    pub address: Address,
+    pub is_primary: bool,
+    pub is_preferred: bool,
+    pub term: i64,
+}
+
+impl From<Replica> for ReplicaProto {
+    fn from(proto: Replica) -> Self {
+        Self {
+            address: proto.address.as_str().parse().unwrap(),
+            is_primary: proto.primary,
+            is_preferred: proto.preferred,
+            term: proto.term,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub(super) enum Request {
@@ -44,14 +75,14 @@ pub(super) enum Request {
     DatabaseGet { database_name: String },
     DatabasesAll,
 
-    DatabaseDelete { database_name: String },
     DatabaseSchema { database_name: String },
     DatabaseTypeSchema { database_name: String },
     DatabaseRuleSchema { database_name: String },
+    DatabaseDelete { database_name: String },
 
+    SessionOpen { database_name: String, session_type: SessionType, options: Options },
     SessionClose { session_id: SessionID },
     SessionPulse { session_id: SessionID },
-    SessionOpen { database_name: String, session_type: SessionType, options: core::Options },
 
     Transaction(TransactionRequest),
 }
@@ -65,30 +96,12 @@ impl From<Request> for server_manager::all::Req {
     }
 }
 
-impl From<Request> for cluster_database_manager::all::Req {
+impl From<Request> for core_database_manager::contains::Req {
     fn from(request: Request) -> Self {
         match request {
-            Request::DatabasesAll => cluster_database_manager::all::Req {},
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<Request> for cluster_database_manager::get::Req {
-    fn from(request: Request) -> Self {
-        match request {
-            Request::DatabaseGet { database_name } => {
-                cluster_database_manager::get::Req { name: database_name }
+            Request::DatabasesContains { database_name } => {
+                core_database_manager::contains::Req { name: database_name }
             }
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<Request> for core_database_manager::all::Req {
-    fn from(request: Request) -> Self {
-        match request {
-            Request::DatabasesAll => core_database_manager::all::Req {},
             _ => unreachable!(),
         }
     }
@@ -105,12 +118,21 @@ impl From<Request> for core_database_manager::create::Req {
     }
 }
 
-impl From<Request> for core_database_manager::contains::Req {
+impl From<Request> for cluster_database_manager::get::Req {
     fn from(request: Request) -> Self {
         match request {
-            Request::DatabasesContains { database_name } => {
-                core_database_manager::contains::Req { name: database_name }
+            Request::DatabaseGet { database_name } => {
+                cluster_database_manager::get::Req { name: database_name }
             }
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl From<Request> for cluster_database_manager::all::Req {
+    fn from(request: Request) -> Self {
+        match request {
+            Request::DatabasesAll => cluster_database_manager::all::Req {},
             _ => unreachable!(),
         }
     }
@@ -234,17 +256,30 @@ pub(super) enum Response {
         schema: String,
     },
 
-    SessionClose,
-    SessionPulse,
     SessionOpen {
         session_id: SessionID,
         server_duration: Duration,
     },
+    SessionPulse,
+    SessionClose,
 
     TransactionOpen {
         request_sink: Sender<transaction::Client>,
         grpc_stream: Streaming<transaction::Server>,
     },
+}
+
+impl From<server_manager::all::Res> for Response {
+    fn from(server_manager::all::Res { servers }: server_manager::all::Res) -> Self {
+        let servers = servers.into_iter().map(|server| server.address.parse().unwrap()).collect();
+        Response::ServersAll { servers }
+    }
+}
+
+impl From<core_database_manager::contains::Res> for Response {
+    fn from(res: core_database_manager::contains::Res) -> Self {
+        Self::DatabasesContains { contains: res.contains }
+    }
 }
 
 impl From<core_database_manager::create::Res> for Response {
@@ -253,9 +288,15 @@ impl From<core_database_manager::create::Res> for Response {
     }
 }
 
-impl From<core_database_manager::contains::Res> for Response {
-    fn from(res: core_database_manager::contains::Res) -> Self {
-        Self::DatabasesContains { contains: res.contains }
+impl From<cluster_database_manager::get::Res> for Response {
+    fn from(res: cluster_database_manager::get::Res) -> Self {
+        Response::DatabaseGet { database: res.database.unwrap().into() }
+    }
+}
+
+impl From<cluster_database_manager::all::Res> for Response {
+    fn from(res: cluster_database_manager::all::Res) -> Self {
+        Response::DatabasesAll { databases: res.databases.into_iter().map(Into::into).collect() }
     }
 }
 
@@ -283,9 +324,12 @@ impl From<core_database::rule_schema::Res> for Response {
     }
 }
 
-impl From<session::close::Res> for Response {
-    fn from(_res: session::close::Res) -> Self {
-        Self::SessionClose
+impl From<session::open::Res> for Response {
+    fn from(res: session::open::Res) -> Self {
+        Self::SessionOpen {
+            session_id: res.session_id.into(),
+            server_duration: Duration::from_millis(res.server_duration_millis as u64),
+        }
     }
 }
 
@@ -295,12 +339,9 @@ impl From<session::pulse::Res> for Response {
     }
 }
 
-impl From<session::open::Res> for Response {
-    fn from(res: session::open::Res) -> Self {
-        Self::SessionOpen {
-            session_id: res.session_id.into(),
-            server_duration: Duration::from_millis(res.server_duration_millis as u64),
-        }
+impl From<session::close::Res> for Response {
+    fn from(_res: session::close::Res) -> Self {
+        Self::SessionClose
     }
 }
 
@@ -312,61 +353,6 @@ impl From<(Sender<transaction::Client>, Streaming<transaction::Server>)> for Res
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct DatabaseProto {
-    pub name: String,
-    pub replicas: Vec<ReplicaProto>,
-}
-
-impl From<ClusterDatabase> for DatabaseProto {
-    fn from(proto: ClusterDatabase) -> Self {
-        Self { name: proto.name, replicas: proto.replicas.into_iter().map(Into::into).collect() }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct ReplicaProto {
-    pub address: Address,
-    pub is_primary: bool,
-    pub is_preferred: bool,
-    pub term: i64,
-}
-
-impl From<Replica> for ReplicaProto {
-    fn from(proto: Replica) -> Self {
-        Self {
-            address: proto.address.as_str().parse().unwrap(),
-            is_primary: proto.primary,
-            is_preferred: proto.preferred,
-            term: proto.term,
-        }
-    }
-}
-
-impl From<cluster_database_manager::all::Res> for Response {
-    fn from(res: cluster_database_manager::all::Res) -> Self {
-        Response::DatabasesAll { databases: res.databases.into_iter().map(Into::into).collect() }
-    }
-}
-
-impl From<cluster_database_manager::get::Res> for Response {
-    fn from(res: cluster_database_manager::get::Res) -> Self {
-        Response::DatabaseGet { database: res.database.unwrap().into() }
-    }
-}
-
-impl From<server_manager::all::Res> for Response {
-    fn from(res: server_manager::all::Res) -> Self {
-        Response::ServersAll {
-            servers: res
-                .servers
-                .into_iter()
-                .map(|server| server.address.parse().unwrap())
-                .collect(),
-        }
-    }
-}
-
 // *** //
 
 #[derive(Debug)]
@@ -374,7 +360,7 @@ pub(super) enum TransactionRequest {
     Open {
         session_id: SessionID,
         transaction_type: TransactionType,
-        options: core::Options,
+        options: Options,
         network_latency: Duration,
     },
     Commit,
@@ -457,20 +443,20 @@ impl From<transaction::ResPart> for TransactionResponse {
 #[derive(Debug)]
 pub(super) enum QueryRequest {
     // TODO options
-    Define { query: String, options: core::Options },
-    Undefine { query: String, options: core::Options },
-    Delete { query: String, options: core::Options },
+    Define { query: String, options: Options },
+    Undefine { query: String, options: Options },
+    Delete { query: String, options: Options },
 
-    Match { query: String, options: core::Options },
-    Insert { query: String, options: core::Options },
-    Update { query: String, options: core::Options },
+    Match { query: String, options: Options },
+    Insert { query: String, options: Options },
+    Update { query: String, options: Options },
 
-    MatchAggregate { query: String, options: core::Options },
+    MatchAggregate { query: String, options: Options },
 
-    Explain { explainable_id: i64, options: core::Options }, // FIXME ID type
+    Explain { explainable_id: i64, options: Options }, // FIXME ID type
 
-    MatchGroup { query: String, options: core::Options },
-    MatchGroupAggregate { query: String, options: core::Options },
+    MatchGroup { query: String, options: Options },
+    MatchGroupAggregate { query: String, options: Options },
 }
 
 #[derive(Debug)]

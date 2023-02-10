@@ -19,24 +19,12 @@
  * under the License.
  */
 
-pub mod cluster;
-pub mod core;
+mod database;
+mod database_manager;
+mod options;
 pub mod server;
+mod session;
 
-#[derive(Clone, Debug)]
-enum ClientHandle {
-    Cluster(cluster::Client),
-    Core(core::Client),
-}
-
-impl From<cluster::Client> for ClientHandle {
-    fn from(session: cluster::Client) -> Self {
-        Self::Cluster(session)
-    }
-}
-
-impl From<core::Client> for ClientHandle {
-    fn from(session: core::Client) -> Self {
-        Self::Core(session)
-    }
-}
+pub use self::{
+    database::Database, database_manager::DatabaseManager, options::Options, session::Session,
+};
