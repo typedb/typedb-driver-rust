@@ -19,11 +19,10 @@
  * under the License.
  */
 
-use std::{sync::Arc, time::Instant};
+use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use chrono::{NaiveDate, NaiveDateTime};
 use futures::{StreamExt, TryFutureExt};
-use serial_test::serial;
 use tokio::sync::mpsc;
 use typedb_client::{
     common::{
@@ -32,15 +31,51 @@ use typedb_client::{
         TransactionType::{Read, Write},
     },
     concept::{Attribute, Concept, DateTimeAttribute, StringAttribute, Thing},
-    Connection, Database, DatabaseManager, Error, Options, Session,
+    Connection, Credential, Database, DatabaseManager, Error, Options, Session,
 };
 
 const TEST_DATABASE: &str = "test";
 
-#[tokio::test]
-#[serial]
-async fn basic() {
-    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+macro_rules! permutation_tests {
+    { $perm_args:tt
+        $( $( # $extra_anno:tt )* async fn $test:ident $args:tt $test_impl:tt )+
+    } => {
+        permutation_tests!{ @impl $( async fn $test $args $test_impl )+ }
+        permutation_tests!{ @impl_per $perm_args  { $( $( # $extra_anno )* async fn $test )+ } }
+    };
+
+    { @impl $( async fn $test:ident $args:tt $test_impl:tt )+ } => {
+        $( pub async fn $test $args $test_impl )+
+    };
+
+    { @impl_per { $($mod:ident => $arg:expr),+ $(,)? } $fns:tt } => {
+        $(permutation_tests!{ @impl_mod { $mod => $arg } $fns })+
+    };
+
+    { @impl_mod { $mod:ident => $arg:expr } {
+        $( $( # $extra_anno:tt )* async fn $test:ident )+
+    } } => {
+        mod $mod {
+        use serial_test::serial;
+        $(
+            #[tokio::test]
+            #[serial($mod)]
+            $( # $extra_anno )*
+            pub async fn $test() {
+                super::$test($arg).await
+            }
+        )+
+        }
+    };
+}
+
+permutation_tests! {
+{
+    core => super::new_core_connection().unwrap(),
+    cluster => super::new_cluster_connection().unwrap(),
+}
+
+async fn basic(connection: Connection) {
     create_test_database_with_schema(connection.clone(), "define person sub entity;")
         .await
         .unwrap();
@@ -57,10 +92,7 @@ async fn basic() {
     assert!(results.into_iter().all(|res| res.is_ok()));
 }
 
-#[tokio::test]
-#[serial]
-async fn query_error() {
-    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+async fn query_error(connection: Connection) {
     create_test_database_with_schema(connection.clone(), "define person sub entity;")
         .await
         .unwrap();
@@ -75,10 +107,7 @@ async fn query_error() {
     assert!(results.into_iter().all(|res| res.unwrap_err().to_string().contains("[TYR03]")));
 }
 
-#[tokio::test]
-#[serial]
-async fn concurrent_transactions() {
-    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+async fn concurrent_transactions(connection: Connection) {
     create_test_database_with_schema(connection.clone(), "define person sub entity;")
         .await
         .unwrap();
@@ -113,10 +142,7 @@ async fn concurrent_transactions() {
     assert!(results.into_iter().all(|res| res.is_ok()));
 }
 
-#[tokio::test]
-#[serial]
-async fn query_options() {
-    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+async fn query_options(connection: Connection) {
     let schema = r#"define
         person sub entity,
             owns name,
@@ -144,10 +170,7 @@ async fn query_options() {
     assert_eq!(age_count.into_i64(), 1);
 }
 
-#[tokio::test]
-#[serial]
-async fn many_concept_types() {
-    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+async fn many_concept_types(connection: Connection) {
     let schema = r#"define
         person sub entity,
             owns name,
@@ -193,10 +216,7 @@ async fn many_concept_types() {
     }
 }
 
-#[tokio::test]
-#[serial]
-async fn force_close_connection() {
-    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+async fn force_close_connection(connection: Connection) {
     create_test_database_with_schema(connection.clone(), "define person sub entity;")
         .await
         .unwrap();
@@ -226,10 +246,7 @@ async fn force_close_connection() {
     assert_eq!(session.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
 }
 
-#[tokio::test]
-#[serial]
-async fn force_close_session() {
-    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+async fn force_close_session(connection: Connection) {
     create_test_database_with_schema(connection.clone(), "define person sub entity;")
         .await
         .unwrap();
@@ -254,11 +271,8 @@ async fn force_close_session() {
     assert!(Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.is_ok());
 }
 
-#[tokio::test]
-#[serial]
 #[ignore]
-async fn streaming_perf() {
-    let connection = Connection::new_plaintext("127.0.0.1:1729").unwrap();
+async fn streaming_perf(connection: Connection) {
     for i in 0..5 {
         let schema = r#"define
             person sub entity, owns name, owns age;
@@ -268,7 +282,8 @@ async fn streaming_perf() {
         let mut databases = DatabaseManager::new(connection.clone());
 
         let start_time = Instant::now();
-        let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
+        let session =
+            Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Write).await.unwrap();
         for j in 0..100_000 {
             drop(transaction.query.insert(format!("insert $x {j} isa age;").as_str()).unwrap());
@@ -280,7 +295,8 @@ async fn streaming_perf() {
         );
 
         let mut start_time = Instant::now();
-        let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
+        let session =
+            Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Read).await.unwrap();
         let mut answer_stream = transaction.query.match_("match $x isa attribute;").unwrap();
         let mut sum: i64 = 0;
@@ -311,6 +327,26 @@ async fn streaming_perf() {
         }
         println!("sum is {}", sum);
     }
+}
+}
+
+fn new_core_connection() -> typedb_client::Result<Connection> {
+    Connection::new_plaintext("127.0.0.1:1729")
+}
+
+fn new_cluster_connection() -> typedb_client::Result<Connection> {
+    Connection::from_init(
+        &["localhost:11729", "localhost:21729", "localhost:31729"],
+        Credential::with_tls(
+            "admin",
+            "password",
+            Some(&PathBuf::from(
+                std::env::var("ROOT_CA").expect(
+                    "ROOT_CA environment variable needs to be set for cluster tests to run",
+                ),
+            )),
+        ),
+    )
 }
 
 async fn create_test_database_with_schema(

@@ -87,8 +87,8 @@ impl Session {
         self.transaction_with_options(transaction_type, Options::new_core()).await
     }
 
-    pub async fn transaction_with_options<'me>(
-        &'me self,
+    pub async fn transaction_with_options(
+        &self,
         transaction_type: TransactionType,
         options: Options, // TODO options
     ) -> Result<server::Transaction> {
@@ -105,13 +105,13 @@ impl Session {
                 let network_latency = self.network_latency.load();
                 async move {
                     let (session_id, network_latency) = if is_first_run {
-                        (session_id.clone(), network_latency.clone())
+                        (session_id.clone(), network_latency)
                     } else {
                         database.open_session(session_type, options.clone()).await?
                     };
                     Ok((
                         session_id.clone(),
-                        network_latency.clone(),
+                        network_latency,
                         database
                             .open_transaction(
                                 session_id,
@@ -127,6 +127,6 @@ impl Session {
 
         *self.server_session_id.write().unwrap() = session_id;
         self.network_latency.store(network_latency);
-        server::Transaction::<'me>::new(transaction_stream)
+        server::Transaction::new(transaction_stream)
     }
 }

@@ -222,7 +222,7 @@ impl Replica {
             is_primary: metadata.is_primary,
             term: metadata.term,
             is_preferred: metadata.is_preferred,
-            database: server::Database::new(name, server_connection.clone()),
+            database: server::Database::new(name, server_connection),
         }
     }
 

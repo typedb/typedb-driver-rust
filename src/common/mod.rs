@@ -74,7 +74,7 @@ impl fmt::Debug for ID {
 
 impl fmt::Display for ID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.iter().try_for_each(|b| write!(f, "{:02x}", b))
+        self.0.iter().try_for_each(|byte| write!(f, "{:02x}", byte))
     }
 }
 

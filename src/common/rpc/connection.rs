@@ -255,11 +255,13 @@ impl fmt::Debug for ServerConnection {
 
 impl ServerConnection {
     fn new_plaintext(background_runtime: Arc<BackgroundRuntime>, address: Address) -> Result<Self> {
-        let (shutdown_sink, shutdown_source) = unbounded_async();
         let (request_sink, request_source) = unbounded_async();
-        let channel = open_plaintext_channel(address.clone());
-        let rpc = background_runtime.block_on(ServerRPC::new(address.clone(), channel, None))?;
-        background_runtime.spawn(grpc_worker(rpc, request_source, shutdown_source));
+        let (shutdown_sink, shutdown_source) = unbounded_async();
+        background_runtime.spawn(start_grpc_worker_plaintext(
+            address.clone(),
+            request_source,
+            shutdown_source,
+        ));
         Ok(Self {
             address,
             background_runtime,
@@ -276,13 +278,12 @@ impl ServerConnection {
     ) -> Result<Self> {
         let (shutdown_sink, shutdown_source) = unbounded_async();
         let (request_sink, request_source) = unbounded_async();
-        let (channel, callcreds) = open_encrypted_channel(address.clone(), credential)?;
-        let rpc = background_runtime.block_on(ServerRPC::new(
+        background_runtime.spawn(start_grpc_worker_encrypted(
             address.clone(),
-            channel,
-            Some(callcreds),
-        ))?;
-        background_runtime.spawn(grpc_worker(rpc, request_source, shutdown_source));
+            credential,
+            request_source,
+            shutdown_source,
+        ));
         Ok(Self {
             address,
             background_runtime,
@@ -309,10 +310,9 @@ impl ServerConnection {
         if !self.background_runtime.is_open() {
             return Err(ClientError::ClientIsClosed().into());
         }
-        let (response_sink, _response) = bounded_blocking(1); // FIXME
+        let (response_sink, response) = bounded_blocking(0);
         self.request_sink.send((request, OneShotSender::Blocking(response_sink)))?;
-        // response.recv()?  // FIXME
-        Ok(Response::SessionClose)
+        response.recv()?
     }
 
     pub(crate) fn force_close(&self) {
@@ -469,6 +469,27 @@ pub(super) async fn send_request<Channel: GRPCChannel>(
             rpc.transaction(transaction_request.into()).await.map(Response::from)
         }
     }
+}
+
+async fn start_grpc_worker_plaintext(
+    address: Address,
+    request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
+    shutdown_signal: UnboundedReceiver<()>,
+) {
+    let channel = open_plaintext_channel(address.clone());
+    let rpc = ServerRPC::new(address.clone(), channel, None).await.unwrap();
+    grpc_worker(rpc, request_source, shutdown_signal).await;
+}
+
+async fn start_grpc_worker_encrypted(
+    address: Address,
+    credential: Credential,
+    request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
+    shutdown_signal: UnboundedReceiver<()>,
+) {
+    let (channel, callcreds) = open_encrypted_channel(address.clone(), credential).unwrap();
+    let rpc = ServerRPC::new(address.clone(), channel, Some(callcreds)).await.unwrap();
+    grpc_worker(rpc, request_source, shutdown_signal).await;
 }
 
 async fn grpc_worker<Channel: GRPCChannel>(

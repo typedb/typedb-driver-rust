@@ -28,22 +28,11 @@ load("@vaticle_typedb_common//test:rules.bzl", "native_typedb_artifact")
 
 
 rust_test(
-    name = "queries_core",
-    srcs = ["queries_core.rs"],
+    name = "queries",
+    srcs = ["queries.rs"],
     deps = [
         "//:typedb_client",
         "@crates//:chrono",
-        "@crates//:futures",
-        "@crates//:serial_test",
-        "@crates//:tokio",
-    ],
-)
-
-rust_test(
-    name = "queries_cluster",
-    srcs = ["queries_cluster.rs"],
-    deps = [
-        "//:typedb_client",
         "@crates//:futures",
         "@crates//:serial_test",
         "@crates//:tokio",
@@ -78,10 +67,7 @@ artifact_extractor(
 
 rustfmt_test(
     name = "queries_rustfmt_test",
-    targets = [
-        "queries_core",
-        "queries_cluster",
-    ]
+    targets = ["queries"]
 )
 
 checkstyle_test(

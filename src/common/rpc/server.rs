@@ -27,6 +27,7 @@ use std::{
 
 use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError};
 use futures::{future::BoxFuture, FutureExt, Stream, TryFutureExt};
+use log::{debug, trace};
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
     cluster_database::Replica, cluster_database_manager, cluster_user, core_database,
@@ -57,19 +58,20 @@ impl<Channel: GRPCChannel> ServerRPC<Channel> {
         channel: Channel,
         call_credentials: Option<Arc<CallCredentials>>,
     ) -> Result<Self> {
-        let mut this = Self {
+        let this = Self {
             address,
             core_grpc: CoreGRPC::new(channel.clone()),
             cluster_grpc: ClusterGRPC::new(channel.clone()),
             channel,
             call_credentials,
         };
+        let mut this = this.validated().await?;
         this.renew_token().await?;
         Ok(this)
     }
 
-    pub(super) async fn validated(self) -> Result<Self> {
-        // self.databases_all(cluster::database_manager::all_req()).await?;
+    pub(super) async fn validated(mut self) -> Result<Self> {
+        self.databases_all(cluster_database_manager::all::Req {}).await?;
         Ok(self)
     }
 
@@ -92,10 +94,13 @@ impl<Channel: GRPCChannel> ServerRPC<Channel> {
 
     async fn renew_token(&mut self) -> Result {
         if let Some(call_credentials) = &self.call_credentials {
+            trace!("renewing token...");
             call_credentials.reset_token();
             let req = cluster_user::token::Req { username: call_credentials.username().to_owned() };
+            trace!("sending token request...");
             let token = self.cluster_grpc.user_token(req).await?.into_inner().token;
             call_credentials.set_token(token);
+            trace!("renewed token");
         }
         Ok(())
     }
@@ -241,6 +246,7 @@ impl<Channel: GRPCChannel> ServerRPC<Channel> {
         &mut self,
         req: session::close::Req,
     ) -> Result<session::close::Res> {
+        debug!("closing session");
         self.single(|this| Box::pin(this.core_grpc.session_close(req.clone()))).await
     }
 
