@@ -55,8 +55,7 @@ use crate::{
         rpc::channel::{open_encrypted_channel, open_plaintext_channel},
         Address, Result, SessionID, SessionType, TransactionType, POLL_INTERVAL, PULSE_INTERVAL,
     },
-    connection::Options,
-    Credential,
+    Credential, Options,
 };
 
 #[derive(Debug)]

@@ -19,12 +19,7 @@
  * under the License.
  */
 
-mod database;
+pub mod database;
 mod database_manager;
-mod options;
-pub mod server;
-mod session;
 
-pub use self::{
-    database::Database, database_manager::DatabaseManager, options::Options, session::Session,
-};
+pub use self::{database::Database, database_manager::DatabaseManager};

@@ -48,8 +48,7 @@ use super::{
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{error::ClientError, RequestID, Result, DISPATCH_INTERVAL},
-    connection::Options,
-    TransactionType,
+    Options, TransactionType,
 };
 
 #[derive(Debug)]

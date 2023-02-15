@@ -31,8 +31,7 @@ use typedb_protocol::{
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{error::ClientError, Address, RequestID, Result, SessionID, SessionType},
-    connection::Options,
-    TransactionType,
+    Options, TransactionType,
 };
 
 #[derive(Debug)]

@@ -26,7 +26,7 @@ use futures::Stream;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{Result, TransactionStream},
-    connection::Options,
+    Options,
 };
 
 #[derive(Clone, Debug)]

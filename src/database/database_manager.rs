@@ -21,11 +21,8 @@
 
 use std::future::Future;
 
-use super::Database;
-use crate::{
-    common::{error::ClientError, Connection, Result, ServerConnection},
-    connection::server,
-};
+use super::{database::server, Database};
+use crate::common::{error::ClientError, Connection, Result, ServerConnection};
 
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {

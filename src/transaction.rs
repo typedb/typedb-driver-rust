@@ -23,7 +23,7 @@ use std::{fmt, marker::PhantomData, sync::Arc};
 
 use crate::{
     common::{Result, TransactionStream, TransactionType},
-    connection::{server::query::QueryManager, Options},
+    Options, QueryManager,
 };
 
 pub struct Transaction<'a> {
@@ -47,7 +47,7 @@ impl fmt::Debug for Transaction<'_> {
 }
 
 impl Transaction<'_> {
-    pub(in crate::connection) fn new(transaction_stream: TransactionStream) -> Result<Self> {
+    pub(crate) fn new(transaction_stream: TransactionStream) -> Result<Self> {
         let transaction_stream = Arc::new(transaction_stream);
         Ok(Transaction {
             type_: transaction_stream.type_(),

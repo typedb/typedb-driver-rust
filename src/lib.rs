@@ -22,9 +22,17 @@
 pub mod answer;
 pub mod common;
 pub mod concept;
-pub(crate) mod connection;
+pub mod database;
+mod options;
+mod query;
+mod session;
+mod transaction;
 
 pub use self::{
     common::{Connection, Credential, Error, Result, SessionType, TransactionType},
-    connection::{Database, DatabaseManager, Options, Session},
+    database::{Database, DatabaseManager},
+    options::Options,
+    query::QueryManager,
+    session::Session,
+    transaction::Transaction,
 };

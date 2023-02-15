@@ -25,9 +25,9 @@ use crossbeam::atomic::AtomicCell;
 
 use crate::{
     common::{error::ClientError, Result, SessionID, SessionType, TransactionType},
-    connection::{server, Options},
-    Database,
+    Database, Options,
 };
+use crate::Transaction;
 
 #[derive(Debug)]
 pub struct Session {
@@ -83,7 +83,7 @@ impl Session {
     pub async fn transaction(
         &self,
         transaction_type: TransactionType,
-    ) -> Result<server::Transaction> {
+    ) -> Result<Transaction> {
         self.transaction_with_options(transaction_type, Options::new_core()).await
     }
 
@@ -91,7 +91,7 @@ impl Session {
         &self,
         transaction_type: TransactionType,
         options: Options, // TODO options
-    ) -> Result<server::Transaction> {
+    ) -> Result<Transaction> {
         if !self.is_open() {
             Err(ClientError::SessionIsClosed())?
         }
@@ -127,6 +127,6 @@ impl Session {
 
         *self.server_session_id.write().unwrap() = session_id;
         self.network_latency.store(network_latency);
-        server::Transaction::new(transaction_stream)
+        Transaction::new(transaction_stream)
     }
 }
