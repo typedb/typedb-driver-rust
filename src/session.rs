@@ -25,9 +25,8 @@ use crossbeam::atomic::AtomicCell;
 
 use crate::{
     common::{error::ClientError, Result, SessionID, SessionType, TransactionType},
-    Database, Options,
+    Database, Options, Transaction,
 };
-use crate::Transaction;
 
 #[derive(Debug)]
 pub struct Session {
@@ -80,10 +79,7 @@ impl Session {
         }
     }
 
-    pub async fn transaction(
-        &self,
-        transaction_type: TransactionType,
-    ) -> Result<Transaction> {
+    pub async fn transaction(&self, transaction_type: TransactionType) -> Result<Transaction> {
         self.transaction_with_options(transaction_type, Options::new_core()).await
     }
 

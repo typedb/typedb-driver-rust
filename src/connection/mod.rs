@@ -19,22 +19,9 @@
  * under the License.
  */
 
-pub mod answer;
-pub mod common;
-pub mod concept;
 mod connection;
-pub mod database;
-mod options;
-mod query;
-mod session;
+pub(crate) mod rpc;
 mod transaction;
 
-pub use self::{
-    common::{Credential, Error, Result, SessionType, TransactionType},
-    connection::Connection,
-    database::{Database, DatabaseManager},
-    options::Options,
-    query::QueryManager,
-    session::Session,
-    transaction::Transaction,
-};
+pub use self::connection::Connection;
+pub(crate) use self::{connection::ServerConnection, transaction::TransactionStream};

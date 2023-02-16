@@ -21,8 +21,12 @@
 
 use std::future::Future;
 
-use super::{database::server, Database};
-use crate::common::{error::ClientError, Connection, Result, ServerConnection};
+use super::{database::ServerDatabase, Database};
+use crate::{
+    common::{error::ClientError, Result},
+    connection::ServerConnection,
+    Connection,
+};
 
 #[derive(Clone, Debug)]
 pub struct DatabaseManager {
@@ -72,7 +76,7 @@ impl DatabaseManager {
 
     async fn run_failsafe<F, P, R>(&mut self, name: String, task: F) -> Result<R>
     where
-        F: Fn(server::Database, ServerConnection, bool) -> P,
+        F: Fn(ServerDatabase, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         Database::get(name, self.connection.clone()).await?.run_failsafe(&task).await

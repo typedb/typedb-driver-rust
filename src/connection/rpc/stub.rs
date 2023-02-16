@@ -36,15 +36,13 @@ use typedb_protocol::{
     type_db_cluster_client::TypeDbClusterClient as ClusterGRPC, ClusterDatabase,
 };
 
-use super::channel::GRPCChannel;
-use crate::common::{
-    credential::CallCredentials, error::ClientError, Address, Error, Result, StdResult,
-};
+use super::channel::{CallCredentials, GRPCChannel};
+use crate::common::{error::ClientError, Address, Error, Result, StdResult};
 
 type TonicResult<T> = StdResult<Response<T>, Status>;
 
 #[derive(Clone, Debug)]
-pub(super) struct ServerRPC<Channel: GRPCChannel> {
+pub(crate) struct RPCStub<Channel: GRPCChannel> {
     address: Address,
     channel: Channel,
     core_grpc: CoreGRPC<Channel>,
@@ -52,8 +50,8 @@ pub(super) struct ServerRPC<Channel: GRPCChannel> {
     call_credentials: Option<Arc<CallCredentials>>,
 }
 
-impl<Channel: GRPCChannel> ServerRPC<Channel> {
-    pub(super) async fn new(
+impl<Channel: GRPCChannel> RPCStub<Channel> {
+    pub(crate) async fn new(
         address: Address,
         channel: Channel,
         call_credentials: Option<Arc<CallCredentials>>,
@@ -70,7 +68,7 @@ impl<Channel: GRPCChannel> ServerRPC<Channel> {
         Ok(this)
     }
 
-    pub(super) async fn validated(mut self) -> Result<Self> {
+    pub(crate) async fn validated(mut self) -> Result<Self> {
         self.databases_all(cluster_database_manager::all::Req {}).await?;
         Ok(self)
     }
@@ -105,21 +103,21 @@ impl<Channel: GRPCChannel> ServerRPC<Channel> {
         Ok(())
     }
 
-    pub(super) async fn servers_all(
+    pub(crate) async fn servers_all(
         &mut self,
         req: server_manager::all::Req,
     ) -> Result<server_manager::all::Res> {
         self.single(|this| Box::pin(this.cluster_grpc.servers_all(req.clone()))).await
     }
 
-    pub(super) async fn databases_contains(
+    pub(crate) async fn databases_contains(
         &mut self,
         req: core_database_manager::contains::Req,
     ) -> Result<core_database_manager::contains::Res> {
         self.single(|this| Box::pin(this.core_grpc.databases_contains(req.clone()))).await
     }
 
-    pub(super) async fn databases_create(
+    pub(crate) async fn databases_create(
         &mut self,
         req: core_database_manager::create::Req,
     ) -> Result<core_database_manager::create::Res> {
@@ -127,7 +125,7 @@ impl<Channel: GRPCChannel> ServerRPC<Channel> {
     }
 
     // FIXME merge after protocol merge
-    pub(super) async fn databases_get(
+    pub(crate) async fn databases_get(
         &mut self,
         req: cluster_database_manager::get::Req,
     ) -> Result<cluster_database_manager::get::Res> {
@@ -138,7 +136,7 @@ impl<Channel: GRPCChannel> ServerRPC<Channel> {
         }
     }
 
-    pub(super) async fn databases_all(
+    pub(crate) async fn databases_all(
         &mut self,
         req: cluster_database_manager::all::Req,
     ) -> Result<cluster_database_manager::all::Res> {
@@ -207,42 +205,42 @@ impl<Channel: GRPCChannel> ServerRPC<Channel> {
     }
     // end FIXME
 
-    pub(super) async fn database_delete(
+    pub(crate) async fn database_delete(
         &mut self,
         req: core_database::delete::Req,
     ) -> Result<core_database::delete::Res> {
         self.single(|this| Box::pin(this.core_grpc.database_delete(req.clone()))).await
     }
 
-    pub(super) async fn database_schema(
+    pub(crate) async fn database_schema(
         &mut self,
         req: core_database::schema::Req,
     ) -> Result<core_database::schema::Res> {
         self.single(|this| Box::pin(this.core_grpc.database_schema(req.clone()))).await
     }
 
-    pub(super) async fn database_type_schema(
+    pub(crate) async fn database_type_schema(
         &mut self,
         req: core_database::type_schema::Req,
     ) -> Result<core_database::type_schema::Res> {
         self.single(|this| Box::pin(this.core_grpc.database_type_schema(req.clone()))).await
     }
 
-    pub(super) async fn database_rule_schema(
+    pub(crate) async fn database_rule_schema(
         &mut self,
         req: core_database::rule_schema::Req,
     ) -> Result<core_database::rule_schema::Res> {
         self.single(|this| Box::pin(this.core_grpc.database_rule_schema(req.clone()))).await
     }
 
-    pub(super) async fn session_open(
+    pub(crate) async fn session_open(
         &mut self,
         req: session::open::Req,
     ) -> Result<session::open::Res> {
         self.single(|this| Box::pin(this.core_grpc.session_open(req.clone()))).await
     }
 
-    pub(super) async fn session_close(
+    pub(crate) async fn session_close(
         &mut self,
         req: session::close::Req,
     ) -> Result<session::close::Res> {
@@ -250,14 +248,14 @@ impl<Channel: GRPCChannel> ServerRPC<Channel> {
         self.single(|this| Box::pin(this.core_grpc.session_close(req.clone()))).await
     }
 
-    pub(super) async fn session_pulse(
+    pub(crate) async fn session_pulse(
         &mut self,
         req: session::pulse::Req,
     ) -> Result<session::pulse::Res> {
         self.single(|this| Box::pin(this.core_grpc.session_pulse(req.clone()))).await
     }
 
-    pub(super) async fn transaction(
+    pub(crate) async fn transaction(
         &mut self,
         open_req: transaction::Req,
     ) -> Result<(Sender<transaction::Client>, Streaming<transaction::Server>)> {

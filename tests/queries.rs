@@ -23,6 +23,7 @@ use std::{path::PathBuf, sync::Arc, time::Instant};
 
 use chrono::{NaiveDate, NaiveDateTime};
 use futures::{StreamExt, TryFutureExt};
+use serial_test::serial;
 use tokio::sync::mpsc;
 use typedb_client::{
     common::{
@@ -45,7 +46,10 @@ macro_rules! permutation_tests {
     };
 
     { @impl $( async fn $test:ident $args:tt $test_impl:tt )+ } => {
-        $( pub async fn $test $args $test_impl )+
+        mod _impl {
+            use super::*;
+            $( pub async fn $test $args $test_impl )+
+        }
     };
 
     { @impl_per { $($mod:ident => $arg:expr),+ $(,)? } $fns:tt } => {
@@ -56,13 +60,13 @@ macro_rules! permutation_tests {
         $( $( # $extra_anno:tt )* async fn $test:ident )+
     } } => {
         mod $mod {
-        use serial_test::serial;
+            use super::*;
         $(
             #[tokio::test]
             #[serial($mod)]
             $( # $extra_anno )*
             pub async fn $test() {
-                super::$test($arg).await
+                _impl::$test($arg).await
             }
         )+
         }
@@ -71,8 +75,8 @@ macro_rules! permutation_tests {
 
 permutation_tests! {
 {
-    core => super::new_core_connection().unwrap(),
-    cluster => super::new_cluster_connection().unwrap(),
+    core => new_core_connection().unwrap(),
+    cluster => new_cluster_connection().unwrap(),
 }
 
 async fn basic(connection: Connection) {

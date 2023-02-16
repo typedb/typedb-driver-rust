@@ -19,15 +19,9 @@
  * under the License.
  */
 
-mod channel;
-mod connection;
-mod message;
-mod server;
-mod transaction;
+pub(crate) mod channel;
+pub(crate) mod message;
+pub(crate) mod stub;
+pub(crate) mod tokio;
 
-pub use self::connection::Connection;
-pub(crate) use self::{
-    connection::ServerConnection,
-    message::{DatabaseProto, ReplicaProto},
-    transaction::TransactionStream,
-};
+pub(crate) use self::message::{DatabaseProto, ReplicaProto};

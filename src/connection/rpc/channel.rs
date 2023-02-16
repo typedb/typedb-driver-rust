@@ -19,10 +19,9 @@
  * under the License.
  */
 
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use tonic::{
-    self,
     body::BoxBody,
     client::GrpcService,
     service::{
@@ -34,16 +33,16 @@ use tonic::{
 };
 
 use crate::{
-    common::{credential::CallCredentials, Address, Result, StdResult},
+    common::{Address, Result, StdResult},
     Credential,
 };
 
 type ResponseFuture = interceptor::ResponseFuture<channel::ResponseFuture>;
 
-pub(super) type PlainTextChannel = InterceptedService<Channel, PlainTextFacade>;
-pub(super) type CallCredChannel = InterceptedService<Channel, CredentialInjector>;
+pub(crate) type PlainTextChannel = InterceptedService<Channel, PlainTextFacade>;
+pub(crate) type CallCredChannel = InterceptedService<Channel, CredentialInjector>;
 
-pub(super) trait GRPCChannel:
+pub(crate) trait GRPCChannel:
     GrpcService<BoxBody, Error = TonicError, ResponseBody = BoxBody, Future = ResponseFuture>
     + Clone
     + Send
@@ -57,6 +56,7 @@ impl GRPCChannel for PlainTextChannel {
         true
     }
 }
+
 impl GRPCChannel for CallCredChannel {
     fn is_plaintext(&self) -> bool {
         false
@@ -64,7 +64,7 @@ impl GRPCChannel for CallCredChannel {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct PlainTextFacade;
+pub(crate) struct PlainTextFacade;
 
 impl Interceptor for PlainTextFacade {
     fn call(&mut self, request: Request<()>) -> StdResult<Request<()>, Status> {
@@ -72,17 +72,17 @@ impl Interceptor for PlainTextFacade {
     }
 }
 
-pub(super) fn open_plaintext_channel(address: Address) -> PlainTextChannel {
+pub(crate) fn open_plaintext_channel(address: Address) -> PlainTextChannel {
     PlainTextChannel::new(Channel::builder(address.into_uri()).connect_lazy(), PlainTextFacade)
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct CredentialInjector {
+pub(crate) struct CredentialInjector {
     call_credentials: Arc<CallCredentials>,
 }
 
 impl CredentialInjector {
-    pub(super) fn new(call_credentials: Arc<CallCredentials>) -> Self {
+    pub(crate) fn new(call_credentials: Arc<CallCredentials>) -> Self {
         Self { call_credentials }
     }
 }
@@ -93,7 +93,7 @@ impl Interceptor for CredentialInjector {
     }
 }
 
-pub(super) fn open_encrypted_channel(
+pub(crate) fn open_encrypted_channel(
     address: Address,
     credential: Credential,
 ) -> Result<(CallCredChannel, Arc<CallCredentials>)> {
@@ -107,4 +107,43 @@ pub(super) fn open_encrypted_channel(
         CallCredChannel::new(channel, CredentialInjector::new(call_credentials.clone())),
         call_credentials,
     ))
+}
+
+#[derive(Debug)]
+pub(crate) struct CallCredentials {
+    credential: Credential,
+    token: RwLock<Option<String>>,
+}
+
+impl CallCredentials {
+    pub(crate) fn new(credential: Credential) -> Self {
+        Self { credential, token: RwLock::new(None) }
+    }
+
+    pub(crate) fn username(&self) -> &str {
+        self.credential.username()
+    }
+
+    pub(crate) fn password(&self) -> &str {
+        self.credential.password()
+    }
+
+    pub(crate) fn set_token(&self, token: String) {
+        *self.token.write().unwrap() = Some(token);
+    }
+
+    pub(crate) fn reset_token(&self) {
+        *self.token.write().unwrap() = None;
+    }
+
+    pub(crate) fn inject(&self, mut request: Request<()>) -> Request<()> {
+        request.metadata_mut().insert("username", self.credential.username().try_into().unwrap());
+        match &*self.token.read().unwrap() {
+            Some(token) => request.metadata_mut().insert("token", token.try_into().unwrap()),
+            None => request
+                .metadata_mut()
+                .insert("password", self.credential.password().try_into().unwrap()),
+        };
+        request
+    }
 }

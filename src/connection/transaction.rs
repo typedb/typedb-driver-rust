@@ -41,9 +41,9 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::Streaming;
 use typedb_protocol::transaction::{self, server::Server, stream::State};
 
-use super::{
-    connection::BackgroundRuntime,
+use super::rpc::{
     message::{QueryRequest, QueryResponse, Response, TransactionRequest, TransactionResponse},
+    tokio::BackgroundRuntime,
 };
 use crate::{
     answer::{ConceptMap, Numeric},
@@ -52,7 +52,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(super) enum TransactionCallback {
+pub(crate) enum TransactionCallback {
     OneShot(AsyncOneshotSender<Result<TransactionResponse>>),
     Streamed(UnboundedSender<Result<TransactionResponse>>),
 }
@@ -83,7 +83,7 @@ impl Drop for TransactionStream {
 }
 
 impl TransactionStream {
-    pub(super) fn new(
+    pub(crate) fn new(
         background_runtime: &BackgroundRuntime,
         type_: TransactionType,
         options: Options,
@@ -233,7 +233,7 @@ fn stream_iter<'a, T: Send + 'a>(
     Box::pin(stream::iter(iter))
 }
 
-pub(super) async fn transaction_worker(
+pub(crate) async fn transaction_worker(
     queue_sink: UnboundedSender<(TransactionRequest, Option<TransactionCallback>)>,
     request_source: UnboundedReceiver<(TransactionRequest, Option<TransactionCallback>)>,
     request_sink: SyncSender<transaction::Client>,

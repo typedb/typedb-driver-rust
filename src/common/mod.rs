@@ -20,20 +20,16 @@
  */
 
 mod address;
-pub mod credential;
+mod credential;
 pub mod error;
-mod rpc;
 
 use std::{fmt, time::Duration};
 
 use typedb_protocol::{session as session_proto, transaction as transaction_proto};
 use uuid::Uuid;
 
-pub(crate) use self::{
-    address::Address,
-    rpc::{DatabaseProto, ReplicaProto, ServerConnection, TransactionStream},
-};
-pub use self::{credential::Credential, error::Error, rpc::Connection};
+pub(crate) use self::address::Address;
+pub use self::{credential::Credential, error::Error};
 
 pub(crate) const POLL_INTERVAL: Duration = Duration::from_millis(3);
 pub(crate) const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
@@ -49,7 +45,7 @@ pub(crate) type SessionID = ID;
 pub struct ID(Vec<u8>);
 
 impl ID {
-    fn generate() -> Self {
+    pub(crate) fn generate() -> Self {
         Uuid::new_v4().as_bytes().to_vec().into()
     }
 }

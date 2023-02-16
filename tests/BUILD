@@ -39,6 +39,16 @@ rust_test(
     ],
 )
 
+rust_test(
+    name = "compatibility",
+    srcs = ["compatibility"],
+    deps = [
+        "//:typedb_client",
+        "@crates//:futures",
+        "@crates//:serial_test",
+    ],
+)
+
 native_typedb_artifact(
     name = "native-typedb-artifact",
     mac_artifact = "@vaticle_typedb_artifact_mac//file",
@@ -67,7 +77,7 @@ artifact_extractor(
 
 rustfmt_test(
     name = "queries_rustfmt_test",
-    targets = ["queries"]
+    targets = ["queries", "compatibility"]
 )
 
 checkstyle_test(

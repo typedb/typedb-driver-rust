@@ -19,14 +19,23 @@
  * under the License.
  */
 
-use std::{fmt, future::Future, sync::RwLock, time::Duration};
+use std::{
+    fmt,
+    future::Future,
+    sync::RwLock,
+    time::{Duration, Instant},
+};
 
 use log::debug;
 use tokio::time::sleep;
 
-use crate::common::{
-    error::ClientError, Address, Connection, DatabaseProto, Error, ReplicaProto, Result,
-    ServerConnection, SessionID,
+use crate::{
+    common::{error::ClientError, Address, Error, Result, SessionID},
+    connection::{
+        rpc::{DatabaseProto, ReplicaProto},
+        ServerConnection, TransactionStream,
+    },
+    Connection, Options, SessionType, TransactionType,
 };
 
 pub struct Database {
@@ -93,7 +102,7 @@ impl Database {
 
     pub(crate) async fn run_failsafe<F, P, R>(&self, task: F) -> Result<R>
     where
-        F: Fn(server::Database, ServerConnection, bool) -> P,
+        F: Fn(ServerDatabase, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         match self.run_on_any_replica(&task).await {
@@ -107,7 +116,7 @@ impl Database {
 
     async fn run_on_any_replica<F, P, R>(&self, task: F) -> Result<R>
     where
-        F: Fn(server::Database, ServerConnection, bool) -> P,
+        F: Fn(ServerDatabase, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         let mut is_first_run = true;
@@ -132,7 +141,7 @@ impl Database {
 
     async fn run_on_primary_replica<F, P, R>(&self, task: F) -> Result<R>
     where
-        F: Fn(server::Database, ServerConnection, bool) -> P,
+        F: Fn(ServerDatabase, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
         let mut primary_replica = if let Some(replica) = self.primary_replica() {
@@ -196,7 +205,7 @@ pub struct Replica {
     is_primary: bool,
     term: i64,
     is_preferred: bool,
-    database: server::Database,
+    database: ServerDatabase,
 }
 
 impl fmt::Debug for Replica {
@@ -219,7 +228,7 @@ impl Replica {
             is_primary: metadata.is_primary,
             term: metadata.term,
             is_preferred: metadata.is_preferred,
-            database: server::Database::new(name, server_connection),
+            database: ServerDatabase::new(name, server_connection),
         }
     }
 
@@ -255,75 +264,63 @@ impl Replica {
     }
 }
 
-pub(super) mod server {
-    use std::{
-        fmt::{Display, Formatter},
-        time::{Duration, Instant},
-    };
+#[derive(Clone, Debug)]
+pub(crate) struct ServerDatabase {
+    name: String,
+    connection: ServerConnection,
+}
 
-    use crate::{
-        common::{Result, ServerConnection, SessionID, TransactionStream},
-        Options, SessionType, TransactionType,
-    };
-
-    #[derive(Clone, Debug)]
-    pub(crate) struct Database {
-        name: String,
-        connection: ServerConnection,
+impl ServerDatabase {
+    pub(crate) fn new(name: String, connection: ServerConnection) -> Self {
+        ServerDatabase { name, connection }
     }
 
-    impl Database {
-        pub(crate) fn new(name: String, connection: ServerConnection) -> Self {
-            Database { name, connection }
-        }
-
-        pub fn name(&self) -> &str {
-            self.name.as_str()
-        }
-
-        pub async fn delete(self) -> Result {
-            self.connection.delete_database(self.name).await
-        }
-
-        pub async fn schema(&self) -> Result<String> {
-            self.connection.database_schema(self.name.clone()).await
-        }
-
-        pub async fn type_schema(&self) -> Result<String> {
-            self.connection.database_type_schema(self.name.clone()).await
-        }
-
-        pub async fn rule_schema(&self) -> Result<String> {
-            self.connection.database_rule_schema(self.name.clone()).await
-        }
-
-        pub(crate) async fn open_session(
-            &self,
-            session_type: SessionType,
-            options: Options,
-        ) -> Result<(SessionID, Duration)> {
-            let start = Instant::now();
-            let (session_id, server_duration) =
-                self.connection.open_session(self.name.clone(), session_type, options).await?;
-            Ok((session_id, start.elapsed() - server_duration))
-        }
-
-        pub(crate) async fn open_transaction(
-            &self,
-            session_id: SessionID,
-            transaction_type: TransactionType,
-            options: Options,
-            network_latency: Duration,
-        ) -> Result<TransactionStream> {
-            self.connection
-                .open_transaction(session_id, transaction_type, options, network_latency)
-                .await
-        }
+    pub fn name(&self) -> &str {
+        self.name.as_str()
     }
 
-    impl Display for Database {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            write!(f, "{}", self.name)
-        }
+    pub async fn delete(self) -> Result {
+        self.connection.delete_database(self.name).await
+    }
+
+    pub async fn schema(&self) -> Result<String> {
+        self.connection.database_schema(self.name.clone()).await
+    }
+
+    pub async fn type_schema(&self) -> Result<String> {
+        self.connection.database_type_schema(self.name.clone()).await
+    }
+
+    pub async fn rule_schema(&self) -> Result<String> {
+        self.connection.database_rule_schema(self.name.clone()).await
+    }
+
+    pub(crate) async fn open_session(
+        &self,
+        session_type: SessionType,
+        options: Options,
+    ) -> Result<(SessionID, Duration)> {
+        let start = Instant::now();
+        let (session_id, server_duration) =
+            self.connection.open_session(self.name.clone(), session_type, options).await?;
+        Ok((session_id, start.elapsed() - server_duration))
+    }
+
+    pub(crate) async fn open_transaction(
+        &self,
+        session_id: SessionID,
+        transaction_type: TransactionType,
+        options: Options,
+        network_latency: Duration,
+    ) -> Result<TransactionStream> {
+        self.connection
+            .open_transaction(session_id, transaction_type, options, network_latency)
+            .await
+    }
+}
+
+impl fmt::Display for ServerDatabase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
     }
 }

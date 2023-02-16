@@ -22,20 +22,14 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt,
-    future::Future,
     sync::{Arc, Mutex},
-    thread,
-    thread::JoinHandle,
     time::Duration,
 };
 
-use crossbeam::{
-    atomic::AtomicCell,
-    channel::{bounded as bounded_blocking, Sender as SyncSender},
-};
+use crossbeam::channel::{bounded as bounded_blocking, Sender as SyncSender};
 use futures::TryFutureExt;
 use tokio::{
-    runtime, select,
+    select,
     sync::{
         mpsc::{unbounded_channel as unbounded_async, UnboundedReceiver, UnboundedSender},
         oneshot::{channel as oneshot_async, Sender as AsyncOneshotSender},
@@ -44,16 +38,18 @@ use tokio::{
 };
 
 use super::{
-    channel::GRPCChannel,
-    message::{DatabaseProto, Request, Response, TransactionRequest},
-    server::ServerRPC,
-    transaction::TransactionStream,
+    rpc::{
+        channel::{open_encrypted_channel, open_plaintext_channel, GRPCChannel},
+        message::{DatabaseProto, Request, Response, TransactionRequest},
+        stub::RPCStub,
+        tokio::BackgroundRuntime,
+    },
+    TransactionStream,
 };
 use crate::{
     common::{
         error::{ClientError, Error, InternalError},
-        rpc::channel::{open_encrypted_channel, open_plaintext_channel},
-        Address, Result, SessionID, SessionType, TransactionType, POLL_INTERVAL, PULSE_INTERVAL,
+        Address, Result, SessionID, SessionType, TransactionType, PULSE_INTERVAL,
     },
     Credential, Options,
 };
@@ -69,70 +65,6 @@ impl<T> OneShotSender<T> {
         match self {
             Self::Async(sink) => sink.send(response).map_err(|_| InternalError::SendError().into()),
             Self::Blocking(sink) => sink.send(response).map_err(Into::into),
-        }
-    }
-}
-
-pub(super) struct BackgroundRuntime {
-    async_runtime_handle: runtime::Handle,
-    is_open: AtomicCell<bool>,
-    shutdown_sink: UnboundedSender<()>,
-    bg: JoinHandle<()>,
-}
-
-impl BackgroundRuntime {
-    pub(super) fn new() -> Result<Self> {
-        let is_open = AtomicCell::new(true);
-        let (shutdown_sink, mut shutdown_source) = unbounded_async();
-        let async_runtime =
-            runtime::Builder::new_current_thread().enable_time().enable_io().build()?;
-        let async_runtime_handle = async_runtime.handle().clone();
-        let bg = thread::Builder::new().name("gRPC worker".to_string()).spawn(move || {
-            async_runtime.block_on(async move {
-                shutdown_source.recv().await;
-            })
-        })?;
-        Ok(Self { async_runtime_handle, is_open, shutdown_sink, bg })
-    }
-
-    pub(super) fn is_open(&self) -> bool {
-        self.is_open.load()
-    }
-
-    pub(super) fn force_close(&self) {
-        self.is_open.store(false);
-        self.shutdown_sink.send(()).ok();
-    }
-
-    pub(super) fn spawn<F>(&self, future: F)
-    where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static,
-    {
-        self.async_runtime_handle.spawn(future);
-    }
-
-    pub(super) fn block_on<F>(&self, future: F) -> F::Output
-    where
-        F: Future + Send + 'static,
-        F::Output: Send + 'static,
-    {
-        let (response_sink, response) = bounded_blocking(0);
-        self.async_runtime_handle.spawn(async move {
-            response_sink.send(future.await).ok();
-        });
-        response.recv().unwrap()
-    }
-}
-
-impl Drop for BackgroundRuntime {
-    fn drop(&mut self) {
-        self.is_open.store(false);
-        if self.shutdown_sink.send(()).is_ok() {
-            while !self.bg.is_finished() {
-                // FIXME wait on signal instead
-                thread::sleep(POLL_INTERVAL)
-            }
         }
     }
 }
@@ -155,9 +87,9 @@ async fn fetch_current_addresses(
 ) -> Result<HashSet<Address>> {
     for address in addresses {
         let (channel, callcreds) = open_encrypted_channel(address.clone(), credential.clone())?;
-        match ServerRPC::new(address, channel, Some(callcreds)).await?.validated().await {
+        match RPCStub::new(address, channel, Some(callcreds)).await?.validated().await {
             Ok(mut client) => {
-                return match client.servers_all(Request::ServersAll.into()).await?.into() {
+                return match client.servers_all(Request::ServersAll.try_into()?).await?.into() {
                     Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
                     _ => unreachable!(),
                 }
@@ -429,39 +361,45 @@ impl ServerConnection {
     }
 }
 
-pub(super) async fn send_request<Channel: GRPCChannel>(
-    mut rpc: ServerRPC<Channel>,
+pub(crate) async fn send_request<Channel: GRPCChannel>(
+    mut rpc: RPCStub<Channel>,
     request: Request,
 ) -> Result<Response> {
     match request {
-        Request::ServersAll => rpc.servers_all(request.into()).await.map(Response::from),
+        Request::ServersAll => rpc.servers_all(request.try_into()?).await.map(Response::from),
 
         Request::DatabasesContains { .. } => {
-            rpc.databases_contains(request.into()).await.map(Response::from)
+            rpc.databases_contains(request.try_into()?).await.map(Response::from)
         }
         Request::DatabaseCreate { .. } => {
-            rpc.databases_create(request.into()).await.map(Response::from)
+            rpc.databases_create(request.try_into()?).await.map(Response::from)
         }
-        Request::DatabaseGet { .. } => rpc.databases_get(request.into()).await.map(Response::from),
-        Request::DatabasesAll => rpc.databases_all(request.into()).await.map(Response::from),
+        Request::DatabaseGet { .. } => {
+            rpc.databases_get(request.try_into()?).await.map(Response::from)
+        }
+        Request::DatabasesAll => rpc.databases_all(request.try_into()?).await.map(Response::from),
 
         Request::DatabaseDelete { .. } => {
-            rpc.database_delete(request.into()).await.map(Response::from)
+            rpc.database_delete(request.try_into()?).await.map(Response::from)
         }
         Request::DatabaseSchema { .. } => {
-            rpc.database_schema(request.into()).await.map(Response::from)
+            rpc.database_schema(request.try_into()?).await.map(Response::from)
         }
         Request::DatabaseTypeSchema { .. } => {
-            rpc.database_type_schema(request.into()).await.map(Response::from)
+            rpc.database_type_schema(request.try_into()?).await.map(Response::from)
         }
         Request::DatabaseRuleSchema { .. } => {
-            rpc.database_rule_schema(request.into()).await.map(Response::from)
+            rpc.database_rule_schema(request.try_into()?).await.map(Response::from)
         }
 
-        Request::SessionOpen { .. } => rpc.session_open(request.into()).await.map(Response::from),
-        Request::SessionPulse { .. } => rpc.session_pulse(request.into()).await.map(Response::from),
+        Request::SessionOpen { .. } => {
+            rpc.session_open(request.try_into()?).await.map(Response::from)
+        }
+        Request::SessionPulse { .. } => {
+            rpc.session_pulse(request.try_into()?).await.map(Response::from)
+        }
         Request::SessionClose { .. } => {
-            rpc.session_close(request.into()).map_ok(Response::from).await
+            rpc.session_close(request.try_into()?).map_ok(Response::from).await
         }
 
         Request::Transaction(transaction_request) => {
@@ -476,7 +414,7 @@ async fn start_grpc_worker_plaintext(
     shutdown_signal: UnboundedReceiver<()>,
 ) {
     let channel = open_plaintext_channel(address.clone());
-    let rpc = ServerRPC::new(address.clone(), channel, None).await.unwrap();
+    let rpc = RPCStub::new(address.clone(), channel, None).await.unwrap();
     grpc_worker(rpc, request_source, shutdown_signal).await;
 }
 
@@ -487,12 +425,12 @@ async fn start_grpc_worker_encrypted(
     shutdown_signal: UnboundedReceiver<()>,
 ) {
     let (channel, callcreds) = open_encrypted_channel(address.clone(), credential).unwrap();
-    let rpc = ServerRPC::new(address.clone(), channel, Some(callcreds)).await.unwrap();
+    let rpc = RPCStub::new(address.clone(), channel, Some(callcreds)).await.unwrap();
     grpc_worker(rpc, request_source, shutdown_signal).await;
 }
 
 async fn grpc_worker<Channel: GRPCChannel>(
-    rpc: ServerRPC<Channel>,
+    rpc: RPCStub<Channel>,
     mut request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
     mut shutdown_signal: UnboundedReceiver<()>,
 ) {

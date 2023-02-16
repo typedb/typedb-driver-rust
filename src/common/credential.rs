@@ -22,13 +22,9 @@
 use std::{
     fmt, fs,
     path::{Path, PathBuf},
-    sync::RwLock,
 };
 
-use tonic::{
-    transport::{Certificate, ClientTlsConfig},
-    Request,
-};
+use tonic::transport::{Certificate, ClientTlsConfig};
 
 use crate::Result;
 
@@ -88,44 +84,5 @@ impl Credential {
         } else {
             Ok(ClientTlsConfig::new())
         }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct CallCredentials {
-    credential: Credential,
-    token: RwLock<Option<String>>,
-}
-
-impl CallCredentials {
-    pub(super) fn new(credential: Credential) -> Self {
-        Self { credential, token: RwLock::new(None) }
-    }
-
-    pub(super) fn username(&self) -> &str {
-        self.credential.username()
-    }
-
-    pub(super) fn password(&self) -> &str {
-        self.credential.password()
-    }
-
-    pub(super) fn set_token(&self, token: String) {
-        *self.token.write().unwrap() = Some(token);
-    }
-
-    pub(super) fn reset_token(&self) {
-        *self.token.write().unwrap() = None;
-    }
-
-    pub(super) fn inject(&self, mut request: Request<()>) -> Request<()> {
-        request.metadata_mut().insert("username", self.credential.username().try_into().unwrap());
-        match &*self.token.read().unwrap() {
-            Some(token) => request.metadata_mut().insert("token", token.try_into().unwrap()),
-            None => request
-                .metadata_mut()
-                .insert("password", self.credential.password().try_into().unwrap()),
-        };
-        request
     }
 }

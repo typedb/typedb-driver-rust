@@ -22,7 +22,8 @@
 use std::{fmt, marker::PhantomData, sync::Arc};
 
 use crate::{
-    common::{Result, TransactionStream, TransactionType},
+    common::{Result, TransactionType},
+    connection::TransactionStream,
     Options, QueryManager,
 };
 

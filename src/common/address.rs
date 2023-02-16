@@ -26,7 +26,7 @@ use tonic::transport::Uri;
 use crate::common::{Error, Result};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct Address {
+pub(crate) struct Address {
     uri: Uri,
 }
 
