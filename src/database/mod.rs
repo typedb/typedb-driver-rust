@@ -19,7 +19,13 @@
  * under the License.
  */
 
-pub mod database;
+mod database;
 mod database_manager;
+mod query;
+mod session;
+mod transaction;
 
-pub use self::{database::Database, database_manager::DatabaseManager};
+pub use self::{
+    database::Database, database_manager::DatabaseManager, session::Session,
+    transaction::Transaction,
+};

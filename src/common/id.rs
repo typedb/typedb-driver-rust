@@ -19,9 +19,39 @@
  * under the License.
  */
 
-pub(crate) mod channel;
-pub(crate) mod message;
-pub(crate) mod stub;
-pub(crate) mod tokio;
+use std::fmt;
 
-pub(crate) use self::message::{DatabaseProto, ReplicaProto};
+use uuid::Uuid;
+
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub struct ID(Vec<u8>);
+
+impl ID {
+    pub(crate) fn generate() -> Self {
+        Uuid::new_v4().as_bytes().to_vec().into()
+    }
+}
+
+impl From<ID> for Vec<u8> {
+    fn from(id: ID) -> Self {
+        id.0
+    }
+}
+
+impl From<Vec<u8>> for ID {
+    fn from(vec: Vec<u8>) -> Self {
+        Self(vec)
+    }
+}
+
+impl fmt::Debug for ID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ID[{}]", self)
+    }
+}
+
+impl fmt::Display for ID {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.iter().try_for_each(|byte| write!(f, "{:02x}", byte))
+    }
+}

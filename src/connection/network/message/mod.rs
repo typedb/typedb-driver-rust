@@ -37,6 +37,7 @@ pub(crate) use self::{
 };
 use crate::{
     common::{Address, SessionID, SessionType},
+    error::InternalError,
     Error, Options, Result,
 };
 
@@ -289,10 +290,12 @@ pub(crate) enum Response {
     },
 }
 
-impl From<server_manager::all::Res> for Response {
-    fn from(server_manager::all::Res { servers }: server_manager::all::Res) -> Self {
-        let servers = servers.into_iter().map(|server| server.address.parse().unwrap()).collect();
-        Response::ServersAll { servers }
+impl TryFrom<server_manager::all::Res> for Response {
+    type Error = Error;
+    fn try_from(server_manager::all::Res { servers }: server_manager::all::Res) -> Result<Self> {
+        let servers =
+            servers.into_iter().map(|server| server.address.parse()).collect::<Result<_>>()?;
+        Ok(Response::ServersAll { servers })
     }
 }
 
@@ -308,9 +311,10 @@ impl From<core_database_manager::create::Res> for Response {
     }
 }
 
-impl From<cluster_database_manager::get::Res> for Response {
-    fn from(res: cluster_database_manager::get::Res) -> Self {
-        Response::DatabaseGet { database: res.database.unwrap().into() }
+impl TryFrom<cluster_database_manager::get::Res> for Response {
+    type Error = Error;
+    fn try_from(res: cluster_database_manager::get::Res) -> Result<Self> {
+        Ok(Response::DatabaseGet { database: res.database.ok_or(InternalError::Foo())?.into() })
     }
 }
 
@@ -372,7 +376,3 @@ impl From<(Sender<transaction::Client>, Streaming<transaction::Server>)> for Res
         Self::TransactionOpen { request_sink, grpc_stream }
     }
 }
-
-// *** //
-
-// *** //

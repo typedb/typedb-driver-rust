@@ -22,57 +22,19 @@
 mod address;
 mod credential;
 pub mod error;
-
-use std::{fmt, time::Duration};
+mod id;
+mod options;
 
 use typedb_protocol::{session as session_proto, transaction as transaction_proto};
-use uuid::Uuid;
 
 pub(crate) use self::address::Address;
-pub use self::{credential::Credential, error::Error};
-
-pub(crate) const POLL_INTERVAL: Duration = Duration::from_millis(3);
-pub(crate) const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
-pub(crate) const PULSE_INTERVAL: Duration = Duration::from_secs(5);
+pub use self::{credential::Credential, error::Error, options::Options};
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
 pub type Result<T = ()> = StdResult<T, Error>;
 
-pub(crate) type RequestID = ID;
-pub(crate) type SessionID = ID;
-
-#[derive(Clone, Eq, Hash, PartialEq)]
-pub struct ID(Vec<u8>);
-
-impl ID {
-    pub(crate) fn generate() -> Self {
-        Uuid::new_v4().as_bytes().to_vec().into()
-    }
-}
-
-impl From<ID> for Vec<u8> {
-    fn from(id: ID) -> Self {
-        id.0
-    }
-}
-
-impl From<Vec<u8>> for ID {
-    fn from(vec: Vec<u8>) -> Self {
-        Self(vec)
-    }
-}
-
-impl fmt::Debug for ID {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ID[{}]", self)
-    }
-}
-
-impl fmt::Display for ID {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.iter().try_for_each(|byte| write!(f, "{:02x}", byte))
-    }
-}
+pub(crate) type RequestID = id::ID;
+pub(crate) type SessionID = id::ID;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum SessionType {

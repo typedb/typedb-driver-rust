@@ -19,14 +19,9 @@
  * under the License.
  */
 
-pub mod answer;
-pub mod common;
-pub mod concept;
-mod connection;
-mod database;
+pub(crate) mod channel;
+pub(crate) mod message;
+pub(crate) mod stub;
+pub(crate) mod transmitter;
 
-pub use self::{
-    common::{error, Credential, Error, Options, Result, SessionType, TransactionType},
-    connection::Connection,
-    database::{Database, DatabaseManager, Session, Transaction},
-};
+pub(crate) use self::message::{DatabaseProto, ReplicaProto};

@@ -62,6 +62,8 @@ error_messages! { InternalError
         1: "Channel is closed",
     SendError() =  // TODO rename
         2: "Channel is closed",
+    Foo() =
+        3: "",
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

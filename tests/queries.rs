@@ -26,13 +26,11 @@ use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
 use tokio::sync::mpsc;
 use typedb_client::{
-    common::{
-        error::ClientError,
-        SessionType::{Data, Schema},
-        TransactionType::{Read, Write},
-    },
     concept::{Attribute, Concept, DateTimeAttribute, StringAttribute, Thing},
+    error::ClientError,
     Connection, Credential, Database, DatabaseManager, Error, Options, Session,
+    SessionType::{Data, Schema},
+    TransactionType::{Read, Write},
 };
 
 const TEST_DATABASE: &str = "test";
@@ -89,7 +87,7 @@ async fn basic(connection: Connection) {
     let session =
         Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
     let transaction = session.transaction(Write).await.unwrap();
-    let answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
+    let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
     let results: Vec<_> = answer_stream.collect().await;
     transaction.commit().await.unwrap();
     assert_eq!(results.len(), 5);
@@ -105,7 +103,7 @@ async fn query_error(connection: Connection) {
     let session =
         Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
     let transaction = session.transaction(Write).await.unwrap();
-    let answer_stream = transaction.query.match_("match $x sub nonexistent-type;").unwrap();
+    let answer_stream = transaction.query().match_("match $x sub nonexistent-type;").unwrap();
     let results: Vec<_> = answer_stream.collect().await;
     assert_eq!(results.len(), 1);
     assert!(results.into_iter().all(|res| res.unwrap_err().to_string().contains("[TYR03]")));
@@ -129,7 +127,7 @@ async fn concurrent_transactions(connection: Connection) {
         tokio::spawn(async move {
             for _ in 0..5 {
                 let transaction = session.transaction(Read).await.unwrap();
-                let mut answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
+                let mut answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
                 while let Some(result) = answer_stream.next().await {
                     sender.send(result).await.unwrap();
                 }
@@ -161,16 +159,16 @@ async fn query_options(connection: Connection) {
         Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
     let transaction = session.transaction(Write).await.unwrap();
     let data = "insert $x isa person, has name 'Alice'; $y isa person, has name 'Bob';";
-    let _ = transaction.query.insert(data);
+    let _ = transaction.query().insert(data);
     transaction.commit().await.unwrap();
 
     let transaction = session.transaction(Read).await.unwrap();
-    let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
+    let age_count = transaction.query().match_aggregate("match $x isa age; count;").await.unwrap();
     assert_eq!(age_count.into_i64(), 0);
 
     let with_inference = Options::new_core().infer(true);
     let transaction = session.transaction_with_options(Read, with_inference).await.unwrap();
-    let age_count = transaction.query.match_aggregate("match $x isa age; count;").await.unwrap();
+    let age_count = transaction.query().match_aggregate("match $x isa age; count;").await.unwrap();
     assert_eq!(age_count.into_i64(), 1);
 }
 
@@ -194,12 +192,12 @@ async fn many_concept_types(connection: Connection) {
         $x isa person, has name "Alice", has date-of-birth 1994-10-03;
         $y isa person, has name "Bob", has date-of-birth 1993-04-17;
         (friend: $x, friend: $y) isa friendship;"#;
-    let _ = transaction.query.insert(data);
+    let _ = transaction.query().insert(data);
     transaction.commit().await.unwrap();
 
     let transaction = session.transaction(Read).await.unwrap();
     let mut answer_stream = transaction
-        .query
+        .query()
         .match_(
             r#"match
         $p isa person, has name $name, has date-of-birth $date-of-birth;
@@ -264,9 +262,9 @@ async fn force_close_session(connection: Connection) {
     let session2 = session.clone();
     session2.force_close();
 
-    // let answer_stream = transaction.query.match_("match $x sub thing;");
+    // let answer_stream = transaction.query().match_("match $x sub thing;");
     // assert!(answer_stream.is_err());
-    // assert!(transaction.query.match_("match $x sub thing;").is_err());
+    // assert!(transaction.query().match_("match $x sub thing;").is_err());
 
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
@@ -290,7 +288,7 @@ async fn streaming_perf(connection: Connection) {
             Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Write).await.unwrap();
         for j in 0..100_000 {
-            drop(transaction.query.insert(format!("insert $x {j} isa age;").as_str()).unwrap());
+            drop(transaction.query().insert(format!("insert $x {j} isa age;").as_str()).unwrap());
         }
         transaction.commit().await.unwrap();
         println!(
@@ -302,7 +300,7 @@ async fn streaming_perf(connection: Connection) {
         let session =
             Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Read).await.unwrap();
-        let mut answer_stream = transaction.query.match_("match $x isa attribute;").unwrap();
+        let mut answer_stream = transaction.query().match_("match $x isa attribute;").unwrap();
         let mut sum: i64 = 0;
         let mut idx = 0;
         while let Some(result) = answer_stream.next().await {
@@ -366,7 +364,7 @@ async fn create_test_database_with_schema(
     let database = databases.get(TEST_DATABASE.into()).await?;
     let session = Session::new(database, Schema).await?;
     let transaction = session.transaction(Write).await?;
-    transaction.query.define(schema).await?;
+    transaction.query().define(schema).await?;
     transaction.commit().await?;
     Ok(())
 }

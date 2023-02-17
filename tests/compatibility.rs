@@ -22,11 +22,9 @@
 use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
 use typedb_client::{
-    common::{
-        SessionType::{Data, Schema},
-        TransactionType::Write,
-    },
     Connection, Database, DatabaseManager, Session,
+    SessionType::{Data, Schema},
+    TransactionType::Write,
 };
 
 const TEST_DATABASE: &str = "test";
@@ -44,7 +42,7 @@ async fn basic_async_std() {
     let session =
         Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
     let transaction = session.transaction(Write).await.unwrap();
-    let answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
+    let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
     let results: Vec<_> = answer_stream.collect().await;
     transaction.commit().await.unwrap();
     assert_eq!(results.len(), 5);
@@ -65,7 +63,7 @@ fn basic_smol() {
         let session =
             Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Write).await.unwrap();
-        let answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
+        let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
         let results: Vec<_> = answer_stream.collect().await;
         transaction.commit().await.unwrap();
         assert_eq!(results.len(), 5);
@@ -87,7 +85,7 @@ fn basic_futures() {
         let session =
             Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Write).await.unwrap();
-        let answer_stream = transaction.query.match_("match $x sub thing;").unwrap();
+        let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
         let results: Vec<_> = answer_stream.collect().await;
         transaction.commit().await.unwrap();
         assert_eq!(results.len(), 5);
@@ -112,7 +110,7 @@ async fn create_test_database_with_schema(
     let database = databases.get(TEST_DATABASE.into()).await?;
     let session = Session::new(database, Schema).await?;
     let transaction = session.transaction(Write).await?;
-    transaction.query.define(schema).await?;
+    transaction.query().define(schema).await?;
     transaction.commit().await?;
     Ok(())
 }

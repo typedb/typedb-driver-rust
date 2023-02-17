@@ -21,19 +21,19 @@
 
 use std::{fmt, marker::PhantomData, sync::Arc};
 
+use super::query::QueryManager;
 use crate::{
     common::{Result, TransactionType},
     connection::TransactionStream,
-    Options, QueryManager,
+    Options,
 };
 
 pub struct Transaction<'a> {
     type_: TransactionType,
     options: Options,
 
+    query: QueryManager,
     transaction_stream: Arc<TransactionStream>,
-
-    pub query: QueryManager,
 
     _lifetime_guard: PhantomData<&'a ()>,
 }
@@ -57,6 +57,10 @@ impl Transaction<'_> {
             transaction_stream,
             _lifetime_guard: PhantomData::default(),
         })
+    }
+
+    pub fn query(&self) -> &QueryManager {
+        &self.query
     }
 
     pub async fn commit(self) -> Result {

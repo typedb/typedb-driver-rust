@@ -32,7 +32,7 @@ use tokio::time::sleep;
 use crate::{
     common::{error::ClientError, Address, Error, Result, SessionID},
     connection::{
-        rpc::{DatabaseProto, ReplicaProto},
+        network::{DatabaseProto, ReplicaProto},
         ServerConnection, TransactionStream,
     },
     Connection, Options, SessionType, TransactionType,

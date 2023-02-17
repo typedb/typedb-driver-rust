@@ -20,8 +20,28 @@
  */
 
 mod connection;
-pub(crate) mod rpc;
+pub(crate) mod network;
+mod runtime;
 mod transaction;
+
+use crossbeam::channel::Sender as SyncSender;
+use tokio::sync::oneshot::Sender as AsyncOneshotSender;
 
 pub use self::connection::Connection;
 pub(crate) use self::{connection::ServerConnection, transaction::TransactionStream};
+use crate::common::{error::InternalError, Result};
+
+#[derive(Debug)]
+enum OneShotSender<T> {
+    Async(AsyncOneshotSender<Result<T>>),
+    Blocking(SyncSender<Result<T>>),
+}
+
+impl<T> OneShotSender<T> {
+    fn send(self, response: Result<T>) -> Result {
+        match self {
+            Self::Async(sink) => sink.send(response).map_err(|_| InternalError::SendError().into()),
+            Self::Blocking(sink) => sink.send(response).map_err(Into::into),
+        }
+    }
+}

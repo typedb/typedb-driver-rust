@@ -21,7 +21,7 @@
 
 use std::{fmt, str::FromStr};
 
-use tonic::transport::Uri;
+use http::Uri;
 
 use crate::common::{Error, Result};
 

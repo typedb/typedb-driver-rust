@@ -26,48 +26,33 @@ use std::{
     time::Duration,
 };
 
-use crossbeam::channel::{bounded as bounded_blocking, Sender as SyncSender};
-use futures::TryFutureExt;
+use crossbeam::channel::bounded as bounded_blocking;
 use tokio::{
     select,
     sync::{
         mpsc::{unbounded_channel as unbounded_async, UnboundedReceiver, UnboundedSender},
-        oneshot::{channel as oneshot_async, Sender as AsyncOneshotSender},
+        oneshot::channel as oneshot_async,
     },
     time::{sleep_until, Instant},
 };
 
 use super::{
-    rpc::{
-        channel::{open_encrypted_channel, open_plaintext_channel, GRPCChannel},
+    network::{
+        channel::open_encrypted_channel,
         message::{DatabaseProto, Request, Response, TransactionRequest},
         stub::RPCStub,
-        tokio::BackgroundRuntime,
+        transmitter::{start_grpc_worker_encrypted, start_grpc_worker_plaintext},
     },
     TransactionStream,
 };
 use crate::{
     common::{
-        error::{ClientError, Error, InternalError},
-        Address, Result, SessionID, SessionType, TransactionType, PULSE_INTERVAL,
+        error::{ClientError, Error},
+        Address, Result, SessionID, SessionType, TransactionType,
     },
+    connection::{runtime::BackgroundRuntime, OneShotSender},
     Credential, Options,
 };
-
-#[derive(Debug)]
-enum OneShotSender<T> {
-    Async(AsyncOneshotSender<Result<T>>),
-    Blocking(SyncSender<Result<T>>),
-}
-
-impl<T> OneShotSender<T> {
-    fn send(self, response: Result<T>) -> Result {
-        match self {
-            Self::Async(sink) => sink.send(response).map_err(|_| InternalError::SendError().into()),
-            Self::Blocking(sink) => sink.send(response).map_err(Into::into),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub struct Connection {
@@ -89,7 +74,11 @@ async fn fetch_current_addresses(
         let (channel, callcreds) = open_encrypted_channel(address.clone(), credential.clone())?;
         match RPCStub::new(address, channel, Some(callcreds)).await?.validated().await {
             Ok(mut client) => {
-                return match client.servers_all(Request::ServersAll.try_into()?).await?.into() {
+                return match client
+                    .servers_all(Request::ServersAll.try_into()?)
+                    .await?
+                    .try_into()?
+                {
                     Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
                     _ => unreachable!(),
                 }
@@ -361,96 +350,12 @@ impl ServerConnection {
     }
 }
 
-pub(crate) async fn send_request<Channel: GRPCChannel>(
-    mut rpc: RPCStub<Channel>,
-    request: Request,
-) -> Result<Response> {
-    match request {
-        Request::ServersAll => rpc.servers_all(request.try_into()?).await.map(Response::from),
-
-        Request::DatabasesContains { .. } => {
-            rpc.databases_contains(request.try_into()?).await.map(Response::from)
-        }
-        Request::DatabaseCreate { .. } => {
-            rpc.databases_create(request.try_into()?).await.map(Response::from)
-        }
-        Request::DatabaseGet { .. } => {
-            rpc.databases_get(request.try_into()?).await.map(Response::from)
-        }
-        Request::DatabasesAll => rpc.databases_all(request.try_into()?).await.map(Response::from),
-
-        Request::DatabaseDelete { .. } => {
-            rpc.database_delete(request.try_into()?).await.map(Response::from)
-        }
-        Request::DatabaseSchema { .. } => {
-            rpc.database_schema(request.try_into()?).await.map(Response::from)
-        }
-        Request::DatabaseTypeSchema { .. } => {
-            rpc.database_type_schema(request.try_into()?).await.map(Response::from)
-        }
-        Request::DatabaseRuleSchema { .. } => {
-            rpc.database_rule_schema(request.try_into()?).await.map(Response::from)
-        }
-
-        Request::SessionOpen { .. } => {
-            rpc.session_open(request.try_into()?).await.map(Response::from)
-        }
-        Request::SessionPulse { .. } => {
-            rpc.session_pulse(request.try_into()?).await.map(Response::from)
-        }
-        Request::SessionClose { .. } => {
-            rpc.session_close(request.try_into()?).map_ok(Response::from).await
-        }
-
-        Request::Transaction(transaction_request) => {
-            rpc.transaction(transaction_request.into()).await.map(Response::from)
-        }
-    }
-}
-
-async fn start_grpc_worker_plaintext(
-    address: Address,
-    request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
-    shutdown_signal: UnboundedReceiver<()>,
-) {
-    let channel = open_plaintext_channel(address.clone());
-    let rpc = RPCStub::new(address.clone(), channel, None).await.unwrap();
-    grpc_worker(rpc, request_source, shutdown_signal).await;
-}
-
-async fn start_grpc_worker_encrypted(
-    address: Address,
-    credential: Credential,
-    request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
-    shutdown_signal: UnboundedReceiver<()>,
-) {
-    let (channel, callcreds) = open_encrypted_channel(address.clone(), credential).unwrap();
-    let rpc = RPCStub::new(address.clone(), channel, Some(callcreds)).await.unwrap();
-    grpc_worker(rpc, request_source, shutdown_signal).await;
-}
-
-async fn grpc_worker<Channel: GRPCChannel>(
-    rpc: RPCStub<Channel>,
-    mut request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
-    mut shutdown_signal: UnboundedReceiver<()>,
-) {
-    while let Some((request, response_sink)) = select! {
-        request = request_source.recv() => request,
-        _ = shutdown_signal.recv() => None,
-    } {
-        let rpc = rpc.clone();
-        tokio::spawn(async move {
-            let response = send_request(rpc, request).await;
-            response_sink.send(response).ok();
-        });
-    }
-}
-
 async fn session_pulse(
     session_id: SessionID,
     request_sink: UnboundedSender<(Request, OneShotSender<Response>)>,
     mut shutdown_source: UnboundedReceiver<()>,
 ) {
+    const PULSE_INTERVAL: Duration = Duration::from_secs(5);
     let mut next_pulse = Instant::now();
     loop {
         select! {

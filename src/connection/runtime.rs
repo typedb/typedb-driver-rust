@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{future::Future, thread, thread::JoinHandle};
+use std::{future::Future, thread, thread::JoinHandle, time::Duration};
 
 use crossbeam::{atomic::AtomicCell, channel::bounded as bounded_blocking};
 use tokio::{
@@ -27,7 +27,7 @@ use tokio::{
     sync::mpsc::{unbounded_channel as unbounded_async, UnboundedSender},
 };
 
-use crate::common::{Result, POLL_INTERVAL};
+use crate::common::Result;
 
 pub(crate) struct BackgroundRuntime {
     async_runtime_handle: runtime::Handle,
@@ -87,7 +87,7 @@ impl Drop for BackgroundRuntime {
         if self.shutdown_sink.send(()).is_ok() {
             while !self.bg.is_finished() {
                 // FIXME wait on signal instead
-                thread::sleep(POLL_INTERVAL)
+                thread::sleep(Duration::from_millis(3))
             }
         }
     }

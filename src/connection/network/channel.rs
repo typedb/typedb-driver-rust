@@ -124,10 +124,6 @@ impl CallCredentials {
         self.credential.username()
     }
 
-    pub(crate) fn password(&self) -> &str {
-        self.credential.password()
-    }
-
     pub(crate) fn set_token(&self, token: String) {
         *self.token.write().unwrap() = Some(token);
     }

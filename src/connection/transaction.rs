@@ -24,6 +24,7 @@ use std::{
     iter,
     ops::DerefMut,
     sync::{Arc, RwLock},
+    time::Duration,
 };
 
 use crossbeam::{atomic::AtomicCell, channel::Sender as SyncSender};
@@ -41,13 +42,13 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::Streaming;
 use typedb_protocol::transaction::{self, server::Server, stream::State};
 
-use super::rpc::{
-    message::{QueryRequest, QueryResponse, Response, TransactionRequest, TransactionResponse},
-    tokio::BackgroundRuntime,
+use super::network::message::{
+    QueryRequest, QueryResponse, Response, TransactionRequest, TransactionResponse,
 };
 use crate::{
     answer::{ConceptMap, Numeric},
-    common::{error::ClientError, RequestID, Result, DISPATCH_INTERVAL},
+    common::{error::ClientError, RequestID, Result},
+    connection::runtime::BackgroundRuntime,
     Options, TransactionType,
 };
 
@@ -253,6 +254,8 @@ async fn buffer(
     mut shutdown_signal: UnboundedReceiver<()>,
 ) {
     const MAX_GRPC_MESSAGE_LEN: usize = 1_000_000;
+    const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
+
     let mut request_buffer = TransactionRequestBuffer::default();
     let mut next_dispatch = Instant::now() + DISPATCH_INTERVAL;
     loop {
