@@ -26,6 +26,7 @@ use typedb_protocol::transaction;
 use super::{QueryRequest, QueryResponse};
 use crate::{
     common::{error::ClientError, RequestID, SessionID},
+    connection::network::proto::IntoProto,
     Options, TransactionType,
 };
 
@@ -53,8 +54,8 @@ impl From<TransactionRequest> for transaction::Req {
             TransactionRequest::Open { session_id, transaction_type, options, network_latency } => {
                 transaction::req::Req::OpenReq(transaction::open::Req {
                     session_id: session_id.into(),
-                    r#type: transaction_type.to_proto().into(),
-                    options: Some(options.to_proto()),
+                    r#type: transaction_type.into_proto().into(),
+                    options: Some(options.into_proto()),
                     network_latency_millis: network_latency.as_millis() as i32,
                 })
             }

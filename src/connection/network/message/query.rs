@@ -24,6 +24,7 @@ use typedb_protocol::query_manager;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::Result,
+    connection::network::proto::{IntoProto, TryFromProto},
     Options,
 };
 
@@ -98,7 +99,7 @@ impl From<QueryRequest> for query_manager::Req {
 
             _ => todo!(),
         };
-        query_manager::Req { req: Some(req), options: Some(options.to_proto()) }
+        query_manager::Req { req: Some(req), options: Some(options.into_proto()) }
     }
 }
 
@@ -109,7 +110,9 @@ impl From<query_manager::Res> for QueryResponse {
             Some(query_manager::res::Res::UndefineRes(_)) => QueryResponse::Undefine,
             Some(query_manager::res::Res::DeleteRes(_)) => QueryResponse::Delete,
             Some(query_manager::res::Res::MatchAggregateRes(res)) => {
-                QueryResponse::MatchAggregate { answer: res.answer.unwrap().try_into().unwrap() }
+                QueryResponse::MatchAggregate {
+                    answer: Numeric::try_from_proto(res.answer.unwrap()).unwrap(),
+                }
             }
             _ => todo!(),
         }
@@ -122,7 +125,7 @@ impl From<query_manager::ResPart> for QueryResponse {
                 answers: res
                     .answers
                     .into_iter()
-                    .map(ConceptMap::from_proto)
+                    .map(ConceptMap::try_from_proto)
                     .collect::<Result<_>>()
                     .unwrap(),
             },
@@ -130,7 +133,7 @@ impl From<query_manager::ResPart> for QueryResponse {
                 answers: res
                     .answers
                     .into_iter()
-                    .map(ConceptMap::from_proto)
+                    .map(ConceptMap::try_from_proto)
                     .collect::<Result<_>>()
                     .unwrap(),
             },

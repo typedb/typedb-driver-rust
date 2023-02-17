@@ -21,17 +21,6 @@
 
 use std::time::Duration;
 
-use typedb_protocol::{
-    options::{
-        ExplainOpt::Explain, InferOpt::Infer, ParallelOpt::Parallel, PrefetchOpt::Prefetch,
-        PrefetchSizeOpt::PrefetchSize, ReadAnyReplicaOpt::ReadAnyReplica,
-        SchemaLockAcquireTimeoutOpt::SchemaLockAcquireTimeoutMillis,
-        SessionIdleTimeoutOpt::SessionIdleTimeoutMillis, TraceInferenceOpt::TraceInference,
-        TransactionTimeoutOpt::TransactionTimeoutMillis,
-    },
-    Options as OptionsProto,
-};
-
 #[derive(Clone, Debug, Default)]
 pub struct Options {
     pub infer: Option<bool>,
@@ -49,27 +38,6 @@ pub struct Options {
 impl Options {
     pub fn new_core() -> Options {
         Options::default()
-    }
-
-    pub(crate) fn to_proto(&self) -> OptionsProto {
-        OptionsProto {
-            infer_opt: self.infer.map(Infer),
-            trace_inference_opt: self.trace_inference.map(TraceInference),
-            explain_opt: self.explain.map(Explain),
-            parallel_opt: self.parallel.map(Parallel),
-            prefetch_size_opt: self.prefetch_size.map(PrefetchSize),
-            prefetch_opt: self.prefetch.map(Prefetch),
-            session_idle_timeout_opt: self
-                .session_idle_timeout
-                .map(|val| SessionIdleTimeoutMillis(val.as_millis() as i32)),
-            transaction_timeout_opt: self
-                .transaction_timeout
-                .map(|val| TransactionTimeoutMillis(val.as_millis() as i32)),
-            schema_lock_acquire_timeout_opt: self
-                .schema_lock_acquire_timeout
-                .map(|val| SchemaLockAcquireTimeoutMillis(val.as_millis() as i32)),
-            read_any_replica_opt: self.read_any_replica.map(ReadAnyReplica),
-        }
     }
 
     pub fn infer(mut self, value: bool) -> Self {

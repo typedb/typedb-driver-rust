@@ -22,6 +22,7 @@
 pub(crate) mod address;
 pub(super) mod channel;
 pub(super) mod message;
+mod proto;
 pub(super) mod stub;
 pub(super) mod transmitter;
 

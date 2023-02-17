@@ -30,8 +30,10 @@ use typedb_protocol::{
 
 use super::TransactionRequest;
 use crate::{
-    common::SessionID, connection::network::address::Address, error::InternalError, Error, Options,
-    Result, SessionType,
+    common::SessionID,
+    connection::network::{address::Address, proto::IntoProto},
+    error::InternalError,
+    Error, Options, Result, SessionType,
 };
 
 #[derive(Debug)]
@@ -197,8 +199,8 @@ impl TryFrom<Request> for session::open::Req {
             Request::SessionOpen { database_name, session_type, options } => {
                 Ok(session::open::Req {
                     database: database_name,
-                    r#type: session_type.to_proto().into(),
-                    options: Some(options.to_proto()),
+                    r#type: session_type.into_proto().into(),
+                    options: Some(options.into_proto()),
                 })
             }
             _ => unreachable!(),

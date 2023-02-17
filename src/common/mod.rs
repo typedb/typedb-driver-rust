@@ -24,8 +24,6 @@ pub mod error;
 mod id;
 mod options;
 
-use typedb_protocol::{session as session_proto, transaction as transaction_proto};
-
 pub use self::{credential::Credential, error::Error, options::Options};
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
@@ -40,26 +38,8 @@ pub enum SessionType {
     Schema = 1,
 }
 
-impl SessionType {
-    pub(crate) fn to_proto(self) -> session_proto::Type {
-        match self {
-            SessionType::Data => session_proto::Type::Data,
-            SessionType::Schema => session_proto::Type::Schema,
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TransactionType {
     Read = 0,
     Write = 1,
-}
-
-impl TransactionType {
-    pub(crate) fn to_proto(self) -> transaction_proto::Type {
-        match self {
-            TransactionType::Read => transaction_proto::Type::Read,
-            TransactionType::Write => transaction_proto::Type::Write,
-        }
-    }
 }
