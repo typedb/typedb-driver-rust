@@ -19,7 +19,6 @@
  * under the License.
  */
 
-mod address;
 mod credential;
 pub mod error;
 mod id;
@@ -27,7 +26,6 @@ mod options;
 
 use typedb_protocol::{session as session_proto, transaction as transaction_proto};
 
-pub(crate) use self::address::Address;
 pub use self::{credential::Credential, error::Error, options::Options};
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;

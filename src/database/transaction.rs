@@ -48,7 +48,7 @@ impl fmt::Debug for Transaction<'_> {
 }
 
 impl Transaction<'_> {
-    pub(crate) fn new(transaction_stream: TransactionStream) -> Result<Self> {
+    pub(super) fn new(transaction_stream: TransactionStream) -> Result<Self> {
         let transaction_stream = Arc::new(transaction_stream);
         Ok(Transaction {
             type_: transaction_stream.type_(),

@@ -22,4 +22,5 @@
 mod concept_map;
 mod numeric;
 
-pub use self::{concept_map::ConceptMap, numeric::Numeric};
+pub(crate) use self::concept_map::ConceptMap;
+pub use self::numeric::Numeric;

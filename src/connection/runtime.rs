@@ -19,7 +19,11 @@
  * under the License.
  */
 
-use std::{future::Future, thread, thread::JoinHandle, time::Duration};
+use std::{
+    future::Future,
+    thread::{self, JoinHandle},
+    time::Duration,
+};
 
 use crossbeam::{atomic::AtomicCell, channel::bounded as bounded_blocking};
 use tokio::{

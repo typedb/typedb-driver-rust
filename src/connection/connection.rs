@@ -26,31 +26,28 @@ use std::{
     time::Duration,
 };
 
-use crossbeam::channel::bounded as bounded_blocking;
 use tokio::{
     select,
-    sync::{
-        mpsc::{unbounded_channel as unbounded_async, UnboundedReceiver, UnboundedSender},
-        oneshot::channel as oneshot_async,
-    },
+    sync::mpsc::{unbounded_channel as unbounded_async, UnboundedReceiver, UnboundedSender},
     time::{sleep_until, Instant},
 };
 
 use super::{
     network::{
+        address::Address,
         channel::open_encrypted_channel,
         message::{DatabaseProto, Request, Response, TransactionRequest},
         stub::RPCStub,
-        transmitter::{start_grpc_worker_encrypted, start_grpc_worker_plaintext},
+        transmitter::RPCTransmitter,
     },
     TransactionStream,
 };
 use crate::{
     common::{
         error::{ClientError, Error},
-        Address, Result, SessionID, SessionType, TransactionType,
+        Result, SessionID, SessionType, TransactionType,
     },
-    connection::{runtime::BackgroundRuntime, OneShotSender},
+    connection::{network::transmitter::TransactionTransmitter, runtime::BackgroundRuntime},
     Credential, Options,
 };
 
@@ -163,8 +160,7 @@ pub(crate) struct ServerConnection {
     address: Address,
     background_runtime: Arc<BackgroundRuntime>,
     open_sessions: Arc<Mutex<HashMap<SessionID, UnboundedSender<()>>>>,
-    request_sink: UnboundedSender<(Request, OneShotSender<Response>)>,
-    shutdown_sink: UnboundedSender<()>,
+    request_transmitter: Arc<RPCTransmitter>,
 }
 
 impl fmt::Debug for ServerConnection {
@@ -175,19 +171,13 @@ impl fmt::Debug for ServerConnection {
 
 impl ServerConnection {
     fn new_plaintext(background_runtime: Arc<BackgroundRuntime>, address: Address) -> Result<Self> {
-        let (request_sink, request_source) = unbounded_async();
-        let (shutdown_sink, shutdown_source) = unbounded_async();
-        background_runtime.spawn(start_grpc_worker_plaintext(
-            address.clone(),
-            request_source,
-            shutdown_source,
-        ));
+        let request_transmitter =
+            Arc::new(RPCTransmitter::start_plaintext(address.clone(), &background_runtime));
         Ok(Self {
             address,
             background_runtime,
             open_sessions: Default::default(),
-            request_sink,
-            shutdown_sink,
+            request_transmitter,
         })
     }
 
@@ -196,20 +186,16 @@ impl ServerConnection {
         address: Address,
         credential: Credential,
     ) -> Result<Self> {
-        let (shutdown_sink, shutdown_source) = unbounded_async();
-        let (request_sink, request_source) = unbounded_async();
-        background_runtime.spawn(start_grpc_worker_encrypted(
+        let request_transmitter = Arc::new(RPCTransmitter::start_encrypted(
             address.clone(),
             credential,
-            request_source,
-            shutdown_source,
+            &background_runtime,
         ));
         Ok(Self {
             address,
             background_runtime,
             open_sessions: Default::default(),
-            request_sink,
-            shutdown_sink,
+            request_transmitter,
         })
     }
 
@@ -221,18 +207,14 @@ impl ServerConnection {
         if !self.background_runtime.is_open() {
             return Err(ClientError::ClientIsClosed().into());
         }
-        let (response_sink, response) = oneshot_async();
-        self.request_sink.send((request, OneShotSender::Async(response_sink)))?;
-        response.await?
+        self.request_transmitter.request_async(request).await
     }
 
     fn request_blocking(&self, request: Request) -> Result<Response> {
         if !self.background_runtime.is_open() {
             return Err(ClientError::ClientIsClosed().into());
         }
-        let (response_sink, response) = bounded_blocking(0);
-        self.request_sink.send((request, OneShotSender::Blocking(response_sink)))?;
-        response.recv()?
+        self.request_transmitter.request_blocking(request)
     }
 
     pub(crate) fn force_close(&self) {
@@ -241,7 +223,7 @@ impl ServerConnection {
         for session_id in session_ids.into_iter() {
             self.close_session(session_id).ok();
         }
-        self.shutdown_sink.send(()).ok();
+        self.request_transmitter.force_close();
     }
 
     pub(crate) async fn database_exists(&self, database_name: String) -> Result<bool> {
@@ -314,7 +296,7 @@ impl ServerConnection {
                 self.open_sessions.lock().unwrap().insert(session_id.clone(), shutdown_sink);
                 self.background_runtime.spawn(session_pulse(
                     session_id.clone(),
-                    self.request_sink.clone(),
+                    self.request_transmitter.clone(),
                     shutdown_source,
                 ));
                 Ok((session_id, server_duration))
@@ -346,13 +328,14 @@ impl ServerConnection {
                 network_latency,
             }))
             .await?;
-        Ok(TransactionStream::new(&self.background_runtime, transaction_type, options, response))
+        let transmitter = TransactionTransmitter::new(&self.background_runtime, response);
+        Ok(TransactionStream::new(transaction_type, options, transmitter))
     }
 }
 
 async fn session_pulse(
     session_id: SessionID,
-    request_sink: UnboundedSender<(Request, OneShotSender<Response>)>,
+    request_transmitter: Arc<RPCTransmitter>,
     mut shutdown_source: UnboundedReceiver<()>,
 ) {
     const PULSE_INTERVAL: Duration = Duration::from_secs(5);
@@ -360,14 +343,10 @@ async fn session_pulse(
     loop {
         select! {
             _ = sleep_until(next_pulse) => {
-                let (response_sink, response) = oneshot_async();
-                request_sink
-                    .send((
-                        Request::SessionPulse { session_id: session_id.clone() },
-                        OneShotSender::Async(response_sink),
-                    ))
-                    .unwrap();
-                response.await.unwrap().ok();
+                request_transmitter
+                    .request_async(Request::SessionPulse { session_id: session_id.clone() })
+                    .await
+                    .ok();
                 next_pulse += PULSE_INTERVAL;
             }
             _ = shutdown_source.recv() => break,

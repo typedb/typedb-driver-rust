@@ -32,8 +32,9 @@ use tonic::{
     Request, Status,
 };
 
+use super::address::Address;
 use crate::{
-    common::{Address, Result, StdResult},
+    common::{Result, StdResult},
     Credential,
 };
 

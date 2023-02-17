@@ -36,8 +36,11 @@ use typedb_protocol::{
     type_db_cluster_client::TypeDbClusterClient as ClusterGRPC, ClusterDatabase,
 };
 
-use super::channel::{CallCredentials, GRPCChannel};
-use crate::common::{error::ClientError, Address, Error, Result, StdResult};
+use super::{
+    address::Address,
+    channel::{CallCredentials, GRPCChannel},
+};
+use crate::common::{error::ClientError, Error, Result, StdResult};
 
 type TonicResult<T> = StdResult<Response<T>, Status>;
 

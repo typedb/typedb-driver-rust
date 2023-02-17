@@ -19,9 +19,10 @@
  * under the License.
  */
 
-pub(crate) mod channel;
-pub(crate) mod message;
-pub(crate) mod stub;
-pub(crate) mod transmitter;
+pub(crate) mod address;
+pub(super) mod channel;
+pub(super) mod message;
+pub(super) mod stub;
+pub(super) mod transmitter;
 
 pub(crate) use self::message::{DatabaseProto, ReplicaProto};

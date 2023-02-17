@@ -19,8 +19,10 @@
  * under the License.
  */
 
-pub mod answer;
-pub mod common;
+extern crate core;
+
+mod answer;
+mod common;
 pub mod concept;
 mod connection;
 mod database;

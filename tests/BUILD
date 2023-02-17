@@ -41,11 +41,13 @@ rust_test(
 
 rust_test(
     name = "compatibility",
-    srcs = ["compatibility"],
+    srcs = ["compatibility.rs"],
     deps = [
         "//:typedb_client",
+        "@crates//:async-std",
         "@crates//:futures",
         "@crates//:serial_test",
+        "@crates//:smol",
     ],
 )
 

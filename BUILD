@@ -36,6 +36,7 @@ rust_library(
         "@crates//:chrono",
         "@crates//:crossbeam",
         "@crates//:futures",
+        "@crates//:http",
         "@crates//:itertools",
         "@crates//:log",
         "@crates//:prost",

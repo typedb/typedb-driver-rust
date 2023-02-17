@@ -22,7 +22,6 @@
 use std::time::Duration;
 
 use typedb_protocol::transaction;
-pub(crate) use typedb_protocol::transaction::{Client, Server};
 
 use super::{QueryRequest, QueryResponse};
 use crate::{

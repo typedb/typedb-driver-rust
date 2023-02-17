@@ -30,9 +30,9 @@ use log::debug;
 use tokio::time::sleep;
 
 use crate::{
-    common::{error::ClientError, Address, Error, Result, SessionID},
+    common::{error::ClientError, Error, Result, SessionID},
     connection::{
-        network::{DatabaseProto, ReplicaProto},
+        network::{address::Address, DatabaseProto, ReplicaProto},
         ServerConnection, TransactionStream,
     },
     Connection, Options, SessionType, TransactionType,
