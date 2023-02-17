@@ -19,10 +19,12 @@
  * under the License.
  */
 
+use std::path::PathBuf;
+
 use futures::{StreamExt, TryFutureExt};
 use serial_test::serial;
 use typedb_client::{
-    Connection, Database, DatabaseManager, Session,
+    Connection, Credential, Database, DatabaseManager, Session,
     SessionType::{Data, Schema},
     TransactionType::Write,
 };
@@ -32,7 +34,7 @@ const TEST_DATABASE: &str = "test";
 #[async_std::test]
 #[serial]
 async fn basic_async_std() {
-    let connection = new_core_connection().unwrap();
+    let connection = new_cluster_connection().unwrap();
     create_test_database_with_schema(connection.clone(), "define person sub entity;")
         .await
         .unwrap();
@@ -53,7 +55,7 @@ async fn basic_async_std() {
 #[serial]
 fn basic_smol() {
     smol::block_on(async {
-        let connection = new_core_connection().unwrap();
+        let connection = new_cluster_connection().unwrap();
         create_test_database_with_schema(connection.clone(), "define person sub entity;")
             .await
             .unwrap();
@@ -75,7 +77,7 @@ fn basic_smol() {
 #[serial]
 fn basic_futures() {
     futures::executor::block_on(async {
-        let connection = new_core_connection().unwrap();
+        let connection = new_cluster_connection().unwrap();
         create_test_database_with_schema(connection.clone(), "define person sub entity;")
             .await
             .unwrap();
@@ -93,8 +95,19 @@ fn basic_futures() {
     });
 }
 
-fn new_core_connection() -> typedb_client::Result<Connection> {
-    Connection::new_plaintext("127.0.0.1:1729")
+fn new_cluster_connection() -> typedb_client::Result<Connection> {
+    Connection::from_init(
+        &["localhost:11729", "localhost:21729", "localhost:31729"],
+        Credential::with_tls(
+            "admin",
+            "password",
+            Some(&PathBuf::from(
+                std::env::var("ROOT_CA").expect(
+                    "ROOT_CA environment variable needs to be set for cluster tests to run",
+                ),
+            )),
+        ),
+    )
 }
 
 async fn create_test_database_with_schema(

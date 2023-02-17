@@ -23,11 +23,11 @@ use std::{
     fmt,
     future::Future,
     sync::RwLock,
+    thread::sleep,
     time::{Duration, Instant},
 };
 
 use log::debug;
-use tokio::time::sleep;
 
 use crate::{
     common::{error::ClientError, Error, Result, SessionID},
@@ -194,7 +194,8 @@ impl Database {
     }
 
     async fn wait_for_primary_replica_selection() {
-        sleep(Self::WAIT_FOR_PRIMARY_REPLICA_SELECTION).await;
+        // FIXME blocking sleep! Can't do agnostic async sleep.
+        sleep(Self::WAIT_FOR_PRIMARY_REPLICA_SELECTION);
     }
 }
 

@@ -272,7 +272,7 @@ impl TransactionTransmitter {
     }
 }
 
-pub(crate) async fn transaction_worker(
+async fn transaction_worker(
     queue_sink: UnboundedSender<(TransactionRequest, Option<TransactionCallback>)>,
     request_source: UnboundedReceiver<(TransactionRequest, Option<TransactionCallback>)>,
     request_sink: SyncSender<transaction::Client>,
