@@ -257,14 +257,14 @@ async fn force_close_session(connection: Connection) {
     let session = Arc::new(
         Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap(),
     );
-    let _transaction = session.transaction(Write).await.unwrap();
+    let transaction = session.transaction(Write).await.unwrap();
 
     let session2 = session.clone();
     session2.force_close();
 
-    // let answer_stream = transaction.query().match_("match $x sub thing;");
-    // assert!(answer_stream.is_err());
-    // assert!(transaction.query().match_("match $x sub thing;").is_err());
+    let answer_stream = transaction.query().match_("match $x sub thing;");
+    assert!(answer_stream.is_err());
+    assert!(transaction.query().match_("match $x sub thing;").is_err());
 
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
