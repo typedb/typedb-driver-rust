@@ -236,7 +236,7 @@ impl TransactionTransmitter {
         let (buffer_sink, buffer_source) = unbounded_async();
         let (shutdown_sink, shutdown_source) = unbounded_async();
         let is_open = Arc::new(AtomicCell::new(true));
-        background_runtime.spawn(transaction_worker(
+        background_runtime.spawn(Self::start_workers(
             buffer_sink.clone(),
             buffer_source,
             request_sink,
@@ -270,59 +270,82 @@ impl TransactionTransmitter {
         self.request_sink.send((req, Some(TransactionCallback::Streamed(res_part_sink)))).unwrap();
         Ok(UnboundedReceiverStream::new(recv).map_ok(Into::into))
     }
-}
 
-async fn transaction_worker(
-    queue_sink: UnboundedSender<(TransactionRequest, Option<TransactionCallback>)>,
-    request_source: UnboundedReceiver<(TransactionRequest, Option<TransactionCallback>)>,
-    request_sink: SyncSender<transaction::Client>,
-    grpc_stream: Streaming<transaction::Server>,
-    is_open: Arc<AtomicCell<bool>>,
-    shutdown_signal: UnboundedReceiver<()>,
-) {
-    let listener = Listener { request_sink: queue_sink, listeners: Default::default(), is_open };
-    tokio::spawn(buffer(request_source, request_sink, listener.clone(), shutdown_signal));
-    tokio::spawn(transaction_listener(grpc_stream, listener));
-}
+    async fn start_workers(
+        queue_sink: UnboundedSender<(TransactionRequest, Option<TransactionCallback>)>,
+        queue_source: UnboundedReceiver<(TransactionRequest, Option<TransactionCallback>)>,
+        request_sink: SyncSender<transaction::Client>,
+        grpc_stream: Streaming<transaction::Server>,
+        is_open: Arc<AtomicCell<bool>>,
+        shutdown_signal: UnboundedReceiver<()>,
+    ) {
+        let collector =
+            ResponseCollector { request_sink: queue_sink, callbacks: Default::default(), is_open };
+        tokio::spawn(Self::dispatch_loop(
+            queue_source,
+            request_sink,
+            collector.clone(),
+            shutdown_signal,
+        ));
+        tokio::spawn(Self::listen_loop(grpc_stream, collector));
+    }
 
-async fn buffer(
-    mut request_source: UnboundedReceiver<(TransactionRequest, Option<TransactionCallback>)>,
-    grpc_sink: SyncSender<transaction::Client>,
-    mut listener: Listener,
-    mut shutdown_signal: UnboundedReceiver<()>,
-) {
-    const MAX_GRPC_MESSAGE_LEN: usize = 1_000_000;
-    const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
+    async fn dispatch_loop(
+        mut request_source: UnboundedReceiver<(TransactionRequest, Option<TransactionCallback>)>,
+        grpc_sink: SyncSender<transaction::Client>,
+        mut collector: ResponseCollector,
+        mut shutdown_signal: UnboundedReceiver<()>,
+    ) {
+        const MAX_GRPC_MESSAGE_LEN: usize = 1_000_000;
+        const DISPATCH_INTERVAL: Duration = Duration::from_millis(3);
 
-    let mut request_buffer = TransactionRequestBuffer::default();
-    let mut next_dispatch = Instant::now() + DISPATCH_INTERVAL;
-    loop {
-        select! { biased;
-            _ = shutdown_signal.recv() => {
-                if !request_buffer.is_empty() {
-                    grpc_sink.send(request_buffer.take()).unwrap();
-                }
-                break;
-            }
-            _ = sleep_until(next_dispatch) => {
-                if !request_buffer.is_empty() {
-                    grpc_sink.send(request_buffer.take()).unwrap();
-                }
-                next_dispatch = Instant::now() + DISPATCH_INTERVAL;
-            }
-            recv = request_source.recv() => {
-                if let Some((request, callback)) = recv {
-                    let request: transaction::Req = request.into();
-                    if let Some(callback) = callback {
-                        listener.register(request.req_id.clone().into(), callback);
-                    }
-                    if request_buffer.len() + request.encoded_len() > MAX_GRPC_MESSAGE_LEN {
+        let mut request_buffer = TransactionRequestBuffer::default();
+        let mut next_dispatch = Instant::now() + DISPATCH_INTERVAL;
+        loop {
+            select! { biased;
+                _ = shutdown_signal.recv() => {
+                    if !request_buffer.is_empty() {
                         grpc_sink.send(request_buffer.take()).unwrap();
                     }
-                    request_buffer.push(request);
-                } else {
                     break;
                 }
+                _ = sleep_until(next_dispatch) => {
+                    if !request_buffer.is_empty() {
+                        grpc_sink.send(request_buffer.take()).unwrap();
+                    }
+                    next_dispatch = Instant::now() + DISPATCH_INTERVAL;
+                }
+                recv = request_source.recv() => {
+                    if let Some((request, callback)) = recv {
+                        let request: transaction::Req = request.into();
+                        if let Some(callback) = callback {
+                            collector.register(request.req_id.clone().into(), callback);
+                        }
+                        if request_buffer.len() + request.encoded_len() > MAX_GRPC_MESSAGE_LEN {
+                            grpc_sink.send(request_buffer.take()).unwrap();
+                        }
+                        request_buffer.push(request);
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    async fn listen_loop(
+        mut grpc_source: Streaming<transaction::Server>,
+        collector: ResponseCollector,
+    ) {
+        loop {
+            match grpc_source.next().await {
+                Some(Ok(message)) => collector.collect(message).await,
+                Some(Err(err)) => {
+                    break collector
+                        .close(ClientError::TransactionIsClosedWithErrors(err.to_string()))
+                        .await
+                }
+                None => break collector.close(ClientError::TransactionIsClosed()).await,
             }
         }
     }
@@ -331,7 +354,7 @@ async fn buffer(
 #[derive(Default)]
 struct TransactionRequestBuffer {
     reqs: Vec<transaction::Req>,
-    len_cache: usize,
+    len: usize,
 }
 
 impl TransactionRequestBuffer {
@@ -340,57 +363,43 @@ impl TransactionRequestBuffer {
     }
 
     fn len(&self) -> usize {
-        self.len_cache
+        self.len
     }
 
     fn push(&mut self, request: transaction::Req) {
-        self.len_cache += request.encoded_len();
+        self.len += request.encoded_len();
         self.reqs.push(request);
     }
 
     fn take(&mut self) -> transaction::Client {
-        self.len_cache = 0;
+        self.len = 0;
         transaction::Client { reqs: std::mem::take(&mut self.reqs) }
     }
 }
 
-async fn transaction_listener(mut grpc_source: Streaming<transaction::Server>, listener: Listener) {
-    loop {
-        match grpc_source.next().await {
-            Some(Ok(message)) => listener.consume(message).await,
-            Some(Err(err)) => {
-                break listener
-                    .close(ClientError::TransactionIsClosedWithErrors(err.to_string()))
-                    .await
-            }
-            None => break listener.close(ClientError::TransactionIsClosed()).await,
-        }
-    }
-}
-
 #[derive(Clone)]
-struct Listener {
+struct ResponseCollector {
     request_sink: UnboundedSender<(TransactionRequest, Option<TransactionCallback>)>,
-    listeners: Arc<RwLock<HashMap<RequestID, TransactionCallback>>>,
+    callbacks: Arc<RwLock<HashMap<RequestID, TransactionCallback>>>,
     is_open: Arc<AtomicCell<bool>>,
 }
 
-impl Listener {
+impl ResponseCollector {
     fn register(&mut self, request_id: RequestID, callback: TransactionCallback) {
-        self.listeners.write().unwrap().insert(request_id, callback);
+        self.callbacks.write().unwrap().insert(request_id, callback);
     }
 
-    async fn consume(&self, message: transaction::Server) {
+    async fn collect(&self, message: transaction::Server) {
         match message.server {
-            Some(Server::Res(res)) => self.consume_res(res),
-            Some(Server::ResPart(res_part)) => self.consume_res_part(res_part).await,
+            Some(Server::Res(res)) => self.collect_res(res),
+            Some(Server::ResPart(res_part)) => self.collect_res_part(res_part).await,
             None => println!("{}", ClientError::MissingResponseField("server")),
         }
     }
 
-    fn consume_res(&self, res: transaction::Res) {
+    fn collect_res(&self, res: transaction::Res) {
         let req_id = res.req_id.clone().into();
-        match self.listeners.write().unwrap().remove(&req_id) {
+        match self.callbacks.write().unwrap().remove(&req_id) {
             Some(TransactionCallback::OneShot(sink)) => sink.send(Ok(res.into())).unwrap(),
             _ => {
                 if !matches!(res.res.unwrap(), transaction::res::Res::OpenRes(_)) {
@@ -400,14 +409,14 @@ impl Listener {
         }
     }
 
-    async fn consume_res_part(&self, res_part: transaction::ResPart) {
+    async fn collect_res_part(&self, res_part: transaction::ResPart) {
         let request_id = res_part.req_id.clone().into();
 
         match res_part.res {
             Some(transaction::res_part::Res::StreamResPart(stream_res_part)) => {
                 match State::from_i32(stream_res_part.state).expect("enum out of range") {
                     State::Done => {
-                        self.listeners.write().unwrap().remove(&request_id);
+                        self.callbacks.write().unwrap().remove(&request_id);
                     }
                     State::Continue => {
                         self.request_sink
@@ -416,7 +425,7 @@ impl Listener {
                     }
                 }
             }
-            Some(_) => match self.listeners.read().unwrap().get(&request_id) {
+            Some(_) => match self.callbacks.read().unwrap().get(&request_id) {
                 Some(TransactionCallback::Streamed(sink)) => {
                     sink.send(Ok(res_part.into())).ok();
                 }
@@ -430,7 +439,7 @@ impl Listener {
 
     async fn close(self, error: ClientError) {
         self.is_open.store(false);
-        let mut listeners = std::mem::take(self.listeners.write().unwrap().deref_mut());
+        let mut listeners = std::mem::take(self.callbacks.write().unwrap().deref_mut());
         for (_, listener) in listeners.drain() {
             listener.send_error(error.clone()).await;
         }
