@@ -19,10 +19,7 @@
  * under the License.
  */
 
-mod connection;
-pub(crate) mod network;
-mod runtime;
+mod rpc;
 mod transaction;
 
-pub use self::connection::Connection;
-pub(crate) use self::{connection::ServerConnection, transaction::TransactionStream};
+pub(in crate::connection) use self::{rpc::RPCTransmitter, transaction::TransactionTransmitter};
