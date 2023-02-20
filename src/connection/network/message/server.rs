@@ -22,6 +22,7 @@
 use std::time::Duration;
 
 use crossbeam::channel::Sender;
+use itertools::Itertools;
 use tonic::Streaming;
 use typedb_protocol::{
     cluster_database::Replica, cluster_database_manager, core_database, core_database_manager,
@@ -42,9 +43,13 @@ pub(crate) struct DatabaseProto {
     pub replicas: Vec<ReplicaProto>,
 }
 
-impl From<ClusterDatabase> for DatabaseProto {
-    fn from(proto: ClusterDatabase) -> Self {
-        Self { name: proto.name, replicas: proto.replicas.into_iter().map(Into::into).collect() }
+impl TryFrom<ClusterDatabase> for DatabaseProto {
+    type Error = Error;
+    fn try_from(proto: ClusterDatabase) -> Result<Self> {
+        Ok(Self {
+            name: proto.name,
+            replicas: proto.replicas.into_iter().map(TryInto::try_into).try_collect()?,
+        })
     }
 }
 
@@ -56,14 +61,15 @@ pub(crate) struct ReplicaProto {
     pub term: i64,
 }
 
-impl From<Replica> for ReplicaProto {
-    fn from(proto: Replica) -> Self {
-        Self {
-            address: proto.address.as_str().parse().unwrap(),
+impl TryFrom<Replica> for ReplicaProto {
+    type Error = Error;
+    fn try_from(proto: Replica) -> Result<Self> {
+        Ok(Self {
+            address: proto.address.as_str().parse()?,
             is_primary: proto.primary,
             is_preferred: proto.preferred,
             term: proto.term,
-        }
+        })
     }
 }
 
@@ -93,7 +99,7 @@ impl TryFrom<Request> for server_manager::all::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::ServersAll => Ok(server_manager::all::Req {}),
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -105,7 +111,7 @@ impl TryFrom<Request> for core_database_manager::contains::Req {
             Request::DatabasesContains { database_name } => {
                 Ok(core_database_manager::contains::Req { name: database_name })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -117,7 +123,7 @@ impl TryFrom<Request> for core_database_manager::create::Req {
             Request::DatabaseCreate { database_name } => {
                 Ok(core_database_manager::create::Req { name: database_name })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -129,7 +135,7 @@ impl TryFrom<Request> for cluster_database_manager::get::Req {
             Request::DatabaseGet { database_name } => {
                 Ok(cluster_database_manager::get::Req { name: database_name })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -139,7 +145,7 @@ impl TryFrom<Request> for cluster_database_manager::all::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::DatabasesAll => Ok(cluster_database_manager::all::Req {}),
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -151,7 +157,7 @@ impl TryFrom<Request> for core_database::delete::Req {
             Request::DatabaseDelete { database_name } => {
                 Ok(core_database::delete::Req { name: database_name })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -163,7 +169,7 @@ impl TryFrom<Request> for core_database::schema::Req {
             Request::DatabaseSchema { database_name } => {
                 Ok(core_database::schema::Req { name: database_name })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -175,7 +181,7 @@ impl TryFrom<Request> for core_database::type_schema::Req {
             Request::DatabaseTypeSchema { database_name } => {
                 Ok(core_database::type_schema::Req { name: database_name })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -187,7 +193,7 @@ impl TryFrom<Request> for core_database::rule_schema::Req {
             Request::DatabaseRuleSchema { database_name } => {
                 Ok(core_database::rule_schema::Req { name: database_name })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -203,7 +209,7 @@ impl TryFrom<Request> for session::open::Req {
                     options: Some(options.into_proto()),
                 })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -215,7 +221,7 @@ impl TryFrom<Request> for session::pulse::Req {
             Request::SessionPulse { session_id } => {
                 Ok(session::pulse::Req { session_id: session_id.into() })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -227,7 +233,7 @@ impl TryFrom<Request> for session::close::Req {
             Request::SessionClose { session_id } => {
                 Ok(session::close::Req { session_id: session_id.into() })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -239,7 +245,7 @@ impl TryFrom<Request> for transaction::Client {
             Request::Transaction(transaction_req) => {
                 Ok(transaction::Client { reqs: vec![transaction_req.into()] })
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
 }
@@ -288,8 +294,7 @@ pub(crate) enum Response {
 impl TryFrom<server_manager::all::Res> for Response {
     type Error = Error;
     fn try_from(server_manager::all::Res { servers }: server_manager::all::Res) -> Result<Self> {
-        let servers =
-            servers.into_iter().map(|server| server.address.parse()).collect::<Result<_>>()?;
+        let servers = servers.into_iter().map(|server| server.address.parse()).try_collect()?;
         Ok(Response::ServersAll { servers })
     }
 }
@@ -309,13 +314,18 @@ impl From<core_database_manager::create::Res> for Response {
 impl TryFrom<cluster_database_manager::get::Res> for Response {
     type Error = Error;
     fn try_from(res: cluster_database_manager::get::Res) -> Result<Self> {
-        Ok(Response::DatabaseGet { database: res.database.ok_or(InternalError::Foo())?.into() })
+        Ok(Response::DatabaseGet {
+            database: res.database.ok_or(InternalError::MissingField())?.try_into()?,
+        })
     }
 }
 
-impl From<cluster_database_manager::all::Res> for Response {
-    fn from(res: cluster_database_manager::all::Res) -> Self {
-        Response::DatabasesAll { databases: res.databases.into_iter().map(Into::into).collect() }
+impl TryFrom<cluster_database_manager::all::Res> for Response {
+    type Error = Error;
+    fn try_from(res: cluster_database_manager::all::Res) -> Result<Self> {
+        Ok(Response::DatabasesAll {
+            databases: res.databases.into_iter().map(TryInto::try_into).try_collect()?,
+        })
     }
 }
 

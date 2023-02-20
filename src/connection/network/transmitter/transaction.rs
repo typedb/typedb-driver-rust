@@ -253,7 +253,7 @@ impl ResponseCollector {
     fn collect_res(&self, res: transaction::Res) {
         let req_id = res.req_id.clone().into();
         match self.callbacks.write().unwrap().remove(&req_id) {
-            Some(TransactionCallback::OneShot(sink)) => sink.send(Ok(res.into())).unwrap(),
+            Some(TransactionCallback::OneShot(sink)) => sink.send(res.try_into()).unwrap(),
             _ => {
                 if !matches!(res.res.unwrap(), transaction::res::Res::OpenRes(_)) {
                     println!("{}", ClientError::UnknownRequestId(req_id));
@@ -280,7 +280,7 @@ impl ResponseCollector {
             }
             Some(_) => match self.callbacks.read().unwrap().get(&request_id) {
                 Some(TransactionCallback::Streamed(sink)) => {
-                    sink.send(Ok(res_part.into())).ok();
+                    sink.send(res_part.try_into()).ok();
                 }
                 _ => {
                     println!("{}", ClientError::UnknownRequestId(request_id));

@@ -27,7 +27,7 @@ use super::{QueryRequest, QueryResponse};
 use crate::{
     common::{error::ClientError, RequestID, SessionID},
     connection::network::proto::IntoProto,
-    Options, TransactionType,
+    Error, Options, Result, TransactionType,
 };
 
 #[derive(Debug)]
@@ -86,29 +86,31 @@ pub(crate) enum TransactionResponse {
     Query(QueryResponse),
 }
 
-impl From<transaction::Res> for TransactionResponse {
-    fn from(response: transaction::Res) -> Self {
+impl TryFrom<transaction::Res> for TransactionResponse {
+    type Error = Error;
+    fn try_from(response: transaction::Res) -> Result<Self> {
         match response.res {
-            Some(transaction::res::Res::OpenRes(_)) => TransactionResponse::Open,
-            Some(transaction::res::Res::CommitRes(_)) => TransactionResponse::Commit,
-            Some(transaction::res::Res::RollbackRes(_)) => TransactionResponse::Rollback,
+            Some(transaction::res::Res::OpenRes(_)) => Ok(TransactionResponse::Open),
+            Some(transaction::res::Res::CommitRes(_)) => Ok(TransactionResponse::Commit),
+            Some(transaction::res::Res::RollbackRes(_)) => Ok(TransactionResponse::Rollback),
             Some(transaction::res::Res::QueryManagerRes(res)) => {
-                TransactionResponse::Query(res.into())
+                Ok(TransactionResponse::Query(res.try_into()?))
             }
             Some(_) => todo!(),
-            None => panic!("{}", ClientError::MissingResponseField("res")),
+            None => Err(ClientError::MissingResponseField("res").into()),
         }
     }
 }
 
-impl From<transaction::ResPart> for TransactionResponse {
-    fn from(response: transaction::ResPart) -> Self {
+impl TryFrom<transaction::ResPart> for TransactionResponse {
+    type Error = Error;
+    fn try_from(response: transaction::ResPart) -> Result<Self> {
         match response.res {
             Some(transaction::res_part::Res::QueryManagerResPart(res_part)) => {
-                TransactionResponse::Query(res_part.into())
+                Ok(TransactionResponse::Query(res_part.try_into()?))
             }
             Some(_) => todo!(),
-            None => panic!("{}", ClientError::MissingResponseField("res")),
+            None => Err(ClientError::MissingResponseField("res").into()),
         }
     }
 }

@@ -151,7 +151,7 @@ impl RPCTransmitter {
                 rpc.databases_get(request.try_into()?).await.and_then(Response::try_from)
             }
             Request::DatabasesAll => {
-                rpc.databases_all(request.try_into()?).await.map(Response::from)
+                rpc.databases_all(request.try_into()?).await.and_then(Response::try_from)
             }
 
             Request::DatabaseDelete { .. } => {

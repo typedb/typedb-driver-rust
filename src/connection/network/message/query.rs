@@ -19,18 +19,18 @@
  * under the License.
  */
 
+use itertools::Itertools;
 use typedb_protocol::query_manager;
 
 use crate::{
     answer::{ConceptMap, Numeric},
     common::Result,
     connection::network::proto::{IntoProto, TryFromProto},
-    Options,
+    Error, Options,
 };
 
 #[derive(Debug)]
 pub(crate) enum QueryRequest {
-    // TODO options
     Define { query: String, options: Options },
     Undefine { query: String, options: Options },
     Delete { query: String, options: Options },
@@ -41,7 +41,7 @@ pub(crate) enum QueryRequest {
 
     MatchAggregate { query: String, options: Options },
 
-    Explain { explainable_id: i64, options: Options }, // FIXME ID type
+    Explain { explainable_id: i64, options: Options }, // TODO ID type
 
     MatchGroup { query: String, options: Options },
     MatchGroupAggregate { query: String, options: Options },
@@ -49,7 +49,6 @@ pub(crate) enum QueryRequest {
 
 #[derive(Debug)]
 pub(crate) enum QueryResponse {
-    // TODO options
     Define,
     Undefine,
     Delete,
@@ -60,10 +59,10 @@ pub(crate) enum QueryResponse {
 
     MatchAggregate { answer: Numeric },
 
-    Explain {}, // FIXME explanations
+    Explain {}, // TODO explanations
 
-    MatchGroup {},          // FIXME ConceptMapGroup
-    MatchGroupAggregate {}, // FIXME NumericGroup
+    MatchGroup {},          // TODO ConceptMapGroup
+    MatchGroupAggregate {}, // TODO NumericGroup
 }
 
 impl From<QueryRequest> for query_manager::Req {
@@ -103,40 +102,33 @@ impl From<QueryRequest> for query_manager::Req {
     }
 }
 
-impl From<query_manager::Res> for QueryResponse {
-    fn from(value: query_manager::Res) -> Self {
-        match value.res {
-            Some(query_manager::res::Res::DefineRes(_)) => QueryResponse::Define,
-            Some(query_manager::res::Res::UndefineRes(_)) => QueryResponse::Undefine,
-            Some(query_manager::res::Res::DeleteRes(_)) => QueryResponse::Delete,
+impl TryFrom<query_manager::Res> for QueryResponse {
+    type Error = Error;
+    fn try_from(res: query_manager::Res) -> Result<Self> {
+        match res.res {
+            Some(query_manager::res::Res::DefineRes(_)) => Ok(QueryResponse::Define),
+            Some(query_manager::res::Res::UndefineRes(_)) => Ok(QueryResponse::Undefine),
+            Some(query_manager::res::Res::DeleteRes(_)) => Ok(QueryResponse::Delete),
             Some(query_manager::res::Res::MatchAggregateRes(res)) => {
-                QueryResponse::MatchAggregate {
-                    answer: Numeric::try_from_proto(res.answer.unwrap()).unwrap(),
-                }
+                Ok(QueryResponse::MatchAggregate {
+                    answer: Numeric::try_from_proto(res.answer.unwrap())?,
+                })
             }
             _ => todo!(),
         }
     }
 }
-impl From<query_manager::ResPart> for QueryResponse {
-    fn from(value: query_manager::ResPart) -> Self {
-        match value.res {
-            Some(query_manager::res_part::Res::MatchResPart(res)) => QueryResponse::Match {
-                answers: res
-                    .answers
-                    .into_iter()
-                    .map(ConceptMap::try_from_proto)
-                    .collect::<Result<_>>()
-                    .unwrap(),
-            },
-            Some(query_manager::res_part::Res::InsertResPart(res)) => QueryResponse::Insert {
-                answers: res
-                    .answers
-                    .into_iter()
-                    .map(ConceptMap::try_from_proto)
-                    .collect::<Result<_>>()
-                    .unwrap(),
-            },
+
+impl TryFrom<query_manager::ResPart> for QueryResponse {
+    type Error = Error;
+    fn try_from(res_part: query_manager::ResPart) -> Result<Self> {
+        match res_part.res {
+            Some(query_manager::res_part::Res::MatchResPart(res)) => Ok(QueryResponse::Match {
+                answers: res.answers.into_iter().map(ConceptMap::try_from_proto).try_collect()?,
+            }),
+            Some(query_manager::res_part::Res::InsertResPart(res)) => Ok(QueryResponse::Insert {
+                answers: res.answers.into_iter().map(ConceptMap::try_from_proto).try_collect()?,
+            }),
             _ => todo!(),
         }
     }
