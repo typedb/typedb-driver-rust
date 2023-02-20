@@ -37,7 +37,7 @@ const TEST_DATABASE: &str = "test";
 
 macro_rules! permutation_tests {
     { $perm_args:tt
-        $( $( # $extra_anno:tt )* async fn $test:ident $args:tt $test_impl:tt )+
+        $( $( # $extra_anno:tt )* async fn $test:ident $args:tt -> typedb_client::Result $test_impl:tt )+
     } => {
         permutation_tests!{ @impl $( async fn $test $args $test_impl )+ }
         permutation_tests!{ @impl_per $perm_args  { $( $( # $extra_anno )* async fn $test )+ } }
@@ -46,7 +46,7 @@ macro_rules! permutation_tests {
     { @impl $( async fn $test:ident $args:tt $test_impl:tt )+ } => {
         mod _impl {
             use super::*;
-            $( pub async fn $test $args $test_impl )+
+            $( pub async fn $test $args -> typedb_client::Result $test_impl )+
         }
     };
 
@@ -64,7 +64,7 @@ macro_rules! permutation_tests {
             #[serial($mod)]
             $( # $extra_anno )*
             pub async fn $test() {
-                _impl::$test($arg).await
+                _impl::$test($arg).await.unwrap();
             }
         )+
         }
@@ -77,47 +77,41 @@ permutation_tests! {
     cluster => new_cluster_connection().unwrap(),
 }
 
-async fn basic(connection: Connection) {
-    create_test_database_with_schema(connection.clone(), "define person sub entity;")
-        .await
-        .unwrap();
+async fn basic(connection: Connection) -> typedb_client::Result {
+    create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
     let mut databases = DatabaseManager::new(connection);
-    assert!(databases.contains(TEST_DATABASE.into()).await.unwrap());
+    assert!(databases.contains(TEST_DATABASE.into()).await?);
 
-    let session =
-        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
-    let transaction = session.transaction(Write).await.unwrap();
-    let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
+    let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+    let transaction = session.transaction(Write).await?;
+    let answer_stream = transaction.query().match_("match $x sub thing;")?;
     let results: Vec<_> = answer_stream.collect().await;
-    transaction.commit().await.unwrap();
+    transaction.commit().await?;
     assert_eq!(results.len(), 5);
     assert!(results.into_iter().all(|res| res.is_ok()));
+
+    Ok(())
 }
 
-async fn query_error(connection: Connection) {
-    create_test_database_with_schema(connection.clone(), "define person sub entity;")
-        .await
-        .unwrap();
+async fn query_error(connection: Connection) -> typedb_client::Result {
+    create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
     let mut databases = DatabaseManager::new(connection);
 
-    let session =
-        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
-    let transaction = session.transaction(Write).await.unwrap();
-    let answer_stream = transaction.query().match_("match $x sub nonexistent-type;").unwrap();
+    let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+    let transaction = session.transaction(Write).await?;
+    let answer_stream = transaction.query().match_("match $x sub nonexistent-type;")?;
     let results: Vec<_> = answer_stream.collect().await;
     assert_eq!(results.len(), 1);
     assert!(results.into_iter().all(|res| res.unwrap_err().to_string().contains("[TYR03]")));
+
+    Ok(())
 }
 
-async fn concurrent_transactions(connection: Connection) {
-    create_test_database_with_schema(connection.clone(), "define person sub entity;")
-        .await
-        .unwrap();
+async fn concurrent_transactions(connection: Connection) -> typedb_client::Result {
+    create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
     let mut databases = DatabaseManager::new(connection);
 
-    let session = Arc::new(
-        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap(),
-    );
+    let session = Arc::new(Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?);
 
     let (sender, mut receiver) = mpsc::channel(5 * 5 * 8);
 
@@ -142,9 +136,11 @@ async fn concurrent_transactions(connection: Connection) {
     }
     assert_eq!(results.len(), 5 * 5 * 8);
     assert!(results.into_iter().all(|res| res.is_ok()));
+
+    Ok(())
 }
 
-async fn query_options(connection: Connection) {
+async fn query_options(connection: Connection) -> typedb_client::Result {
     let schema = r#"define
         person sub entity,
             owns name,
@@ -152,27 +148,28 @@ async fn query_options(connection: Connection) {
         name sub attribute, value string;
         age sub attribute, value long;
         rule age-rule: when { $x isa person; } then { $x has age 25; };"#;
-    create_test_database_with_schema(connection.clone(), schema).await.unwrap();
+    create_test_database_with_schema(connection.clone(), schema).await?;
     let mut databases = DatabaseManager::new(connection);
 
-    let session =
-        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
-    let transaction = session.transaction(Write).await.unwrap();
+    let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+    let transaction = session.transaction(Write).await?;
     let data = "insert $x isa person, has name 'Alice'; $y isa person, has name 'Bob';";
     let _ = transaction.query().insert(data);
-    transaction.commit().await.unwrap();
+    transaction.commit().await?;
 
-    let transaction = session.transaction(Read).await.unwrap();
-    let age_count = transaction.query().match_aggregate("match $x isa age; count;").await.unwrap();
+    let transaction = session.transaction(Read).await?;
+    let age_count = transaction.query().match_aggregate("match $x isa age; count;").await?;
     assert_eq!(age_count.into_i64(), 0);
 
     let with_inference = Options::new_core().infer(true);
-    let transaction = session.transaction_with_options(Read, with_inference).await.unwrap();
-    let age_count = transaction.query().match_aggregate("match $x isa age; count;").await.unwrap();
+    let transaction = session.transaction_with_options(Read, with_inference).await?;
+    let age_count = transaction.query().match_aggregate("match $x isa age; count;").await?;
     assert_eq!(age_count.into_i64(), 1);
+
+    Ok(())
 }
 
-async fn many_concept_types(connection: Connection) {
+async fn many_concept_types(connection: Connection) -> typedb_client::Result {
     let schema = r#"define
         person sub entity,
             owns name,
@@ -182,32 +179,28 @@ async fn many_concept_types(connection: Connection) {
         date-of-birth sub attribute, value datetime;
         friendship sub relation,
             relates friend;"#;
-    create_test_database_with_schema(connection.clone(), schema).await.unwrap();
+    create_test_database_with_schema(connection.clone(), schema).await?;
     let mut databases = DatabaseManager::new(connection);
 
-    let session =
-        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
-    let transaction = session.transaction(Write).await.unwrap();
+    let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+    let transaction = session.transaction(Write).await?;
     let data = r#"insert
         $x isa person, has name "Alice", has date-of-birth 1994-10-03;
         $y isa person, has name "Bob", has date-of-birth 1993-04-17;
         (friend: $x, friend: $y) isa friendship;"#;
     let _ = transaction.query().insert(data);
-    transaction.commit().await.unwrap();
+    transaction.commit().await?;
 
-    let transaction = session.transaction(Read).await.unwrap();
-    let mut answer_stream = transaction
-        .query()
-        .match_(
-            r#"match
+    let transaction = session.transaction(Read).await?;
+    let mut answer_stream = transaction.query().match_(
+        r#"match
         $p isa person, has name $name, has date-of-birth $date-of-birth;
         $f($role: $p) isa friendship;"#,
-        )
-        .unwrap();
+    )?;
 
     while let Some(result) = answer_stream.next().await {
         assert!(result.is_ok());
-        let mut result = result.unwrap().map;
+        let mut result = result?.map;
         let name = unwrap_string(result.remove("name").unwrap());
         let date_of_birth = unwrap_date_time(result.remove("date-of-birth").unwrap()).date();
         match name.as_str() {
@@ -216,19 +209,18 @@ async fn many_concept_types(connection: Connection) {
             _ => unreachable!(),
         }
     }
+
+    Ok(())
 }
 
-async fn force_close_connection(connection: Connection) {
-    create_test_database_with_schema(connection.clone(), "define person sub entity;")
-        .await
-        .unwrap();
+async fn force_close_connection(connection: Connection) -> typedb_client::Result {
+    create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
     let mut databases = DatabaseManager::new(connection.clone());
 
-    let database = databases.get(TEST_DATABASE.into()).await.unwrap();
+    let database = databases.get(TEST_DATABASE.into()).await?;
     assert!(database.schema().await.is_ok());
 
-    let session =
-        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
+    let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
     connection.clone().force_close();
 
     let schema = database.schema().await;
@@ -246,18 +238,16 @@ async fn force_close_connection(connection: Connection) {
     let session = Session::new(database, Data).await;
     assert!(session.is_err());
     assert_eq!(session.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+
+    Ok(())
 }
 
-async fn force_close_session(connection: Connection) {
-    create_test_database_with_schema(connection.clone(), "define person sub entity;")
-        .await
-        .unwrap();
+async fn force_close_session(connection: Connection) -> typedb_client::Result {
+    create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
     let mut databases = DatabaseManager::new(connection.clone());
 
-    let session = Arc::new(
-        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap(),
-    );
-    let transaction = session.transaction(Write).await.unwrap();
+    let session = Arc::new(Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?);
+    let transaction = session.transaction(Write).await?;
 
     let session2 = session.clone();
     session2.force_close();
@@ -270,37 +260,37 @@ async fn force_close_session(connection: Connection) {
     assert!(transaction.is_err());
     assert_eq!(transaction.unwrap_err(), Error::Client(ClientError::SessionIsClosed()));
 
-    assert!(Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.is_ok());
+    assert!(Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await.is_ok());
+
+    Ok(())
 }
 
 #[ignore]
-async fn streaming_perf(connection: Connection) {
+async fn streaming_perf(connection: Connection) -> typedb_client::Result {
     for i in 0..5 {
         let schema = r#"define
             person sub entity, owns name, owns age;
             name sub attribute, value string;
             age sub attribute, value long;"#;
-        create_test_database_with_schema(connection.clone(), schema).await.unwrap();
+        create_test_database_with_schema(connection.clone(), schema).await?;
         let mut databases = DatabaseManager::new(connection.clone());
 
         let start_time = Instant::now();
-        let session =
-            Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
-        let transaction = session.transaction(Write).await.unwrap();
+        let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+        let transaction = session.transaction(Write).await?;
         for j in 0..100_000 {
-            drop(transaction.query().insert(format!("insert $x {j} isa age;").as_str()).unwrap());
+            drop(transaction.query().insert(format!("insert $x {j} isa age;").as_str())?);
         }
-        transaction.commit().await.unwrap();
+        transaction.commit().await?;
         println!(
             "iteration {i}: inserted and committed 100k attrs in {}ms",
             start_time.elapsed().as_millis()
         );
 
         let mut start_time = Instant::now();
-        let session =
-            Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
-        let transaction = session.transaction(Read).await.unwrap();
-        let mut answer_stream = transaction.query().match_("match $x isa attribute;").unwrap();
+        let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+        let transaction = session.transaction(Read).await?;
+        let mut answer_stream = transaction.query().match_("match $x isa attribute;")?;
         let mut sum: i64 = 0;
         let mut idx = 0;
         while let Some(result) = answer_stream.next().await {
@@ -329,6 +319,8 @@ async fn streaming_perf(connection: Connection) {
         }
         println!("sum is {}", sum);
     }
+
+    Ok(())
 }
 }
 

@@ -134,8 +134,8 @@ impl From<Status> for Error {
     }
 }
 
-impl From<tonic::codegen::http::uri::InvalidUri> for Error {
-    fn from(err: tonic::codegen::http::uri::InvalidUri) -> Self {
+impl From<http::uri::InvalidUri> for Error {
+    fn from(err: http::uri::InvalidUri) -> Self {
         Error::Other(err.to_string())
     }
 }
