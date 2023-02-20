@@ -22,7 +22,7 @@
 mod connection;
 pub(crate) mod network;
 mod runtime;
-mod transaction;
+mod transaction_stream;
 
 pub use self::connection::Connection;
-pub(crate) use self::{connection::ServerConnection, transaction::TransactionStream};
+pub(crate) use self::{connection::ServerConnection, transaction_stream::TransactionStream};
