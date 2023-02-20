@@ -262,14 +262,17 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         &mut self,
         open_req: transaction::Req,
     ) -> Result<(Sender<transaction::Client>, Streaming<transaction::Server>)> {
-        self.single(|this| {
-            let (sender, receiver) = unbounded();
-            sender.send(transaction::Client { reqs: vec![open_req.clone()] }).unwrap();
-            Box::pin(
+        self.call_with_auto_renew_token(|this| {
+            let transaction_req = transaction::Client { reqs: vec![open_req.clone()] };
+            Box::pin(async {
+                let (sender, receiver) = unbounded();
+                sender.send(transaction_req)?;
                 this.core_grpc
                     .transaction(ReceiverStream::from(receiver))
-                    .map_ok(|stream| Response::new((sender, stream.into_inner()))),
-            )
+                    .map_ok(|stream| Response::new((sender, stream.into_inner())))
+                    .map(|r| Ok(r?.into_inner()))
+                    .await
+            })
         })
         .await
     }
