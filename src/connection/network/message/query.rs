@@ -26,6 +26,7 @@ use crate::{
     answer::{ConceptMap, Numeric},
     common::Result,
     connection::network::proto::{IntoProto, TryFromProto},
+    error::ClientError,
     Error, Options,
 };
 
@@ -66,8 +67,8 @@ pub(crate) enum QueryResponse {
 }
 
 impl From<QueryRequest> for query_manager::Req {
-    fn from(value: QueryRequest) -> Self {
-        let (req, options) = match value {
+    fn from(request: QueryRequest) -> Self {
+        let (req, options) = match request {
             QueryRequest::Define { query, options } => {
                 (query_manager::req::Req::DefineReq(query_manager::define::Req { query }), options)
             }
@@ -111,10 +112,12 @@ impl TryFrom<query_manager::Res> for QueryResponse {
             Some(query_manager::res::Res::DeleteRes(_)) => Ok(QueryResponse::Delete),
             Some(query_manager::res::Res::MatchAggregateRes(res)) => {
                 Ok(QueryResponse::MatchAggregate {
-                    answer: Numeric::try_from_proto(res.answer.unwrap())?,
+                    answer: Numeric::try_from_proto(
+                        res.answer.ok_or(ClientError::MissingResponseField("answer"))?,
+                    )?,
                 })
             }
-            _ => todo!(),
+            None => Err(ClientError::MissingResponseField("res").into()),
         }
     }
 }
@@ -129,7 +132,8 @@ impl TryFrom<query_manager::ResPart> for QueryResponse {
             Some(query_manager::res_part::Res::InsertResPart(res)) => Ok(QueryResponse::Insert {
                 answers: res.answers.into_iter().map(ConceptMap::try_from_proto).try_collect()?,
             }),
-            _ => todo!(),
+            Some(_) => todo!(),
+            None => Err(ClientError::MissingResponseField("res").into()),
         }
     }
 }

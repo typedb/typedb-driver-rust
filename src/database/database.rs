@@ -27,6 +27,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use itertools::Itertools;
 use log::debug;
 
 use crate::{
@@ -60,7 +61,7 @@ impl Database {
 
     pub(crate) fn new(proto: DatabaseProto, connection: Connection) -> Result<Self> {
         let name = proto.name.clone();
-        let replicas = RwLock::new(Replica::from_proto(proto, &connection));
+        let replicas = RwLock::new(Replica::try_from_proto(proto, &connection)?);
         Ok(Self { name, replicas, connection })
     }
 
@@ -124,7 +125,7 @@ impl Database {
         for replica in replicas.iter() {
             match task(
                 replica.database.clone(),
-                self.connection.get_server_connection(&replica.address),
+                self.connection.get_server_connection(&replica.address)?,
                 is_first_run,
             )
             .await
@@ -153,7 +154,7 @@ impl Database {
         for retry in 0..Self::PRIMARY_REPLICA_TASK_MAX_RETRIES {
             match task(
                 primary_replica.database.clone(),
-                self.connection.get_server_connection(&primary_replica.address),
+                self.connection.get_server_connection(&primary_replica.address)?,
                 retry == 0,
             )
             .await
@@ -233,15 +234,15 @@ impl Replica {
         }
     }
 
-    fn from_proto(proto: DatabaseProto, connection: &Connection) -> Vec<Self> {
+    fn try_from_proto(proto: DatabaseProto, connection: &Connection) -> Result<Vec<Self>> {
         proto
             .replicas
             .into_iter()
             .map(|replica| {
-                let server_connection = connection.get_server_connection(&replica.address);
-                Replica::new(proto.name.clone(), replica, server_connection)
+                let server_connection = connection.get_server_connection(&replica.address)?;
+                Ok(Replica::new(proto.name.clone(), replica, server_connection))
             })
-            .collect()
+            .try_collect()
     }
 
     async fn fetch_all(name: String, connection: Connection) -> Result<Vec<Self>> {
@@ -249,7 +250,7 @@ impl Replica {
             let res = server_connection.get_database_replicas(name.clone()).await;
             match res {
                 Ok(res) => {
-                    return Ok(Replica::from_proto(res, &connection));
+                    return Replica::try_from_proto(res, &connection);
                 }
                 Err(Error::Client(ClientError::UnableToConnect())) => {
                     println!(

@@ -48,6 +48,7 @@ use crate::{
         Result, SessionID, SessionType, TransactionType,
     },
     connection::{network::transmitter::TransactionTransmitter, runtime::BackgroundRuntime},
+    error::InternalError,
     Credential, Options,
 };
 
@@ -77,8 +78,8 @@ async fn fetch_current_addresses(
                     .try_into()?
                 {
                     Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
-                    _ => unreachable!(),
-                }
+                    _ => Err(InternalError::UnexpectedResponseType().into()),
+                };
             }
             Err(Error::Client(ClientError::UnableToConnect())) => (),
             Err(err) => Err(err)?,
@@ -138,8 +139,10 @@ impl Connection {
         self.server_connections.keys()
     }
 
-    pub(crate) fn get_server_connection(&self, address: &Address) -> ServerConnection {
-        self.server_connections.get(address).cloned().unwrap()
+    pub(crate) fn get_server_connection(&self, address: &Address) -> Result<ServerConnection> {
+        self.server_connections.get(address).cloned().ok_or_else(|| {
+            Error::Internal(InternalError::UnknownConnectionAddress(address.to_string()))
+        })
     }
 
     pub(crate) fn iter_server_connections_cloned(
@@ -229,7 +232,7 @@ impl ServerConnection {
     pub(crate) async fn database_exists(&self, database_name: String) -> Result<bool> {
         match self.request_async(Request::DatabasesContains { database_name }).await? {
             Response::DatabasesContains { contains } => Ok(contains),
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 
@@ -244,35 +247,35 @@ impl ServerConnection {
     ) -> Result<DatabaseProto> {
         match self.request_async(Request::DatabaseGet { database_name }).await? {
             Response::DatabaseGet { database } => Ok(database),
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 
     pub(crate) async fn all_databases(&self) -> Result<Vec<DatabaseProto>> {
         match self.request_async(Request::DatabasesAll).await? {
             Response::DatabasesAll { databases } => Ok(databases),
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 
     pub(crate) async fn database_schema(&self, database_name: String) -> Result<String> {
         match self.request_async(Request::DatabaseSchema { database_name }).await? {
             Response::DatabaseSchema { schema } => Ok(schema),
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 
     pub(crate) async fn database_type_schema(&self, database_name: String) -> Result<String> {
         match self.request_async(Request::DatabaseTypeSchema { database_name }).await? {
             Response::DatabaseTypeSchema { schema } => Ok(schema),
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 
     pub(crate) async fn database_rule_schema(&self, database_name: String) -> Result<String> {
         match self.request_async(Request::DatabaseRuleSchema { database_name }).await? {
             Response::DatabaseRuleSchema { schema } => Ok(schema),
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 
@@ -301,7 +304,7 @@ impl ServerConnection {
                 ));
                 Ok((session_id, server_duration))
             }
-            _ => unreachable!(),
+            _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 

@@ -66,6 +66,10 @@ error_messages! { InternalError
         3: "",
     UnexpectedRequestType() = // FIXME
         4: "",
+    UnexpectedResponseType() = // FIXME
+        5: "",
+    UnknownConnectionAddress(String) =
+        6: "{}" // FIXME
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
