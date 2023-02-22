@@ -108,7 +108,7 @@ impl TransactionTransmitter {
             return Err(ClientError::SessionIsClosed().into());
         }
         let (res_sink, recv) = oneshot_async();
-        self.request_sink.send((req, Some(TransactionCallback::OneShot(res_sink)))).unwrap();
+        self.request_sink.send((req, Some(TransactionCallback::OneShot(res_sink))))?;
         recv.await.unwrap().map(Into::into)
     }
 
@@ -120,7 +120,7 @@ impl TransactionTransmitter {
             return Err(ClientError::SessionIsClosed().into());
         }
         let (res_part_sink, recv) = unbounded_async();
-        self.request_sink.send((req, Some(TransactionCallback::Streamed(res_part_sink)))).unwrap();
+        self.request_sink.send((req, Some(TransactionCallback::Streamed(res_part_sink))))?;
         Ok(UnboundedReceiverStream::new(recv).map_ok(Into::into))
     }
 

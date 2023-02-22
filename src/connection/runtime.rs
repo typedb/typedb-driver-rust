@@ -59,9 +59,10 @@ impl BackgroundRuntime {
         self.is_open.load()
     }
 
-    pub(super) fn force_close(&self) {
+    pub(super) fn force_close(&self) -> Result {
         self.is_open.store(false);
-        self.shutdown_sink.send(()).ok();
+        self.shutdown_sink.send(())?;
+        Ok(())
     }
 
     pub(super) fn spawn<F>(&self, future: F)

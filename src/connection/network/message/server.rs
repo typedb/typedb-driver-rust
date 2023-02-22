@@ -36,6 +36,7 @@ use crate::{
     error::InternalError,
     Error, Options, Result, SessionType,
 };
+use crate::error::ClientError;
 
 #[derive(Debug)]
 pub(in crate::connection) enum Request {
@@ -280,7 +281,7 @@ impl TryFrom<cluster_database_manager::get::Res> for Response {
     fn try_from(res: cluster_database_manager::get::Res) -> Result<Self> {
         Ok(Response::DatabaseGet {
             database: DatabaseInfo::try_from_proto(
-                res.database.ok_or(InternalError::MissingField())?,
+                res.database.ok_or(ClientError::MissingResponseField("database"))?,
             )?,
         })
     }

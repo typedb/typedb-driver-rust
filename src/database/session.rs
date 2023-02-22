@@ -38,7 +38,8 @@ pub struct Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        self.force_close()
+        // FIXME log error?
+        self.force_close().ok();
     }
 }
 
@@ -70,14 +71,14 @@ impl Session {
         self.is_open.load()
     }
 
-    pub fn force_close(&self) {
+    pub fn force_close(&self) -> Result {
         if self.is_open.compare_exchange(true, false).is_ok() {
             let session_info = self.server_session_info.write().unwrap();
             let connection =
                 self.database.connection().get_server_connection(&session_info.address).unwrap();
-            // FIXME log error?
-            connection.close_session(session_info.session_id.clone()).ok();
+            connection.close_session(session_info.session_id.clone())?;
         }
+        Ok(())
     }
 
     pub async fn transaction(&self, transaction_type: TransactionType) -> Result<Transaction> {

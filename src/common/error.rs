@@ -62,16 +62,14 @@ error_messages! { InternalError
         1: "Channel is closed",
     SendError() =  // TODO rename
         2: "Channel is closed",
-    MissingField() = // FIXME
-        3: "",
     UnexpectedRequestType() =
-        4: "", // FIXME
+        3: "", // FIXME
     UnexpectedResponseType() =
-        5: "", // FIXME
+        4: "", // FIXME
     UnknownConnectionAddress(String) =
-        6: "{}", // FIXME
+        5: "{}", // FIXME
     EnumOutOfBounds(i32) =
-        7: "{}", // FIXME
+        6: "{}", // FIXME
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

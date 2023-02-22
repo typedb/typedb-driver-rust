@@ -41,7 +41,7 @@ use crate::{
         runtime::BackgroundRuntime,
     },
     error::InternalError,
-    Credential,
+    Credential, Error,
 };
 
 fn oneshot_blocking<T>() -> (SyncSender<T>, SyncReceiver<T>) {
@@ -72,30 +72,32 @@ impl RPCTransmitter {
     pub(in crate::connection) fn start_plaintext(
         address: Address,
         runtime: &BackgroundRuntime,
-    ) -> Self {
+    ) -> Result<Self> {
         let (request_sink, request_source) = unbounded_async();
         let (shutdown_sink, shutdown_source) = unbounded_async();
-        runtime.spawn(async move {
+        runtime.block_on(async move {
             let channel = open_plaintext_channel(address.clone());
-            let rpc = RPCStub::new(address.clone(), channel, None).await.unwrap();
-            Self::dispatcher_loop(rpc, request_source, shutdown_source).await;
-        });
-        Self { request_sink, shutdown_sink }
+            let rpc = RPCStub::new(address.clone(), channel, None).await?;
+            tokio::spawn(Self::dispatcher_loop(rpc, request_source, shutdown_source));
+            Ok::<(), Error>(())
+        })?;
+        Ok(Self { request_sink, shutdown_sink })
     }
 
     pub(in crate::connection) fn start_encrypted(
         address: Address,
         credential: Credential,
         runtime: &BackgroundRuntime,
-    ) -> Self {
+    ) -> Result<Self> {
         let (request_sink, request_source) = unbounded_async();
         let (shutdown_sink, shutdown_source) = unbounded_async();
-        runtime.spawn(async move {
-            let (channel, callcreds) = open_encrypted_channel(address.clone(), credential).unwrap();
-            let rpc = RPCStub::new(address.clone(), channel, Some(callcreds)).await.unwrap();
-            Self::dispatcher_loop(rpc, request_source, shutdown_source).await;
-        });
-        Self { request_sink, shutdown_sink }
+        runtime.block_on(async move {
+            let (channel, callcreds) = open_encrypted_channel(address.clone(), credential)?;
+            let rpc = RPCStub::new(address.clone(), channel, Some(callcreds)).await?;
+            tokio::spawn(Self::dispatcher_loop(rpc, request_source, shutdown_source));
+            Ok::<(), Error>(())
+        })?;
+        Ok(Self { request_sink, shutdown_sink })
     }
 
     pub(in crate::connection) async fn request_async(&self, request: Request) -> Result<Response> {
@@ -110,8 +112,8 @@ impl RPCTransmitter {
         response.recv()?
     }
 
-    pub(in crate::connection) fn force_close(&self) {
-        self.shutdown_sink.send(()).ok();
+    pub(in crate::connection) fn force_close(&self) -> Result {
+        self.shutdown_sink.send(()).map_err(Into::into)
     }
 
     async fn dispatcher_loop<Channel: GRPCChannel>(
@@ -126,7 +128,7 @@ impl RPCTransmitter {
             let rpc = rpc.clone();
             tokio::spawn(async move {
                 let response = Self::send_request(rpc, request).await;
-                response_sink.send(response).ok();
+                response_sink.send(response).ok(); // FIXME log?
             });
         }
     }

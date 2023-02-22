@@ -221,7 +221,7 @@ async fn force_close_connection(connection: Connection) -> typedb_client::Result
     assert!(database.schema().await.is_ok());
 
     let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
-    connection.clone().force_close();
+    connection.clone().force_close()?;
 
     let schema = database.schema().await;
     assert!(schema.is_err());

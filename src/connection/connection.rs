@@ -25,6 +25,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+use itertools::Itertools;
 
 use tokio::{
     select,
@@ -128,9 +129,9 @@ impl Connection {
         Ok(Self { server_connections, background_runtime })
     }
 
-    pub fn force_close(self) {
-        self.server_connections.values().for_each(ServerConnection::force_close);
-        self.background_runtime.force_close();
+    pub fn force_close(self) -> Result {
+        self.server_connections.values().map(ServerConnection::force_close).try_collect()?;
+        self.background_runtime.force_close()
     }
 
     pub(crate) fn server_count(&self) -> usize {
@@ -177,7 +178,7 @@ impl fmt::Debug for ServerConnection {
 impl ServerConnection {
     fn new_plaintext(background_runtime: Arc<BackgroundRuntime>, address: Address) -> Result<Self> {
         let request_transmitter =
-            Arc::new(RPCTransmitter::start_plaintext(address.clone(), &background_runtime));
+            Arc::new(RPCTransmitter::start_plaintext(address.clone(), &background_runtime)?);
         Ok(Self {
             address,
             background_runtime,
@@ -195,7 +196,7 @@ impl ServerConnection {
             address.clone(),
             credential,
             &background_runtime,
-        ));
+        )?);
         Ok(Self {
             address,
             background_runtime,
@@ -222,13 +223,13 @@ impl ServerConnection {
         self.request_transmitter.request_blocking(request)
     }
 
-    pub(crate) fn force_close(&self) {
+        pub(crate) fn force_close(&self) -> Result {
         let session_ids: Vec<SessionID> =
             self.open_sessions.lock().unwrap().keys().cloned().collect();
         for session_id in session_ids.into_iter() {
             self.close_session(session_id).ok();
         }
-        self.request_transmitter.force_close();
+        self.request_transmitter.force_close()
     }
 
     pub(crate) async fn database_exists(&self, database_name: String) -> Result<bool> {
