@@ -67,7 +67,7 @@ error_messages! { InternalError
     UnexpectedResponseType(String) =
         4: "Unexpected response type for remote procedure call: {}.",
     UnknownConnectionAddress(String) =
-        5: "{}", // FIXME
+        5: "Received unrecognized address from the server: {}.",
     EnumOutOfBounds(i32, &'static str) =
         6: "Value '{}' is out of bounds for enum '{}'.",
 }

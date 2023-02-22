@@ -125,7 +125,7 @@ impl Connection {
         self.server_connections
             .get(address)
             .cloned()
-            .ok_or_else(|| Error::Internal(InternalError::UnknownConnectionAddress(address.to_string())))
+            .ok_or_else(|| InternalError::UnknownConnectionAddress(address.to_string()).into())
     }
 
     pub(crate) fn iter_server_connections_cloned(&self) -> impl Iterator<Item = ServerConnection> + '_ {
