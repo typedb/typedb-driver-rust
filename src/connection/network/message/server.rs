@@ -33,10 +33,9 @@ use super::TransactionRequest;
 use crate::{
     common::{address::Address, info::DatabaseInfo, SessionID},
     connection::network::proto::{IntoProto, TryFromProto},
-    error::InternalError,
+    error::{ClientError, InternalError},
     Error, Options, Result, SessionType,
 };
-use crate::error::ClientError;
 
 #[derive(Debug)]
 pub(in crate::connection) enum Request {

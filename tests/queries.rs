@@ -329,7 +329,7 @@ fn new_core_connection() -> typedb_client::Result<Connection> {
 }
 
 fn new_cluster_connection() -> typedb_client::Result<Connection> {
-    Connection::from_init(
+    Connection::new_encrypted(
         &["localhost:11729", "localhost:21729", "localhost:31729"],
         Credential::with_tls(
             "admin",

@@ -25,8 +25,8 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use itertools::Itertools;
 
+use itertools::Itertools;
 use tokio::{
     select,
     sync::mpsc::{unbounded_channel as unbounded_async, UnboundedReceiver, UnboundedSender},
@@ -66,44 +66,7 @@ impl fmt::Debug for Connection {
     }
 }
 
-async fn fetch_current_addresses(
-    addresses: Vec<Address>,
-    credential: Credential,
-) -> Result<HashSet<Address>> {
-    for address in addresses {
-        let (channel, callcreds) = open_encrypted_channel(address.clone(), credential.clone())?;
-        match RPCStub::new(address, channel, Some(callcreds)).await?.validated().await {
-            Ok(mut client) => {
-                return match client
-                    .servers_all(Request::ServersAll.try_into()?)
-                    .await?
-                    .try_into()?
-                {
-                    Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
-                    _ => Err(InternalError::UnexpectedResponseType().into()),
-                };
-            }
-            Err(Error::Client(ClientError::UnableToConnect())) => (),
-            Err(err) => Err(err)?,
-        }
-    }
-    Err(ClientError::UnableToConnect())?
-}
-
 impl Connection {
-    // FIXME
-    pub fn from_init<T: AsRef<str> + Sync>(
-        init_addresses: &[T],
-        credential: Credential,
-    ) -> Result<Self> {
-        let background_runtime = Arc::new(BackgroundRuntime::new()?);
-        let init_addresses: Result<Vec<Address>> =
-            init_addresses.iter().map(|addr| addr.as_ref().parse()).collect();
-        let addresses = background_runtime
-            .block_on(fetch_current_addresses(init_addresses?, credential.clone()))?;
-        Self::new_encrypted(background_runtime, addresses, credential)
-    }
-
     pub fn new_plaintext(address: impl AsRef<str>) -> Result<Self> {
         let address: Address = address.as_ref().parse()?;
         let background_runtime = Arc::new(BackgroundRuntime::new()?);
@@ -112,11 +75,17 @@ impl Connection {
         Ok(Self { server_connections: [(address, server_connection)].into(), background_runtime })
     }
 
-    fn new_encrypted(
-        background_runtime: Arc<BackgroundRuntime>,
-        addresses: HashSet<Address>,
+    pub fn new_encrypted<T: AsRef<str> + Sync>(
+        init_addresses: &[T],
         credential: Credential,
     ) -> Result<Self> {
+        let background_runtime = Arc::new(BackgroundRuntime::new()?);
+
+        let init_addresses =
+            init_addresses.iter().map(|addr| addr.as_ref().parse()).try_collect()?;
+        let addresses = background_runtime
+            .block_on(Self::fetch_current_addresses(init_addresses, credential.clone()))?;
+
         let mut server_connections = HashMap::with_capacity(addresses.len());
         for address in addresses {
             let server_connection = ServerConnection::new_encrypted(
@@ -126,7 +95,32 @@ impl Connection {
             )?;
             server_connections.insert(address, server_connection);
         }
+
         Ok(Self { server_connections, background_runtime })
+    }
+
+    async fn fetch_current_addresses(
+        addresses: Vec<Address>,
+        credential: Credential,
+    ) -> Result<HashSet<Address>> {
+        for address in addresses {
+            let (channel, callcreds) = open_encrypted_channel(address.clone(), credential.clone())?;
+            match RPCStub::new(address, channel, Some(callcreds)).await?.validated().await {
+                Ok(mut client) => {
+                    return match client
+                        .servers_all(Request::ServersAll.try_into()?)
+                        .await?
+                        .try_into()?
+                    {
+                        Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
+                        _ => Err(InternalError::UnexpectedResponseType().into()),
+                    };
+                }
+                Err(Error::Client(ClientError::UnableToConnect())) => (),
+                Err(err) => Err(err)?,
+            }
+        }
+        Err(ClientError::UnableToConnect())?
     }
 
     pub fn force_close(self) -> Result {
@@ -223,7 +217,7 @@ impl ServerConnection {
         self.request_transmitter.request_blocking(request)
     }
 
-        pub(crate) fn force_close(&self) -> Result {
+    pub(crate) fn force_close(&self) -> Result {
         let session_ids: Vec<SessionID> =
             self.open_sessions.lock().unwrap().keys().cloned().collect();
         for session_id in session_ids.into_iter() {
