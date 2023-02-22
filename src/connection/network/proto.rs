@@ -163,18 +163,22 @@ impl TryFromProto for Concept {
     }
 }
 
+impl TryFromProto for Encoding {
+    type Proto = i32;
+    fn try_from_proto(proto: Self::Proto) -> Result<Self> {
+        Self::from_i32(proto).ok_or(InternalError::EnumOutOfBounds(proto, "Encoding").into())
+    }
+}
+
 impl TryFromProto for Type {
     type Proto = TypeProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
-        match Encoding::from_i32(proto.encoding) {
-            Some(Encoding::ThingType) => Ok(Self::Thing(ThingType::Root(RootThingType::default()))),
-            Some(Encoding::EntityType) => Ok(Self::Thing(ThingType::Entity(EntityType::try_from_proto(proto)?))),
-            Some(Encoding::RelationType) => Ok(Self::Thing(ThingType::Relation(RelationType::try_from_proto(proto)?))),
-            Some(Encoding::AttributeType) => {
-                Ok(Self::Thing(ThingType::Attribute(AttributeType::try_from_proto(proto)?)))
-            }
-            Some(Encoding::RoleType) => Ok(Self::Role(RoleType::try_from_proto(proto)?)),
-            None => Err(InternalError::EnumOutOfBounds(proto.encoding).into()),
+        match Encoding::try_from_proto(proto.encoding)? {
+            Encoding::ThingType => Ok(Self::Thing(ThingType::Root(RootThingType::default()))),
+            Encoding::EntityType => Ok(Self::Thing(ThingType::Entity(EntityType::try_from_proto(proto)?))),
+            Encoding::RelationType => Ok(Self::Thing(ThingType::Relation(RelationType::try_from_proto(proto)?))),
+            Encoding::AttributeType => Ok(Self::Thing(ThingType::Attribute(AttributeType::try_from_proto(proto)?))),
+            Encoding::RoleType => Ok(Self::Role(RoleType::try_from_proto(proto)?)),
         }
     }
 }
@@ -193,17 +197,23 @@ impl TryFromProto for RelationType {
     }
 }
 
+impl TryFromProto for ValueType {
+    type Proto = i32;
+    fn try_from_proto(proto: Self::Proto) -> Result<Self> {
+        Self::from_i32(proto).ok_or(InternalError::EnumOutOfBounds(proto, "ValueType").into())
+    }
+}
+
 impl TryFromProto for AttributeType {
     type Proto = TypeProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
-        match ValueType::from_i32(proto.value_type) {
-            Some(ValueType::Object) => Ok(Self::Root(RootAttributeType::default())),
-            Some(ValueType::Boolean) => Ok(Self::Boolean(BooleanAttributeType { label: proto.label })),
-            Some(ValueType::Long) => Ok(Self::Long(LongAttributeType { label: proto.label })),
-            Some(ValueType::Double) => Ok(Self::Double(DoubleAttributeType { label: proto.label })),
-            Some(ValueType::String) => Ok(Self::String(StringAttributeType { label: proto.label })),
-            Some(ValueType::Datetime) => Ok(Self::DateTime(DateTimeAttributeType { label: proto.label })),
-            None => Err(InternalError::EnumOutOfBounds(proto.value_type).into()),
+        match ValueType::try_from_proto(proto.value_type)? {
+            ValueType::Object => Ok(Self::Root(RootAttributeType::default())),
+            ValueType::Boolean => Ok(Self::Boolean(BooleanAttributeType { label: proto.label })),
+            ValueType::Long => Ok(Self::Long(LongAttributeType { label: proto.label })),
+            ValueType::Double => Ok(Self::Double(DoubleAttributeType { label: proto.label })),
+            ValueType::String => Ok(Self::String(StringAttributeType { label: proto.label })),
+            ValueType::Datetime => Ok(Self::DateTime(DateTimeAttributeType { label: proto.label })),
         }
     }
 }
@@ -219,12 +229,11 @@ impl TryFromProto for Thing {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
         let encoding = proto.r#type.clone().ok_or_else(|| ClientError::MissingResponseField("type"))?.encoding;
-        match Encoding::from_i32(encoding) {
-            Some(Encoding::EntityType) => Ok(Self::Entity(Entity::try_from_proto(proto)?)),
-            Some(Encoding::RelationType) => Ok(Self::Relation(Relation::try_from_proto(proto)?)),
-            Some(Encoding::AttributeType) => Ok(Self::Attribute(Attribute::try_from_proto(proto)?)),
-            Some(_) => todo!(),
-            None => Err(InternalError::EnumOutOfBounds(encoding).into()),
+        match Encoding::try_from_proto(encoding)? {
+            Encoding::EntityType => Ok(Self::Entity(Entity::try_from_proto(proto)?)),
+            Encoding::RelationType => Ok(Self::Relation(Relation::try_from_proto(proto)?)),
+            Encoding::AttributeType => Ok(Self::Attribute(Attribute::try_from_proto(proto)?)),
+            _ => todo!(),
         }
     }
 }
@@ -259,25 +268,25 @@ impl TryFromProto for Attribute {
         let value_type = proto.r#type.ok_or_else(|| ClientError::MissingResponseField("type"))?.value_type;
         let iid = proto.iid;
 
-        match ValueType::from_i32(value_type) {
-            Some(ValueType::Object) => todo!(),
-            Some(ValueType::Boolean) => Ok(Self::Boolean(BooleanAttribute {
+        match ValueType::try_from_proto(value_type)? {
+            ValueType::Object => todo!(),
+            ValueType::Boolean => Ok(Self::Boolean(BooleanAttribute {
                 value: if let ValueProto::Boolean(value) = value { value } else { unreachable!() },
                 iid,
             })),
-            Some(ValueType::Long) => Ok(Self::Long(LongAttribute {
+            ValueType::Long => Ok(Self::Long(LongAttribute {
                 value: if let ValueProto::Long(value) = value { value } else { unreachable!() },
                 iid,
             })),
-            Some(ValueType::Double) => Ok(Self::Double(DoubleAttribute {
+            ValueType::Double => Ok(Self::Double(DoubleAttribute {
                 value: if let ValueProto::Double(value) = value { value } else { unreachable!() },
                 iid,
             })),
-            Some(ValueType::String) => Ok(Self::String(StringAttribute {
+            ValueType::String => Ok(Self::String(StringAttribute {
                 value: if let ValueProto::String(value) = value { value } else { unreachable!() },
                 iid,
             })),
-            Some(ValueType::Datetime) => Ok(Self::DateTime(DateTimeAttribute {
+            ValueType::Datetime => Ok(Self::DateTime(DateTimeAttribute {
                 value: if let ValueProto::DateTime(value) = value {
                     NaiveDateTime::from_timestamp_opt(value / 1000, (value % 1000) as u32 * 1_000_000).unwrap()
                 } else {
@@ -285,7 +294,6 @@ impl TryFromProto for Attribute {
                 },
                 iid,
             })),
-            None => Err(InternalError::EnumOutOfBounds(value_type).into()),
         }
     }
 }

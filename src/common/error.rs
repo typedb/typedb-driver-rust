@@ -59,17 +59,17 @@ error_messages! { ClientError
 error_messages! { InternalError
     code: "INT", type: "Internal Error",
     RecvError() =  // TODO rename
-        1: "Channel is closed",
+        1: "Channel is closed.",
     SendError() =  // TODO rename
-        2: "Channel is closed",
+        2: "Channel is closed.",
     UnexpectedRequestType(String) =
-        3: "Unexpected request type for remote procedure call: {}",
+        3: "Unexpected request type for remote procedure call: {}.",
     UnexpectedResponseType(String) =
-        4: "Unexpected response type for remote procedure call: {}",
+        4: "Unexpected response type for remote procedure call: {}.",
     UnknownConnectionAddress(String) =
         5: "{}", // FIXME
-    EnumOutOfBounds(i32) =
-        6: "{}", // FIXME
+    EnumOutOfBounds(i32, &'static str) =
+        6: "Value '{}' is out of bounds for enum '{}'.",
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
