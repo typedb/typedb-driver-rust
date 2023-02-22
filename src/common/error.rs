@@ -58,9 +58,9 @@ error_messages! { ClientError
 
 error_messages! { InternalError
     code: "INT", type: "Internal Error",
-    RecvError() =  // TODO rename
+    RecvError() =
         1: "Channel is closed.",
-    SendError() =  // TODO rename
+    SendError() =
         2: "Channel is closed.",
     UnexpectedRequestType(String) =
         3: "Unexpected request type for remote procedure call: {}.",
