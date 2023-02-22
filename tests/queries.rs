@@ -36,17 +36,18 @@ use typedb_client::{
 const TEST_DATABASE: &str = "test";
 
 macro_rules! permutation_tests {
-    { $perm_args:tt
-        $( $( # $extra_anno:tt )* async fn $test:ident $args:tt -> typedb_client::Result $test_impl:tt )+
+    {
+        $perm_args:tt
+        $( $( #[ $extra_anno:meta ] )* $async:ident fn $test:ident $args:tt -> $ret:ty $test_impl:block )+
     } => {
-        permutation_tests!{ @impl $( async fn $test $args $test_impl )+ }
-        permutation_tests!{ @impl_per $perm_args  { $( $( # $extra_anno )* async fn $test )+ } }
+        permutation_tests!{ @impl $( $async fn $test $args $ret $test_impl )+ }
+        permutation_tests!{ @impl_per $perm_args  { $( $( #[ $extra_anno ] )* $async fn $test )+ } }
     };
 
-    { @impl $( async fn $test:ident $args:tt $test_impl:tt )+ } => {
+    { @impl $( $async:ident fn $test:ident $args:tt $ret:ty $test_impl:block )+ } => {
         mod _impl {
             use super::*;
-            $( pub async fn $test $args -> typedb_client::Result $test_impl )+
+            $( pub $async fn $test $args -> $ret $test_impl )+
         }
     };
 
@@ -54,15 +55,13 @@ macro_rules! permutation_tests {
         $(permutation_tests!{ @impl_mod { $mod => $arg } $fns })+
     };
 
-    { @impl_mod { $mod:ident => $arg:expr } {
-        $( $( # $extra_anno:tt )* async fn $test:ident )+
-    } } => {
+    { @impl_mod { $mod:ident => $arg:expr } { $( $( #[ $extra_anno:meta ] )* async fn $test:ident )+ } } => {
         mod $mod {
             use super::*;
         $(
             #[tokio::test]
             #[serial($mod)]
-            $( # $extra_anno )*
+            $( #[ $extra_anno ] )*
             pub async fn $test() {
                 _impl::$test($arg).await.unwrap();
             }
