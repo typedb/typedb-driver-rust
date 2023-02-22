@@ -31,59 +31,67 @@ use typedb_client::{
 
 const TEST_DATABASE: &str = "test";
 
-#[async_std::test]
+#[test]
 #[serial]
-async fn basic_async_std() {
-    let connection = new_cluster_connection().unwrap();
-    create_test_database_with_schema(connection.clone(), "define person sub entity;").await.unwrap();
-    let mut databases = DatabaseManager::new(connection);
-    assert!(databases.contains(TEST_DATABASE.into()).await.unwrap());
+fn basic_async_std() {
+    async_std::task::block_on(async {
+        let connection = new_cluster_connection()?;
+        create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
+        let mut databases = DatabaseManager::new(connection);
+        assert!(databases.contains(TEST_DATABASE.into()).await?);
 
-    let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
-    let transaction = session.transaction(Write).await.unwrap();
-    let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
-    let results: Vec<_> = answer_stream.collect().await;
-    transaction.commit().await.unwrap();
-    assert_eq!(results.len(), 5);
-    assert!(results.into_iter().all(|res| res.is_ok()));
+        let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+        let transaction = session.transaction(Write).await?;
+        let answer_stream = transaction.query().match_("match $x sub thing;")?;
+        let results: Vec<_> = answer_stream.collect().await;
+        transaction.commit().await?;
+        assert_eq!(results.len(), 5);
+        assert!(results.into_iter().all(|res| res.is_ok()));
+        Ok::<(), typedb_client::Error>(())
+    })
+    .unwrap();
 }
 
 #[test]
 #[serial]
 fn basic_smol() {
     smol::block_on(async {
-        let connection = new_cluster_connection().unwrap();
-        create_test_database_with_schema(connection.clone(), "define person sub entity;").await.unwrap();
+        let connection = new_cluster_connection()?;
+        create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
         let mut databases = DatabaseManager::new(connection);
-        assert!(databases.contains(TEST_DATABASE.into()).await.unwrap());
+        assert!(databases.contains(TEST_DATABASE.into()).await?);
 
-        let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
-        let transaction = session.transaction(Write).await.unwrap();
-        let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
+        let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+        let transaction = session.transaction(Write).await?;
+        let answer_stream = transaction.query().match_("match $x sub thing;")?;
         let results: Vec<_> = answer_stream.collect().await;
-        transaction.commit().await.unwrap();
+        transaction.commit().await?;
         assert_eq!(results.len(), 5);
         assert!(results.into_iter().all(|res| res.is_ok()));
-    });
+        Ok::<(), typedb_client::Error>(())
+    })
+    .unwrap();
 }
 
 #[test]
 #[serial]
 fn basic_futures() {
     futures::executor::block_on(async {
-        let connection = new_cluster_connection().unwrap();
-        create_test_database_with_schema(connection.clone(), "define person sub entity;").await.unwrap();
+        let connection = new_cluster_connection()?;
+        create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
         let mut databases = DatabaseManager::new(connection);
-        assert!(databases.contains(TEST_DATABASE.into()).await.unwrap());
+        assert!(databases.contains(TEST_DATABASE.into()).await?);
 
-        let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
-        let transaction = session.transaction(Write).await.unwrap();
-        let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
+        let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+        let transaction = session.transaction(Write).await?;
+        let answer_stream = transaction.query().match_("match $x sub thing;")?;
         let results: Vec<_> = answer_stream.collect().await;
-        transaction.commit().await.unwrap();
+        transaction.commit().await?;
         assert_eq!(results.len(), 5);
         assert!(results.into_iter().all(|res| res.is_ok()));
-    });
+        Ok::<(), typedb_client::Error>(())
+    })
+    .unwrap();
 }
 
 fn new_cluster_connection() -> typedb_client::Result<Connection> {

@@ -226,7 +226,7 @@ impl ResponseCollector {
         let req_id = res.req_id.clone().into();
         match self.callbacks.write().unwrap().remove(&req_id) {
             Some(sink) => sink.send(res.try_into()),
-            _ =>  println!("{}", ClientError::UnknownRequestId(req_id)),
+            _ => println!("{}", ClientError::UnknownRequestId(req_id)),
         }
     }
 
