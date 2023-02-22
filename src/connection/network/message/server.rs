@@ -25,53 +25,20 @@ use crossbeam::channel::Sender;
 use itertools::Itertools;
 use tonic::Streaming;
 use typedb_protocol::{
-    cluster_database::Replica, cluster_database_manager, core_database, core_database_manager,
-    server_manager, session, transaction, ClusterDatabase,
+    cluster_database_manager, core_database, core_database_manager, server_manager, session,
+    transaction,
 };
 
 use super::TransactionRequest;
 use crate::{
-    common::SessionID,
-    connection::network::{address::Address, proto::IntoProto},
+    common::{info::DatabaseInfo, SessionID},
+    connection::network::{
+        address::Address,
+        proto::{IntoProto, TryFromProto},
+    },
     error::InternalError,
     Error, Options, Result, SessionType,
 };
-
-#[derive(Debug)]
-pub(crate) struct DatabaseProto {
-    pub name: String,
-    pub replicas: Vec<ReplicaProto>,
-}
-
-impl TryFrom<ClusterDatabase> for DatabaseProto {
-    type Error = Error;
-    fn try_from(proto: ClusterDatabase) -> Result<Self> {
-        Ok(Self {
-            name: proto.name,
-            replicas: proto.replicas.into_iter().map(TryInto::try_into).try_collect()?,
-        })
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct ReplicaProto {
-    pub address: Address,
-    pub is_primary: bool,
-    pub is_preferred: bool,
-    pub term: i64,
-}
-
-impl TryFrom<Replica> for ReplicaProto {
-    type Error = Error;
-    fn try_from(proto: Replica) -> Result<Self> {
-        Ok(Self {
-            address: proto.address.as_str().parse()?,
-            is_primary: proto.primary,
-            is_preferred: proto.preferred,
-            term: proto.term,
-        })
-    }
-}
 
 #[derive(Debug)]
 pub(crate) enum Request {
@@ -261,10 +228,10 @@ pub(crate) enum Response {
     },
     DatabaseCreate,
     DatabaseGet {
-        database: DatabaseProto,
+        database: DatabaseInfo,
     },
     DatabasesAll {
-        databases: Vec<DatabaseProto>,
+        databases: Vec<DatabaseInfo>,
     },
 
     DatabaseDelete,
@@ -315,7 +282,9 @@ impl TryFrom<cluster_database_manager::get::Res> for Response {
     type Error = Error;
     fn try_from(res: cluster_database_manager::get::Res) -> Result<Self> {
         Ok(Response::DatabaseGet {
-            database: res.database.ok_or(InternalError::MissingField())?.try_into()?,
+            database: DatabaseInfo::try_from_proto(
+                res.database.ok_or(InternalError::MissingField())?,
+            )?,
         })
     }
 }
@@ -324,7 +293,7 @@ impl TryFrom<cluster_database_manager::all::Res> for Response {
     type Error = Error;
     fn try_from(res: cluster_database_manager::all::Res) -> Result<Self> {
         Ok(Response::DatabasesAll {
-            databases: res.databases.into_iter().map(TryInto::try_into).try_collect()?,
+            databases: res.databases.into_iter().map(DatabaseInfo::try_from_proto).try_collect()?,
         })
     }
 }

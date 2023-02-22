@@ -25,6 +25,6 @@ mod transaction;
 
 pub(crate) use self::{
     query::{QueryRequest, QueryResponse},
-    server::{DatabaseProto, ReplicaProto, Request, Response},
+    server::{Request, Response},
     transaction::{TransactionRequest, TransactionResponse},
 };

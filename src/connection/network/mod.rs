@@ -25,5 +25,3 @@ pub(super) mod message;
 mod proto;
 pub(super) mod stub;
 pub(super) mod transmitter;
-
-pub(crate) use self::message::{DatabaseProto, ReplicaProto};

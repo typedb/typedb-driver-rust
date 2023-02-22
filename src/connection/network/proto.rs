@@ -22,9 +22,11 @@
 use std::collections::HashMap;
 
 use chrono::NaiveDateTime;
+use itertools::Itertools;
 use typedb_protocol::{
     attribute::value::Value as ValueProto,
     attribute_type::ValueType,
+    cluster_database::Replica as ReplicaProto,
     concept as concept_proto,
     numeric::Value,
     options::{
@@ -35,12 +37,14 @@ use typedb_protocol::{
         TransactionTimeoutOpt::TransactionTimeoutMillis,
     },
     r#type::Encoding,
-    session, transaction, Concept as ConceptProto, ConceptMap as ConceptMapProto,
-    Numeric as NumericProto, Options as OptionsProto, Thing as ThingProto, Type as TypeProto,
+    session, transaction, ClusterDatabase as DatabaseProto, Concept as ConceptProto,
+    ConceptMap as ConceptMapProto, Numeric as NumericProto, Options as OptionsProto,
+    Thing as ThingProto, Type as TypeProto,
 };
 
 use crate::{
     answer::{ConceptMap, Numeric},
+    common::info::{DatabaseInfo, ReplicaInfo},
     concept::{
         Attribute, AttributeType, BooleanAttribute, BooleanAttributeType, Concept,
         DateTimeAttribute, DateTimeAttributeType, DoubleAttribute, DoubleAttributeType, Entity,
@@ -104,6 +108,28 @@ impl IntoProto for Options {
 pub(super) trait TryFromProto: Sized {
     type Proto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self>;
+}
+
+impl TryFromProto for DatabaseInfo {
+    type Proto = DatabaseProto;
+    fn try_from_proto(proto: Self::Proto) -> Result<Self> {
+        Ok(Self {
+            name: proto.name,
+            replicas: proto.replicas.into_iter().map(ReplicaInfo::try_from_proto).try_collect()?,
+        })
+    }
+}
+
+impl TryFromProto for ReplicaInfo {
+    type Proto = ReplicaProto;
+    fn try_from_proto(proto: Self::Proto) -> Result<Self> {
+        Ok(Self {
+            address: proto.address.as_str().parse()?,
+            is_primary: proto.primary,
+            is_preferred: proto.preferred,
+            term: proto.term,
+        })
+    }
 }
 
 impl TryFromProto for Numeric {

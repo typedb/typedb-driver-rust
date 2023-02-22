@@ -36,7 +36,7 @@ use super::{
     network::{
         address::Address,
         channel::open_encrypted_channel,
-        message::{DatabaseProto, Request, Response, TransactionRequest},
+        message::{Request, Response, TransactionRequest},
         stub::RPCStub,
         transmitter::RPCTransmitter,
     },
@@ -45,7 +45,7 @@ use super::{
 use crate::{
     common::{
         error::{ClientError, Error},
-        info::SessionInfo,
+        info::{DatabaseInfo, SessionInfo},
         Result, SessionID, SessionType, TransactionType,
     },
     connection::{network::transmitter::TransactionTransmitter, runtime::BackgroundRuntime},
@@ -245,14 +245,14 @@ impl ServerConnection {
     pub(crate) async fn get_database_replicas(
         &self,
         database_name: String,
-    ) -> Result<DatabaseProto> {
+    ) -> Result<DatabaseInfo> {
         match self.request_async(Request::DatabaseGet { database_name }).await? {
             Response::DatabaseGet { database } => Ok(database),
             _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 
-    pub(crate) async fn all_databases(&self) -> Result<Vec<DatabaseProto>> {
+    pub(crate) async fn all_databases(&self) -> Result<Vec<DatabaseInfo>> {
         match self.request_async(Request::DatabasesAll).await? {
             Response::DatabasesAll { databases } => Ok(databases),
             _ => Err(InternalError::UnexpectedResponseType().into()),

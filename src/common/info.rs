@@ -29,3 +29,17 @@ pub(crate) struct SessionInfo {
     pub(crate) session_id: SessionID,
     pub(crate) network_latency: Duration,
 }
+
+#[derive(Debug)]
+pub(crate) struct DatabaseInfo {
+    pub name: String,
+    pub replicas: Vec<ReplicaInfo>,
+}
+
+#[derive(Debug)]
+pub(crate) struct ReplicaInfo {
+    pub address: Address,
+    pub is_primary: bool,
+    pub is_preferred: bool,
+    pub term: i64,
+}
