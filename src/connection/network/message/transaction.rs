@@ -41,7 +41,7 @@ pub(in crate::connection) enum TransactionRequest {
 
 impl From<TransactionRequest> for transaction::Req {
     fn from(request: TransactionRequest) -> Self {
-        let mut request_id = RequestID::generate(); // FIXME defer
+        let mut request_id = None;
 
         let req = match request {
             TransactionRequest::Open { session_id, transaction_type, options, network_latency } => {
@@ -56,12 +56,16 @@ impl From<TransactionRequest> for transaction::Req {
             TransactionRequest::Rollback => transaction::req::Req::RollbackReq(transaction::rollback::Req {}),
             TransactionRequest::Query(query_request) => transaction::req::Req::QueryManagerReq(query_request.into()),
             TransactionRequest::Stream { request_id: req_id } => {
-                request_id = req_id;
+                request_id = Some(req_id);
                 transaction::req::Req::StreamReq(transaction::stream::Req {})
             }
         };
 
-        transaction::Req { req_id: request_id.into(), metadata: Default::default(), req: Some(req) }
+        transaction::Req {
+            req_id: request_id.unwrap_or_else(RequestID::generate).into(),
+            metadata: Default::default(),
+            req: Some(req),
+        }
     }
 }
 

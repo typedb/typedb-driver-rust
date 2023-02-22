@@ -262,26 +262,26 @@ impl TryFromProto for Attribute {
         match ValueType::from_i32(value_type) {
             Some(ValueType::Object) => todo!(),
             Some(ValueType::Boolean) => Ok(Self::Boolean(BooleanAttribute {
-                value: if let ValueProto::Boolean(value) = value { value } else { todo!() },
+                value: if let ValueProto::Boolean(value) = value { value } else { unreachable!() },
                 iid,
             })),
             Some(ValueType::Long) => Ok(Self::Long(LongAttribute {
-                value: if let ValueProto::Long(value) = value { value } else { todo!() },
+                value: if let ValueProto::Long(value) = value { value } else { unreachable!() },
                 iid,
             })),
             Some(ValueType::Double) => Ok(Self::Double(DoubleAttribute {
-                value: if let ValueProto::Double(value) = value { value } else { todo!() },
+                value: if let ValueProto::Double(value) = value { value } else { unreachable!() },
                 iid,
             })),
             Some(ValueType::String) => Ok(Self::String(StringAttribute {
-                value: if let ValueProto::String(value) = value { value } else { todo!() },
+                value: if let ValueProto::String(value) = value { value } else { unreachable!() },
                 iid,
             })),
             Some(ValueType::Datetime) => Ok(Self::DateTime(DateTimeAttribute {
                 value: if let ValueProto::DateTime(value) = value {
                     NaiveDateTime::from_timestamp_opt(value / 1000, (value % 1000) as u32 * 1_000_000).unwrap()
                 } else {
-                    todo!()
+                    unreachable!()
                 },
                 iid,
             })),

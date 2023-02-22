@@ -224,19 +224,19 @@ async fn force_close_connection(connection: Connection) -> typedb_client::Result
 
     let schema = database.schema().await;
     assert!(schema.is_err());
-    assert_eq!(schema.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+    assert!(matches!(schema, Err(Error::Client(ClientError::ClientIsClosed()))));
 
     let database2 = databases.get(TEST_DATABASE.into()).await;
     assert!(database2.is_err());
-    assert_eq!(database2.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+    assert!(matches!(database2, Err(Error::Client(ClientError::ClientIsClosed()))));
 
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
-    assert_eq!(transaction.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+    assert!(matches!(transaction, Err(Error::Client(ClientError::ClientIsClosed()))));
 
     let session = Session::new(database, Data).await;
     assert!(session.is_err());
-    assert_eq!(session.unwrap_err(), Error::Client(ClientError::ClientIsClosed()));
+    assert!(matches!(session, Err(Error::Client(ClientError::ClientIsClosed()))));
 
     Ok(())
 }
@@ -257,7 +257,7 @@ async fn force_close_session(connection: Connection) -> typedb_client::Result {
 
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
-    assert_eq!(transaction.unwrap_err(), Error::Client(ClientError::SessionIsClosed()));
+    assert!(matches!(transaction, Err(Error::Client(ClientError::SessionIsClosed()))));
 
     assert!(Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await.is_ok());
 
