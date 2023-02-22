@@ -19,28 +19,13 @@
  * under the License.
  */
 
-mod credential;
-pub mod error;
-mod id;
-pub(crate) mod info;
-mod options;
+use std::time::Duration;
 
-pub use self::{credential::Credential, error::Error, options::Options};
+use crate::{common::SessionID, connection::network::address::Address};
 
-pub(crate) type StdResult<T, E> = std::result::Result<T, E>;
-pub type Result<T = ()> = StdResult<T, Error>;
-
-pub(crate) type RequestID = id::ID;
-pub(crate) type SessionID = id::ID;
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum SessionType {
-    Data = 0,
-    Schema = 1,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum TransactionType {
-    Read = 0,
-    Write = 1,
+#[derive(Clone, Debug)]
+pub(crate) struct SessionInfo {
+    pub(crate) address: Address,
+    pub(crate) session_id: SessionID,
+    pub(crate) network_latency: Duration,
 }

@@ -19,21 +19,20 @@
  * under the License.
  */
 
-use std::{sync::RwLock, time::Duration};
+use std::sync::RwLock;
 
 use crossbeam::atomic::AtomicCell;
 
 use crate::{
-    common::{error::ClientError, Result, SessionID, SessionType, TransactionType},
+    common::{error::ClientError, info::SessionInfo, Result, SessionType, TransactionType},
     Database, Options, Transaction,
 };
 
 #[derive(Debug)]
 pub struct Session {
     database: Database,
-    server_session_id: RwLock<SessionID>,
+    server_session_info: RwLock<SessionInfo>,
     session_type: SessionType,
-    network_latency: AtomicCell<Duration>,
     is_open: AtomicCell<bool>,
 }
 
@@ -45,19 +44,18 @@ impl Drop for Session {
 
 impl Session {
     pub async fn new(database: Database, session_type: SessionType) -> Result<Self> {
-        let (server_session_id, network_latency) = database
-            .run_failsafe(|database, _, _| async move {
-                database.open_session(session_type, Options::default()).await
-            })
-            .await?;
+        let server_session_info = RwLock::new(
+            database
+                .run_failsafe(|database, _, _| async move {
+                    database
+                        .connection()
+                        .open_session(database.name().to_owned(), session_type, Options::default())
+                        .await
+                })
+                .await?,
+        );
 
-        Ok(Self {
-            database,
-            session_type,
-            server_session_id: RwLock::new(server_session_id),
-            network_latency: AtomicCell::new(network_latency),
-            is_open: AtomicCell::new(true),
-        })
+        Ok(Self { database, session_type, server_session_info, is_open: AtomicCell::new(true) })
     }
 
     pub fn database_name(&self) -> &str {
@@ -74,8 +72,11 @@ impl Session {
 
     pub fn force_close(&self) {
         if self.is_open.compare_exchange(true, false).is_ok() {
-            self.database.close_session(self.server_session_id.read().unwrap().clone()).ok();
+            let session_info = self.server_session_info.write().unwrap();
+            let connection =
+                self.database.connection().get_server_connection(&session_info.address).unwrap();
             // FIXME log error?
+            connection.close_session(session_info.session_id.clone()).ok();
         }
     }
 
@@ -86,34 +87,35 @@ impl Session {
     pub async fn transaction_with_options(
         &self,
         transaction_type: TransactionType,
-        options: Options, // TODO options
+        options: Options,
     ) -> Result<Transaction> {
         if !self.is_open() {
             Err(ClientError::SessionIsClosed())?
         }
 
-        let (session_id, network_latency, transaction_stream) = self
+        let (session_info, transaction_stream) = self
             .database
             .run_failsafe(|database, _, is_first_run| {
-                let session_id = self.server_session_id.read().unwrap().clone();
+                let session_info = self.server_session_info.read().unwrap().clone();
                 let session_type = self.session_type;
                 let options = options.clone();
-                let network_latency = self.network_latency.load();
                 async move {
-                    let (session_id, network_latency) = if is_first_run {
-                        (session_id.clone(), network_latency)
+                    let connection = database.connection();
+                    let session_info = if is_first_run {
+                        session_info.clone()
                     } else {
-                        database.open_session(session_type, options.clone()).await?
+                        connection
+                            .open_session(database.name().to_owned(), session_type, options.clone())
+                            .await?
                     };
                     Ok((
-                        session_id.clone(),
-                        network_latency,
-                        database
+                        session_info.clone(),
+                        connection
                             .open_transaction(
-                                session_id,
+                                session_info.session_id,
                                 transaction_type,
                                 options.clone(),
-                                network_latency,
+                                session_info.network_latency,
                             )
                             .await?,
                     ))
@@ -121,8 +123,7 @@ impl Session {
             })
             .await?;
 
-        *self.server_session_id.write().unwrap() = session_id;
-        self.network_latency.store(network_latency);
+        *self.server_session_info.write().unwrap() = session_info;
         Transaction::new(transaction_stream)
     }
 }

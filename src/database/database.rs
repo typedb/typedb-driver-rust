@@ -19,24 +19,18 @@
  * under the License.
  */
 
-use std::{
-    fmt,
-    future::Future,
-    sync::RwLock,
-    thread::sleep,
-    time::{Duration, Instant},
-};
+use std::{fmt, future::Future, sync::RwLock, thread::sleep, time::Duration};
 
 use itertools::Itertools;
 use log::debug;
 
 use crate::{
-    common::{error::ClientError, Error, Result, SessionID},
+    common::{error::ClientError, Error, Result},
     connection::{
         network::{address::Address, DatabaseProto, ReplicaProto},
-        ServerConnection, TransactionStream,
+        ServerConnection,
     },
-    Connection, Options, SessionType, TransactionType,
+    Connection,
 };
 
 pub struct Database {
@@ -59,13 +53,13 @@ impl Database {
     const FETCH_REPLICAS_MAX_RETRIES: usize = 10;
     const WAIT_FOR_PRIMARY_REPLICA_SELECTION: Duration = Duration::from_secs(2);
 
-    pub(crate) fn new(proto: DatabaseProto, connection: Connection) -> Result<Self> {
+    pub(super) fn new(proto: DatabaseProto, connection: Connection) -> Result<Self> {
         let name = proto.name.clone();
         let replicas = RwLock::new(Replica::try_from_proto(proto, &connection)?);
         Ok(Self { name, replicas, connection })
     }
 
-    pub(crate) async fn get(name: String, connection: Connection) -> Result<Self> {
+    pub(super) async fn get(name: String, connection: Connection) -> Result<Self> {
         Ok(Self {
             name: name.to_string(),
             replicas: RwLock::new(Replica::fetch_all(name, connection.clone()).await?),
@@ -73,16 +67,12 @@ impl Database {
         })
     }
 
-    pub(crate) fn close_session(&self, session_id: SessionID) -> Result {
-        // FIXME
-        for sc in self.connection.iter_server_connections_cloned() {
-            sc.close_session(session_id.clone()).ok();
-        }
-        Ok(())
-    }
-
     pub fn name(&self) -> &str {
         self.name.as_str()
+    }
+
+    pub(super) fn connection(&self) -> &Connection {
+        &self.connection
     }
 
     pub async fn delete(self) -> Result {
@@ -273,51 +263,32 @@ pub(crate) struct ServerDatabase {
 }
 
 impl ServerDatabase {
-    pub(crate) fn new(name: String, connection: ServerConnection) -> Self {
+    fn new(name: String, connection: ServerConnection) -> Self {
         ServerDatabase { name, connection }
     }
 
-    pub fn name(&self) -> &str {
+    pub(super) fn name(&self) -> &str {
         self.name.as_str()
     }
 
-    pub async fn delete(self) -> Result {
+    pub(super) fn connection(&self) -> &ServerConnection {
+        &self.connection
+    }
+
+    async fn delete(self) -> Result {
         self.connection.delete_database(self.name).await
     }
 
-    pub async fn schema(&self) -> Result<String> {
+    async fn schema(&self) -> Result<String> {
         self.connection.database_schema(self.name.clone()).await
     }
 
-    pub async fn type_schema(&self) -> Result<String> {
+    async fn type_schema(&self) -> Result<String> {
         self.connection.database_type_schema(self.name.clone()).await
     }
 
-    pub async fn rule_schema(&self) -> Result<String> {
+    async fn rule_schema(&self) -> Result<String> {
         self.connection.database_rule_schema(self.name.clone()).await
-    }
-
-    pub(crate) async fn open_session(
-        &self,
-        session_type: SessionType,
-        options: Options,
-    ) -> Result<(SessionID, Duration)> {
-        let start = Instant::now();
-        let (session_id, server_duration) =
-            self.connection.open_session(self.name.clone(), session_type, options).await?;
-        Ok((session_id, start.elapsed() - server_duration))
-    }
-
-    pub(crate) async fn open_transaction(
-        &self,
-        session_id: SessionID,
-        transaction_type: TransactionType,
-        options: Options,
-        network_latency: Duration,
-    ) -> Result<TransactionStream> {
-        self.connection
-            .open_transaction(session_id, transaction_type, options, network_latency)
-            .await
     }
 }
 

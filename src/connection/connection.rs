@@ -45,6 +45,7 @@ use super::{
 use crate::{
     common::{
         error::{ClientError, Error},
+        info::SessionInfo,
         Result, SessionID, SessionType, TransactionType,
     },
     connection::{network::transmitter::TransactionTransmitter, runtime::BackgroundRuntime},
@@ -289,7 +290,8 @@ impl ServerConnection {
         database_name: String,
         session_type: SessionType,
         options: Options,
-    ) -> Result<(SessionID, Duration)> {
+    ) -> Result<SessionInfo> {
+        let start = Instant::now();
         match self
             .request_async(Request::SessionOpen { database_name, session_type, options })
             .await?
@@ -302,7 +304,11 @@ impl ServerConnection {
                     self.request_transmitter.clone(),
                     shutdown_source,
                 ));
-                Ok((session_id, server_duration))
+                Ok(SessionInfo {
+                    address: self.address.clone(),
+                    session_id,
+                    network_latency: start.elapsed() - server_duration,
+                })
             }
             _ => Err(InternalError::UnexpectedResponseType().into()),
         }
