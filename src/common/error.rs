@@ -62,10 +62,10 @@ error_messages! { InternalError
         1: "Channel is closed",
     SendError() =  // TODO rename
         2: "Channel is closed",
-    UnexpectedRequestType() =
-        3: "", // FIXME
-    UnexpectedResponseType() =
-        4: "", // FIXME
+    UnexpectedRequestType(String) =
+        3: "Unexpected request type for remote procedure call: {}",
+    UnexpectedResponseType(String) =
+        4: "Unexpected response type for remote procedure call: {}",
     UnknownConnectionAddress(String) =
         5: "{}", // FIXME
     EnumOutOfBounds(i32) =

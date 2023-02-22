@@ -19,11 +19,7 @@
  * under the License.
  */
 
-use std::{
-    future::Future,
-    thread::{self, JoinHandle},
-    time::Duration,
-};
+use std::{future::Future, thread};
 
 use crossbeam::{atomic::AtomicCell, channel::bounded as bounded_blocking};
 use tokio::{
@@ -37,7 +33,6 @@ pub(super) struct BackgroundRuntime {
     async_runtime_handle: runtime::Handle,
     is_open: AtomicCell<bool>,
     shutdown_sink: UnboundedSender<()>,
-    bg: JoinHandle<()>,
 }
 
 impl BackgroundRuntime {
@@ -46,12 +41,12 @@ impl BackgroundRuntime {
         let (shutdown_sink, mut shutdown_source) = unbounded_async();
         let async_runtime = runtime::Builder::new_current_thread().enable_time().enable_io().build()?;
         let async_runtime_handle = async_runtime.handle().clone();
-        let bg = thread::Builder::new().name("gRPC worker".to_string()).spawn(move || {
+        thread::Builder::new().name("gRPC worker".to_string()).spawn(move || {
             async_runtime.block_on(async move {
                 shutdown_source.recv().await;
             })
         })?;
-        Ok(Self { async_runtime_handle, is_open, shutdown_sink, bg })
+        Ok(Self { async_runtime_handle, is_open, shutdown_sink })
     }
 
     pub(super) fn is_open(&self) -> bool {

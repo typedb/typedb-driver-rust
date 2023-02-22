@@ -52,7 +52,7 @@ impl<T> Callback<T> {
     pub(super) fn send_item(&self, response: Result<T>) {
         let result = match self {
             Self::Streamed(sink) => sink.send(response).map_err(Error::from),
-            _ => unreachable!("attempted to stream over a one-shot callback")
+            _ => unreachable!("attempted to stream over a one-shot callback"),
         };
         match result {
             Err(err) => error!("{}", err),
