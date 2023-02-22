@@ -24,10 +24,11 @@ use tokio::{
     select,
     sync::{
         mpsc::{unbounded_channel as unbounded_async, UnboundedReceiver, UnboundedSender},
-        oneshot::{channel as oneshot_async, Sender as AsyncOneshotSender},
+        oneshot::channel as oneshot_async,
     },
 };
 
+use super::callback::Callback;
 use crate::{
     common::{address::Address, Result},
     connection::{
@@ -38,7 +39,6 @@ use crate::{
         },
         runtime::BackgroundRuntime,
     },
-    error::InternalError,
     Credential, Error,
 };
 
@@ -46,23 +46,8 @@ fn oneshot_blocking<T>() -> (SyncSender<T>, SyncReceiver<T>) {
     bounded_blocking::<T>(0)
 }
 
-#[derive(Debug)]
-enum OneShotSender<T> {
-    Async(AsyncOneshotSender<Result<T>>),
-    Blocking(SyncSender<Result<T>>),
-}
-
-impl<T> OneShotSender<T> {
-    fn send(self, response: Result<T>) -> Result {
-        match self {
-            Self::Async(sink) => sink.send(response).map_err(|_| InternalError::SendError().into()),
-            Self::Blocking(sink) => sink.send(response).map_err(Into::into),
-        }
-    }
-}
-
 pub(in crate::connection) struct RPCTransmitter {
-    request_sink: UnboundedSender<(Request, OneShotSender<Response>)>,
+    request_sink: UnboundedSender<(Request, Callback<Response>)>,
     shutdown_sink: UnboundedSender<()>,
 }
 
@@ -97,13 +82,13 @@ impl RPCTransmitter {
 
     pub(in crate::connection) async fn request_async(&self, request: Request) -> Result<Response> {
         let (response_sink, response) = oneshot_async();
-        self.request_sink.send((request, OneShotSender::Async(response_sink)))?;
+        self.request_sink.send((request, Callback::AsyncOneShot(response_sink)))?;
         response.await?
     }
 
     pub(in crate::connection) fn request_blocking(&self, request: Request) -> Result<Response> {
         let (response_sink, response) = oneshot_blocking();
-        self.request_sink.send((request, OneShotSender::Blocking(response_sink)))?;
+        self.request_sink.send((request, Callback::BlockingOneShot(response_sink)))?;
         response.recv()?
     }
 
@@ -113,7 +98,7 @@ impl RPCTransmitter {
 
     async fn dispatcher_loop<Channel: GRPCChannel>(
         rpc: RPCStub<Channel>,
-        mut request_source: UnboundedReceiver<(Request, OneShotSender<Response>)>,
+        mut request_source: UnboundedReceiver<(Request, Callback<Response>)>,
         mut shutdown_signal: UnboundedReceiver<()>,
     ) {
         while let Some((request, response_sink)) = select! {
@@ -123,7 +108,7 @@ impl RPCTransmitter {
             let rpc = rpc.clone();
             tokio::spawn(async move {
                 let response = Self::send_request(rpc, request).await;
-                response_sink.send(response).ok(); // FIXME log?
+                response_sink.send(response);
             });
         }
     }

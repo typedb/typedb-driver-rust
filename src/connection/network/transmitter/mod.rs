@@ -19,6 +19,7 @@
  * under the License.
  */
 
+mod callback;
 mod rpc;
 mod transaction;
 
