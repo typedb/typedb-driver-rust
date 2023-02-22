@@ -32,6 +32,7 @@ use crate::{
     common::{error::ClientError, Result},
     Options, TransactionType,
 };
+use crate::error::InternalError;
 
 pub(crate) struct TransactionStream {
     type_: TransactionType,
@@ -91,7 +92,7 @@ impl TransactionStream {
         let stream = self.query_stream(QueryRequest::Match { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Match { answers }) => stream_iter(answers.into_iter().map(Ok)),
-            Ok(_) => stream_once(Err(ClientError::MissingResponseField("match").into())),
+            Ok(_) => stream_once(Err(InternalError::UnexpectedResponseType().into())),
             Err(err) => stream_once(Err(err)),
         }))
     }
@@ -100,7 +101,7 @@ impl TransactionStream {
         let stream = self.query_stream(QueryRequest::Insert { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Insert { answers }) => stream_iter(answers.into_iter().map(Ok)),
-            Ok(_) => stream_once(Err(ClientError::MissingResponseField("insert").into())),
+            Ok(_) => stream_once(Err(InternalError::UnexpectedResponseType().into())),
             Err(err) => stream_once(Err(err)),
         }))
     }
@@ -109,7 +110,7 @@ impl TransactionStream {
         let stream = self.query_stream(QueryRequest::Update { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Update { answers }) => stream_iter(answers.into_iter().map(Ok)),
-            Ok(_) => stream_once(Err(ClientError::MissingResponseField("update").into())),
+            Ok(_) => stream_once(Err(InternalError::UnexpectedResponseType().into())),
             Err(err) => stream_once(Err(err)),
         }))
     }
@@ -117,7 +118,7 @@ impl TransactionStream {
     pub(crate) async fn match_aggregate(&self, query: String, options: Options) -> Result<Numeric> {
         match self.query_single(QueryRequest::MatchAggregate { query, options }).await? {
             QueryResponse::MatchAggregate { answer } => Ok(answer),
-            _ => Err(ClientError::MissingResponseField("match_aggregate_res"))?, // FIXME
+            _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 
@@ -128,7 +129,7 @@ impl TransactionStream {
     async fn query_single(&self, req: QueryRequest) -> Result<QueryResponse> {
         match self.single(TransactionRequest::Query(req)).await? {
             TransactionResponse::Query(query) => Ok(query),
-            _ => todo!(), // TODO error
+            _ => Err(InternalError::UnexpectedResponseType().into()),
         }
     }
 
@@ -139,7 +140,7 @@ impl TransactionStream {
     fn query_stream(&self, req: QueryRequest) -> Result<impl Stream<Item = Result<QueryResponse>>> {
         Ok(self.stream(TransactionRequest::Query(req))?.map(|response| match response {
             Ok(TransactionResponse::Query(query)) => Ok(query),
-            Ok(_) => todo!(), // TODO error
+            Ok(_) => Err(InternalError::UnexpectedResponseType().into()),
             Err(err) => Err(err),
         }))
     }

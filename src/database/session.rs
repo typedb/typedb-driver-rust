@@ -22,6 +22,7 @@
 use std::sync::RwLock;
 
 use crossbeam::atomic::AtomicCell;
+use log::warn;
 
 use crate::{
     common::{error::ClientError, info::SessionInfo, Result, SessionType, TransactionType},
@@ -38,8 +39,10 @@ pub struct Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        // FIXME log error?
-        self.force_close().ok();
+        match self.force_close() {
+            Err(err) => warn!("Error encountered while closing session: {}", err),
+            Ok(_) => (),
+        }
     }
 }
 
