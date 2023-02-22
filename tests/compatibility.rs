@@ -35,14 +35,11 @@ const TEST_DATABASE: &str = "test";
 #[serial]
 async fn basic_async_std() {
     let connection = new_cluster_connection().unwrap();
-    create_test_database_with_schema(connection.clone(), "define person sub entity;")
-        .await
-        .unwrap();
+    create_test_database_with_schema(connection.clone(), "define person sub entity;").await.unwrap();
     let mut databases = DatabaseManager::new(connection);
     assert!(databases.contains(TEST_DATABASE.into()).await.unwrap());
 
-    let session =
-        Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
+    let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
     let transaction = session.transaction(Write).await.unwrap();
     let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
     let results: Vec<_> = answer_stream.collect().await;
@@ -56,14 +53,11 @@ async fn basic_async_std() {
 fn basic_smol() {
     smol::block_on(async {
         let connection = new_cluster_connection().unwrap();
-        create_test_database_with_schema(connection.clone(), "define person sub entity;")
-            .await
-            .unwrap();
+        create_test_database_with_schema(connection.clone(), "define person sub entity;").await.unwrap();
         let mut databases = DatabaseManager::new(connection);
         assert!(databases.contains(TEST_DATABASE.into()).await.unwrap());
 
-        let session =
-            Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
+        let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Write).await.unwrap();
         let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
         let results: Vec<_> = answer_stream.collect().await;
@@ -78,14 +72,11 @@ fn basic_smol() {
 fn basic_futures() {
     futures::executor::block_on(async {
         let connection = new_cluster_connection().unwrap();
-        create_test_database_with_schema(connection.clone(), "define person sub entity;")
-            .await
-            .unwrap();
+        create_test_database_with_schema(connection.clone(), "define person sub entity;").await.unwrap();
         let mut databases = DatabaseManager::new(connection);
         assert!(databases.contains(TEST_DATABASE.into()).await.unwrap());
 
-        let session =
-            Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
+        let session = Session::new(databases.get(TEST_DATABASE.into()).await.unwrap(), Data).await.unwrap();
         let transaction = session.transaction(Write).await.unwrap();
         let answer_stream = transaction.query().match_("match $x sub thing;").unwrap();
         let results: Vec<_> = answer_stream.collect().await;
@@ -102,18 +93,14 @@ fn new_cluster_connection() -> typedb_client::Result<Connection> {
             "admin",
             "password",
             Some(&PathBuf::from(
-                std::env::var("ROOT_CA").expect(
-                    "ROOT_CA environment variable needs to be set for cluster tests to run",
-                ),
+                std::env::var("ROOT_CA")
+                    .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
             )),
         ),
     )
 }
 
-async fn create_test_database_with_schema(
-    connection: Connection,
-    schema: &str,
-) -> typedb_client::Result {
+async fn create_test_database_with_schema(connection: Connection, schema: &str) -> typedb_client::Result {
     let mut databases = DatabaseManager::new(connection);
     if databases.contains(TEST_DATABASE.into()).await? {
         databases.get(TEST_DATABASE.into()).and_then(Database::delete).await?;

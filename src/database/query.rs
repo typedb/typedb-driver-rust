@@ -68,11 +68,7 @@ impl QueryManager {
         self.match_with_options(query, Options::new_core())
     }
 
-    pub fn match_with_options(
-        &self,
-        query: &str,
-        options: Options,
-    ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
+    pub fn match_with_options(&self, query: &str, options: Options) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         self.transaction_stream.match_(query.to_string(), options)
     }
 
@@ -80,11 +76,7 @@ impl QueryManager {
         self.insert_with_options(query, Options::new_core())
     }
 
-    pub fn insert_with_options(
-        &self,
-        query: &str,
-        options: Options,
-    ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
+    pub fn insert_with_options(&self, query: &str, options: Options) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         self.transaction_stream.insert(query.to_string(), options)
     }
 
@@ -92,11 +84,7 @@ impl QueryManager {
         self.update_with_options(query, Options::new_core())
     }
 
-    pub fn update_with_options(
-        &self,
-        query: &str,
-        options: Options,
-    ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
+    pub fn update_with_options(&self, query: &str, options: Options) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         self.transaction_stream.update(query.to_string(), options)
     }
 
@@ -104,11 +92,7 @@ impl QueryManager {
         self.match_aggregate_with_options(query, Options::new_core()).await
     }
 
-    pub async fn match_aggregate_with_options(
-        &self,
-        query: &str,
-        options: Options,
-    ) -> Result<Numeric> {
+    pub async fn match_aggregate_with_options(&self, query: &str, options: Options) -> Result<Numeric> {
         self.transaction_stream.match_aggregate(query.to_string(), options).await
     }
 }

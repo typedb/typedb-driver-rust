@@ -250,7 +250,7 @@ async fn force_close_session(connection: Connection) -> typedb_client::Result {
     let transaction = session.transaction(Write).await?;
 
     let session2 = session.clone();
-    session2.force_close();
+    session2.force_close()?;
 
     let answer_stream = transaction.query().match_("match $x sub thing;");
     assert!(answer_stream.is_err());
@@ -282,10 +282,7 @@ async fn streaming_perf(connection: Connection) -> typedb_client::Result {
             drop(transaction.query().insert(format!("insert $x {j} isa age;").as_str())?);
         }
         transaction.commit().await?;
-        println!(
-            "iteration {i}: inserted and committed 100k attrs in {}ms",
-            start_time.elapsed().as_millis()
-        );
+        println!("iteration {i}: inserted and committed 100k attrs in {}ms", start_time.elapsed().as_millis());
 
         let mut start_time = Instant::now();
         let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
@@ -297,9 +294,7 @@ async fn streaming_perf(connection: Connection) -> typedb_client::Result {
             match result {
                 Ok(concept_map) => {
                     for (_, concept) in concept_map {
-                        if let Concept::Thing(Thing::Attribute(Attribute::Long(long_attr))) =
-                            concept
-                        {
+                        if let Concept::Thing(Thing::Attribute(Attribute::Long(long_attr))) = concept {
                             sum += long_attr.value
                         }
                     }
@@ -310,10 +305,7 @@ async fn streaming_perf(connection: Connection) -> typedb_client::Result {
             }
             idx = idx + 1;
             if idx == 100_000 {
-                println!(
-                    "iteration {i}: retrieved and summed 100k attrs in {}ms",
-                    start_time.elapsed().as_millis()
-                );
+                println!("iteration {i}: retrieved and summed 100k attrs in {}ms", start_time.elapsed().as_millis());
                 start_time = Instant::now();
             }
         }
@@ -335,18 +327,14 @@ fn new_cluster_connection() -> typedb_client::Result<Connection> {
             "admin",
             "password",
             Some(&PathBuf::from(
-                std::env::var("ROOT_CA").expect(
-                    "ROOT_CA environment variable needs to be set for cluster tests to run",
-                ),
+                std::env::var("ROOT_CA")
+                    .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
             )),
         ),
     )
 }
 
-async fn create_test_database_with_schema(
-    connection: Connection,
-    schema: &str,
-) -> typedb_client::Result {
+async fn create_test_database_with_schema(connection: Connection, schema: &str) -> typedb_client::Result {
     let mut databases = DatabaseManager::new(connection);
     if databases.contains(TEST_DATABASE.into()).await? {
         databases.get(TEST_DATABASE.into()).and_then(Database::delete).await?;
@@ -365,9 +353,7 @@ async fn create_test_database_with_schema(
 // FIXME should be removed after concept API is implemented
 fn unwrap_date_time(concept: Concept) -> NaiveDateTime {
     match concept {
-        Concept::Thing(Thing::Attribute(Attribute::DateTime(DateTimeAttribute {
-            value, ..
-        }))) => value,
+        Concept::Thing(Thing::Attribute(Attribute::DateTime(DateTimeAttribute { value, .. }))) => value,
         _ => unreachable!(),
     }
 }

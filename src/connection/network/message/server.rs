@@ -25,8 +25,7 @@ use crossbeam::channel::Sender;
 use itertools::Itertools;
 use tonic::Streaming;
 use typedb_protocol::{
-    cluster_database_manager, core_database, core_database_manager, server_manager, session,
-    transaction,
+    cluster_database_manager, core_database, core_database_manager, server_manager, session, transaction,
 };
 
 use super::TransactionRequest;
@@ -84,9 +83,7 @@ impl TryFrom<Request> for core_database_manager::create::Req {
     type Error = Error;
     fn try_from(request: Request) -> Result<Self> {
         match request {
-            Request::DatabaseCreate { database_name } => {
-                Ok(core_database_manager::create::Req { name: database_name })
-            }
+            Request::DatabaseCreate { database_name } => Ok(core_database_manager::create::Req { name: database_name }),
             _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
@@ -96,9 +93,7 @@ impl TryFrom<Request> for cluster_database_manager::get::Req {
     type Error = Error;
     fn try_from(request: Request) -> Result<Self> {
         match request {
-            Request::DatabaseGet { database_name } => {
-                Ok(cluster_database_manager::get::Req { name: database_name })
-            }
+            Request::DatabaseGet { database_name } => Ok(cluster_database_manager::get::Req { name: database_name }),
             _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
@@ -118,9 +113,7 @@ impl TryFrom<Request> for core_database::delete::Req {
     type Error = Error;
     fn try_from(request: Request) -> Result<Self> {
         match request {
-            Request::DatabaseDelete { database_name } => {
-                Ok(core_database::delete::Req { name: database_name })
-            }
+            Request::DatabaseDelete { database_name } => Ok(core_database::delete::Req { name: database_name }),
             _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
@@ -130,9 +123,7 @@ impl TryFrom<Request> for core_database::schema::Req {
     type Error = Error;
     fn try_from(request: Request) -> Result<Self> {
         match request {
-            Request::DatabaseSchema { database_name } => {
-                Ok(core_database::schema::Req { name: database_name })
-            }
+            Request::DatabaseSchema { database_name } => Ok(core_database::schema::Req { name: database_name }),
             _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
@@ -166,13 +157,11 @@ impl TryFrom<Request> for session::open::Req {
     type Error = Error;
     fn try_from(request: Request) -> Result<Self> {
         match request {
-            Request::SessionOpen { database_name, session_type, options } => {
-                Ok(session::open::Req {
-                    database: database_name,
-                    r#type: session_type.into_proto().into(),
-                    options: Some(options.into_proto()),
-                })
-            }
+            Request::SessionOpen { database_name, session_type, options } => Ok(session::open::Req {
+                database: database_name,
+                r#type: session_type.into_proto().into(),
+                options: Some(options.into_proto()),
+            }),
             _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
@@ -182,9 +171,7 @@ impl TryFrom<Request> for session::pulse::Req {
     type Error = Error;
     fn try_from(request: Request) -> Result<Self> {
         match request {
-            Request::SessionPulse { session_id } => {
-                Ok(session::pulse::Req { session_id: session_id.into() })
-            }
+            Request::SessionPulse { session_id } => Ok(session::pulse::Req { session_id: session_id.into() }),
             _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
@@ -194,9 +181,7 @@ impl TryFrom<Request> for session::close::Req {
     type Error = Error;
     fn try_from(request: Request) -> Result<Self> {
         match request {
-            Request::SessionClose { session_id } => {
-                Ok(session::close::Req { session_id: session_id.into() })
-            }
+            Request::SessionClose { session_id } => Ok(session::close::Req { session_id: session_id.into() }),
             _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
@@ -206,9 +191,7 @@ impl TryFrom<Request> for transaction::Client {
     type Error = Error;
     fn try_from(request: Request) -> Result<Self> {
         match request {
-            Request::Transaction(transaction_req) => {
-                Ok(transaction::Client { reqs: vec![transaction_req.into()] })
-            }
+            Request::Transaction(transaction_req) => Ok(transaction::Client { reqs: vec![transaction_req.into()] }),
             _ => Err(InternalError::UnexpectedRequestType().into()),
         }
     }
@@ -216,43 +199,23 @@ impl TryFrom<Request> for transaction::Client {
 
 #[derive(Debug)]
 pub(in crate::connection) enum Response {
-    ServersAll {
-        servers: Vec<Address>,
-    },
+    ServersAll { servers: Vec<Address> },
 
-    DatabasesContains {
-        contains: bool,
-    },
+    DatabasesContains { contains: bool },
     DatabaseCreate,
-    DatabaseGet {
-        database: DatabaseInfo,
-    },
-    DatabasesAll {
-        databases: Vec<DatabaseInfo>,
-    },
+    DatabaseGet { database: DatabaseInfo },
+    DatabasesAll { databases: Vec<DatabaseInfo> },
 
     DatabaseDelete,
-    DatabaseSchema {
-        schema: String,
-    },
-    DatabaseTypeSchema {
-        schema: String,
-    },
-    DatabaseRuleSchema {
-        schema: String,
-    },
+    DatabaseSchema { schema: String },
+    DatabaseTypeSchema { schema: String },
+    DatabaseRuleSchema { schema: String },
 
-    SessionOpen {
-        session_id: SessionID,
-        server_duration: Duration,
-    },
+    SessionOpen { session_id: SessionID, server_duration: Duration },
     SessionPulse,
     SessionClose,
 
-    TransactionOpen {
-        request_sink: Sender<transaction::Client>,
-        grpc_stream: Streaming<transaction::Server>,
-    },
+    TransactionOpen { request_sink: Sender<transaction::Client>, grpc_stream: Streaming<transaction::Server> },
 }
 
 impl TryFrom<server_manager::all::Res> for Response {
@@ -279,9 +242,7 @@ impl TryFrom<cluster_database_manager::get::Res> for Response {
     type Error = Error;
     fn try_from(res: cluster_database_manager::get::Res) -> Result<Self> {
         Ok(Response::DatabaseGet {
-            database: DatabaseInfo::try_from_proto(
-                res.database.ok_or(ClientError::MissingResponseField("database"))?,
-            )?,
+            database: DatabaseInfo::try_from_proto(res.database.ok_or(ClientError::MissingResponseField("database"))?)?,
         })
     }
 }
@@ -341,9 +302,7 @@ impl From<session::close::Res> for Response {
 }
 
 impl From<(Sender<transaction::Client>, Streaming<transaction::Server>)> for Response {
-    fn from(
-        (request_sink, grpc_stream): (Sender<transaction::Client>, Streaming<transaction::Server>),
-    ) -> Self {
+    fn from((request_sink, grpc_stream): (Sender<transaction::Client>, Streaming<transaction::Server>)) -> Self {
         Self::TransactionOpen { request_sink, grpc_stream }
     }
 }

@@ -32,25 +32,22 @@ use typedb_protocol::{
     options::{
         ExplainOpt::Explain, InferOpt::Infer, ParallelOpt::Parallel, PrefetchOpt::Prefetch,
         PrefetchSizeOpt::PrefetchSize, ReadAnyReplicaOpt::ReadAnyReplica,
-        SchemaLockAcquireTimeoutOpt::SchemaLockAcquireTimeoutMillis,
-        SessionIdleTimeoutOpt::SessionIdleTimeoutMillis, TraceInferenceOpt::TraceInference,
-        TransactionTimeoutOpt::TransactionTimeoutMillis,
+        SchemaLockAcquireTimeoutOpt::SchemaLockAcquireTimeoutMillis, SessionIdleTimeoutOpt::SessionIdleTimeoutMillis,
+        TraceInferenceOpt::TraceInference, TransactionTimeoutOpt::TransactionTimeoutMillis,
     },
     r#type::Encoding,
-    session, transaction, ClusterDatabase as DatabaseProto, Concept as ConceptProto,
-    ConceptMap as ConceptMapProto, Numeric as NumericProto, Options as OptionsProto,
-    Thing as ThingProto, Type as TypeProto,
+    session, transaction, ClusterDatabase as DatabaseProto, Concept as ConceptProto, ConceptMap as ConceptMapProto,
+    Numeric as NumericProto, Options as OptionsProto, Thing as ThingProto, Type as TypeProto,
 };
 
 use crate::{
     answer::{ConceptMap, Numeric},
     common::info::{DatabaseInfo, ReplicaInfo},
     concept::{
-        Attribute, AttributeType, BooleanAttribute, BooleanAttributeType, Concept,
-        DateTimeAttribute, DateTimeAttributeType, DoubleAttribute, DoubleAttributeType, Entity,
-        EntityType, LongAttribute, LongAttributeType, Relation, RelationType, RoleType,
-        RootAttributeType, RootThingType, ScopedLabel, StringAttribute, StringAttributeType, Thing,
-        ThingType, Type,
+        Attribute, AttributeType, BooleanAttribute, BooleanAttributeType, Concept, DateTimeAttribute,
+        DateTimeAttributeType, DoubleAttribute, DoubleAttributeType, Entity, EntityType, LongAttribute,
+        LongAttributeType, Relation, RelationType, RoleType, RootAttributeType, RootThingType, ScopedLabel,
+        StringAttribute, StringAttributeType, Thing, ThingType, Type,
     },
     error::{ClientError, InternalError},
     Options, Result, SessionType, TransactionType,
@@ -171,12 +168,8 @@ impl TryFromProto for Type {
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
         match Encoding::from_i32(proto.encoding) {
             Some(Encoding::ThingType) => Ok(Self::Thing(ThingType::Root(RootThingType::default()))),
-            Some(Encoding::EntityType) => {
-                Ok(Self::Thing(ThingType::Entity(EntityType::try_from_proto(proto)?)))
-            }
-            Some(Encoding::RelationType) => {
-                Ok(Self::Thing(ThingType::Relation(RelationType::try_from_proto(proto)?)))
-            }
+            Some(Encoding::EntityType) => Ok(Self::Thing(ThingType::Entity(EntityType::try_from_proto(proto)?))),
+            Some(Encoding::RelationType) => Ok(Self::Thing(ThingType::Relation(RelationType::try_from_proto(proto)?))),
             Some(Encoding::AttributeType) => {
                 Ok(Self::Thing(ThingType::Attribute(AttributeType::try_from_proto(proto)?)))
             }
@@ -205,15 +198,11 @@ impl TryFromProto for AttributeType {
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
         match ValueType::from_i32(proto.value_type) {
             Some(ValueType::Object) => Ok(Self::Root(RootAttributeType::default())),
-            Some(ValueType::Boolean) => {
-                Ok(Self::Boolean(BooleanAttributeType { label: proto.label }))
-            }
+            Some(ValueType::Boolean) => Ok(Self::Boolean(BooleanAttributeType { label: proto.label })),
             Some(ValueType::Long) => Ok(Self::Long(LongAttributeType { label: proto.label })),
             Some(ValueType::Double) => Ok(Self::Double(DoubleAttributeType { label: proto.label })),
             Some(ValueType::String) => Ok(Self::String(StringAttributeType { label: proto.label })),
-            Some(ValueType::Datetime) => {
-                Ok(Self::DateTime(DateTimeAttributeType { label: proto.label }))
-            }
+            Some(ValueType::Datetime) => Ok(Self::DateTime(DateTimeAttributeType { label: proto.label })),
             None => Err(InternalError::EnumOutOfBounds(proto.value_type).into()),
         }
     }
@@ -229,8 +218,7 @@ impl TryFromProto for RoleType {
 impl TryFromProto for Thing {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
-        let encoding =
-            proto.r#type.clone().ok_or_else(|| ClientError::MissingResponseField("type"))?.encoding;
+        let encoding = proto.r#type.clone().ok_or_else(|| ClientError::MissingResponseField("type"))?.encoding;
         match Encoding::from_i32(encoding) {
             Some(Encoding::EntityType) => Ok(Self::Entity(Entity::try_from_proto(proto)?)),
             Some(Encoding::RelationType) => Ok(Self::Relation(Relation::try_from_proto(proto)?)),
@@ -245,9 +233,7 @@ impl TryFromProto for Entity {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
         Ok(Self {
-            type_: EntityType::try_from_proto(
-                proto.r#type.ok_or_else(|| ClientError::MissingResponseField("type"))?,
-            )?,
+            type_: EntityType::try_from_proto(proto.r#type.ok_or_else(|| ClientError::MissingResponseField("type"))?)?,
             iid: proto.iid,
         })
     }
@@ -268,13 +254,9 @@ impl TryFromProto for Relation {
 impl TryFromProto for Attribute {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
-        let value = proto
-            .value
-            .and_then(|v| v.value)
-            .ok_or_else(|| ClientError::MissingResponseField("value"))?;
+        let value = proto.value.and_then(|v| v.value).ok_or_else(|| ClientError::MissingResponseField("value"))?;
 
-        let value_type =
-            proto.r#type.ok_or_else(|| ClientError::MissingResponseField("type"))?.value_type;
+        let value_type = proto.r#type.ok_or_else(|| ClientError::MissingResponseField("type"))?.value_type;
         let iid = proto.iid;
 
         match ValueType::from_i32(value_type) {
@@ -297,11 +279,7 @@ impl TryFromProto for Attribute {
             })),
             Some(ValueType::Datetime) => Ok(Self::DateTime(DateTimeAttribute {
                 value: if let ValueProto::DateTime(value) = value {
-                    NaiveDateTime::from_timestamp_opt(
-                        value / 1000,
-                        (value % 1000) as u32 * 1_000_000,
-                    )
-                    .unwrap()
+                    NaiveDateTime::from_timestamp_opt(value / 1000, (value % 1000) as u32 * 1_000_000).unwrap()
                 } else {
                     todo!()
                 },

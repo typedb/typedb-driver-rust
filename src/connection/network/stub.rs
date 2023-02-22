@@ -30,9 +30,8 @@ use futures::{future::BoxFuture, FutureExt, Stream, TryFutureExt};
 use log::{debug, trace};
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
-    cluster_database::Replica, cluster_database_manager, cluster_user, core_database,
-    core_database_manager, server_manager, session, transaction,
-    type_db_client::TypeDbClient as CoreGRPC,
+    cluster_database::Replica, cluster_database_manager, cluster_user, core_database, core_database_manager,
+    server_manager, session, transaction, type_db_client::TypeDbClient as CoreGRPC,
     type_db_cluster_client::TypeDbClusterClient as ClusterGRPC, ClusterDatabase,
 };
 
@@ -168,12 +167,8 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         &mut self,
         _req: cluster_database_manager::all::Req,
     ) -> Result<cluster_database_manager::all::Res> {
-        let database_names = self
-            .single(|this| {
-                Box::pin(this.core_grpc.databases_all(core_database_manager::all::Req {}))
-            })
-            .await?
-            .names;
+        let database_names =
+            self.single(|this| Box::pin(this.core_grpc.databases_all(core_database_manager::all::Req {}))).await?.names;
         Ok(cluster_database_manager::all::Res {
             databases: database_names
                 .into_iter()
@@ -233,10 +228,7 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         self.single(|this| Box::pin(this.core_grpc.database_rule_schema(req.clone()))).await
     }
 
-    pub(in crate::connection) async fn session_open(
-        &mut self,
-        req: session::open::Req,
-    ) -> Result<session::open::Res> {
+    pub(in crate::connection) async fn session_open(&mut self, req: session::open::Req) -> Result<session::open::Res> {
         self.single(|this| Box::pin(this.core_grpc.session_open(req.clone()))).await
     }
 
@@ -279,8 +271,7 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         for<'a> F: Fn(&'a mut Self) -> BoxFuture<'a, TonicResult<R>> + Send + Sync,
         R: 'static,
     {
-        self.call_with_auto_renew_token(|this| Box::pin(call(this).map(|r| Ok(r?.into_inner()))))
-            .await
+        self.call_with_auto_renew_token(|this| Box::pin(call(this).map(|r| Ok(r?.into_inner())))).await
     }
 }
 

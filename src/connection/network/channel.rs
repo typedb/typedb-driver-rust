@@ -43,10 +43,7 @@ pub(in crate::connection) type PlainTextChannel = InterceptedService<Channel, Pl
 pub(in crate::connection) type CallCredChannel = InterceptedService<Channel, CredentialInjector>;
 
 pub(in crate::connection) trait GRPCChannel:
-    GrpcService<BoxBody, Error = TonicError, ResponseBody = BoxBody, Future = ResponseFuture>
-    + Clone
-    + Send
-    + 'static
+    GrpcService<BoxBody, Error = TonicError, ResponseBody = BoxBody, Future = ResponseFuture> + Clone + Send + 'static
 {
     fn is_plaintext(&self) -> bool;
 }
@@ -103,10 +100,7 @@ pub(in crate::connection) fn open_encrypted_channel(
     }
     let channel = builder.connect_lazy();
     let call_credentials = Arc::new(CallCredentials::new(credential));
-    Ok((
-        CallCredChannel::new(channel, CredentialInjector::new(call_credentials.clone())),
-        call_credentials,
-    ))
+    Ok((CallCredChannel::new(channel, CredentialInjector::new(call_credentials.clone())), call_credentials))
 }
 
 #[derive(Debug)]
@@ -136,9 +130,7 @@ impl CallCredentials {
         request.metadata_mut().insert("username", self.credential.username().try_into().unwrap());
         match &*self.token.read().unwrap() {
             Some(token) => request.metadata_mut().insert("token", token.try_into().unwrap()),
-            None => request
-                .metadata_mut()
-                .insert("password", self.credential.password().try_into().unwrap()),
+            None => request.metadata_mut().insert("password", self.credential.password().try_into().unwrap()),
         };
         request
     }

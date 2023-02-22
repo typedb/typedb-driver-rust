@@ -74,8 +74,7 @@ impl Session {
     pub fn force_close(&self) -> Result {
         if self.is_open.compare_exchange(true, false).is_ok() {
             let session_info = self.server_session_info.write().unwrap();
-            let connection =
-                self.database.connection().get_server_connection(&session_info.address).unwrap();
+            let connection = self.database.connection().get_server_connection(&session_info.address).unwrap();
             connection.close_session(session_info.session_id.clone())?;
         }
         Ok(())
@@ -105,9 +104,7 @@ impl Session {
                     let session_info = if is_first_run {
                         session_info.clone()
                     } else {
-                        connection
-                            .open_session(database.name().to_owned(), session_type, options.clone())
-                            .await?
+                        connection.open_session(database.name().to_owned(), session_type, options.clone()).await?
                     };
                     Ok((
                         session_info.clone(),

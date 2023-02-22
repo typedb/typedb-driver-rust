@@ -78,10 +78,7 @@ impl Drop for TransactionTransmitter {
 }
 
 impl TransactionTransmitter {
-    pub(in crate::connection) fn new(
-        background_runtime: &BackgroundRuntime,
-        response: Response,
-    ) -> Self {
+    pub(in crate::connection) fn new(background_runtime: &BackgroundRuntime, response: Response) -> Self {
         let (request_sink, grpc_stream) = match response {
             Response::TransactionOpen { request_sink, grpc_stream } => (request_sink, grpc_stream),
             _ => unreachable!(),
@@ -100,10 +97,7 @@ impl TransactionTransmitter {
         Self { request_sink: buffer_sink, is_open, shutdown_sink }
     }
 
-    pub(in crate::connection) async fn single(
-        &self,
-        req: TransactionRequest,
-    ) -> Result<TransactionResponse> {
+    pub(in crate::connection) async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         if !self.is_open.load() {
             return Err(ClientError::SessionIsClosed().into());
         }
@@ -132,14 +126,8 @@ impl TransactionTransmitter {
         is_open: Arc<AtomicCell<bool>>,
         shutdown_signal: UnboundedReceiver<()>,
     ) {
-        let collector =
-            ResponseCollector { request_sink: queue_sink, callbacks: Default::default(), is_open };
-        tokio::spawn(Self::dispatch_loop(
-            queue_source,
-            request_sink,
-            collector.clone(),
-            shutdown_signal,
-        ));
+        let collector = ResponseCollector { request_sink: queue_sink, callbacks: Default::default(), is_open };
+        tokio::spawn(Self::dispatch_loop(queue_source, request_sink, collector.clone(), shutdown_signal));
         tokio::spawn(Self::listen_loop(grpc_stream, collector));
     }
 
@@ -186,17 +174,12 @@ impl TransactionTransmitter {
         }
     }
 
-    async fn listen_loop(
-        mut grpc_source: Streaming<transaction::Server>,
-        collector: ResponseCollector,
-    ) {
+    async fn listen_loop(mut grpc_source: Streaming<transaction::Server>, collector: ResponseCollector) {
         loop {
             match grpc_source.next().await {
                 Some(Ok(message)) => collector.collect(message).await,
                 Some(Err(err)) => {
-                    break collector
-                        .close(ClientError::TransactionIsClosedWithErrors(err.to_string()))
-                        .await
+                    break collector.close(ClientError::TransactionIsClosedWithErrors(err.to_string())).await
                 }
                 None => break collector.close(ClientError::TransactionIsClosed()).await,
             }
@@ -272,9 +255,7 @@ impl ResponseCollector {
                         self.callbacks.write().unwrap().remove(&request_id);
                     }
                     State::Continue => {
-                        self.request_sink
-                            .send((TransactionRequest::Stream { request_id }, None))
-                            .unwrap();
+                        self.request_sink.send((TransactionRequest::Stream { request_id }, None)).unwrap();
                     }
                 }
             }

@@ -61,14 +61,9 @@ impl DatabaseManager {
         for server_connection in self.connection.iter_server_connections_cloned() {
             match server_connection.all_databases().await {
                 Ok(list) => {
-                    return list
-                        .into_iter()
-                        .map(|proto_db| Database::new(proto_db, self.connection.clone()))
-                        .collect()
+                    return list.into_iter().map(|proto_db| Database::new(proto_db, self.connection.clone())).collect()
                 }
-                Err(err) => {
-                    error_buffer.push(format!("- {}: {}", server_connection.address(), err))
-                }
+                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
             }
         }
         Err(ClientError::ClusterAllNodesFailed(error_buffer.join("\n")))?

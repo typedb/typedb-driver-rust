@@ -72,10 +72,9 @@ impl From<QueryRequest> for query_manager::Req {
             QueryRequest::Define { query, options } => {
                 (query_manager::req::Req::DefineReq(query_manager::define::Req { query }), options)
             }
-            QueryRequest::Undefine { query, options } => (
-                query_manager::req::Req::UndefineReq(query_manager::undefine::Req { query }),
-                options,
-            ),
+            QueryRequest::Undefine { query, options } => {
+                (query_manager::req::Req::UndefineReq(query_manager::undefine::Req { query }), options)
+            }
             QueryRequest::Delete { query, options } => {
                 (query_manager::req::Req::DeleteReq(query_manager::delete::Req { query }), options)
             }
@@ -90,12 +89,9 @@ impl From<QueryRequest> for query_manager::Req {
                 (query_manager::req::Req::UpdateReq(query_manager::update::Req { query }), options)
             }
 
-            QueryRequest::MatchAggregate { query, options } => (
-                query_manager::req::Req::MatchAggregateReq(query_manager::match_aggregate::Req {
-                    query,
-                }),
-                options,
-            ),
+            QueryRequest::MatchAggregate { query, options } => {
+                (query_manager::req::Req::MatchAggregateReq(query_manager::match_aggregate::Req { query }), options)
+            }
 
             _ => todo!(),
         };
@@ -110,13 +106,9 @@ impl TryFrom<query_manager::Res> for QueryResponse {
             Some(query_manager::res::Res::DefineRes(_)) => Ok(QueryResponse::Define),
             Some(query_manager::res::Res::UndefineRes(_)) => Ok(QueryResponse::Undefine),
             Some(query_manager::res::Res::DeleteRes(_)) => Ok(QueryResponse::Delete),
-            Some(query_manager::res::Res::MatchAggregateRes(res)) => {
-                Ok(QueryResponse::MatchAggregate {
-                    answer: Numeric::try_from_proto(
-                        res.answer.ok_or(ClientError::MissingResponseField("answer"))?,
-                    )?,
-                })
-            }
+            Some(query_manager::res::Res::MatchAggregateRes(res)) => Ok(QueryResponse::MatchAggregate {
+                answer: Numeric::try_from_proto(res.answer.ok_or(ClientError::MissingResponseField("answer"))?)?,
+            }),
             None => Err(ClientError::MissingResponseField("res").into()),
         }
     }

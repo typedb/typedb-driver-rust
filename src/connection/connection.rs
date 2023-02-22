@@ -70,48 +70,33 @@ impl Connection {
     pub fn new_plaintext(address: impl AsRef<str>) -> Result<Self> {
         let address: Address = address.as_ref().parse()?;
         let background_runtime = Arc::new(BackgroundRuntime::new()?);
-        let server_connection =
-            ServerConnection::new_plaintext(background_runtime.clone(), address.clone())?;
+        let server_connection = ServerConnection::new_plaintext(background_runtime.clone(), address.clone())?;
         Ok(Self { server_connections: [(address, server_connection)].into(), background_runtime })
     }
 
-    pub fn new_encrypted<T: AsRef<str> + Sync>(
-        init_addresses: &[T],
-        credential: Credential,
-    ) -> Result<Self> {
+    pub fn new_encrypted<T: AsRef<str> + Sync>(init_addresses: &[T], credential: Credential) -> Result<Self> {
         let background_runtime = Arc::new(BackgroundRuntime::new()?);
 
-        let init_addresses =
-            init_addresses.iter().map(|addr| addr.as_ref().parse()).try_collect()?;
-        let addresses = background_runtime
-            .block_on(Self::fetch_current_addresses(init_addresses, credential.clone()))?;
+        let init_addresses = init_addresses.iter().map(|addr| addr.as_ref().parse()).try_collect()?;
+        let addresses =
+            background_runtime.block_on(Self::fetch_current_addresses(init_addresses, credential.clone()))?;
 
         let mut server_connections = HashMap::with_capacity(addresses.len());
         for address in addresses {
-            let server_connection = ServerConnection::new_encrypted(
-                background_runtime.clone(),
-                address.clone(),
-                credential.clone(),
-            )?;
+            let server_connection =
+                ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone())?;
             server_connections.insert(address, server_connection);
         }
 
         Ok(Self { server_connections, background_runtime })
     }
 
-    async fn fetch_current_addresses(
-        addresses: Vec<Address>,
-        credential: Credential,
-    ) -> Result<HashSet<Address>> {
+    async fn fetch_current_addresses(addresses: Vec<Address>, credential: Credential) -> Result<HashSet<Address>> {
         for address in addresses {
             let (channel, callcreds) = open_encrypted_channel(address.clone(), credential.clone())?;
             match RPCStub::new(address, channel, Some(callcreds)).await?.validated().await {
                 Ok(mut client) => {
-                    return match client
-                        .servers_all(Request::ServersAll.try_into()?)
-                        .await?
-                        .try_into()?
-                    {
+                    return match client.servers_all(Request::ServersAll.try_into()?).await?.try_into()? {
                         Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
                         _ => Err(InternalError::UnexpectedResponseType().into()),
                     };
@@ -137,14 +122,13 @@ impl Connection {
     }
 
     pub(crate) fn get_server_connection(&self, address: &Address) -> Result<ServerConnection> {
-        self.server_connections.get(address).cloned().ok_or_else(|| {
-            Error::Internal(InternalError::UnknownConnectionAddress(address.to_string()))
-        })
+        self.server_connections
+            .get(address)
+            .cloned()
+            .ok_or_else(|| Error::Internal(InternalError::UnknownConnectionAddress(address.to_string())))
     }
 
-    pub(crate) fn iter_server_connections_cloned(
-        &self,
-    ) -> impl Iterator<Item = ServerConnection> + '_ {
+    pub(crate) fn iter_server_connections_cloned(&self) -> impl Iterator<Item = ServerConnection> + '_ {
         self.server_connections.values().cloned()
     }
 
@@ -171,14 +155,8 @@ impl fmt::Debug for ServerConnection {
 
 impl ServerConnection {
     fn new_plaintext(background_runtime: Arc<BackgroundRuntime>, address: Address) -> Result<Self> {
-        let request_transmitter =
-            Arc::new(RPCTransmitter::start_plaintext(address.clone(), &background_runtime)?);
-        Ok(Self {
-            address,
-            background_runtime,
-            open_sessions: Default::default(),
-            request_transmitter,
-        })
+        let request_transmitter = Arc::new(RPCTransmitter::start_plaintext(address.clone(), &background_runtime)?);
+        Ok(Self { address, background_runtime, open_sessions: Default::default(), request_transmitter })
     }
 
     fn new_encrypted(
@@ -186,17 +164,9 @@ impl ServerConnection {
         address: Address,
         credential: Credential,
     ) -> Result<Self> {
-        let request_transmitter = Arc::new(RPCTransmitter::start_encrypted(
-            address.clone(),
-            credential,
-            &background_runtime,
-        )?);
-        Ok(Self {
-            address,
-            background_runtime,
-            open_sessions: Default::default(),
-            request_transmitter,
-        })
+        let request_transmitter =
+            Arc::new(RPCTransmitter::start_encrypted(address.clone(), credential, &background_runtime)?);
+        Ok(Self { address, background_runtime, open_sessions: Default::default(), request_transmitter })
     }
 
     pub(crate) fn address(&self) -> &Address {
@@ -218,8 +188,7 @@ impl ServerConnection {
     }
 
     pub(crate) fn force_close(&self) -> Result {
-        let session_ids: Vec<SessionID> =
-            self.open_sessions.lock().unwrap().keys().cloned().collect();
+        let session_ids: Vec<SessionID> = self.open_sessions.lock().unwrap().keys().cloned().collect();
         for session_id in session_ids.into_iter() {
             self.close_session(session_id).ok();
         }
@@ -238,10 +207,7 @@ impl ServerConnection {
         Ok(())
     }
 
-    pub(crate) async fn get_database_replicas(
-        &self,
-        database_name: String,
-    ) -> Result<DatabaseInfo> {
+    pub(crate) async fn get_database_replicas(&self, database_name: String) -> Result<DatabaseInfo> {
         match self.request_async(Request::DatabaseGet { database_name }).await? {
             Response::DatabaseGet { database } => Ok(database),
             _ => Err(InternalError::UnexpectedResponseType().into()),
@@ -288,10 +254,7 @@ impl ServerConnection {
         options: Options,
     ) -> Result<SessionInfo> {
         let start = Instant::now();
-        match self
-            .request_async(Request::SessionOpen { database_name, session_type, options })
-            .await?
-        {
+        match self.request_async(Request::SessionOpen { database_name, session_type, options }).await? {
             Response::SessionOpen { session_id, server_duration } => {
                 let (shutdown_sink, shutdown_source) = unbounded_async();
                 self.open_sessions.lock().unwrap().insert(session_id.clone(), shutdown_sink);

@@ -19,9 +19,7 @@
  * under the License.
  */
 
-use crossbeam::channel::{
-    bounded as bounded_blocking, Receiver as SyncReceiver, Sender as SyncSender,
-};
+use crossbeam::channel::{bounded as bounded_blocking, Receiver as SyncReceiver, Sender as SyncSender};
 use tokio::{
     select,
     sync::{
@@ -69,10 +67,7 @@ pub(in crate::connection) struct RPCTransmitter {
 }
 
 impl RPCTransmitter {
-    pub(in crate::connection) fn start_plaintext(
-        address: Address,
-        runtime: &BackgroundRuntime,
-    ) -> Result<Self> {
+    pub(in crate::connection) fn start_plaintext(address: Address, runtime: &BackgroundRuntime) -> Result<Self> {
         let (request_sink, request_source) = unbounded_async();
         let (shutdown_sink, shutdown_source) = unbounded_async();
         runtime.block_on(async move {
@@ -133,34 +128,17 @@ impl RPCTransmitter {
         }
     }
 
-    async fn send_request<Channel: GRPCChannel>(
-        mut rpc: RPCStub<Channel>,
-        request: Request,
-    ) -> Result<Response> {
+    async fn send_request<Channel: GRPCChannel>(mut rpc: RPCStub<Channel>, request: Request) -> Result<Response> {
         match request {
-            Request::ServersAll => {
-                rpc.servers_all(request.try_into()?).await.and_then(Response::try_from)
-            }
+            Request::ServersAll => rpc.servers_all(request.try_into()?).await.and_then(Response::try_from),
 
-            Request::DatabasesContains { .. } => {
-                rpc.databases_contains(request.try_into()?).await.map(Response::from)
-            }
-            Request::DatabaseCreate { .. } => {
-                rpc.databases_create(request.try_into()?).await.map(Response::from)
-            }
-            Request::DatabaseGet { .. } => {
-                rpc.databases_get(request.try_into()?).await.and_then(Response::try_from)
-            }
-            Request::DatabasesAll => {
-                rpc.databases_all(request.try_into()?).await.and_then(Response::try_from)
-            }
+            Request::DatabasesContains { .. } => rpc.databases_contains(request.try_into()?).await.map(Response::from),
+            Request::DatabaseCreate { .. } => rpc.databases_create(request.try_into()?).await.map(Response::from),
+            Request::DatabaseGet { .. } => rpc.databases_get(request.try_into()?).await.and_then(Response::try_from),
+            Request::DatabasesAll => rpc.databases_all(request.try_into()?).await.and_then(Response::try_from),
 
-            Request::DatabaseDelete { .. } => {
-                rpc.database_delete(request.try_into()?).await.map(Response::from)
-            }
-            Request::DatabaseSchema { .. } => {
-                rpc.database_schema(request.try_into()?).await.map(Response::from)
-            }
+            Request::DatabaseDelete { .. } => rpc.database_delete(request.try_into()?).await.map(Response::from),
+            Request::DatabaseSchema { .. } => rpc.database_schema(request.try_into()?).await.map(Response::from),
             Request::DatabaseTypeSchema { .. } => {
                 rpc.database_type_schema(request.try_into()?).await.map(Response::from)
             }
@@ -168,15 +146,9 @@ impl RPCTransmitter {
                 rpc.database_rule_schema(request.try_into()?).await.map(Response::from)
             }
 
-            Request::SessionOpen { .. } => {
-                rpc.session_open(request.try_into()?).await.map(Response::from)
-            }
-            Request::SessionPulse { .. } => {
-                rpc.session_pulse(request.try_into()?).await.map(Response::from)
-            }
-            Request::SessionClose { .. } => {
-                rpc.session_close(request.try_into()?).await.map(Response::from)
-            }
+            Request::SessionOpen { .. } => rpc.session_open(request.try_into()?).await.map(Response::from),
+            Request::SessionPulse { .. } => rpc.session_pulse(request.try_into()?).await.map(Response::from),
+            Request::SessionClose { .. } => rpc.session_close(request.try_into()?).await.map(Response::from),
 
             Request::Transaction(transaction_request) => {
                 rpc.transaction(transaction_request.into()).await.map(Response::from)

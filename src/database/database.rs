@@ -43,10 +43,7 @@ pub struct Database {
 
 impl fmt::Debug for Database {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Database")
-            .field("name", &self.name)
-            .field("replicas", &self.replicas)
-            .finish()
+        f.debug_struct("Database").field("name", &self.name).field("replicas", &self.replicas).finish()
     }
 }
 
@@ -115,12 +112,8 @@ impl Database {
         let mut is_first_run = true;
         let replicas = self.replicas.read().unwrap().clone();
         for replica in replicas.iter() {
-            match task(
-                replica.database.clone(),
-                self.connection.get_server_connection(&replica.address)?,
-                is_first_run,
-            )
-            .await
+            match task(replica.database.clone(), self.connection.get_server_connection(&replica.address)?, is_first_run)
+                .await
             {
                 Err(Error::Client(ClientError::UnableToConnect())) => {
                     println!("Unable to connect to {}. Attempting next server.", replica.address);
@@ -137,11 +130,8 @@ impl Database {
         F: Fn(ServerDatabase, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
     {
-        let mut primary_replica = if let Some(replica) = self.primary_replica() {
-            replica
-        } else {
-            self.seek_primary_replica().await?
-        };
+        let mut primary_replica =
+            if let Some(replica) = self.primary_replica() { replica } else { self.seek_primary_replica().await? };
 
         for retry in 0..Self::PRIMARY_REPLICA_TASK_MAX_RETRIES {
             match task(
@@ -151,9 +141,7 @@ impl Database {
             )
             .await
             {
-                Err(Error::Client(
-                    ClientError::ClusterReplicaNotPrimary() | ClientError::UnableToConnect(),
-                )) => {
+                Err(Error::Client(ClientError::ClusterReplicaNotPrimary() | ClientError::UnableToConnect())) => {
                     debug!("Primary replica error, waiting...");
                     Self::wait_for_primary_replica_selection().await;
                     primary_replica = self.seek_primary_replica().await?;
@@ -177,13 +165,7 @@ impl Database {
     }
 
     fn primary_replica(&self) -> Option<Replica> {
-        self.replicas
-            .read()
-            .unwrap()
-            .iter()
-            .filter(|r| r.is_primary)
-            .max_by_key(|r| r.term)
-            .cloned()
+        self.replicas.read().unwrap().iter().filter(|r| r.is_primary).max_by_key(|r| r.term).cloned()
     }
 
     async fn wait_for_primary_replica_selection() {

@@ -41,10 +41,7 @@ pub(crate) struct TransactionStream {
 
 impl fmt::Debug for TransactionStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TransactionStream")
-            .field("type_", &self.type_)
-            .field("options", &self.options)
-            .finish()
+        f.debug_struct("TransactionStream").field("type_", &self.type_).field("options", &self.options).finish()
     }
 }
 
@@ -90,11 +87,7 @@ impl TransactionStream {
         Ok(())
     }
 
-    pub(crate) fn match_(
-        &self,
-        query: String,
-        options: Options,
-    ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
+    pub(crate) fn match_(&self, query: String, options: Options) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let stream = self.query_stream(QueryRequest::Match { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Match { answers }) => stream_iter(answers.into_iter().map(Ok)),
@@ -103,11 +96,7 @@ impl TransactionStream {
         }))
     }
 
-    pub(crate) fn insert(
-        &self,
-        query: String,
-        options: Options,
-    ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
+    pub(crate) fn insert(&self, query: String, options: Options) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let stream = self.query_stream(QueryRequest::Insert { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Insert { answers }) => stream_iter(answers.into_iter().map(Ok)),
@@ -116,11 +105,7 @@ impl TransactionStream {
         }))
     }
 
-    pub(crate) fn update(
-        &self,
-        query: String,
-        options: Options,
-    ) -> Result<impl Stream<Item = Result<ConceptMap>>> {
+    pub(crate) fn update(&self, query: String, options: Options) -> Result<impl Stream<Item = Result<ConceptMap>>> {
         let stream = self.query_stream(QueryRequest::Update { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Update { answers }) => stream_iter(answers.into_iter().map(Ok)),
@@ -147,10 +132,7 @@ impl TransactionStream {
         }
     }
 
-    fn stream(
-        &self,
-        req: TransactionRequest,
-    ) -> Result<impl Stream<Item = Result<TransactionResponse>>> {
+    fn stream(&self, req: TransactionRequest) -> Result<impl Stream<Item = Result<TransactionResponse>>> {
         self.transaction_transmitter.stream(req)
     }
 
@@ -167,8 +149,6 @@ fn stream_once<'a, T: Send + 'a>(value: T) -> stream::BoxStream<'a, T> {
     stream_iter(iter::once(value))
 }
 
-fn stream_iter<'a, T: Send + 'a>(
-    iter: impl Iterator<Item = T> + Send + 'a,
-) -> stream::BoxStream<'a, T> {
+fn stream_iter<'a, T: Send + 'a>(iter: impl Iterator<Item = T> + Send + 'a) -> stream::BoxStream<'a, T> {
     Box::pin(stream::iter(iter))
 }

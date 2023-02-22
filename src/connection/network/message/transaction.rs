@@ -32,18 +32,11 @@ use crate::{
 
 #[derive(Debug)]
 pub(in crate::connection) enum TransactionRequest {
-    Open {
-        session_id: SessionID,
-        transaction_type: TransactionType,
-        options: Options,
-        network_latency: Duration,
-    },
+    Open { session_id: SessionID, transaction_type: TransactionType, options: Options, network_latency: Duration },
     Commit,
     Rollback,
     Query(QueryRequest),
-    Stream {
-        request_id: RequestID,
-    },
+    Stream { request_id: RequestID },
 }
 
 impl From<TransactionRequest> for transaction::Req {
@@ -59,15 +52,9 @@ impl From<TransactionRequest> for transaction::Req {
                     network_latency_millis: network_latency.as_millis() as i32,
                 })
             }
-            TransactionRequest::Commit => {
-                transaction::req::Req::CommitReq(transaction::commit::Req {})
-            }
-            TransactionRequest::Rollback => {
-                transaction::req::Req::RollbackReq(transaction::rollback::Req {})
-            }
-            TransactionRequest::Query(query_request) => {
-                transaction::req::Req::QueryManagerReq(query_request.into())
-            }
+            TransactionRequest::Commit => transaction::req::Req::CommitReq(transaction::commit::Req {}),
+            TransactionRequest::Rollback => transaction::req::Req::RollbackReq(transaction::rollback::Req {}),
+            TransactionRequest::Query(query_request) => transaction::req::Req::QueryManagerReq(query_request.into()),
             TransactionRequest::Stream { request_id: req_id } => {
                 request_id = req_id;
                 transaction::req::Req::StreamReq(transaction::stream::Req {})
@@ -93,9 +80,7 @@ impl TryFrom<transaction::Res> for TransactionResponse {
             Some(transaction::res::Res::OpenRes(_)) => Ok(TransactionResponse::Open),
             Some(transaction::res::Res::CommitRes(_)) => Ok(TransactionResponse::Commit),
             Some(transaction::res::Res::RollbackRes(_)) => Ok(TransactionResponse::Rollback),
-            Some(transaction::res::Res::QueryManagerRes(res)) => {
-                Ok(TransactionResponse::Query(res.try_into()?))
-            }
+            Some(transaction::res::Res::QueryManagerRes(res)) => Ok(TransactionResponse::Query(res.try_into()?)),
             Some(_) => todo!(),
             None => Err(ClientError::MissingResponseField("res").into()),
         }
