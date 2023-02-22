@@ -19,7 +19,6 @@
  * under the License.
  */
 
-pub(crate) mod address;
 pub(super) mod channel;
 pub(super) mod message;
 mod proto;

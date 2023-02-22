@@ -21,7 +21,7 @@
 
 use std::time::Duration;
 
-use crate::{common::SessionID, connection::network::address::Address};
+use super::{address::Address, SessionID};
 
 #[derive(Clone, Debug)]
 pub(crate) struct SessionInfo {

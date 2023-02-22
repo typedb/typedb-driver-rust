@@ -31,10 +31,9 @@ use tokio::{
 };
 
 use crate::{
-    common::Result,
+    common::{address::Address, Result},
     connection::{
         network::{
-            address::Address,
             channel::{open_encrypted_channel, open_plaintext_channel, GRPCChannel},
             message::{Request, Response},
             stub::RPCStub,

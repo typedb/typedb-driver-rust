@@ -31,11 +31,8 @@ use typedb_protocol::{
 
 use super::TransactionRequest;
 use crate::{
-    common::{info::DatabaseInfo, SessionID},
-    connection::network::{
-        address::Address,
-        proto::{IntoProto, TryFromProto},
-    },
+    common::{address::Address, info::DatabaseInfo, SessionID},
+    connection::network::proto::{IntoProto, TryFromProto},
     error::InternalError,
     Error, Options, Result, SessionType,
 };

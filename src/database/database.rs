@@ -26,11 +26,12 @@ use log::debug;
 
 use crate::{
     common::{
+        address::Address,
         error::ClientError,
         info::{DatabaseInfo, ReplicaInfo},
         Error, Result,
     },
-    connection::{network::address::Address, ServerConnection},
+    connection::ServerConnection,
     Connection,
 };
 

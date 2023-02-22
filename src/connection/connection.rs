@@ -34,7 +34,6 @@ use tokio::{
 
 use super::{
     network::{
-        address::Address,
         channel::open_encrypted_channel,
         message::{Request, Response, TransactionRequest},
         stub::RPCStub,
@@ -44,6 +43,7 @@ use super::{
 };
 use crate::{
     common::{
+        address::Address,
         error::{ClientError, Error},
         info::{DatabaseInfo, SessionInfo},
         Result, SessionID, SessionType, TransactionType,

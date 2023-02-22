@@ -19,6 +19,7 @@
  * under the License.
  */
 
+pub(crate) mod address;
 mod credential;
 pub mod error;
 mod id;
