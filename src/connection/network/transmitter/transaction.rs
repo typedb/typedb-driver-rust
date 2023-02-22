@@ -28,6 +28,7 @@ use std::{
 
 use crossbeam::{atomic::AtomicCell, channel::Sender as SyncSender};
 use futures::{Stream, StreamExt, TryStreamExt};
+use log::error;
 use prost::Message;
 use tokio::{
     select,
@@ -220,7 +221,8 @@ impl ResponseCollector {
     }
 
     fn collect_res(&self, res: transaction::Res) {
-        if matches!(res.res.as_ref().unwrap(), transaction::res::Res::OpenRes(_)) {
+        if matches!(res.res, Some(transaction::res::Res::OpenRes(_))) {
+            // Transaction::Open responses don't need to be collected.
             return;
         }
         let req_id = res.req_id.clone().into();
@@ -254,7 +256,7 @@ impl ResponseCollector {
                 Some(sink) => sink.send_item(res_part.try_into()),
                 _ => println!("{}", ClientError::UnknownRequestId(request_id)),
             },
-            None => panic!("{}", ClientError::MissingResponseField("res_part.res")),
+            None => error!("{}", ClientError::MissingResponseField("res_part.res")),
         }
     }
 

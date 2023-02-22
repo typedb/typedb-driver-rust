@@ -88,11 +88,6 @@ impl BackgroundRuntime {
 impl Drop for BackgroundRuntime {
     fn drop(&mut self) {
         self.is_open.store(false);
-        if self.shutdown_sink.send(()).is_ok() {
-            while !self.bg.is_finished() {
-                // FIXME wait on signal instead
-                thread::sleep(Duration::from_millis(3))
-            }
-        }
+        self.shutdown_sink.send(()).ok();
     }
 }
