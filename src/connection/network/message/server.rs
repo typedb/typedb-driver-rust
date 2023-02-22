@@ -41,7 +41,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) enum Request {
+pub(in crate::connection) enum Request {
     ServersAll,
 
     DatabasesContains { database_name: String },
@@ -218,7 +218,7 @@ impl TryFrom<Request> for transaction::Client {
 }
 
 #[derive(Debug)]
-pub(crate) enum Response {
+pub(in crate::connection) enum Response {
     ServersAll {
         servers: Vec<Address>,
     },

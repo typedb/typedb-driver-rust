@@ -33,7 +33,7 @@ use tokio::{
 
 use crate::common::Result;
 
-pub(crate) struct BackgroundRuntime {
+pub(super) struct BackgroundRuntime {
     async_runtime_handle: runtime::Handle,
     is_open: AtomicCell<bool>,
     shutdown_sink: UnboundedSender<()>,
@@ -41,7 +41,7 @@ pub(crate) struct BackgroundRuntime {
 }
 
 impl BackgroundRuntime {
-    pub(crate) fn new() -> Result<Self> {
+    pub(super) fn new() -> Result<Self> {
         let is_open = AtomicCell::new(true);
         let (shutdown_sink, mut shutdown_source) = unbounded_async();
         let async_runtime =
@@ -55,16 +55,16 @@ impl BackgroundRuntime {
         Ok(Self { async_runtime_handle, is_open, shutdown_sink, bg })
     }
 
-    pub(crate) fn is_open(&self) -> bool {
+    pub(super) fn is_open(&self) -> bool {
         self.is_open.load()
     }
 
-    pub(crate) fn force_close(&self) {
+    pub(super) fn force_close(&self) {
         self.is_open.store(false);
         self.shutdown_sink.send(()).ok();
     }
 
-    pub(crate) fn spawn<F>(&self, future: F)
+    pub(super) fn spawn<F>(&self, future: F)
     where
         F: Future + Send + 'static,
         F::Output: Send + 'static,
@@ -72,7 +72,7 @@ impl BackgroundRuntime {
         self.async_runtime_handle.spawn(future);
     }
 
-    pub(crate) fn block_on<F>(&self, future: F) -> F::Output
+    pub(super) fn block_on<F>(&self, future: F) -> F::Output
     where
         F: Future + Send + 'static,
         F::Output: Send + 'static,

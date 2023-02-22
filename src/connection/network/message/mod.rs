@@ -23,7 +23,7 @@ mod query;
 mod server;
 mod transaction;
 
-pub(crate) use self::{
+pub(in crate::connection) use self::{
     query::{QueryRequest, QueryResponse},
     server::{Request, Response},
     transaction::{TransactionRequest, TransactionResponse},

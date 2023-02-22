@@ -36,7 +36,7 @@ pub struct QueryManager {
 }
 
 impl QueryManager {
-    pub(crate) fn new(transaction_stream: Arc<TransactionStream>) -> QueryManager {
+    pub(super) fn new(transaction_stream: Arc<TransactionStream>) -> QueryManager {
         QueryManager { transaction_stream }
     }
 

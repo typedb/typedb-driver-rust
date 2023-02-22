@@ -50,13 +50,13 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) enum TransactionCallback {
+pub(in crate::connection) enum TransactionCallback {
     OneShot(AsyncOneshotSender<Result<TransactionResponse>>),
     Streamed(UnboundedSender<Result<TransactionResponse>>),
 }
 
 impl TransactionCallback {
-    pub(crate) async fn send_error(self, error: ClientError) {
+    pub(in crate::connection) async fn send_error(self, error: ClientError) {
         match self {
             Self::OneShot(sink) => sink.send(Err(error.into())).ok(),
             Self::Streamed(sink) => sink.send(Err(error.into())).ok(),

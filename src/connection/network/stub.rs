@@ -45,7 +45,7 @@ use crate::common::{error::ClientError, Error, Result, StdResult};
 type TonicResult<T> = StdResult<Response<T>, Status>;
 
 #[derive(Clone, Debug)]
-pub(crate) struct RPCStub<Channel: GRPCChannel> {
+pub(in crate::connection) struct RPCStub<Channel: GRPCChannel> {
     address: Address,
     channel: Channel,
     core_grpc: CoreGRPC<Channel>,
@@ -54,7 +54,7 @@ pub(crate) struct RPCStub<Channel: GRPCChannel> {
 }
 
 impl<Channel: GRPCChannel> RPCStub<Channel> {
-    pub(crate) async fn new(
+    pub(in crate::connection) async fn new(
         address: Address,
         channel: Channel,
         call_credentials: Option<Arc<CallCredentials>>,
@@ -71,7 +71,7 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         Ok(this)
     }
 
-    pub(crate) async fn validated(mut self) -> Result<Self> {
+    pub(in crate::connection) async fn validated(mut self) -> Result<Self> {
         self.databases_all(cluster_database_manager::all::Req {}).await?;
         Ok(self)
     }
@@ -106,21 +106,21 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         Ok(())
     }
 
-    pub(crate) async fn servers_all(
+    pub(in crate::connection) async fn servers_all(
         &mut self,
         req: server_manager::all::Req,
     ) -> Result<server_manager::all::Res> {
         self.single(|this| Box::pin(this.cluster_grpc.servers_all(req.clone()))).await
     }
 
-    pub(crate) async fn databases_contains(
+    pub(in crate::connection) async fn databases_contains(
         &mut self,
         req: core_database_manager::contains::Req,
     ) -> Result<core_database_manager::contains::Res> {
         self.single(|this| Box::pin(this.core_grpc.databases_contains(req.clone()))).await
     }
 
-    pub(crate) async fn databases_create(
+    pub(in crate::connection) async fn databases_create(
         &mut self,
         req: core_database_manager::create::Req,
     ) -> Result<core_database_manager::create::Res> {
@@ -128,7 +128,7 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
     }
 
     // FIXME merge after protocol merge
-    pub(crate) async fn databases_get(
+    pub(in crate::connection) async fn databases_get(
         &mut self,
         req: cluster_database_manager::get::Req,
     ) -> Result<cluster_database_manager::get::Res> {
@@ -139,7 +139,7 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         }
     }
 
-    pub(crate) async fn databases_all(
+    pub(in crate::connection) async fn databases_all(
         &mut self,
         req: cluster_database_manager::all::Req,
     ) -> Result<cluster_database_manager::all::Res> {
@@ -208,42 +208,42 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
     }
     // end FIXME
 
-    pub(crate) async fn database_delete(
+    pub(in crate::connection) async fn database_delete(
         &mut self,
         req: core_database::delete::Req,
     ) -> Result<core_database::delete::Res> {
         self.single(|this| Box::pin(this.core_grpc.database_delete(req.clone()))).await
     }
 
-    pub(crate) async fn database_schema(
+    pub(in crate::connection) async fn database_schema(
         &mut self,
         req: core_database::schema::Req,
     ) -> Result<core_database::schema::Res> {
         self.single(|this| Box::pin(this.core_grpc.database_schema(req.clone()))).await
     }
 
-    pub(crate) async fn database_type_schema(
+    pub(in crate::connection) async fn database_type_schema(
         &mut self,
         req: core_database::type_schema::Req,
     ) -> Result<core_database::type_schema::Res> {
         self.single(|this| Box::pin(this.core_grpc.database_type_schema(req.clone()))).await
     }
 
-    pub(crate) async fn database_rule_schema(
+    pub(in crate::connection) async fn database_rule_schema(
         &mut self,
         req: core_database::rule_schema::Req,
     ) -> Result<core_database::rule_schema::Res> {
         self.single(|this| Box::pin(this.core_grpc.database_rule_schema(req.clone()))).await
     }
 
-    pub(crate) async fn session_open(
+    pub(in crate::connection) async fn session_open(
         &mut self,
         req: session::open::Req,
     ) -> Result<session::open::Res> {
         self.single(|this| Box::pin(this.core_grpc.session_open(req.clone()))).await
     }
 
-    pub(crate) async fn session_close(
+    pub(in crate::connection) async fn session_close(
         &mut self,
         req: session::close::Req,
     ) -> Result<session::close::Res> {
@@ -251,14 +251,14 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         self.single(|this| Box::pin(this.core_grpc.session_close(req.clone()))).await
     }
 
-    pub(crate) async fn session_pulse(
+    pub(in crate::connection) async fn session_pulse(
         &mut self,
         req: session::pulse::Req,
     ) -> Result<session::pulse::Res> {
         self.single(|this| Box::pin(this.core_grpc.session_pulse(req.clone()))).await
     }
 
-    pub(crate) async fn transaction(
+    pub(in crate::connection) async fn transaction(
         &mut self,
         open_req: transaction::Req,
     ) -> Result<(Sender<transaction::Client>, Streaming<transaction::Server>)> {

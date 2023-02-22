@@ -92,7 +92,7 @@ impl Database {
         self.run_failsafe(|database, _, _| async move { database.rule_schema().await }).await
     }
 
-    pub(crate) async fn run_failsafe<F, P, R>(&self, task: F) -> Result<R>
+    pub(super) async fn run_failsafe<F, P, R>(&self, task: F) -> Result<R>
     where
         F: Fn(ServerDatabase, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,
@@ -128,7 +128,7 @@ impl Database {
             }
             is_first_run = false;
         }
-        Err(self.connection.unable_to_connect())
+        Err(self.connection.unable_to_connect_error())
     }
 
     async fn run_on_primary_replica<F, P, R>(&self, task: F) -> Result<R>
@@ -160,7 +160,7 @@ impl Database {
                 res => return res,
             }
         }
-        Err(self.connection.unable_to_connect())
+        Err(self.connection.unable_to_connect_error())
     }
 
     async fn seek_primary_replica(&self) -> Result<Replica> {
@@ -172,7 +172,7 @@ impl Database {
             }
             Self::wait_for_primary_replica_selection().await;
         }
-        Err(self.connection.unable_to_connect())
+        Err(self.connection.unable_to_connect_error())
     }
 
     fn primary_replica(&self) -> Option<Replica> {
@@ -192,7 +192,7 @@ impl Database {
 }
 
 #[derive(Clone)]
-pub struct Replica {
+pub(super) struct Replica {
     address: Address,
     database_name: String,
     is_primary: bool,
@@ -253,12 +253,12 @@ impl Replica {
                 Err(err) => return Err(err),
             }
         }
-        Err(connection.unable_to_connect())
+        Err(connection.unable_to_connect_error())
     }
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ServerDatabase {
+pub(super) struct ServerDatabase {
     name: String,
     connection: ServerConnection,
 }

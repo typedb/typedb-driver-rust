@@ -40,10 +40,10 @@ use crate::{
 
 type ResponseFuture = interceptor::ResponseFuture<channel::ResponseFuture>;
 
-pub(crate) type PlainTextChannel = InterceptedService<Channel, PlainTextFacade>;
-pub(crate) type CallCredChannel = InterceptedService<Channel, CredentialInjector>;
+pub(in crate::connection) type PlainTextChannel = InterceptedService<Channel, PlainTextFacade>;
+pub(in crate::connection) type CallCredChannel = InterceptedService<Channel, CredentialInjector>;
 
-pub(crate) trait GRPCChannel:
+pub(in crate::connection) trait GRPCChannel:
     GrpcService<BoxBody, Error = TonicError, ResponseBody = BoxBody, Future = ResponseFuture>
     + Clone
     + Send
@@ -65,7 +65,7 @@ impl GRPCChannel for CallCredChannel {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PlainTextFacade;
+pub(in crate::connection) struct PlainTextFacade;
 
 impl Interceptor for PlainTextFacade {
     fn call(&mut self, request: Request<()>) -> StdResult<Request<()>, Status> {
@@ -73,17 +73,17 @@ impl Interceptor for PlainTextFacade {
     }
 }
 
-pub(crate) fn open_plaintext_channel(address: Address) -> PlainTextChannel {
+pub(in crate::connection) fn open_plaintext_channel(address: Address) -> PlainTextChannel {
     PlainTextChannel::new(Channel::builder(address.into_uri()).connect_lazy(), PlainTextFacade)
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct CredentialInjector {
+pub(in crate::connection) struct CredentialInjector {
     call_credentials: Arc<CallCredentials>,
 }
 
 impl CredentialInjector {
-    pub(crate) fn new(call_credentials: Arc<CallCredentials>) -> Self {
+    pub(in crate::connection) fn new(call_credentials: Arc<CallCredentials>) -> Self {
         Self { call_credentials }
     }
 }
@@ -94,7 +94,7 @@ impl Interceptor for CredentialInjector {
     }
 }
 
-pub(crate) fn open_encrypted_channel(
+pub(in crate::connection) fn open_encrypted_channel(
     address: Address,
     credential: Credential,
 ) -> Result<(CallCredChannel, Arc<CallCredentials>)> {
@@ -111,29 +111,29 @@ pub(crate) fn open_encrypted_channel(
 }
 
 #[derive(Debug)]
-pub(crate) struct CallCredentials {
+pub(in crate::connection) struct CallCredentials {
     credential: Credential,
     token: RwLock<Option<String>>,
 }
 
 impl CallCredentials {
-    pub(crate) fn new(credential: Credential) -> Self {
+    pub(in crate::connection) fn new(credential: Credential) -> Self {
         Self { credential, token: RwLock::new(None) }
     }
 
-    pub(crate) fn username(&self) -> &str {
+    pub(in crate::connection) fn username(&self) -> &str {
         self.credential.username()
     }
 
-    pub(crate) fn set_token(&self, token: String) {
+    pub(in crate::connection) fn set_token(&self, token: String) {
         *self.token.write().unwrap() = Some(token);
     }
 
-    pub(crate) fn reset_token(&self) {
+    pub(in crate::connection) fn reset_token(&self) {
         *self.token.write().unwrap() = None;
     }
 
-    pub(crate) fn inject(&self, mut request: Request<()>) -> Request<()> {
+    pub(in crate::connection) fn inject(&self, mut request: Request<()>) -> Request<()> {
         request.metadata_mut().insert("username", self.credential.username().try_into().unwrap());
         match &*self.token.read().unwrap() {
             Some(token) => request.metadata_mut().insert("token", token.try_into().unwrap()),

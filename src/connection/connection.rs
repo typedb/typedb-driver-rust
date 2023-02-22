@@ -90,6 +90,7 @@ async fn fetch_current_addresses(
 }
 
 impl Connection {
+    // FIXME
     pub fn from_init<T: AsRef<str> + Sync>(
         init_addresses: &[T],
         credential: Credential,
@@ -136,7 +137,7 @@ impl Connection {
         self.server_connections.len()
     }
 
-    pub(crate) fn addresses(&self) -> impl Iterator<Item = &Address> {
+    pub(crate) fn iter_addresses(&self) -> impl Iterator<Item = &Address> {
         self.server_connections.keys()
     }
 
@@ -152,9 +153,9 @@ impl Connection {
         self.server_connections.values().cloned()
     }
 
-    pub(crate) fn unable_to_connect(&self) -> Error {
+    pub(crate) fn unable_to_connect_error(&self) -> Error {
         Error::Client(ClientError::ClusterUnableToConnect(
-            self.addresses().map(Address::to_string).collect::<Vec<_>>().join(","),
+            self.iter_addresses().map(Address::to_string).collect::<Vec<_>>().join(","),
         ))
     }
 }

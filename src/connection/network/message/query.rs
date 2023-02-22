@@ -31,7 +31,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) enum QueryRequest {
+pub(in crate::connection) enum QueryRequest {
     Define { query: String, options: Options },
     Undefine { query: String, options: Options },
     Delete { query: String, options: Options },
@@ -49,7 +49,7 @@ pub(crate) enum QueryRequest {
 }
 
 #[derive(Debug)]
-pub(crate) enum QueryResponse {
+pub(in crate::connection) enum QueryResponse {
     Define,
     Undefine,
     Delete,

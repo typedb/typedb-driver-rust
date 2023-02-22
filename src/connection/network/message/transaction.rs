@@ -31,7 +31,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) enum TransactionRequest {
+pub(in crate::connection) enum TransactionRequest {
     Open {
         session_id: SessionID,
         transaction_type: TransactionType,
@@ -79,7 +79,7 @@ impl From<TransactionRequest> for transaction::Req {
 }
 
 #[derive(Debug)]
-pub(crate) enum TransactionResponse {
+pub(in crate::connection) enum TransactionResponse {
     Open,
     Commit,
     Rollback,
