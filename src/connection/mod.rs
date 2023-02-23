@@ -20,7 +20,7 @@
  */
 
 mod connection;
-pub(crate) mod network;
+mod network;
 mod runtime;
 mod transaction_stream;
 
