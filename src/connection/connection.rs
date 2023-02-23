@@ -38,8 +38,9 @@ use super::{
         channel::open_encrypted_channel,
         message::{Request, Response, TransactionRequest},
         stub::RPCStub,
-        transmitter::RPCTransmitter,
+        transmitter::{RPCTransmitter, TransactionTransmitter},
     },
+    runtime::BackgroundRuntime,
     TransactionStream,
 };
 use crate::{
@@ -49,7 +50,6 @@ use crate::{
         info::{DatabaseInfo, SessionInfo},
         Result, SessionID, SessionType, TransactionType,
     },
-    connection::{network::transmitter::TransactionTransmitter, runtime::BackgroundRuntime},
     error::InternalError,
     Credential, Options,
 };
