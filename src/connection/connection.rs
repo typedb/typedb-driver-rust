@@ -62,7 +62,7 @@ pub struct Connection {
 
 impl fmt::Debug for Connection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Connection").finish()
+        f.debug_struct("Connection").field("server_connections", &self.server_connections).finish()
     }
 }
 
@@ -149,7 +149,10 @@ pub(crate) struct ServerConnection {
 
 impl fmt::Debug for ServerConnection {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ServerConnection").field("address", &self.address).finish()
+        f.debug_struct("ServerConnection")
+            .field("address", &self.address)
+            .field("open_sessions", &self.open_sessions)
+            .finish()
     }
 }
 
