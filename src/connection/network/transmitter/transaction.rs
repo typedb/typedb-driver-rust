@@ -46,7 +46,7 @@ use super::callback::Callback;
 use crate::{
     common::{error::ConnectionError, RequestID, Result},
     connection::{
-        network::message::{Response, TransactionRequest, TransactionResponse},
+        network::message::{TransactionRequest, TransactionResponse},
         runtime::BackgroundRuntime,
     },
 };
@@ -65,11 +65,11 @@ impl Drop for TransactionTransmitter {
 }
 
 impl TransactionTransmitter {
-    pub(in crate::connection) fn new(background_runtime: &BackgroundRuntime, response: Response) -> Self {
-        let (request_sink, grpc_stream) = match response {
-            Response::TransactionOpen { request_sink, grpc_stream } => (request_sink, grpc_stream),
-            _ => unreachable!(),
-        };
+    pub(in crate::connection) fn new(
+        background_runtime: &BackgroundRuntime,
+        request_sink: SyncSender<transaction::Client>,
+        grpc_stream: Streaming<transaction::Server>,
+    ) -> Self {
         let (buffer_sink, buffer_source) = unbounded_async();
         let (shutdown_sink, shutdown_source) = unbounded_async();
         let is_open = Arc::new(AtomicCell::new(true));

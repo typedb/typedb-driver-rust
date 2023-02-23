@@ -288,16 +288,21 @@ impl ServerConnection {
         options: Options,
         network_latency: Duration,
     ) -> Result<TransactionStream> {
-        let response = self
+        match self
             .request_async(Request::Transaction(TransactionRequest::Open {
                 session_id,
                 transaction_type,
                 options: options.clone(),
                 network_latency,
             }))
-            .await?;
-        let transmitter = TransactionTransmitter::new(&self.background_runtime, response);
-        Ok(TransactionStream::new(transaction_type, options, transmitter))
+            .await?
+        {
+            Response::TransactionOpen { request_sink, grpc_stream } => {
+                let transmitter = TransactionTransmitter::new(&self.background_runtime, request_sink, grpc_stream);
+                Ok(TransactionStream::new(transaction_type, options, transmitter))
+            }
+            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+        }
     }
 }
 
