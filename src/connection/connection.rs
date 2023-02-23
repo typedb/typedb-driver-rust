@@ -93,8 +93,8 @@ impl Connection {
 
     async fn fetch_current_addresses(addresses: Vec<Address>, credential: Credential) -> Result<HashSet<Address>> {
         for address in addresses {
-            let (channel, callcreds) = open_encrypted_channel(address.clone(), credential.clone())?;
-            match RPCStub::new(address, channel, Some(callcreds)).await?.validated().await {
+            let (channel, call_credentials) = open_encrypted_channel(address.clone(), credential.clone())?;
+            match RPCStub::new(address, channel, Some(call_credentials)).await?.validated().await {
                 Ok(mut client) => {
                     return match client.servers_all(Request::ServersAll.try_into()?).await?.try_into()? {
                         Response::ServersAll { servers } => Ok(servers.into_iter().collect()),

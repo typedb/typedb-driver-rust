@@ -72,8 +72,8 @@ impl RPCTransmitter {
         let (request_sink, request_source) = unbounded_async();
         let (shutdown_sink, shutdown_source) = unbounded_async();
         runtime.block_on(async move {
-            let (channel, callcreds) = open_encrypted_channel(address.clone(), credential)?;
-            let rpc = RPCStub::new(address.clone(), channel, Some(callcreds)).await?;
+            let (channel, call_credentials) = open_encrypted_channel(address.clone(), credential)?;
+            let rpc = RPCStub::new(address.clone(), channel, Some(call_credentials)).await?;
             tokio::spawn(Self::dispatcher_loop(rpc, request_source, shutdown_source));
             Ok::<(), Error>(())
         })?;
