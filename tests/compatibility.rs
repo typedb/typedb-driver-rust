@@ -32,9 +32,9 @@ fn basic_async_std() {
         let connection = common::new_cluster_connection()?;
         common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
         let mut databases = DatabaseManager::new(connection);
-        assert!(databases.contains(common::TEST_DATABASE.into()).await?);
+        assert!(databases.contains(common::TEST_DATABASE).await?);
 
-        let session = Session::new(databases.get(common::TEST_DATABASE.into()).await?, Data).await?;
+        let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
         let transaction = session.transaction(Write).await?;
         let answer_stream = transaction.query().match_("match $x sub thing;")?;
         let results: Vec<_> = answer_stream.collect().await;
@@ -53,9 +53,9 @@ fn basic_smol() {
         let connection = common::new_cluster_connection()?;
         common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
         let mut databases = DatabaseManager::new(connection);
-        assert!(databases.contains(common::TEST_DATABASE.into()).await?);
+        assert!(databases.contains(common::TEST_DATABASE).await?);
 
-        let session = Session::new(databases.get(common::TEST_DATABASE.into()).await?, Data).await?;
+        let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
         let transaction = session.transaction(Write).await?;
         let answer_stream = transaction.query().match_("match $x sub thing;")?;
         let results: Vec<_> = answer_stream.collect().await;
@@ -74,9 +74,9 @@ fn basic_futures() {
         let connection = common::new_cluster_connection()?;
         common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
         let mut databases = DatabaseManager::new(connection);
-        assert!(databases.contains(common::TEST_DATABASE.into()).await?);
+        assert!(databases.contains(common::TEST_DATABASE).await?);
 
-        let session = Session::new(databases.get(common::TEST_DATABASE.into()).await?, Data).await?;
+        let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
         let transaction = session.transaction(Write).await?;
         let answer_stream = transaction.query().match_("match $x sub thing;")?;
         let results: Vec<_> = answer_stream.collect().await;

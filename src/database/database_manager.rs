@@ -38,19 +38,19 @@ impl DatabaseManager {
         Self { connection }
     }
 
-    pub async fn get(&mut self, name: String) -> Result<Database> {
-        Database::get(name, self.connection.clone()).await
+    pub async fn get(&mut self, name: impl Into<String>) -> Result<Database> {
+        Database::get(name.into(), self.connection.clone()).await
     }
 
-    pub async fn contains(&mut self, name: String) -> Result<bool> {
-        self.run_failsafe(name, move |database, server_connection, _| async move {
+    pub async fn contains(&mut self, name: impl Into<String>) -> Result<bool> {
+        self.run_failsafe(name.into(), move |database, server_connection, _| async move {
             server_connection.database_exists(database.name().to_owned()).await
         })
         .await
     }
 
-    pub async fn create(&mut self, name: String) -> Result {
-        self.run_failsafe(name, |database, server_connection, _| async move {
+    pub async fn create(&mut self, name: impl Into<String>) -> Result {
+        self.run_failsafe(name.into(), |database, server_connection, _| async move {
             server_connection.create_database(database.name().to_owned()).await
         })
         .await
