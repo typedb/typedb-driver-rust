@@ -32,14 +32,14 @@ pub(crate) struct SessionInfo {
 
 #[derive(Debug)]
 pub(crate) struct DatabaseInfo {
-    pub name: String,
-    pub replicas: Vec<ReplicaInfo>,
+    pub(crate) name: String,
+    pub(crate) replicas: Vec<ReplicaInfo>,
 }
 
 #[derive(Debug)]
 pub(crate) struct ReplicaInfo {
-    pub address: Address,
-    pub is_primary: bool,
-    pub is_preferred: bool,
-    pub term: i64,
+    pub(crate) address: Address,
+    pub(crate) is_primary: bool,
+    pub(crate) is_preferred: bool,
+    pub(crate) term: i64,
 }
