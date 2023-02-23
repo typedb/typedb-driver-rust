@@ -114,6 +114,6 @@ rustfmt_test(
 filegroup(
     name = "ci",
     data = [
-        "@vaticle_dependencies//ide/rust:sync",
+        "@vaticle_dependencies//tool/cargo:sync",
     ],
 )

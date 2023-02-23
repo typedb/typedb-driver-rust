@@ -25,26 +25,26 @@ def vaticle_dependencies():
     git_repository(
         name = "vaticle_dependencies",
         remote = "https://github.com/vaticle/dependencies",
-        commit = "316dd7e77c0aa9a44f96553ae4fc0def88dae795", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
+        commit = "d2237f120cb2a12dc96875893ea8e56cdd55ae77", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
     )
 
 def vaticle_typedb_common():
     git_repository(
         name = "vaticle_typedb_common",
         remote = "https://github.com/vaticle/typedb-common",
-        tag = "2.12.0" # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_typedb_common
+        commit = "aa03cb5f6a57ec2a51291b7a0510734ca1f41479" # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_typedb_common
     )
 
 def vaticle_typedb_protocol():
     git_repository(
         name = "vaticle_typedb_protocol",
         remote = "https://github.com/vaticle/typedb-protocol",
-        commit = "e99db2699ef8159043cac1fedb05ff742340c9d0", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
+        commit = "b1c19e02054c1a1d354b42875e6ccd67602a546f", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
     )
 
 def vaticle_typeql():
     git_repository(
         name = "vaticle_typeql",
         remote = "https://github.com/vaticle/typeql",
-        commit = "8cb538e6901601ad38420401a5da3c05a5fa46e4", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
+        commit = "7a63699b3879296ae3039577ba3f5220bbf6d33d", # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_dependencies
     )
