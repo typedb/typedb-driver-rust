@@ -19,28 +19,22 @@
  * under the License.
  */
 
-use std::path::PathBuf;
+mod common;
 
-use futures::{StreamExt, TryFutureExt};
+use futures::StreamExt;
 use serial_test::serial;
-use typedb_client::{
-    Connection, Credential, Database, DatabaseManager, Session,
-    SessionType::{Data, Schema},
-    TransactionType::Write,
-};
-
-const TEST_DATABASE: &str = "test";
+use typedb_client::{DatabaseManager, Session, SessionType::Data, TransactionType::Write};
 
 #[test]
 #[serial]
 fn basic_async_std() {
     async_std::task::block_on(async {
-        let connection = new_cluster_connection()?;
-        create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
+        let connection = common::new_cluster_connection()?;
+        common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
         let mut databases = DatabaseManager::new(connection);
-        assert!(databases.contains(TEST_DATABASE.into()).await?);
+        assert!(databases.contains(common::TEST_DATABASE.into()).await?);
 
-        let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+        let session = Session::new(databases.get(common::TEST_DATABASE.into()).await?, Data).await?;
         let transaction = session.transaction(Write).await?;
         let answer_stream = transaction.query().match_("match $x sub thing;")?;
         let results: Vec<_> = answer_stream.collect().await;
@@ -56,12 +50,12 @@ fn basic_async_std() {
 #[serial]
 fn basic_smol() {
     smol::block_on(async {
-        let connection = new_cluster_connection()?;
-        create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
+        let connection = common::new_cluster_connection()?;
+        common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
         let mut databases = DatabaseManager::new(connection);
-        assert!(databases.contains(TEST_DATABASE.into()).await?);
+        assert!(databases.contains(common::TEST_DATABASE.into()).await?);
 
-        let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+        let session = Session::new(databases.get(common::TEST_DATABASE.into()).await?, Data).await?;
         let transaction = session.transaction(Write).await?;
         let answer_stream = transaction.query().match_("match $x sub thing;")?;
         let results: Vec<_> = answer_stream.collect().await;
@@ -77,12 +71,12 @@ fn basic_smol() {
 #[serial]
 fn basic_futures() {
     futures::executor::block_on(async {
-        let connection = new_cluster_connection()?;
-        create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
+        let connection = common::new_cluster_connection()?;
+        common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
         let mut databases = DatabaseManager::new(connection);
-        assert!(databases.contains(TEST_DATABASE.into()).await?);
+        assert!(databases.contains(common::TEST_DATABASE.into()).await?);
 
-        let session = Session::new(databases.get(TEST_DATABASE.into()).await?, Data).await?;
+        let session = Session::new(databases.get(common::TEST_DATABASE.into()).await?, Data).await?;
         let transaction = session.transaction(Write).await?;
         let answer_stream = transaction.query().match_("match $x sub thing;")?;
         let results: Vec<_> = answer_stream.collect().await;
@@ -92,33 +86,4 @@ fn basic_futures() {
         Ok::<(), typedb_client::Error>(())
     })
     .unwrap();
-}
-
-fn new_cluster_connection() -> typedb_client::Result<Connection> {
-    Connection::new_encrypted(
-        &["localhost:11729", "localhost:21729", "localhost:31729"],
-        Credential::with_tls(
-            "admin",
-            "password",
-            Some(&PathBuf::from(
-                std::env::var("ROOT_CA")
-                    .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
-            )),
-        ),
-    )
-}
-
-async fn create_test_database_with_schema(connection: Connection, schema: &str) -> typedb_client::Result {
-    let mut databases = DatabaseManager::new(connection);
-    if databases.contains(TEST_DATABASE.into()).await? {
-        databases.get(TEST_DATABASE.into()).and_then(Database::delete).await?;
-    }
-    databases.create(TEST_DATABASE.into()).await?;
-
-    let database = databases.get(TEST_DATABASE.into()).await?;
-    let session = Session::new(database, Schema).await?;
-    let transaction = session.transaction(Write).await?;
-    transaction.query().define(schema).await?;
-    transaction.commit().await?;
-    Ok(())
 }

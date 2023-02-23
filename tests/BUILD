@@ -29,7 +29,10 @@ load("@vaticle_typedb_common//test:rules.bzl", "native_typedb_artifact")
 
 rust_test(
     name = "queries",
-    srcs = ["queries.rs"],
+    srcs = [
+        "common.rs",
+        "queries.rs",
+    ],
     deps = [
         "//:typedb_client",
         "@crates//:chrono",
@@ -41,7 +44,10 @@ rust_test(
 
 rust_test(
     name = "compatibility",
-    srcs = ["compatibility.rs"],
+    srcs = [
+        "common.rs",
+        "compatibility.rs",
+    ],
     deps = [
         "//:typedb_client",
         "@crates//:async-std",
