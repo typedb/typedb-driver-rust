@@ -30,7 +30,7 @@ use crate::{
     Options,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct QueryManager {
     transaction_stream: Arc<TransactionStream>,
 }
