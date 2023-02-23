@@ -25,7 +25,7 @@ use typedb_protocol::transaction;
 
 use super::{QueryRequest, QueryResponse};
 use crate::{
-    common::{error::ClientError, RequestID, SessionID},
+    common::{error::ConnectionError, RequestID, SessionID},
     connection::network::proto::IntoProto,
     Error, Options, Result, TransactionType,
 };
@@ -86,7 +86,7 @@ impl TryFrom<transaction::Res> for TransactionResponse {
             Some(transaction::res::Res::RollbackRes(_)) => Ok(TransactionResponse::Rollback),
             Some(transaction::res::Res::QueryManagerRes(res)) => Ok(TransactionResponse::Query(res.try_into()?)),
             Some(_) => todo!(),
-            None => Err(ClientError::MissingResponseField("res").into()),
+            None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
 }
@@ -99,7 +99,7 @@ impl TryFrom<transaction::ResPart> for TransactionResponse {
                 Ok(TransactionResponse::Query(res_part.try_into()?))
             }
             Some(_) => todo!(),
-            None => Err(ClientError::MissingResponseField("res").into()),
+            None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
 }

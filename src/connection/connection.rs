@@ -45,7 +45,7 @@ use super::{
 use crate::{
     common::{
         address::Address,
-        error::{ClientError, Error},
+        error::{ConnectionError, Error},
         info::{DatabaseInfo, SessionInfo},
         Result, SessionID, SessionType, TransactionType,
     },
@@ -101,11 +101,11 @@ impl Connection {
                         other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
                     };
                 }
-                Err(Error::Client(ClientError::UnableToConnect())) => (),
+                Err(Error::Connection(ConnectionError::UnableToConnect())) => (),
                 Err(err) => Err(err)?,
             }
         }
-        Err(ClientError::UnableToConnect())?
+        Err(ConnectionError::UnableToConnect())?
     }
 
     pub fn force_close(self) -> Result {
@@ -133,7 +133,7 @@ impl Connection {
     }
 
     pub(crate) fn unable_to_connect_error(&self) -> Error {
-        Error::Client(ClientError::ClusterUnableToConnect(
+        Error::Connection(ConnectionError::ClusterUnableToConnect(
             self.iter_addresses().map(Address::to_string).collect::<Vec<_>>().join(","),
         ))
     }
@@ -175,14 +175,14 @@ impl ServerConnection {
 
     async fn request_async(&self, request: Request) -> Result<Response> {
         if !self.background_runtime.is_open() {
-            return Err(ClientError::ClientIsClosed().into());
+            return Err(ConnectionError::ConnectionIsClosed().into());
         }
         self.request_transmitter.request_async(request).await
     }
 
     fn request_blocking(&self, request: Request) -> Result<Response> {
         if !self.background_runtime.is_open() {
-            return Err(ClientError::ClientIsClosed().into());
+            return Err(ConnectionError::ConnectionIsClosed().into());
         }
         self.request_transmitter.request_blocking(request)
     }

@@ -25,7 +25,7 @@ use crossbeam::atomic::AtomicCell;
 use log::warn;
 
 use crate::{
-    common::{error::ClientError, info::SessionInfo, Result, SessionType, TransactionType},
+    common::{error::ConnectionError, info::SessionInfo, Result, SessionType, TransactionType},
     Database, Options, Transaction,
 };
 
@@ -93,7 +93,7 @@ impl Session {
         options: Options,
     ) -> Result<Transaction> {
         if !self.is_open() {
-            Err(ClientError::SessionIsClosed())?
+            Err(ConnectionError::SessionIsClosed())?
         }
 
         let (session_info, transaction_stream) = self

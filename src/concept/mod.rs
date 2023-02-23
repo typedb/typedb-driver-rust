@@ -31,7 +31,7 @@ use std::{
 use chrono::NaiveDateTime;
 use futures::{FutureExt, Stream, StreamExt};
 
-use crate::common::{error::ClientError, Result};
+use crate::common::{error::ConnectionError, Result};
 
 #[derive(Clone, Debug)]
 pub enum Concept {

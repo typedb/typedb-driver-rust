@@ -27,7 +27,7 @@ use log::debug;
 use crate::{
     common::{
         address::Address,
-        error::ClientError,
+        error::ConnectionError,
         info::{DatabaseInfo, ReplicaInfo},
         Error, Result,
     },
@@ -96,7 +96,7 @@ impl Database {
         P: Future<Output = Result<R>>,
     {
         match self.run_on_any_replica(&task).await {
-            Err(Error::Client(ClientError::ClusterReplicaNotPrimary())) => {
+            Err(Error::Connection(ConnectionError::ClusterReplicaNotPrimary())) => {
                 debug!("Attempted to run on a non-primary replica, retrying on primary...");
                 self.run_on_primary_replica(&task).await
             }
@@ -115,7 +115,7 @@ impl Database {
             match task(replica.database.clone(), self.connection.get_server_connection(&replica.address)?, is_first_run)
                 .await
             {
-                Err(Error::Client(ClientError::UnableToConnect())) => {
+                Err(Error::Connection(ConnectionError::UnableToConnect())) => {
                     println!("Unable to connect to {}. Attempting next server.", replica.address);
                 }
                 res => return res,
@@ -141,7 +141,9 @@ impl Database {
             )
             .await
             {
-                Err(Error::Client(ClientError::ClusterReplicaNotPrimary() | ClientError::UnableToConnect())) => {
+                Err(Error::Connection(
+                    ConnectionError::ClusterReplicaNotPrimary() | ConnectionError::UnableToConnect(),
+                )) => {
                     debug!("Primary replica error, waiting...");
                     Self::wait_for_primary_replica_selection().await;
                     primary_replica = self.seek_primary_replica().await?;
@@ -226,7 +228,7 @@ impl Replica {
                 Ok(res) => {
                     return Replica::try_from_proto(res, &connection);
                 }
-                Err(Error::Client(ClientError::UnableToConnect())) => {
+                Err(Error::Connection(ConnectionError::UnableToConnect())) => {
                     println!(
                         "Failed to fetch replica info for database '{}' from {}. Attempting next server.",
                         name,

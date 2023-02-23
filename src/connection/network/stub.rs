@@ -36,7 +36,7 @@ use typedb_protocol::{
 };
 
 use super::channel::{CallCredentials, GRPCChannel};
-use crate::common::{address::Address, error::ClientError, Error, Result, StdResult};
+use crate::common::{address::Address, error::ConnectionError, Error, Result, StdResult};
 
 type TonicResult<T> = StdResult<Response<T>, Status>;
 
@@ -81,7 +81,7 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         for<'a> F: Fn(&'a mut Self) -> BoxFuture<'a, Result<R>>,
     {
         match call(self).await {
-            Err(Error::Client(ClientError::ClusterTokenCredentialInvalid())) => {
+            Err(Error::Connection(ConnectionError::ClusterTokenCredentialInvalid())) => {
                 self.renew_token().await?;
                 call(self).await
             }

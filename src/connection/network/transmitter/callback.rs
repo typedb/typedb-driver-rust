@@ -25,7 +25,7 @@ use tokio::sync::{mpsc::UnboundedSender, oneshot::Sender as AsyncOneshotSender};
 
 use crate::{
     common::Result,
-    error::{ClientError, InternalError},
+    error::{ConnectionError, InternalError},
     Error,
 };
 
@@ -60,7 +60,7 @@ impl<T> Callback<T> {
         }
     }
 
-    pub(super) async fn send_error(self, error: ClientError) {
+    pub(super) async fn send_error(self, error: ConnectionError) {
         match self {
             Self::AsyncOneShot(sink) => sink.send(Err(error.into())).ok(),
             Self::BlockingOneShot(sink) => sink.send(Err(error.into())).ok(),

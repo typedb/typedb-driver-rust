@@ -23,7 +23,7 @@ use std::future::Future;
 
 use super::{database::ServerDatabase, Database};
 use crate::{
-    common::{error::ClientError, Result},
+    common::{error::ConnectionError, Result},
     connection::ServerConnection,
     Connection,
 };
@@ -66,7 +66,7 @@ impl DatabaseManager {
                 Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
             }
         }
-        Err(ClientError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
 
     async fn run_failsafe<F, P, R>(&mut self, name: String, task: F) -> Result<R>

@@ -44,7 +44,7 @@ use typedb_protocol::transaction::{self, server::Server, stream::State};
 
 use super::callback::Callback;
 use crate::{
-    common::{error::ClientError, RequestID, Result},
+    common::{error::ConnectionError, RequestID, Result},
     connection::{
         network::message::{Response, TransactionRequest, TransactionResponse},
         runtime::BackgroundRuntime,
@@ -86,7 +86,7 @@ impl TransactionTransmitter {
 
     pub(in crate::connection) async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         if !self.is_open.load() {
-            return Err(ClientError::SessionIsClosed().into());
+            return Err(ConnectionError::SessionIsClosed().into());
         }
         let (res_sink, recv) = oneshot_async();
         self.request_sink.send((req, Some(Callback::AsyncOneShot(res_sink))))?;
@@ -98,7 +98,7 @@ impl TransactionTransmitter {
         req: TransactionRequest,
     ) -> Result<impl Stream<Item = Result<TransactionResponse>>> {
         if !self.is_open.load() {
-            return Err(ClientError::SessionIsClosed().into());
+            return Err(ConnectionError::SessionIsClosed().into());
         }
         let (res_part_sink, recv) = unbounded_async();
         self.request_sink.send((req, Some(Callback::Streamed(res_part_sink))))?;
@@ -166,9 +166,9 @@ impl TransactionTransmitter {
             match grpc_source.next().await {
                 Some(Ok(message)) => collector.collect(message).await,
                 Some(Err(err)) => {
-                    break collector.close(ClientError::TransactionIsClosedWithErrors(err.to_string())).await
+                    break collector.close(ConnectionError::TransactionIsClosedWithErrors(err.to_string())).await
                 }
-                None => break collector.close(ClientError::TransactionIsClosed()).await,
+                None => break collector.close(ConnectionError::TransactionIsClosed()).await,
             }
         }
     }
@@ -216,7 +216,7 @@ impl ResponseCollector {
         match message.server {
             Some(Server::Res(res)) => self.collect_res(res),
             Some(Server::ResPart(res_part)) => self.collect_res_part(res_part).await,
-            None => println!("{}", ClientError::MissingResponseField("server")),
+            None => println!("{}", ConnectionError::MissingResponseField("server")),
         }
     }
 
@@ -228,7 +228,7 @@ impl ResponseCollector {
         let req_id = res.req_id.clone().into();
         match self.callbacks.write().unwrap().remove(&req_id) {
             Some(sink) => sink.send(res.try_into()),
-            _ => println!("{}", ClientError::UnknownRequestId(req_id)),
+            _ => println!("{}", ConnectionError::UnknownRequestId(req_id)),
         }
     }
 
@@ -245,7 +245,7 @@ impl ResponseCollector {
                         match self.request_sink.send((TransactionRequest::Stream { request_id }, None)) {
                             Err(SendError((TransactionRequest::Stream { request_id }, None))) => {
                                 let callback = self.callbacks.write().unwrap().remove(&request_id).unwrap();
-                                callback.send_error(ClientError::TransactionIsClosed()).await;
+                                callback.send_error(ConnectionError::TransactionIsClosed()).await;
                             }
                             _ => (),
                         }
@@ -254,13 +254,13 @@ impl ResponseCollector {
             }
             Some(_) => match self.callbacks.read().unwrap().get(&request_id) {
                 Some(sink) => sink.send_item(res_part.try_into()),
-                _ => println!("{}", ClientError::UnknownRequestId(request_id)),
+                _ => println!("{}", ConnectionError::UnknownRequestId(request_id)),
             },
-            None => error!("{}", ClientError::MissingResponseField("res_part.res")),
+            None => error!("{}", ConnectionError::MissingResponseField("res_part.res")),
         }
     }
 
-    async fn close(self, error: ClientError) {
+    async fn close(self, error: ConnectionError) {
         self.is_open.store(false);
         let mut listeners = std::mem::take(self.callbacks.write().unwrap().deref_mut());
         for (_, listener) in listeners.drain() {

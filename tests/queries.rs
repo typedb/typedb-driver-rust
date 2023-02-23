@@ -29,7 +29,7 @@ use serial_test::serial;
 use tokio::sync::mpsc;
 use typedb_client::{
     concept::{Attribute, Concept, DateTimeAttribute, StringAttribute, Thing},
-    error::ClientError,
+    error::ConnectionError,
     Connection, DatabaseManager, Error, Options, Session,
     SessionType::Data,
     TransactionType::{Read, Write},
@@ -224,19 +224,19 @@ async fn force_close_connection(connection: Connection) -> typedb_client::Result
 
     let schema = database.schema().await;
     assert!(schema.is_err());
-    assert!(matches!(schema, Err(Error::Client(ClientError::ClientIsClosed()))));
+    assert!(matches!(schema, Err(Error::Connection(ConnectionError::ConnectionIsClosed()))));
 
     let database2 = databases.get(common::TEST_DATABASE).await;
     assert!(database2.is_err());
-    assert!(matches!(database2, Err(Error::Client(ClientError::ClientIsClosed()))));
+    assert!(matches!(database2, Err(Error::Connection(ConnectionError::ConnectionIsClosed()))));
 
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
-    assert!(matches!(transaction, Err(Error::Client(ClientError::ClientIsClosed()))));
+    assert!(matches!(transaction, Err(Error::Connection(ConnectionError::ConnectionIsClosed()))));
 
     let session = Session::new(database, Data).await;
     assert!(session.is_err());
-    assert!(matches!(session, Err(Error::Client(ClientError::ClientIsClosed()))));
+    assert!(matches!(session, Err(Error::Connection(ConnectionError::ConnectionIsClosed()))));
 
     Ok(())
 }
@@ -257,7 +257,7 @@ async fn force_close_session(connection: Connection) -> typedb_client::Result {
 
     let transaction = session.transaction(Write).await;
     assert!(transaction.is_err());
-    assert!(matches!(transaction, Err(Error::Client(ClientError::SessionIsClosed()))));
+    assert!(matches!(transaction, Err(Error::Connection(ConnectionError::SessionIsClosed()))));
 
     assert!(Session::new(databases.get(common::TEST_DATABASE).await?, Data).await.is_ok());
 

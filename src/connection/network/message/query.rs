@@ -26,7 +26,7 @@ use crate::{
     answer::{ConceptMap, Numeric},
     common::Result,
     connection::network::proto::{IntoProto, TryFromProto},
-    error::ClientError,
+    error::ConnectionError,
     Error, Options,
 };
 
@@ -107,9 +107,9 @@ impl TryFrom<query_manager::Res> for QueryResponse {
             Some(query_manager::res::Res::UndefineRes(_)) => Ok(QueryResponse::Undefine),
             Some(query_manager::res::Res::DeleteRes(_)) => Ok(QueryResponse::Delete),
             Some(query_manager::res::Res::MatchAggregateRes(res)) => Ok(QueryResponse::MatchAggregate {
-                answer: Numeric::try_from_proto(res.answer.ok_or(ClientError::MissingResponseField("answer"))?)?,
+                answer: Numeric::try_from_proto(res.answer.ok_or(ConnectionError::MissingResponseField("answer"))?)?,
             }),
-            None => Err(ClientError::MissingResponseField("res").into()),
+            None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
 }
@@ -125,7 +125,7 @@ impl TryFrom<query_manager::ResPart> for QueryResponse {
                 answers: res.answers.into_iter().map(ConceptMap::try_from_proto).try_collect()?,
             }),
             Some(_) => todo!(),
-            None => Err(ClientError::MissingResponseField("res").into()),
+            None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
 }

@@ -26,10 +26,10 @@ use typeql_lang::error_messages;
 
 use crate::common::RequestID;
 
-error_messages! { ClientError
-    code: "CLI", type: "Client Error",
-    ClientIsClosed() =
-        1: "The client has been closed and no further operation is allowed.",
+error_messages! { ConnectionError
+    code: "CXN", type: "Connection Error",
+    ConnectionIsClosed() =
+        1: "The connection has been closed and no further operation is allowed.",
     SessionIsClosed() =
         2: "The session is closed and no further operation is allowed.",
     TransactionIsClosed() =
@@ -74,7 +74,7 @@ error_messages! { InternalError
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Error {
-    Client(ClientError),
+    Connection(ConnectionError),
     Internal(InternalError),
     Other(String),
 }
@@ -82,7 +82,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Client(error) => write!(f, "{}", error),
+            Error::Connection(error) => write!(f, "{}", error),
             Error::Internal(error) => write!(f, "{}", error),
             Error::Other(message) => write!(f, "{}", message),
         }
@@ -92,16 +92,16 @@ impl fmt::Display for Error {
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
-            Error::Client(error) => Some(error),
+            Error::Connection(error) => Some(error),
             Error::Internal(error) => Some(error),
             Error::Other(_) => None,
         }
     }
 }
 
-impl From<ClientError> for Error {
-    fn from(error: ClientError) -> Self {
-        Error::Client(error)
+impl From<ConnectionError> for Error {
+    fn from(error: ConnectionError) -> Self {
+        Error::Connection(error)
     }
 }
 
@@ -129,11 +129,11 @@ fn is_token_credential_invalid(status: &Status) -> bool {
 impl From<Status> for Error {
     fn from(status: Status) -> Self {
         if is_rst_stream(&status) {
-            Self::Client(ClientError::UnableToConnect())
+            Self::Connection(ConnectionError::UnableToConnect())
         } else if is_replica_not_primary(&status) {
-            Self::Client(ClientError::ClusterReplicaNotPrimary())
+            Self::Connection(ConnectionError::ClusterReplicaNotPrimary())
         } else if is_token_credential_invalid(&status) {
-            Self::Client(ClientError::ClusterTokenCredentialInvalid())
+            Self::Connection(ConnectionError::ClusterTokenCredentialInvalid())
         } else {
             Self::Other(status.message().to_string())
         }

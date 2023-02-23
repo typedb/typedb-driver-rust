@@ -49,7 +49,7 @@ use crate::{
         LongAttributeType, Relation, RelationType, RoleType, RootAttributeType, RootThingType, ScopedLabel,
         StringAttribute, StringAttributeType, Thing, ThingType, Type,
     },
-    error::{ClientError, InternalError},
+    error::{ConnectionError, InternalError},
     Options, Result, SessionType, TransactionType,
 };
 
@@ -136,7 +136,7 @@ impl TryFromProto for Numeric {
             Some(Value::LongValue(long)) => Ok(Numeric::Long(long)),
             Some(Value::DoubleValue(double)) => Ok(Numeric::Double(double)),
             Some(Value::Nan(_)) => Ok(Numeric::NaN),
-            None => Err(ClientError::MissingResponseField("value").into()),
+            None => Err(ConnectionError::MissingResponseField("value").into()),
         }
     }
 }
@@ -155,7 +155,7 @@ impl TryFromProto for ConceptMap {
 impl TryFromProto for Concept {
     type Proto = ConceptProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
-        let concept = proto.concept.ok_or(ClientError::MissingResponseField("concept"))?;
+        let concept = proto.concept.ok_or(ConnectionError::MissingResponseField("concept"))?;
         match concept {
             concept_proto::Concept::Thing(thing) => Ok(Self::Thing(Thing::try_from_proto(thing)?)),
             concept_proto::Concept::Type(type_) => Ok(Self::Type(Type::try_from_proto(type_)?)),
@@ -228,7 +228,7 @@ impl TryFromProto for RoleType {
 impl TryFromProto for Thing {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
-        let encoding = proto.r#type.clone().ok_or_else(|| ClientError::MissingResponseField("type"))?.encoding;
+        let encoding = proto.r#type.clone().ok_or_else(|| ConnectionError::MissingResponseField("type"))?.encoding;
         match Encoding::try_from_proto(encoding)? {
             Encoding::EntityType => Ok(Self::Entity(Entity::try_from_proto(proto)?)),
             Encoding::RelationType => Ok(Self::Relation(Relation::try_from_proto(proto)?)),
@@ -242,7 +242,9 @@ impl TryFromProto for Entity {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
         Ok(Self {
-            type_: EntityType::try_from_proto(proto.r#type.ok_or_else(|| ClientError::MissingResponseField("type"))?)?,
+            type_: EntityType::try_from_proto(
+                proto.r#type.ok_or_else(|| ConnectionError::MissingResponseField("type"))?,
+            )?,
             iid: proto.iid,
         })
     }
@@ -253,7 +255,7 @@ impl TryFromProto for Relation {
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
         Ok(Self {
             type_: RelationType::try_from_proto(
-                proto.r#type.ok_or_else(|| ClientError::MissingResponseField("type"))?,
+                proto.r#type.ok_or_else(|| ConnectionError::MissingResponseField("type"))?,
             )?,
             iid: proto.iid,
         })
@@ -263,9 +265,9 @@ impl TryFromProto for Relation {
 impl TryFromProto for Attribute {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
-        let value = proto.value.and_then(|v| v.value).ok_or_else(|| ClientError::MissingResponseField("value"))?;
+        let value = proto.value.and_then(|v| v.value).ok_or_else(|| ConnectionError::MissingResponseField("value"))?;
 
-        let value_type = proto.r#type.ok_or_else(|| ClientError::MissingResponseField("type"))?.value_type;
+        let value_type = proto.r#type.ok_or_else(|| ConnectionError::MissingResponseField("type"))?.value_type;
         let iid = proto.iid;
 
         match ValueType::try_from_proto(value_type)? {

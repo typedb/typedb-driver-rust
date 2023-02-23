@@ -32,7 +32,7 @@ use super::TransactionRequest;
 use crate::{
     common::{address::Address, info::DatabaseInfo, SessionID},
     connection::network::proto::{IntoProto, TryFromProto},
-    error::{ClientError, InternalError},
+    error::{ConnectionError, InternalError},
     Error, Options, Result, SessionType,
 };
 
@@ -242,7 +242,9 @@ impl TryFrom<cluster_database_manager::get::Res> for Response {
     type Error = Error;
     fn try_from(res: cluster_database_manager::get::Res) -> Result<Self> {
         Ok(Response::DatabaseGet {
-            database: DatabaseInfo::try_from_proto(res.database.ok_or(ClientError::MissingResponseField("database"))?)?,
+            database: DatabaseInfo::try_from_proto(
+                res.database.ok_or(ConnectionError::MissingResponseField("database"))?,
+            )?,
         })
     }
 }
