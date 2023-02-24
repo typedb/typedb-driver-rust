@@ -105,7 +105,7 @@ impl Session {
                 async move {
                     let connection = database.connection();
                     let session_info = if is_first_run {
-                        session_info.clone()
+                        session_info
                     } else {
                         connection.open_session(database.name().to_owned(), session_type, options.clone()).await?
                     };
