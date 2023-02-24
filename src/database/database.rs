@@ -112,7 +112,7 @@ impl Database {
         let mut is_first_run = true;
         let replicas = self.replicas.read().unwrap().clone();
         for replica in replicas.iter() {
-            match task(replica.database.clone(), self.connection.get_server_connection(&replica.address)?, is_first_run)
+            match task(replica.database.clone(), self.connection.connection(&replica.address)?.clone(), is_first_run)
                 .await
             {
                 Err(Error::Connection(ConnectionError::UnableToConnect())) => {
@@ -136,7 +136,7 @@ impl Database {
         for retry in 0..Self::PRIMARY_REPLICA_TASK_MAX_RETRIES {
             match task(
                 primary_replica.database.clone(),
-                self.connection.get_server_connection(&primary_replica.address)?,
+                self.connection.connection(&primary_replica.address)?.clone(),
                 retry == 0,
             )
             .await
@@ -215,14 +215,14 @@ impl Replica {
             .replicas
             .into_iter()
             .map(|replica| {
-                let server_connection = connection.get_server_connection(&replica.address)?;
+                let server_connection = connection.connection(&replica.address)?.clone();
                 Ok(Replica::new(proto.name.clone(), replica, server_connection))
             })
             .try_collect()
     }
 
     async fn fetch_all(name: String, connection: Connection) -> Result<Vec<Self>> {
-        for server_connection in connection.iter_server_connections_cloned() {
+        for server_connection in connection.connections() {
             let res = server_connection.get_database_replicas(name.clone()).await;
             match res {
                 Ok(res) => {

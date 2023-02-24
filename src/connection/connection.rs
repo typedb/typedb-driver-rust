@@ -117,24 +117,23 @@ impl Connection {
         self.server_connections.len()
     }
 
-    pub(crate) fn iter_addresses(&self) -> impl Iterator<Item = &Address> {
+    pub(crate) fn addresses(&self) -> impl Iterator<Item = &Address> {
         self.server_connections.keys()
     }
 
-    pub(crate) fn get_server_connection(&self, address: &Address) -> Result<ServerConnection> {
+    pub(crate) fn connection(&self, address: &Address) -> Result<&ServerConnection> {
         self.server_connections
             .get(address)
-            .cloned()
             .ok_or_else(|| InternalError::UnknownConnectionAddress(address.to_string()).into())
     }
 
-    pub(crate) fn iter_server_connections_cloned(&self) -> impl Iterator<Item = ServerConnection> + '_ {
-        self.server_connections.values().cloned()
+    pub(crate) fn connections(&self) -> impl Iterator<Item = &ServerConnection> + '_ {
+        self.server_connections.values()
     }
 
     pub(crate) fn unable_to_connect_error(&self) -> Error {
         Error::Connection(ConnectionError::ClusterUnableToConnect(
-            self.iter_addresses().map(Address::to_string).collect::<Vec<_>>().join(","),
+            self.addresses().map(Address::to_string).collect::<Vec<_>>().join(","),
         ))
     }
 }

@@ -58,7 +58,7 @@ impl DatabaseManager {
 
     pub async fn all(&mut self) -> Result<Vec<Database>> {
         let mut error_buffer = Vec::with_capacity(self.connection.server_count());
-        for server_connection in self.connection.iter_server_connections_cloned() {
+        for server_connection in self.connection.connections() {
             match server_connection.all_databases().await {
                 Ok(list) => {
                     return list.into_iter().map(|proto_db| Database::new(proto_db, self.connection.clone())).collect()
