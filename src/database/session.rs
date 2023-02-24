@@ -93,7 +93,7 @@ impl Session {
         options: Options,
     ) -> Result<Transaction> {
         if !self.is_open() {
-            Err(ConnectionError::SessionIsClosed())?
+            return Err(ConnectionError::SessionIsClosed().into());
         }
 
         let (session_info, transaction_stream) = self
