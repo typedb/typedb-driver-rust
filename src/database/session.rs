@@ -39,9 +39,8 @@ pub struct Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        match self.force_close() {
-            Err(err) => warn!("Error encountered while closing session: {}", err),
-            Ok(_) => (),
+        if let Err(err) = self.force_close() {
+            warn!("Error encountered while closing session: {}", err);
         }
     }
 }

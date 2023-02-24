@@ -98,7 +98,7 @@ impl Connection {
                 Ok(mut client) => {
                     return match client.servers_all(Request::ServersAll.try_into()?).await?.try_into()? {
                         Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
-                        other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+                        other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
                     };
                 }
                 Err(Error::Connection(ConnectionError::UnableToConnect())) => (),
@@ -200,7 +200,7 @@ impl ServerConnection {
     pub(crate) async fn database_exists(&self, database_name: String) -> Result<bool> {
         match self.request_async(Request::DatabasesContains { database_name }).await? {
             Response::DatabasesContains { contains } => Ok(contains),
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
@@ -212,35 +212,35 @@ impl ServerConnection {
     pub(crate) async fn get_database_replicas(&self, database_name: String) -> Result<DatabaseInfo> {
         match self.request_async(Request::DatabaseGet { database_name }).await? {
             Response::DatabaseGet { database } => Ok(database),
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
     pub(crate) async fn all_databases(&self) -> Result<Vec<DatabaseInfo>> {
         match self.request_async(Request::DatabasesAll).await? {
             Response::DatabasesAll { databases } => Ok(databases),
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
     pub(crate) async fn database_schema(&self, database_name: String) -> Result<String> {
         match self.request_async(Request::DatabaseSchema { database_name }).await? {
             Response::DatabaseSchema { schema } => Ok(schema),
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
     pub(crate) async fn database_type_schema(&self, database_name: String) -> Result<String> {
         match self.request_async(Request::DatabaseTypeSchema { database_name }).await? {
             Response::DatabaseTypeSchema { schema } => Ok(schema),
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
     pub(crate) async fn database_rule_schema(&self, database_name: String) -> Result<String> {
         match self.request_async(Request::DatabaseRuleSchema { database_name }).await? {
             Response::DatabaseRuleSchema { schema } => Ok(schema),
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
@@ -271,7 +271,7 @@ impl ServerConnection {
                     network_latency: start.elapsed() - server_duration,
                 })
             }
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
@@ -303,7 +303,7 @@ impl ServerConnection {
                 let transmitter = TransactionTransmitter::new(&self.background_runtime, request_sink, grpc_stream);
                 Ok(TransactionStream::new(transaction_type, options, transmitter))
             }
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 }

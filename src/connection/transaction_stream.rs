@@ -92,7 +92,7 @@ impl TransactionStream {
         let stream = self.query_stream(QueryRequest::Match { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Match { answers }) => stream_iter(answers.into_iter().map(Ok)),
-            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into())),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
         }))
     }
@@ -101,7 +101,7 @@ impl TransactionStream {
         let stream = self.query_stream(QueryRequest::Insert { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Insert { answers }) => stream_iter(answers.into_iter().map(Ok)),
-            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into())),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
         }))
     }
@@ -110,7 +110,7 @@ impl TransactionStream {
         let stream = self.query_stream(QueryRequest::Update { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Update { answers }) => stream_iter(answers.into_iter().map(Ok)),
-            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into())),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
         }))
     }
@@ -118,7 +118,7 @@ impl TransactionStream {
     pub(crate) async fn match_aggregate(&self, query: String, options: Options) -> Result<Numeric> {
         match self.query_single(QueryRequest::MatchAggregate { query, options }).await? {
             QueryResponse::MatchAggregate { answer } => Ok(answer),
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
@@ -129,7 +129,7 @@ impl TransactionStream {
     async fn query_single(&self, req: QueryRequest) -> Result<QueryResponse> {
         match self.single(TransactionRequest::Query(req)).await? {
             TransactionResponse::Query(query) => Ok(query),
-            other => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
@@ -140,7 +140,7 @@ impl TransactionStream {
     fn query_stream(&self, req: QueryRequest) -> Result<impl Stream<Item = Result<QueryResponse>>> {
         Ok(self.stream(TransactionRequest::Query(req))?.map(|response| match response {
             Ok(TransactionResponse::Query(query)) => Ok(query),
-            Ok(other) => Err(InternalError::UnexpectedResponseType(format!("{:?}", other)).into()),
+            Ok(other) => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
             Err(err) => Err(err),
         }))
     }

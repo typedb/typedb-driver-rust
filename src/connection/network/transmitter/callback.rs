@@ -43,9 +43,8 @@ impl<T> Callback<T> {
             Self::BlockingOneShot(sink) => sink.send(response).map_err(Error::from),
             Self::Streamed(sink) => sink.send(response).map_err(Error::from),
         };
-        match result {
-            Err(err) => error!("{}", err),
-            _ => (),
+        if let Err(err) = result {
+            error!("{}", err);
         }
     }
 
@@ -54,9 +53,8 @@ impl<T> Callback<T> {
             Self::Streamed(sink) => sink.send(response).map_err(Error::from),
             _ => unreachable!("attempted to stream over a one-shot callback"),
         };
-        match result {
-            Err(err) => error!("{}", err),
-            _ => (),
+        if let Err(err) = result {
+            error!("{}", err);
         }
     }
 

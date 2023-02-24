@@ -228,7 +228,7 @@ impl TryFromProto for RoleType {
 impl TryFromProto for Thing {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
-        let encoding = proto.r#type.clone().ok_or_else(|| ConnectionError::MissingResponseField("type"))?.encoding;
+        let encoding = proto.r#type.clone().ok_or(ConnectionError::MissingResponseField("type"))?.encoding;
         match Encoding::try_from_proto(encoding)? {
             Encoding::EntityType => Ok(Self::Entity(Entity::try_from_proto(proto)?)),
             Encoding::RelationType => Ok(Self::Relation(Relation::try_from_proto(proto)?)),
@@ -242,9 +242,7 @@ impl TryFromProto for Entity {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
         Ok(Self {
-            type_: EntityType::try_from_proto(
-                proto.r#type.ok_or_else(|| ConnectionError::MissingResponseField("type"))?,
-            )?,
+            type_: EntityType::try_from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?)?,
             iid: proto.iid,
         })
     }
@@ -254,9 +252,7 @@ impl TryFromProto for Relation {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
         Ok(Self {
-            type_: RelationType::try_from_proto(
-                proto.r#type.ok_or_else(|| ConnectionError::MissingResponseField("type"))?,
-            )?,
+            type_: RelationType::try_from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?)?,
             iid: proto.iid,
         })
     }
@@ -265,9 +261,9 @@ impl TryFromProto for Relation {
 impl TryFromProto for Attribute {
     type Proto = ThingProto;
     fn try_from_proto(proto: Self::Proto) -> Result<Self> {
-        let value = proto.value.and_then(|v| v.value).ok_or_else(|| ConnectionError::MissingResponseField("value"))?;
+        let value = proto.value.and_then(|v| v.value).ok_or(ConnectionError::MissingResponseField("value"))?;
 
-        let value_type = proto.r#type.ok_or_else(|| ConnectionError::MissingResponseField("type"))?.value_type;
+        let value_type = proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?.value_type;
         let iid = proto.iid;
 
         match ValueType::try_from_proto(value_type)? {

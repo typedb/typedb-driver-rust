@@ -62,7 +62,7 @@ impl TryFrom<Request> for server_manager::all::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::ServersAll => Ok(server_manager::all::Req {}),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -74,7 +74,7 @@ impl TryFrom<Request> for core_database_manager::contains::Req {
             Request::DatabasesContains { database_name } => {
                 Ok(core_database_manager::contains::Req { name: database_name })
             }
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -84,7 +84,7 @@ impl TryFrom<Request> for core_database_manager::create::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::DatabaseCreate { database_name } => Ok(core_database_manager::create::Req { name: database_name }),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -94,7 +94,7 @@ impl TryFrom<Request> for cluster_database_manager::get::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::DatabaseGet { database_name } => Ok(cluster_database_manager::get::Req { name: database_name }),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -104,7 +104,7 @@ impl TryFrom<Request> for cluster_database_manager::all::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::DatabasesAll => Ok(cluster_database_manager::all::Req {}),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -114,7 +114,7 @@ impl TryFrom<Request> for core_database::delete::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::DatabaseDelete { database_name } => Ok(core_database::delete::Req { name: database_name }),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -124,7 +124,7 @@ impl TryFrom<Request> for core_database::schema::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::DatabaseSchema { database_name } => Ok(core_database::schema::Req { name: database_name }),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -136,7 +136,7 @@ impl TryFrom<Request> for core_database::type_schema::Req {
             Request::DatabaseTypeSchema { database_name } => {
                 Ok(core_database::type_schema::Req { name: database_name })
             }
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -148,7 +148,7 @@ impl TryFrom<Request> for core_database::rule_schema::Req {
             Request::DatabaseRuleSchema { database_name } => {
                 Ok(core_database::rule_schema::Req { name: database_name })
             }
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -162,7 +162,7 @@ impl TryFrom<Request> for session::open::Req {
                 r#type: session_type.into_proto().into(),
                 options: Some(options.into_proto()),
             }),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -172,7 +172,7 @@ impl TryFrom<Request> for session::pulse::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::SessionPulse { session_id } => Ok(session::pulse::Req { session_id: session_id.into() }),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -182,7 +182,7 @@ impl TryFrom<Request> for session::close::Req {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::SessionClose { session_id } => Ok(session::close::Req { session_id: session_id.into() }),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
@@ -192,7 +192,7 @@ impl TryFrom<Request> for transaction::Client {
     fn try_from(request: Request) -> Result<Self> {
         match request {
             Request::Transaction(transaction_req) => Ok(transaction::Client { reqs: vec![transaction_req.into()] }),
-            other => Err(InternalError::UnexpectedRequestType(format!("{:?}", other)).into()),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }

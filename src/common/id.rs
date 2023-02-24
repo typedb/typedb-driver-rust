@@ -46,12 +46,12 @@ impl From<Vec<u8>> for ID {
 
 impl fmt::Debug for ID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ID[{}]", self)
+        write!(f, "ID[{self}]")
     }
 }
 
 impl fmt::Display for ID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0.iter().try_for_each(|byte| write!(f, "{:02x}", byte))
+        self.0.iter().try_for_each(|byte| write!(f, "{byte:02x}"))
     }
 }

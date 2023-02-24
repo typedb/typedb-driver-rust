@@ -82,9 +82,9 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Connection(error) => write!(f, "{}", error),
-            Error::Internal(error) => write!(f, "{}", error),
-            Error::Other(message) => write!(f, "{}", message),
+            Error::Connection(error) => write!(f, "{error}"),
+            Error::Internal(error) => write!(f, "{error}"),
+            Error::Other(message) => write!(f, "{message}"),
         }
     }
 }
