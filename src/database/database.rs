@@ -22,7 +22,7 @@
 use std::{fmt, future::Future, sync::RwLock, thread::sleep, time::Duration};
 
 use itertools::Itertools;
-use log::debug;
+use log::{debug, error};
 
 use crate::{
     common::{
@@ -116,7 +116,7 @@ impl Database {
                 .await
             {
                 Err(Error::Connection(ConnectionError::UnableToConnect())) => {
-                    println!("Unable to connect to {}. Attempting next server.", replica.address);
+                    debug!("Unable to connect to {}. Attempting next server.", replica.address);
                 }
                 res => return res,
             }
@@ -229,7 +229,7 @@ impl Replica {
                     return Replica::try_from_proto(res, &connection);
                 }
                 Err(Error::Connection(ConnectionError::UnableToConnect())) => {
-                    println!(
+                    error!(
                         "Failed to fetch replica info for database '{}' from {}. Attempting next server.",
                         name,
                         server_connection.address()

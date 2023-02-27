@@ -216,7 +216,7 @@ impl ResponseCollector {
         match message.server {
             Some(Server::Res(res)) => self.collect_res(res),
             Some(Server::ResPart(res_part)) => self.collect_res_part(res_part).await,
-            None => println!("{}", ConnectionError::MissingResponseField("server")),
+            None => error!("{}", ConnectionError::MissingResponseField("server")),
         }
     }
 
@@ -228,7 +228,7 @@ impl ResponseCollector {
         let req_id = res.req_id.clone().into();
         match self.callbacks.write().unwrap().remove(&req_id) {
             Some(sink) => sink.send(res.try_into()),
-            _ => println!("{}", ConnectionError::UnknownRequestId(req_id)),
+            _ => error!("{}", ConnectionError::UnknownRequestId(req_id)),
         }
     }
 
@@ -254,7 +254,7 @@ impl ResponseCollector {
             }
             Some(_) => match self.callbacks.read().unwrap().get(&request_id) {
                 Some(sink) => sink.send_item(res_part.try_into()),
-                _ => println!("{}", ConnectionError::UnknownRequestId(request_id)),
+                _ => error!("{}", ConnectionError::UnknownRequestId(request_id)),
             },
             None => error!("{}", ConnectionError::MissingResponseField("res_part.res")),
         }
