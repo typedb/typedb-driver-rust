@@ -41,7 +41,7 @@ impl QueryManager {
     }
 
     pub async fn define(&self, query: &str) -> Result {
-        self.define_with_options(query, Options::new_core()).await
+        self.define_with_options(query, Options::new()).await
     }
 
     pub async fn define_with_options(&self, query: &str, options: Options) -> Result {
@@ -49,7 +49,7 @@ impl QueryManager {
     }
 
     pub async fn undefine(&self, query: &str) -> Result {
-        self.undefine_with_options(query, Options::new_core()).await
+        self.undefine_with_options(query, Options::new()).await
     }
 
     pub async fn undefine_with_options(&self, query: &str, options: Options) -> Result {
@@ -57,7 +57,7 @@ impl QueryManager {
     }
 
     pub async fn delete(&self, query: &str) -> Result {
-        self.delete_with_options(query, Options::new_core()).await
+        self.delete_with_options(query, Options::new()).await
     }
 
     pub async fn delete_with_options(&self, query: &str, options: Options) -> Result {
@@ -65,7 +65,7 @@ impl QueryManager {
     }
 
     pub fn match_(&self, query: &str) -> Result<impl Stream<Item = Result<ConceptMap>>> {
-        self.match_with_options(query, Options::new_core())
+        self.match_with_options(query, Options::new())
     }
 
     pub fn match_with_options(&self, query: &str, options: Options) -> Result<impl Stream<Item = Result<ConceptMap>>> {
@@ -73,7 +73,7 @@ impl QueryManager {
     }
 
     pub fn insert(&self, query: &str) -> Result<impl Stream<Item = Result<ConceptMap>>> {
-        self.insert_with_options(query, Options::new_core())
+        self.insert_with_options(query, Options::new())
     }
 
     pub fn insert_with_options(&self, query: &str, options: Options) -> Result<impl Stream<Item = Result<ConceptMap>>> {
@@ -81,7 +81,7 @@ impl QueryManager {
     }
 
     pub fn update(&self, query: &str) -> Result<impl Stream<Item = Result<ConceptMap>>> {
-        self.update_with_options(query, Options::new_core())
+        self.update_with_options(query, Options::new())
     }
 
     pub fn update_with_options(&self, query: &str, options: Options) -> Result<impl Stream<Item = Result<ConceptMap>>> {
@@ -89,7 +89,7 @@ impl QueryManager {
     }
 
     pub async fn match_aggregate(&self, query: &str) -> Result<Numeric> {
-        self.match_aggregate_with_options(query, Options::new_core()).await
+        self.match_aggregate_with_options(query, Options::new()).await
     }
 
     pub async fn match_aggregate_with_options(&self, query: &str, options: Options) -> Result<Numeric> {

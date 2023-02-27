@@ -36,57 +36,47 @@ pub struct Options {
 }
 
 impl Options {
-    pub fn new_core() -> Options {
-        Options::default()
+    pub fn new() -> Self {
+        Default::default()
     }
 
-    pub fn infer(mut self, value: bool) -> Self {
-        self.infer = Some(value);
-        self
+    pub fn infer(self, infer: bool) -> Self {
+        Self { infer: Some(infer), ..self }
     }
 
-    pub fn trace_inference(mut self, value: bool) -> Self {
-        self.trace_inference = Some(value);
-        self
+    pub fn trace_inference(self, trace_inference: bool) -> Self {
+        Self { trace_inference: Some(trace_inference), ..self }
     }
 
-    pub fn explain(mut self, value: bool) -> Self {
-        self.explain = Some(value);
-        self
+    pub fn explain(self, explain: bool) -> Self {
+        Self { explain: Some(explain), ..self }
     }
 
-    pub fn parallel(mut self, value: bool) -> Self {
-        self.parallel = Some(value);
-        self
+    pub fn parallel(self, parallel: bool) -> Self {
+        Self { parallel: Some(parallel), ..self }
     }
 
-    pub fn prefetch(mut self, value: bool) -> Self {
-        self.prefetch = Some(value);
-        self
+    pub fn prefetch(self, prefetch: bool) -> Self {
+        Self { prefetch: Some(prefetch), ..self }
     }
 
-    pub fn prefetch_size(mut self, value: i32) -> Self {
-        self.prefetch_size = Some(value);
-        self
+    pub fn prefetch_size(self, prefetch_size: i32) -> Self {
+        Self { prefetch_size: Some(prefetch_size), ..self }
     }
 
-    pub fn session_idle_timeout(mut self, value: Duration) -> Self {
-        self.session_idle_timeout = Some(value);
-        self
+    pub fn session_idle_timeout(self, timeout: Duration) -> Self {
+        Self { session_idle_timeout: Some(timeout), ..self }
     }
 
-    pub fn transaction_timeout(mut self, value: Duration) -> Self {
-        self.transaction_timeout = Some(value);
-        self
+    pub fn transaction_timeout(self, timeout: Duration) -> Self {
+        Self { transaction_timeout: Some(timeout), ..self }
     }
 
-    pub fn schema_lock_acquire_timeout(mut self, value: Duration) -> Self {
-        self.schema_lock_acquire_timeout = Some(value);
-        self
+    pub fn schema_lock_acquire_timeout(self, timeout: Duration) -> Self {
+        Self { schema_lock_acquire_timeout: Some(timeout), ..self }
     }
 
-    pub fn read_any_replica(mut self, value: bool) -> Self {
-        self.read_any_replica = Some(value);
-        self
+    pub fn read_any_replica(self, read_any_replica: bool) -> Self {
+        Self { read_any_replica: Some(read_any_replica), ..self }
     }
 }

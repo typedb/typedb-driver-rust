@@ -160,7 +160,7 @@ async fn query_options(connection: Connection) -> typedb_client::Result {
     let age_count = transaction.query().match_aggregate("match $x isa age; count;").await?;
     assert_eq!(age_count.into_i64(), 0);
 
-    let with_inference = Options::new_core().infer(true);
+    let with_inference = Options::new().infer(true);
     let transaction = session.transaction_with_options(Read, with_inference).await?;
     let age_count = transaction.query().match_aggregate("match $x isa age; count;").await?;
     assert_eq!(age_count.into_i64(), 1);

@@ -83,7 +83,7 @@ impl Session {
     }
 
     pub async fn transaction(&self, transaction_type: TransactionType) -> Result<Transaction> {
-        self.transaction_with_options(transaction_type, Options::new_core()).await
+        self.transaction_with_options(transaction_type, Options::new()).await
     }
 
     pub async fn transaction_with_options(
