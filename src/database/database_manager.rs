@@ -38,25 +38,25 @@ impl DatabaseManager {
         Self { connection }
     }
 
-    pub async fn get(&mut self, name: impl Into<String>) -> Result<Database> {
+    pub async fn get(&self, name: impl Into<String>) -> Result<Database> {
         Database::get(name.into(), self.connection.clone()).await
     }
 
-    pub async fn contains(&mut self, name: impl Into<String>) -> Result<bool> {
+    pub async fn contains(&self, name: impl Into<String>) -> Result<bool> {
         self.run_failsafe(name.into(), move |database, server_connection, _| async move {
             server_connection.database_exists(database.name().to_owned()).await
         })
         .await
     }
 
-    pub async fn create(&mut self, name: impl Into<String>) -> Result {
+    pub async fn create(&self, name: impl Into<String>) -> Result {
         self.run_failsafe(name.into(), |database, server_connection, _| async move {
             server_connection.create_database(database.name().to_owned()).await
         })
         .await
     }
 
-    pub async fn all(&mut self) -> Result<Vec<Database>> {
+    pub async fn all(&self) -> Result<Vec<Database>> {
         let mut error_buffer = Vec::with_capacity(self.connection.server_count());
         for server_connection in self.connection.connections() {
             match server_connection.all_databases().await {
@@ -69,7 +69,7 @@ impl DatabaseManager {
         Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
 
-    async fn run_failsafe<F, P, R>(&mut self, name: String, task: F) -> Result<R>
+    async fn run_failsafe<F, P, R>(&self, name: String, task: F) -> Result<R>
     where
         F: Fn(ServerDatabase, ServerConnection, bool) -> P,
         P: Future<Output = Result<R>>,

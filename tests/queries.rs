@@ -78,7 +78,7 @@ permutation_tests! {
 
 async fn basic(connection: Connection) -> typedb_client::Result {
     common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
-    let mut databases = DatabaseManager::new(connection);
+    let databases = DatabaseManager::new(connection);
     assert!(databases.contains(common::TEST_DATABASE).await?);
 
     let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
@@ -94,7 +94,7 @@ async fn basic(connection: Connection) -> typedb_client::Result {
 
 async fn query_error(connection: Connection) -> typedb_client::Result {
     common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
-    let mut databases = DatabaseManager::new(connection);
+    let databases = DatabaseManager::new(connection);
 
     let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
     let transaction = session.transaction(Write).await?;
@@ -108,7 +108,7 @@ async fn query_error(connection: Connection) -> typedb_client::Result {
 
 async fn concurrent_transactions(connection: Connection) -> typedb_client::Result {
     common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
-    let mut databases = DatabaseManager::new(connection);
+    let databases = DatabaseManager::new(connection);
 
     let session = Arc::new(Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?);
 
@@ -148,7 +148,7 @@ async fn query_options(connection: Connection) -> typedb_client::Result {
         age sub attribute, value long;
         rule age-rule: when { $x isa person; } then { $x has age 25; };"#;
     common::create_test_database_with_schema(connection.clone(), schema).await?;
-    let mut databases = DatabaseManager::new(connection);
+    let databases = DatabaseManager::new(connection);
 
     let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
     let transaction = session.transaction(Write).await?;
@@ -179,7 +179,7 @@ async fn many_concept_types(connection: Connection) -> typedb_client::Result {
         friendship sub relation,
             relates friend;"#;
     common::create_test_database_with_schema(connection.clone(), schema).await?;
-    let mut databases = DatabaseManager::new(connection);
+    let databases = DatabaseManager::new(connection);
 
     let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
     let transaction = session.transaction(Write).await?;
@@ -214,7 +214,7 @@ async fn many_concept_types(connection: Connection) -> typedb_client::Result {
 
 async fn force_close_connection(connection: Connection) -> typedb_client::Result {
     common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
-    let mut databases = DatabaseManager::new(connection.clone());
+    let databases = DatabaseManager::new(connection.clone());
 
     let database = databases.get(common::TEST_DATABASE).await?;
     assert!(database.schema().await.is_ok());
@@ -243,7 +243,7 @@ async fn force_close_connection(connection: Connection) -> typedb_client::Result
 
 async fn force_close_session(connection: Connection) -> typedb_client::Result {
     common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
-    let mut databases = DatabaseManager::new(connection.clone());
+    let databases = DatabaseManager::new(connection.clone());
 
     let session = Arc::new(Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?);
     let transaction = session.transaction(Write).await?;
@@ -272,7 +272,7 @@ async fn streaming_perf(connection: Connection) -> typedb_client::Result {
             name sub attribute, value string;
             age sub attribute, value long;"#;
         common::create_test_database_with_schema(connection.clone(), schema).await?;
-        let mut databases = DatabaseManager::new(connection.clone());
+        let databases = DatabaseManager::new(connection.clone());
 
         let start_time = Instant::now();
         let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
