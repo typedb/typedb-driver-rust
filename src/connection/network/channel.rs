@@ -60,33 +60,16 @@ impl GRPCChannel for CallCredChannel {
     }
 }
 
+pub(in crate::connection) fn open_plaintext_channel(address: Address) -> PlainTextChannel {
+    PlainTextChannel::new(Channel::builder(address.into_uri()).connect_lazy(), PlainTextFacade)
+}
+
 #[derive(Clone, Debug)]
 pub(in crate::connection) struct PlainTextFacade;
 
 impl Interceptor for PlainTextFacade {
     fn call(&mut self, request: Request<()>) -> StdResult<Request<()>, Status> {
         Ok(request)
-    }
-}
-
-pub(in crate::connection) fn open_plaintext_channel(address: Address) -> PlainTextChannel {
-    PlainTextChannel::new(Channel::builder(address.into_uri()).connect_lazy(), PlainTextFacade)
-}
-
-#[derive(Clone, Debug)]
-pub(in crate::connection) struct CredentialInjector {
-    call_credentials: Arc<CallCredentials>,
-}
-
-impl CredentialInjector {
-    pub(in crate::connection) fn new(call_credentials: Arc<CallCredentials>) -> Self {
-        Self { call_credentials }
-    }
-}
-
-impl Interceptor for CredentialInjector {
-    fn call(&mut self, request: Request<()>) -> StdResult<Request<()>, Status> {
-        Ok(self.call_credentials.inject(request))
     }
 }
 
@@ -133,5 +116,22 @@ impl CallCredentials {
             None => request.metadata_mut().insert("password", self.credential.password().try_into().unwrap()),
         };
         request
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(in crate::connection) struct CredentialInjector {
+    call_credentials: Arc<CallCredentials>,
+}
+
+impl CredentialInjector {
+    pub(in crate::connection) fn new(call_credentials: Arc<CallCredentials>) -> Self {
+        Self { call_credentials }
+    }
+}
+
+impl Interceptor for CredentialInjector {
+    fn call(&mut self, request: Request<()>) -> StdResult<Request<()>, Status> {
+        Ok(self.call_credentials.inject(request))
     }
 }
