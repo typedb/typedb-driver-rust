@@ -20,6 +20,7 @@
  */
 
 mod connection;
+mod message;
 mod network;
 mod runtime;
 mod transaction_stream;

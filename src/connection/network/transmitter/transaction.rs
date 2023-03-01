@@ -46,7 +46,8 @@ use super::response_sink::ResponseSink;
 use crate::{
     common::{error::ConnectionError, RequestID, Result},
     connection::{
-        network::message::{TransactionRequest, TransactionResponse},
+        message::{TransactionRequest, TransactionResponse},
+        network::proto::{IntoProto, TryFromProto},
         runtime::BackgroundRuntime,
     },
 };
@@ -145,7 +146,7 @@ impl TransactionTransmitter {
                 }
                 recv = request_source.recv() => {
                     if let Some((request, callback)) = recv {
-                        let request: transaction::Req = request.into();
+                        let request = request.into_proto();
                         if let Some(callback) = callback {
                             collector.register(request.req_id.clone().into(), callback);
                         }
@@ -227,7 +228,7 @@ impl ResponseCollector {
         }
         let req_id = res.req_id.clone().into();
         match self.callbacks.write().unwrap().remove(&req_id) {
-            Some(sink) => sink.finish(res.try_into()),
+            Some(sink) => sink.finish(TransactionResponse::try_from_proto(res)),
             _ => error!("{}", ConnectionError::UnknownRequestId(req_id)),
         }
     }
@@ -253,7 +254,7 @@ impl ResponseCollector {
                 }
             }
             Some(_) => match self.callbacks.read().unwrap().get(&request_id) {
-                Some(sink) => sink.send(res_part.try_into()),
+                Some(sink) => sink.send(TransactionResponse::try_from_proto(res_part)),
                 _ => error!("{}", ConnectionError::UnknownRequestId(request_id)),
             },
             None => error!("{}", ConnectionError::MissingResponseField("res_part.res")),

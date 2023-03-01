@@ -19,12 +19,24 @@
  * under the License.
  */
 
-mod query;
-mod server;
-mod transaction;
+mod concept;
+mod info;
+mod message;
 
-pub(in crate::connection) use self::{
-    query::{QueryRequest, QueryResponse},
-    server::{Request, Response},
-    transaction::{TransactionRequest, TransactionResponse},
-};
+use crate::Result;
+
+pub(super) trait IntoProto<Proto> {
+    fn into_proto(self) -> Proto;
+}
+
+pub(super) trait TryIntoProto<Proto> {
+    fn try_into_proto(self) -> Result<Proto>;
+}
+
+pub(super) trait FromProto<Proto> {
+    fn from_proto(proto: Proto) -> Self;
+}
+
+pub(super) trait TryFromProto<Proto>: Sized {
+    fn try_from_proto(proto: Proto) -> Result<Self>;
+}

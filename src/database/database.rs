@@ -46,9 +46,9 @@ impl Database {
     const FETCH_REPLICAS_MAX_RETRIES: usize = 10;
     const WAIT_FOR_PRIMARY_REPLICA_SELECTION: Duration = Duration::from_secs(2);
 
-    pub(super) fn new(proto: DatabaseInfo, connection: Connection) -> Result<Self> {
-        let name = proto.name.clone();
-        let replicas = RwLock::new(Replica::try_from_proto(proto, &connection)?);
+    pub(super) fn new(database_info: DatabaseInfo, connection: Connection) -> Result<Self> {
+        let name = database_info.name.clone();
+        let replicas = RwLock::new(Replica::try_from_info(database_info, &connection)?);
         Ok(Self { name, replicas, connection })
     }
 
@@ -198,13 +198,13 @@ impl Replica {
         }
     }
 
-    fn try_from_proto(proto: DatabaseInfo, connection: &Connection) -> Result<Vec<Self>> {
-        proto
+    fn try_from_info(database_info: DatabaseInfo, connection: &Connection) -> Result<Vec<Self>> {
+        database_info
             .replicas
             .into_iter()
             .map(|replica| {
                 let server_connection = connection.connection(&replica.address)?.clone();
-                Ok(Replica::new(proto.name.clone(), replica, server_connection))
+                Ok(Replica::new(database_info.name.clone(), replica, server_connection))
             })
             .try_collect()
     }
@@ -214,7 +214,7 @@ impl Replica {
             let res = server_connection.get_database_replicas(name.clone()).await;
             match res {
                 Ok(res) => {
-                    return Replica::try_from_proto(res, &connection);
+                    return Replica::try_from_info(res, &connection);
                 }
                 Err(Error::Connection(ConnectionError::UnableToConnect())) => {
                     error!(

@@ -27,14 +27,16 @@ use tokio::{
         oneshot::channel as oneshot_async,
     },
 };
+use typedb_protocol::transaction::server::Server::Res;
 
 use super::response_sink::ResponseSink;
 use crate::{
     common::{address::Address, Result},
     connection::{
+        message::{Request, Response},
         network::{
             channel::{open_encrypted_channel, open_plaintext_channel, GRPCChannel},
-            message::{Request, Response},
+            proto::{FromProto, IntoProto, TryFromProto, TryIntoProto},
             stub::RPCStub,
         },
         runtime::BackgroundRuntime,
@@ -115,28 +117,45 @@ impl RPCTransmitter {
 
     async fn send_request<Channel: GRPCChannel>(mut rpc: RPCStub<Channel>, request: Request) -> Result<Response> {
         match request {
-            Request::ServersAll => rpc.servers_all(request.try_into()?).await.and_then(Response::try_from),
+            Request::ServersAll => rpc.servers_all(request.try_into_proto()?).await.and_then(Response::try_from_proto),
 
-            Request::DatabasesContains { .. } => rpc.databases_contains(request.try_into()?).await.map(Response::from),
-            Request::DatabaseCreate { .. } => rpc.databases_create(request.try_into()?).await.map(Response::from),
-            Request::DatabaseGet { .. } => rpc.databases_get(request.try_into()?).await.and_then(Response::try_from),
-            Request::DatabasesAll => rpc.databases_all(request.try_into()?).await.and_then(Response::try_from),
+            Request::DatabasesContains { .. } => {
+                rpc.databases_contains(request.try_into_proto()?).await.map(Response::from_proto)
+            }
+            Request::DatabaseCreate { .. } => {
+                rpc.databases_create(request.try_into_proto()?).await.map(Response::from_proto)
+            }
+            Request::DatabaseGet { .. } => {
+                rpc.databases_get(request.try_into_proto()?).await.and_then(Response::try_from_proto)
+            }
+            Request::DatabasesAll => {
+                rpc.databases_all(request.try_into_proto()?).await.and_then(Response::try_from_proto)
+            }
 
-            Request::DatabaseDelete { .. } => rpc.database_delete(request.try_into()?).await.map(Response::from),
-            Request::DatabaseSchema { .. } => rpc.database_schema(request.try_into()?).await.map(Response::from),
+            Request::DatabaseDelete { .. } => {
+                rpc.database_delete(request.try_into_proto()?).await.map(Response::from_proto)
+            }
+            Request::DatabaseSchema { .. } => {
+                rpc.database_schema(request.try_into_proto()?).await.map(Response::from_proto)
+            }
             Request::DatabaseTypeSchema { .. } => {
-                rpc.database_type_schema(request.try_into()?).await.map(Response::from)
+                rpc.database_type_schema(request.try_into_proto()?).await.map(Response::from_proto)
             }
             Request::DatabaseRuleSchema { .. } => {
-                rpc.database_rule_schema(request.try_into()?).await.map(Response::from)
+                rpc.database_rule_schema(request.try_into_proto()?).await.map(Response::from_proto)
             }
 
-            Request::SessionOpen { .. } => rpc.session_open(request.try_into()?).await.map(Response::from),
-            Request::SessionPulse { .. } => rpc.session_pulse(request.try_into()?).await.map(Response::from),
-            Request::SessionClose { .. } => rpc.session_close(request.try_into()?).await.map(Response::from),
+            Request::SessionOpen { .. } => rpc.session_open(request.try_into_proto()?).await.map(Response::from_proto),
+            Request::SessionPulse { .. } => {
+                rpc.session_pulse(request.try_into_proto()?).await.map(Response::from_proto)
+            }
+            Request::SessionClose { .. } => {
+                rpc.session_close(request.try_into_proto()?).await.map(Response::from_proto)
+            }
 
             Request::Transaction(transaction_request) => {
-                rpc.transaction(transaction_request.into()).await.map(Response::from)
+                let (request_sink, grpc_stream) = rpc.transaction(transaction_request.into_proto()).await?;
+                Ok(Response::TransactionOpen { request_sink, grpc_stream })
             }
         }
     }

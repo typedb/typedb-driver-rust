@@ -23,13 +23,11 @@ use std::{fmt, iter};
 
 use futures::{stream, Stream, StreamExt};
 
-use super::network::{
-    message::{QueryRequest, QueryResponse, TransactionRequest, TransactionResponse},
-    transmitter::TransactionTransmitter,
-};
+use super::network::transmitter::TransactionTransmitter;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::Result,
+    connection::message::{QueryRequest, QueryResponse, TransactionRequest, TransactionResponse},
     error::InternalError,
     Options, TransactionType,
 };

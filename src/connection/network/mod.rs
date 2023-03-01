@@ -19,8 +19,7 @@
  * under the License.
  */
 
-pub(super) mod channel;
-pub(super) mod message;
+mod channel;
 mod proto;
-pub(super) mod stub;
+mod stub;
 pub(super) mod transmitter;

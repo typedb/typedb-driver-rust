@@ -34,12 +34,7 @@ use tokio::{
 };
 
 use super::{
-    network::{
-        channel::open_encrypted_channel,
-        message::{Request, Response, TransactionRequest},
-        stub::RPCStub,
-        transmitter::{RPCTransmitter, TransactionTransmitter},
-    },
+    network::transmitter::{RPCTransmitter, TransactionTransmitter},
     runtime::BackgroundRuntime,
     TransactionStream,
 };
@@ -50,6 +45,7 @@ use crate::{
         info::{DatabaseInfo, SessionInfo},
         Result, SessionID, SessionType, TransactionType,
     },
+    connection::message::{Request, Response, TransactionRequest},
     error::InternalError,
     Credential, Options,
 };
@@ -72,8 +68,7 @@ impl Connection {
         let background_runtime = Arc::new(BackgroundRuntime::new()?);
 
         let init_addresses = init_addresses.iter().map(|addr| addr.as_ref().parse()).try_collect()?;
-        let addresses =
-            background_runtime.run_blocking(Self::fetch_current_addresses(init_addresses, credential.clone()))?;
+        let addresses = Self::fetch_current_addresses(background_runtime.clone(), init_addresses, credential.clone())?;
 
         let mut server_connections = HashMap::with_capacity(addresses.len());
         for address in addresses {
@@ -85,16 +80,16 @@ impl Connection {
         Ok(Self { server_connections, background_runtime })
     }
 
-    async fn fetch_current_addresses(addresses: Vec<Address>, credential: Credential) -> Result<HashSet<Address>> {
+    fn fetch_current_addresses(
+        background_runtime: Arc<BackgroundRuntime>,
+        addresses: Vec<Address>,
+        credential: Credential,
+    ) -> Result<HashSet<Address>> {
         for address in addresses {
-            let (channel, call_credentials) = open_encrypted_channel(address.clone(), credential.clone())?;
-            match RPCStub::new(address, channel, Some(call_credentials)).await?.validated().await {
-                Ok(mut client) => {
-                    return match client.servers_all(Request::ServersAll.try_into()?).await?.try_into()? {
-                        Response::ServersAll { servers } => Ok(servers.into_iter().collect()),
-                        other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
-                    };
-                }
+            let server_connection =
+                ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone())?;
+            match server_connection.servers_all() {
+                Ok(servers) => return Ok(servers.into_iter().collect()),
                 Err(Error::Connection(ConnectionError::UnableToConnect())) => (),
                 Err(err) => Err(err)?,
             }
@@ -186,6 +181,13 @@ impl ServerConnection {
             self.close_session(session_id).ok();
         }
         self.request_transmitter.force_close()
+    }
+
+    pub(crate) fn servers_all(&self) -> Result<Vec<Address>> {
+        match self.request_blocking(Request::ServersAll)? {
+            Response::ServersAll { servers } => Ok(servers),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
     }
 
     pub(crate) async fn database_exists(&self, database_name: String) -> Result<bool> {
