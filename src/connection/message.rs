@@ -54,23 +54,43 @@ pub(super) enum Request {
 
 #[derive(Debug)]
 pub(super) enum Response {
-    ServersAll { servers: Vec<Address> },
+    ServersAll {
+        servers: Vec<Address>,
+    },
 
-    DatabasesContains { contains: bool },
+    DatabasesContains {
+        contains: bool,
+    },
     DatabaseCreate,
-    DatabaseGet { database: DatabaseInfo },
-    DatabasesAll { databases: Vec<DatabaseInfo> },
+    DatabaseGet {
+        database: DatabaseInfo,
+    },
+    DatabasesAll {
+        databases: Vec<DatabaseInfo>,
+    },
 
     DatabaseDelete,
-    DatabaseSchema { schema: String },
-    DatabaseTypeSchema { schema: String },
-    DatabaseRuleSchema { schema: String },
+    DatabaseSchema {
+        schema: String,
+    },
+    DatabaseTypeSchema {
+        schema: String,
+    },
+    DatabaseRuleSchema {
+        schema: String,
+    },
 
-    SessionOpen { session_id: SessionID, server_duration: Duration },
+    SessionOpen {
+        session_id: SessionID,
+        server_duration: Duration,
+    },
     SessionPulse,
     SessionClose,
 
-    TransactionOpen { request_sink: UnboundedSender<transaction::Client>, grpc_stream: Streaming<transaction::Server> },
+    TransactionOpen {
+        request_sink: UnboundedSender<transaction::Client>,
+        response_source: Streaming<transaction::Server>,
+    },
 }
 
 #[derive(Debug)]

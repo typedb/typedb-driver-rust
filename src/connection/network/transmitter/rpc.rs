@@ -154,8 +154,8 @@ impl RPCTransmitter {
             }
 
             Request::Transaction(transaction_request) => {
-                let (request_sink, grpc_stream) = rpc.transaction(transaction_request.into_proto()).await?;
-                Ok(Response::TransactionOpen { request_sink, grpc_stream })
+                let (request_sink, response_source) = rpc.transaction(transaction_request.into_proto()).await?;
+                Ok(Response::TransactionOpen { request_sink, response_source })
             }
         }
     }

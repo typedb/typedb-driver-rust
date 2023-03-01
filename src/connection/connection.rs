@@ -292,8 +292,8 @@ impl ServerConnection {
             }))
             .await?
         {
-            Response::TransactionOpen { request_sink, grpc_stream } => {
-                let transmitter = TransactionTransmitter::new(&self.background_runtime, request_sink, grpc_stream);
+            Response::TransactionOpen { request_sink, response_source } => {
+                let transmitter = TransactionTransmitter::new(&self.background_runtime, request_sink, response_source);
                 Ok(TransactionStream::new(transaction_type, options, transmitter))
             }
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),

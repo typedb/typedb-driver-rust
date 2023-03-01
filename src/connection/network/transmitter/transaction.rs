@@ -69,7 +69,7 @@ impl TransactionTransmitter {
     pub(in crate::connection) fn new(
         background_runtime: &BackgroundRuntime,
         request_sink: UnboundedSender<transaction::Client>,
-        grpc_stream: Streaming<transaction::Server>,
+        response_source: Streaming<transaction::Server>,
     ) -> Self {
         let (buffer_sink, buffer_source) = unbounded_async();
         let (shutdown_sink, shutdown_source) = unbounded_async();
@@ -78,7 +78,7 @@ impl TransactionTransmitter {
             buffer_sink.clone(),
             buffer_source,
             request_sink,
-            grpc_stream,
+            response_source,
             is_open.clone(),
             shutdown_source,
         ));
@@ -110,18 +110,18 @@ impl TransactionTransmitter {
         queue_sink: UnboundedSender<(TransactionRequest, Option<ResponseSink<TransactionResponse>>)>,
         queue_source: UnboundedReceiver<(TransactionRequest, Option<ResponseSink<TransactionResponse>>)>,
         request_sink: UnboundedSender<transaction::Client>,
-        grpc_stream: Streaming<transaction::Server>,
+        response_source: Streaming<transaction::Server>,
         is_open: Arc<AtomicCell<bool>>,
         shutdown_signal: UnboundedReceiver<()>,
     ) {
         let collector = ResponseCollector { request_sink: queue_sink, callbacks: Default::default(), is_open };
         tokio::spawn(Self::dispatch_loop(queue_source, request_sink, collector.clone(), shutdown_signal));
-        tokio::spawn(Self::listen_loop(grpc_stream, collector));
+        tokio::spawn(Self::listen_loop(response_source, collector));
     }
 
     async fn dispatch_loop(
         mut request_source: UnboundedReceiver<(TransactionRequest, Option<ResponseSink<TransactionResponse>>)>,
-        grpc_sink: UnboundedSender<transaction::Client>,
+        request_sink: UnboundedSender<transaction::Client>,
         mut collector: ResponseCollector,
         mut shutdown_signal: UnboundedReceiver<()>,
     ) {
@@ -134,13 +134,13 @@ impl TransactionTransmitter {
             select! { biased;
                 _ = shutdown_signal.recv() => {
                     if !request_buffer.is_empty() {
-                        grpc_sink.send(request_buffer.take()).unwrap();
+                        request_sink.send(request_buffer.take()).unwrap();
                     }
                     break;
                 }
                 _ = sleep_until(next_dispatch) => {
                     if !request_buffer.is_empty() {
-                        grpc_sink.send(request_buffer.take()).unwrap();
+                        request_sink.send(request_buffer.take()).unwrap();
                     }
                     next_dispatch = Instant::now() + DISPATCH_INTERVAL;
                 }
@@ -151,7 +151,7 @@ impl TransactionTransmitter {
                             collector.register(request.req_id.clone().into(), callback);
                         }
                         if request_buffer.len() + request.encoded_len() > MAX_GRPC_MESSAGE_LEN {
-                            grpc_sink.send(request_buffer.take()).unwrap();
+                            request_sink.send(request_buffer.take()).unwrap();
                         }
                         request_buffer.push(request);
                     } else {
