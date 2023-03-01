@@ -73,7 +73,7 @@ impl Connection {
 
         let init_addresses = init_addresses.iter().map(|addr| addr.as_ref().parse()).try_collect()?;
         let addresses =
-            background_runtime.block_on(Self::fetch_current_addresses(init_addresses, credential.clone()))?;
+            background_runtime.run_blocking(Self::fetch_current_addresses(init_addresses, credential.clone()))?;
 
         let mut server_connections = HashMap::with_capacity(addresses.len());
         for address in addresses {

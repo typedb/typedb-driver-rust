@@ -67,7 +67,7 @@ impl BackgroundRuntime {
         self.async_runtime_handle.spawn(future);
     }
 
-    pub(super) fn block_on<F>(&self, future: F) -> F::Output
+    pub(super) fn run_blocking<F>(&self, future: F) -> F::Output
     where
         F: Future + Send + 'static,
         F::Output: Send + 'static,
