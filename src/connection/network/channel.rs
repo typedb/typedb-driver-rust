@@ -79,7 +79,7 @@ pub(super) fn open_encrypted_channel(
 ) -> Result<(CallCredChannel, Arc<CallCredentials>)> {
     let mut builder = Channel::builder(address.into_uri());
     if credential.is_tls_enabled() {
-        builder = builder.tls_config(credential.tls_config()?)?;
+        builder = builder.tls_config(credential.tls_config().clone().unwrap())?;
     }
     let channel = builder.connect_lazy();
     let call_credentials = Arc::new(CallCredentials::new(credential));

@@ -42,7 +42,7 @@ pub fn new_cluster_connection() -> typedb_client::Result<Connection> {
                 std::env::var("ROOT_CA")
                     .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
             )),
-        ),
+        )?,
     )
 }
 

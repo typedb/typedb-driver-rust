@@ -19,10 +19,7 @@
  * under the License.
  */
 
-use std::{
-    fmt, fs,
-    path::{Path, PathBuf},
-};
+use std::{fmt, fs, path::Path};
 
 use tonic::transport::{Certificate, ClientTlsConfig};
 
@@ -33,17 +30,23 @@ pub struct Credential {
     username: String,
     password: String,
     is_tls_enabled: bool,
-    tls_root_ca: Option<PathBuf>,
+    tls_config: Option<ClientTlsConfig>,
 }
 
 impl Credential {
-    pub fn with_tls(username: &str, password: &str, tls_root_ca: Option<&Path>) -> Self {
-        Credential {
+    pub fn with_tls(username: &str, password: &str, tls_root_ca: Option<&Path>) -> Result<Self> {
+        let tls_config = Some(if let Some(tls_root_ca) = tls_root_ca {
+            ClientTlsConfig::new().ca_certificate(Certificate::from_pem(fs::read_to_string(tls_root_ca)?))
+        } else {
+            ClientTlsConfig::new()
+        });
+
+        Ok(Credential {
             username: username.to_owned(),
             password: password.to_owned(),
             is_tls_enabled: true,
-            tls_root_ca: tls_root_ca.map(Path::to_owned),
-        }
+            tls_config,
+        })
     }
 
     pub fn without_tls(username: &str, password: &str) -> Self {
@@ -51,7 +54,7 @@ impl Credential {
             username: username.to_owned(),
             password: password.to_owned(),
             is_tls_enabled: false,
-            tls_root_ca: None,
+            tls_config: None,
         }
     }
 
@@ -67,12 +70,8 @@ impl Credential {
         self.is_tls_enabled
     }
 
-    pub fn tls_config(&self) -> Result<ClientTlsConfig> {
-        if let Some(tls_root_ca) = &self.tls_root_ca {
-            Ok(ClientTlsConfig::new().ca_certificate(Certificate::from_pem(fs::read_to_string(tls_root_ca)?)))
-        } else {
-            Ok(ClientTlsConfig::new())
-        }
+    pub fn tls_config(&self) -> &Option<ClientTlsConfig> {
+        &self.tls_config
     }
 }
 
@@ -81,7 +80,7 @@ impl fmt::Debug for Credential {
         f.debug_struct("Credential")
             .field("username", &self.username)
             .field("is_tls_enabled", &self.is_tls_enabled)
-            .field("tls_root_ca", &self.tls_root_ca)
+            .field("tls_config", &self.tls_config)
             .finish()
     }
 }
