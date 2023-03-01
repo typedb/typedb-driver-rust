@@ -249,12 +249,12 @@ impl ServerConnection {
         let start = Instant::now();
         match self.request_async(Request::SessionOpen { database_name, session_type, options }).await? {
             Response::SessionOpen { session_id, server_duration } => {
-                let (shutdown_sink, shutdown_source) = unbounded_async();
-                self.open_sessions.lock().unwrap().insert(session_id.clone(), shutdown_sink);
+                let (pulse_shutdown_sink, pulse_shutdown_source) = unbounded_async();
+                self.open_sessions.lock().unwrap().insert(session_id.clone(), pulse_shutdown_sink);
                 self.background_runtime.spawn(session_pulse(
                     session_id.clone(),
                     self.request_transmitter.clone(),
-                    shutdown_source,
+                    pulse_shutdown_source,
                 ));
                 Ok(SessionInfo {
                     address: self.address.clone(),
