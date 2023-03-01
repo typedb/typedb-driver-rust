@@ -31,7 +31,7 @@ fn basic_async_std() {
     async_std::task::block_on(async {
         let connection = common::new_cluster_connection()?;
         common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
-        let mut databases = DatabaseManager::new(connection);
+        let databases = DatabaseManager::new(connection);
         assert!(databases.contains(common::TEST_DATABASE).await?);
 
         let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
@@ -52,7 +52,7 @@ fn basic_smol() {
     smol::block_on(async {
         let connection = common::new_cluster_connection()?;
         common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
-        let mut databases = DatabaseManager::new(connection);
+        let databases = DatabaseManager::new(connection);
         assert!(databases.contains(common::TEST_DATABASE).await?);
 
         let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
@@ -73,7 +73,7 @@ fn basic_futures() {
     futures::executor::block_on(async {
         let connection = common::new_cluster_connection()?;
         common::create_test_database_with_schema(connection.clone(), "define person sub entity;").await?;
-        let mut databases = DatabaseManager::new(connection);
+        let databases = DatabaseManager::new(connection);
         assert!(databases.contains(common::TEST_DATABASE).await?);
 
         let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;

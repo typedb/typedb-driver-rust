@@ -47,7 +47,7 @@ pub fn new_cluster_connection() -> typedb_client::Result<Connection> {
 }
 
 pub async fn create_test_database_with_schema(connection: Connection, schema: &str) -> typedb_client::Result {
-    let mut databases = DatabaseManager::new(connection);
+    let databases = DatabaseManager::new(connection);
     if databases.contains(TEST_DATABASE).await? {
         databases.get(TEST_DATABASE).and_then(Database::delete).await?;
     }
