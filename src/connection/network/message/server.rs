@@ -21,8 +21,8 @@
 
 use std::time::Duration;
 
-use crossbeam::channel::Sender;
 use itertools::Itertools;
+use tokio::sync::mpsc::UnboundedSender;
 use tonic::Streaming;
 use typedb_protocol::{
     cluster_database_manager, core_database, core_database_manager, server_manager, session, transaction,
@@ -215,7 +215,7 @@ pub(in crate::connection) enum Response {
     SessionPulse,
     SessionClose,
 
-    TransactionOpen { request_sink: Sender<transaction::Client>, grpc_stream: Streaming<transaction::Server> },
+    TransactionOpen { request_sink: UnboundedSender<transaction::Client>, grpc_stream: Streaming<transaction::Server> },
 }
 
 impl TryFrom<server_manager::all::Res> for Response {
@@ -303,8 +303,10 @@ impl From<session::close::Res> for Response {
     }
 }
 
-impl From<(Sender<transaction::Client>, Streaming<transaction::Server>)> for Response {
-    fn from((request_sink, grpc_stream): (Sender<transaction::Client>, Streaming<transaction::Server>)) -> Self {
+impl From<(UnboundedSender<transaction::Client>, Streaming<transaction::Server>)> for Response {
+    fn from(
+        (request_sink, grpc_stream): (UnboundedSender<transaction::Client>, Streaming<transaction::Server>),
+    ) -> Self {
         Self::TransactionOpen { request_sink, grpc_stream }
     }
 }

@@ -26,7 +26,7 @@ use std::{
     time::Duration,
 };
 
-use crossbeam::{atomic::AtomicCell, channel::Sender as SyncSender};
+use crossbeam::atomic::AtomicCell;
 use futures::{Stream, StreamExt, TryStreamExt};
 use log::error;
 use prost::Message;
@@ -67,7 +67,7 @@ impl Drop for TransactionTransmitter {
 impl TransactionTransmitter {
     pub(in crate::connection) fn new(
         background_runtime: &BackgroundRuntime,
-        request_sink: SyncSender<transaction::Client>,
+        request_sink: UnboundedSender<transaction::Client>,
         grpc_stream: Streaming<transaction::Server>,
     ) -> Self {
         let (buffer_sink, buffer_source) = unbounded_async();
@@ -108,7 +108,7 @@ impl TransactionTransmitter {
     async fn start_workers(
         queue_sink: UnboundedSender<(TransactionRequest, Option<Callback<TransactionResponse>>)>,
         queue_source: UnboundedReceiver<(TransactionRequest, Option<Callback<TransactionResponse>>)>,
-        request_sink: SyncSender<transaction::Client>,
+        request_sink: UnboundedSender<transaction::Client>,
         grpc_stream: Streaming<transaction::Server>,
         is_open: Arc<AtomicCell<bool>>,
         shutdown_signal: UnboundedReceiver<()>,
@@ -120,7 +120,7 @@ impl TransactionTransmitter {
 
     async fn dispatch_loop(
         mut request_source: UnboundedReceiver<(TransactionRequest, Option<Callback<TransactionResponse>>)>,
-        grpc_sink: SyncSender<transaction::Client>,
+        grpc_sink: UnboundedSender<transaction::Client>,
         mut collector: ResponseCollector,
         mut shutdown_signal: UnboundedReceiver<()>,
     ) {

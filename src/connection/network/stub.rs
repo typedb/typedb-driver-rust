@@ -19,15 +19,12 @@
  * under the License.
  */
 
-use std::{
-    pin::Pin,
-    sync::Arc,
-    task::{Context, Poll},
-};
+use std::sync::Arc;
 
-use crossbeam::channel::{unbounded, Receiver, Sender, TryRecvError};
-use futures::{future::BoxFuture, FutureExt, Stream, TryFutureExt};
+use futures::{future::BoxFuture, FutureExt, TryFutureExt};
 use log::{debug, trace};
+use tokio::sync::mpsc::{unbounded_channel as unbounded_async, UnboundedSender};
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
     cluster_database::Replica, cluster_database_manager, cluster_user, core_database, core_database_manager,
@@ -250,14 +247,14 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
     pub(in crate::connection) async fn transaction(
         &mut self,
         open_req: transaction::Req,
-    ) -> Result<(Sender<transaction::Client>, Streaming<transaction::Server>)> {
+    ) -> Result<(UnboundedSender<transaction::Client>, Streaming<transaction::Server>)> {
         self.call_with_auto_renew_token(|this| {
             let transaction_req = transaction::Client { reqs: vec![open_req.clone()] };
             Box::pin(async {
-                let (sender, receiver) = unbounded();
+                let (sender, receiver) = unbounded_async();
                 sender.send(transaction_req)?;
                 this.core_grpc
-                    .transaction(ReceiverStream::from(receiver))
+                    .transaction(UnboundedReceiverStream::new(receiver))
                     .map_ok(|stream| Response::new((sender, stream.into_inner())))
                     .map(|r| Ok(r?.into_inner()))
                     .await
@@ -272,30 +269,5 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         R: 'static,
     {
         self.call_with_auto_renew_token(|this| Box::pin(call(this).map(|r| Ok(r?.into_inner())))).await
-    }
-}
-
-struct ReceiverStream<T> {
-    recv: Receiver<T>,
-}
-
-impl<T> From<Receiver<T>> for ReceiverStream<T> {
-    fn from(recv: Receiver<T>) -> Self {
-        Self { recv }
-    }
-}
-
-impl<T> Stream for ReceiverStream<T> {
-    type Item = T;
-    fn poll_next(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let poll = self.recv.try_recv();
-        match poll {
-            Ok(res) => Poll::Ready(Some(res)),
-            Err(TryRecvError::Disconnected) => Poll::Ready(None),
-            Err(TryRecvError::Empty) => {
-                ctx.waker().wake_by_ref();
-                Poll::Pending
-            }
-        }
     }
 }
