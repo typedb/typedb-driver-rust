@@ -114,7 +114,7 @@ impl Session {
                             .open_transaction(
                                 session_info.session_id,
                                 transaction_type,
-                                options.clone(),
+                                options,
                                 session_info.network_latency,
                             )
                             .await?,
