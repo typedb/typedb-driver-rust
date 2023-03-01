@@ -22,8 +22,6 @@
 use std::time::Duration;
 
 use itertools::Itertools;
-use tokio::sync::mpsc::UnboundedSender;
-use tonic::Streaming;
 use typedb_protocol::{
     cluster_database_manager, core_database, core_database_manager, query_manager, server_manager, session, transaction,
 };

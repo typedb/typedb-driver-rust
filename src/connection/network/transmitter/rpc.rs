@@ -27,7 +27,6 @@ use tokio::{
         oneshot::channel as oneshot_async,
     },
 };
-use typedb_protocol::transaction::server::Server::Res;
 
 use super::response_sink::ResponseSink;
 use crate::{
