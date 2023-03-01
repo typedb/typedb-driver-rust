@@ -19,25 +19,31 @@
  * under the License.
  */
 
-mod common;
-mod concept;
-mod database;
-mod message;
+use itertools::Itertools;
+use typedb_protocol::{cluster_database::Replica as ReplicaProto, ClusterDatabase as DatabaseProto};
 
-use crate::Result;
+use super::TryFromProto;
+use crate::{
+    common::info::{DatabaseInfo, ReplicaInfo},
+    Result,
+};
 
-pub(super) trait IntoProto<Proto> {
-    fn into_proto(self) -> Proto;
+impl TryFromProto<DatabaseProto> for DatabaseInfo {
+    fn try_from_proto(proto: DatabaseProto) -> Result<Self> {
+        Ok(Self {
+            name: proto.name,
+            replicas: proto.replicas.into_iter().map(ReplicaInfo::try_from_proto).try_collect()?,
+        })
+    }
 }
 
-pub(super) trait TryIntoProto<Proto> {
-    fn try_into_proto(self) -> Result<Proto>;
-}
-
-pub(super) trait FromProto<Proto> {
-    fn from_proto(proto: Proto) -> Self;
-}
-
-pub(super) trait TryFromProto<Proto>: Sized {
-    fn try_from_proto(proto: Proto) -> Result<Self>;
+impl TryFromProto<ReplicaProto> for ReplicaInfo {
+    fn try_from_proto(proto: ReplicaProto) -> Result<Self> {
+        Ok(Self {
+            address: proto.address.as_str().parse()?,
+            is_primary: proto.primary,
+            is_preferred: proto.preferred,
+            term: proto.term,
+        })
+    }
 }

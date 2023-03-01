@@ -19,23 +19,18 @@
  * under the License.
  */
 
-use itertools::Itertools;
 use typedb_protocol::{
-    cluster_database::Replica as ReplicaProto,
     options::{
         ExplainOpt::Explain, InferOpt::Infer, ParallelOpt::Parallel, PrefetchOpt::Prefetch,
         PrefetchSizeOpt::PrefetchSize, ReadAnyReplicaOpt::ReadAnyReplica,
         SchemaLockAcquireTimeoutOpt::SchemaLockAcquireTimeoutMillis, SessionIdleTimeoutOpt::SessionIdleTimeoutMillis,
         TraceInferenceOpt::TraceInference, TransactionTimeoutOpt::TransactionTimeoutMillis,
     },
-    session, transaction, ClusterDatabase as DatabaseProto, Options as OptionsProto,
+    session, transaction, Options as OptionsProto,
 };
 
-use super::{IntoProto, TryFromProto};
-use crate::{
-    common::info::{DatabaseInfo, ReplicaInfo},
-    Options, Result, SessionType, TransactionType,
-};
+use super::IntoProto;
+use crate::{Options, SessionType, TransactionType};
 
 impl IntoProto<session::Type> for SessionType {
     fn into_proto(self) -> session::Type {
@@ -75,25 +70,5 @@ impl IntoProto<OptionsProto> for Options {
                 .map(|val| SchemaLockAcquireTimeoutMillis(val.as_millis() as i32)),
             read_any_replica_opt: self.read_any_replica.map(ReadAnyReplica),
         }
-    }
-}
-
-impl TryFromProto<DatabaseProto> for DatabaseInfo {
-    fn try_from_proto(proto: DatabaseProto) -> Result<Self> {
-        Ok(Self {
-            name: proto.name,
-            replicas: proto.replicas.into_iter().map(ReplicaInfo::try_from_proto).try_collect()?,
-        })
-    }
-}
-
-impl TryFromProto<ReplicaProto> for ReplicaInfo {
-    fn try_from_proto(proto: ReplicaProto) -> Result<Self> {
-        Ok(Self {
-            address: proto.address.as_str().parse()?,
-            is_primary: proto.primary,
-            is_preferred: proto.preferred,
-            term: proto.term,
-        })
     }
 }
