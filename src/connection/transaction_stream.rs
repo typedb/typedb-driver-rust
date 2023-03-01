@@ -40,12 +40,6 @@ pub(crate) struct TransactionStream {
     transaction_transmitter: TransactionTransmitter,
 }
 
-impl fmt::Debug for TransactionStream {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TransactionStream").field("type_", &self.type_).field("options", &self.options).finish()
-    }
-}
-
 impl TransactionStream {
     pub(super) fn new(
         type_: TransactionType,
@@ -143,6 +137,12 @@ impl TransactionStream {
             Ok(other) => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
             Err(err) => Err(err),
         }))
+    }
+}
+
+impl fmt::Debug for TransactionStream {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TransactionStream").field("type_", &self.type_).field("options", &self.options).finish()
     }
 }
 

@@ -60,12 +60,6 @@ pub struct Connection {
     background_runtime: Arc<BackgroundRuntime>,
 }
 
-impl fmt::Debug for Connection {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Connection").field("server_connections", &self.server_connections).finish()
-    }
-}
-
 impl Connection {
     pub fn new_plaintext(address: impl AsRef<str>) -> Result<Self> {
         let address: Address = address.as_ref().parse()?;
@@ -138,21 +132,18 @@ impl Connection {
     }
 }
 
+impl fmt::Debug for Connection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Connection").field("server_connections", &self.server_connections).finish()
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct ServerConnection {
     address: Address,
     background_runtime: Arc<BackgroundRuntime>,
     open_sessions: Arc<Mutex<HashMap<SessionID, UnboundedSender<()>>>>,
     request_transmitter: Arc<RPCTransmitter>,
-}
-
-impl fmt::Debug for ServerConnection {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ServerConnection")
-            .field("address", &self.address)
-            .field("open_sessions", &self.open_sessions)
-            .finish()
-    }
 }
 
 impl ServerConnection {
@@ -305,6 +296,15 @@ impl ServerConnection {
             }
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
+    }
+}
+
+impl fmt::Debug for ServerConnection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ServerConnection")
+            .field("address", &self.address)
+            .field("open_sessions", &self.open_sessions)
+            .finish()
     }
 }
 

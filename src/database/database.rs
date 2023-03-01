@@ -41,12 +41,6 @@ pub struct Database {
     connection: Connection,
 }
 
-impl fmt::Debug for Database {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Database").field("name", &self.name).field("replicas", &self.replicas).finish()
-    }
-}
-
 impl Database {
     const PRIMARY_REPLICA_TASK_MAX_RETRIES: usize = 10;
     const FETCH_REPLICAS_MAX_RETRIES: usize = 10;
@@ -176,6 +170,12 @@ impl Database {
     }
 }
 
+impl fmt::Debug for Database {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Database").field("name", &self.name).field("replicas", &self.replicas).finish()
+    }
+}
+
 #[derive(Clone)]
 pub(super) struct Replica {
     address: Address,
@@ -184,18 +184,6 @@ pub(super) struct Replica {
     term: i64,
     is_preferred: bool,
     database: ServerDatabase,
-}
-
-impl fmt::Debug for Replica {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Replica")
-            .field("address", &self.address)
-            .field("database_name", &self.database_name)
-            .field("is_primary", &self.is_primary)
-            .field("term", &self.term)
-            .field("is_preferred", &self.is_preferred)
-            .finish()
-    }
 }
 
 impl Replica {
@@ -239,6 +227,18 @@ impl Replica {
             }
         }
         Err(connection.unable_to_connect_error())
+    }
+}
+
+impl fmt::Debug for Replica {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Replica")
+            .field("address", &self.address)
+            .field("database_name", &self.database_name)
+            .field("is_primary", &self.is_primary)
+            .field("term", &self.term)
+            .field("is_preferred", &self.is_preferred)
+            .finish()
     }
 }
 

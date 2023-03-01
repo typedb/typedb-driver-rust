@@ -36,16 +36,6 @@ pub struct Credential {
     tls_root_ca: Option<PathBuf>,
 }
 
-impl fmt::Debug for Credential {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Credential")
-            .field("username", &self.username)
-            .field("is_tls_enabled", &self.is_tls_enabled)
-            .field("tls_root_ca", &self.tls_root_ca)
-            .finish()
-    }
-}
-
 impl Credential {
     pub fn with_tls(username: &str, password: &str, tls_root_ca: Option<&Path>) -> Self {
         Credential {
@@ -83,5 +73,15 @@ impl Credential {
         } else {
             Ok(ClientTlsConfig::new())
         }
+    }
+}
+
+impl fmt::Debug for Credential {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Credential")
+            .field("username", &self.username)
+            .field("is_tls_enabled", &self.is_tls_enabled)
+            .field("tls_root_ca", &self.tls_root_ca)
+            .finish()
     }
 }

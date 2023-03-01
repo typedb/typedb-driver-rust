@@ -111,6 +111,20 @@ impl From<InternalError> for Error {
     }
 }
 
+impl From<Status> for Error {
+    fn from(status: Status) -> Self {
+        if is_rst_stream(&status) {
+            Self::Connection(ConnectionError::UnableToConnect())
+        } else if is_replica_not_primary(&status) {
+            Self::Connection(ConnectionError::ClusterReplicaNotPrimary())
+        } else if is_token_credential_invalid(&status) {
+            Self::Connection(ConnectionError::ClusterTokenCredentialInvalid())
+        } else {
+            Self::Other(status.message().to_string())
+        }
+    }
+}
+
 fn is_rst_stream(status: &Status) -> bool {
     // "Received Rst Stream" occurs if the server is in the process of shutting down.
     status.code() == Code::Unavailable
@@ -124,20 +138,6 @@ fn is_replica_not_primary(status: &Status) -> bool {
 
 fn is_token_credential_invalid(status: &Status) -> bool {
     status.code() == Code::Unauthenticated && status.message().contains("[CLS08]")
-}
-
-impl From<Status> for Error {
-    fn from(status: Status) -> Self {
-        if is_rst_stream(&status) {
-            Self::Connection(ConnectionError::UnableToConnect())
-        } else if is_replica_not_primary(&status) {
-            Self::Connection(ConnectionError::ClusterReplicaNotPrimary())
-        } else if is_token_credential_invalid(&status) {
-            Self::Connection(ConnectionError::ClusterTokenCredentialInvalid())
-        } else {
-            Self::Other(status.message().to_string())
-        }
-    }
 }
 
 impl From<http::uri::InvalidUri> for Error {

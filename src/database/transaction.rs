@@ -38,12 +38,6 @@ pub struct Transaction<'a> {
     _lifetime_guard: PhantomData<&'a ()>,
 }
 
-impl fmt::Debug for Transaction<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Transaction").field("type_", &self.type_).field("options", &self.options).finish()
-    }
-}
-
 impl Transaction<'_> {
     pub(super) fn new(transaction_stream: TransactionStream) -> Result<Self> {
         let transaction_stream = Arc::new(transaction_stream);
@@ -66,5 +60,11 @@ impl Transaction<'_> {
 
     pub async fn rollback(&self) -> Result {
         self.transaction_stream.rollback().await
+    }
+}
+
+impl fmt::Debug for Transaction<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Transaction").field("type_", &self.type_).field("options", &self.options).finish()
     }
 }
