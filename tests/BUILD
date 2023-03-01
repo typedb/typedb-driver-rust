@@ -43,10 +43,10 @@ rust_test(
 )
 
 rust_test(
-    name = "compatibility",
+    name = "runtimes",
     srcs = [
         "common.rs",
-        "compatibility.rs",
+        "runtimes.rs",
     ],
     deps = [
         "//:typedb_client",
@@ -85,7 +85,7 @@ artifact_extractor(
 
 rustfmt_test(
     name = "queries_rustfmt_test",
-    targets = ["queries", "compatibility"]
+    targets = ["queries", "runtimes"]
 )
 
 checkstyle_test(
