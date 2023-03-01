@@ -42,7 +42,7 @@ pub(in crate::connection) enum QueryRequest {
 
     MatchAggregate { query: String, options: Options },
 
-    Explain { explainable_id: i64, options: Options }, // TODO ID type
+    Explain { explainable_id: i64, options: Options }, // TODO: ID type
 
     MatchGroup { query: String, options: Options },
     MatchGroupAggregate { query: String, options: Options },
@@ -60,10 +60,10 @@ pub(in crate::connection) enum QueryResponse {
 
     MatchAggregate { answer: Numeric },
 
-    Explain {}, // TODO explanations
+    Explain {}, // TODO: explanations
 
-    MatchGroup {},          // TODO ConceptMapGroup
-    MatchGroupAggregate {}, // TODO NumericGroup
+    MatchGroup {},          // TODO: ConceptMapGroup
+    MatchGroupAggregate {}, // TODO: NumericGroup
 }
 
 impl From<QueryRequest> for query_manager::Req {

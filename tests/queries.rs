@@ -316,7 +316,7 @@ test_for_each_arg! {
 }
 
 // Concept helpers
-// FIXME should be removed after concept API is implemented
+// FIXME: should be removed after concept API is implemented
 fn unwrap_date_time(concept: Concept) -> NaiveDateTime {
     match concept {
         Concept::Thing(Thing::Attribute(Attribute::DateTime(DateTimeAttribute { value, .. }))) => value,

@@ -123,7 +123,7 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         self.single(|this| Box::pin(this.core_grpc.databases_create(req.clone()))).await
     }
 
-    // FIXME merge after protocol merge
+    // FIXME: merge after protocol merge
     pub(in crate::connection) async fn databases_get(
         &mut self,
         req: cluster_database_manager::get::Req,
@@ -198,7 +198,7 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
     ) -> Result<cluster_database_manager::all::Res> {
         self.single(|this| Box::pin(this.cluster_grpc.databases_all(req.clone()))).await
     }
-    // end FIXME
+    // FIXME: end FIXME
 
     pub(in crate::connection) async fn database_delete(
         &mut self,

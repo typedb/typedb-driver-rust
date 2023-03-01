@@ -171,7 +171,7 @@ impl Database {
     }
 
     async fn wait_for_primary_replica_selection() {
-        // FIXME blocking sleep! Can't do agnostic async sleep.
+        // FIXME: blocking sleep! Can't do agnostic async sleep.
         sleep(Self::WAIT_FOR_PRIMARY_REPLICA_SELECTION);
     }
 }
