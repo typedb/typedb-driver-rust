@@ -28,7 +28,7 @@ use tokio::{
     },
 };
 
-use super::callback::Callback;
+use super::response_sink::ResponseSink;
 use crate::{
     common::{address::Address, Result},
     connection::{
@@ -47,7 +47,7 @@ fn oneshot_blocking<T>() -> (SyncSender<T>, SyncReceiver<T>) {
 }
 
 pub(in crate::connection) struct RPCTransmitter {
-    request_sink: UnboundedSender<(Request, Callback<Response>)>,
+    request_sink: UnboundedSender<(Request, ResponseSink<Response>)>,
     shutdown_sink: UnboundedSender<()>,
 }
 
@@ -82,13 +82,13 @@ impl RPCTransmitter {
 
     pub(in crate::connection) async fn request_async(&self, request: Request) -> Result<Response> {
         let (response_sink, response) = oneshot_async();
-        self.request_sink.send((request, Callback::AsyncOneShot(response_sink)))?;
+        self.request_sink.send((request, ResponseSink::AsyncOneShot(response_sink)))?;
         response.await?
     }
 
     pub(in crate::connection) fn request_blocking(&self, request: Request) -> Result<Response> {
         let (response_sink, response) = oneshot_blocking();
-        self.request_sink.send((request, Callback::BlockingOneShot(response_sink)))?;
+        self.request_sink.send((request, ResponseSink::BlockingOneShot(response_sink)))?;
         response.recv()?
     }
 
@@ -98,7 +98,7 @@ impl RPCTransmitter {
 
     async fn dispatcher_loop<Channel: GRPCChannel>(
         rpc: RPCStub<Channel>,
-        mut request_source: UnboundedReceiver<(Request, Callback<Response>)>,
+        mut request_source: UnboundedReceiver<(Request, ResponseSink<Response>)>,
         mut shutdown_signal: UnboundedReceiver<()>,
     ) {
         while let Some((request, response_sink)) = select! {
@@ -108,7 +108,7 @@ impl RPCTransmitter {
             let rpc = rpc.clone();
             tokio::spawn(async move {
                 let response = Self::send_request(rpc, request).await;
-                response_sink.send(response);
+                response_sink.finish(response);
             });
         }
     }

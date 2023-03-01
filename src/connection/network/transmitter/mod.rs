@@ -19,7 +19,7 @@
  * under the License.
  */
 
-mod callback;
+mod response_sink;
 mod rpc;
 mod transaction;
 

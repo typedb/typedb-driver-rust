@@ -30,14 +30,14 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(super) enum Callback<T> {
+pub(super) enum ResponseSink<T> {
     AsyncOneShot(AsyncOneshotSender<Result<T>>),
     BlockingOneShot(SyncSender<Result<T>>),
     Streamed(UnboundedSender<Result<T>>),
 }
 
-impl<T> Callback<T> {
-    pub(super) fn send(self, response: Result<T>) {
+impl<T> ResponseSink<T> {
+    pub(super) fn finish(self, response: Result<T>) {
         let result = match self {
             Self::AsyncOneShot(sink) => sink.send(response).map_err(|_| InternalError::SendError().into()),
             Self::BlockingOneShot(sink) => sink.send(response).map_err(Error::from),
@@ -48,7 +48,7 @@ impl<T> Callback<T> {
         }
     }
 
-    pub(super) fn send_item(&self, response: Result<T>) {
+    pub(super) fn send(&self, response: Result<T>) {
         let result = match self {
             Self::Streamed(sink) => sink.send(response).map_err(Error::from),
             _ => unreachable!("attempted to stream over a one-shot callback"),
@@ -58,7 +58,7 @@ impl<T> Callback<T> {
         }
     }
 
-    pub(super) async fn send_error(self, error: ConnectionError) {
+    pub(super) async fn error(self, error: ConnectionError) {
         match self {
             Self::AsyncOneShot(sink) => sink.send(Err(error.into())).ok(),
             Self::BlockingOneShot(sink) => sink.send(Err(error.into())).ok(),
