@@ -246,7 +246,7 @@ impl ResponseCollector {
                         match self.request_sink.send((TransactionRequest::Stream { request_id }, None)) {
                             Err(SendError((TransactionRequest::Stream { request_id }, None))) => {
                                 let callback = self.callbacks.write().unwrap().remove(&request_id).unwrap();
-                                callback.error(ConnectionError::TransactionIsClosed()).await;
+                                callback.error(ConnectionError::TransactionIsClosed());
                             }
                             _ => (),
                         }
@@ -263,9 +263,9 @@ impl ResponseCollector {
 
     async fn close(self, error: ConnectionError) {
         self.is_open.store(false);
-        let mut listeners = std::mem::take(self.callbacks.write().unwrap().deref_mut());
+        let mut listeners = std::mem::take(&mut *self.callbacks.write().unwrap());
         for (_, listener) in listeners.drain() {
-            listener.error(error.clone()).await;
+            listener.error(error.clone());
         }
     }
 }
