@@ -21,7 +21,6 @@
 
 use std::{
     collections::HashMap,
-    ops::DerefMut,
     sync::{Arc, RwLock},
     time::Duration,
 };
