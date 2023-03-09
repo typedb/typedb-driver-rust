@@ -22,9 +22,7 @@
 use std::time::Duration;
 
 use itertools::Itertools;
-use typedb_protocol::{
-    cluster_database_manager, core_database, core_database_manager, query_manager, server_manager, session, transaction,
-};
+use typedb_protocol::{database, database_manager, query_manager, server_manager, session, transaction};
 
 use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
@@ -46,79 +44,73 @@ impl TryIntoProto<server_manager::all::Req> for Request {
     }
 }
 
-impl TryIntoProto<core_database_manager::contains::Req> for Request {
-    fn try_into_proto(self) -> Result<core_database_manager::contains::Req> {
+impl TryIntoProto<database_manager::contains::Req> for Request {
+    fn try_into_proto(self) -> Result<database_manager::contains::Req> {
         match self {
-            Request::DatabasesContains { database_name } => {
-                Ok(core_database_manager::contains::Req { name: database_name })
-            }
+            Request::DatabasesContains { database_name } => Ok(database_manager::contains::Req { name: database_name }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
 
-impl TryIntoProto<core_database_manager::create::Req> for Request {
-    fn try_into_proto(self) -> Result<core_database_manager::create::Req> {
+impl TryIntoProto<database_manager::create::Req> for Request {
+    fn try_into_proto(self) -> Result<database_manager::create::Req> {
         match self {
-            Request::DatabaseCreate { database_name } => Ok(core_database_manager::create::Req { name: database_name }),
+            Request::DatabaseCreate { database_name } => Ok(database_manager::create::Req { name: database_name }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
 
-impl TryIntoProto<cluster_database_manager::get::Req> for Request {
-    fn try_into_proto(self) -> Result<cluster_database_manager::get::Req> {
+impl TryIntoProto<database_manager::get::Req> for Request {
+    fn try_into_proto(self) -> Result<database_manager::get::Req> {
         match self {
-            Request::DatabaseGet { database_name } => Ok(cluster_database_manager::get::Req { name: database_name }),
+            Request::DatabaseGet { database_name } => Ok(database_manager::get::Req { name: database_name }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
 
-impl TryIntoProto<cluster_database_manager::all::Req> for Request {
-    fn try_into_proto(self) -> Result<cluster_database_manager::all::Req> {
+impl TryIntoProto<database_manager::all::Req> for Request {
+    fn try_into_proto(self) -> Result<database_manager::all::Req> {
         match self {
-            Request::DatabasesAll => Ok(cluster_database_manager::all::Req {}),
+            Request::DatabasesAll => Ok(database_manager::all::Req {}),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
 
-impl TryIntoProto<core_database::delete::Req> for Request {
-    fn try_into_proto(self) -> Result<core_database::delete::Req> {
+impl TryIntoProto<database::delete::Req> for Request {
+    fn try_into_proto(self) -> Result<database::delete::Req> {
         match self {
-            Request::DatabaseDelete { database_name } => Ok(core_database::delete::Req { name: database_name }),
+            Request::DatabaseDelete { database_name } => Ok(database::delete::Req { name: database_name }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
 
-impl TryIntoProto<core_database::schema::Req> for Request {
-    fn try_into_proto(self) -> Result<core_database::schema::Req> {
+impl TryIntoProto<database::schema::Req> for Request {
+    fn try_into_proto(self) -> Result<database::schema::Req> {
         match self {
-            Request::DatabaseSchema { database_name } => Ok(core_database::schema::Req { name: database_name }),
+            Request::DatabaseSchema { database_name } => Ok(database::schema::Req { name: database_name }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
 
-impl TryIntoProto<core_database::type_schema::Req> for Request {
-    fn try_into_proto(self) -> Result<core_database::type_schema::Req> {
+impl TryIntoProto<database::type_schema::Req> for Request {
+    fn try_into_proto(self) -> Result<database::type_schema::Req> {
         match self {
-            Request::DatabaseTypeSchema { database_name } => {
-                Ok(core_database::type_schema::Req { name: database_name })
-            }
+            Request::DatabaseTypeSchema { database_name } => Ok(database::type_schema::Req { name: database_name }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
 }
 
-impl TryIntoProto<core_database::rule_schema::Req> for Request {
-    fn try_into_proto(self) -> Result<core_database::rule_schema::Req> {
+impl TryIntoProto<database::rule_schema::Req> for Request {
+    fn try_into_proto(self) -> Result<database::rule_schema::Req> {
         match self {
-            Request::DatabaseRuleSchema { database_name } => {
-                Ok(core_database::rule_schema::Req { name: database_name })
-            }
+            Request::DatabaseRuleSchema { database_name } => Ok(database::rule_schema::Req { name: database_name }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
@@ -173,20 +165,20 @@ impl TryFromProto<server_manager::all::Res> for Response {
     }
 }
 
-impl FromProto<core_database_manager::contains::Res> for Response {
-    fn from_proto(proto: core_database_manager::contains::Res) -> Self {
+impl FromProto<database_manager::contains::Res> for Response {
+    fn from_proto(proto: database_manager::contains::Res) -> Self {
         Self::DatabasesContains { contains: proto.contains }
     }
 }
 
-impl FromProto<core_database_manager::create::Res> for Response {
-    fn from_proto(_proto: core_database_manager::create::Res) -> Self {
+impl FromProto<database_manager::create::Res> for Response {
+    fn from_proto(_proto: database_manager::create::Res) -> Self {
         Self::DatabaseCreate
     }
 }
 
-impl TryFromProto<cluster_database_manager::get::Res> for Response {
-    fn try_from_proto(proto: cluster_database_manager::get::Res) -> Result<Self> {
+impl TryFromProto<database_manager::get::Res> for Response {
+    fn try_from_proto(proto: database_manager::get::Res) -> Result<Self> {
         Ok(Response::DatabaseGet {
             database: DatabaseInfo::try_from_proto(
                 proto.database.ok_or(ConnectionError::MissingResponseField("database"))?,
@@ -195,34 +187,34 @@ impl TryFromProto<cluster_database_manager::get::Res> for Response {
     }
 }
 
-impl TryFromProto<cluster_database_manager::all::Res> for Response {
-    fn try_from_proto(proto: cluster_database_manager::all::Res) -> Result<Self> {
+impl TryFromProto<database_manager::all::Res> for Response {
+    fn try_from_proto(proto: database_manager::all::Res) -> Result<Self> {
         Ok(Response::DatabasesAll {
             databases: proto.databases.into_iter().map(DatabaseInfo::try_from_proto).try_collect()?,
         })
     }
 }
 
-impl FromProto<core_database::delete::Res> for Response {
-    fn from_proto(_proto: core_database::delete::Res) -> Self {
+impl FromProto<database::delete::Res> for Response {
+    fn from_proto(_proto: database::delete::Res) -> Self {
         Self::DatabaseDelete
     }
 }
 
-impl FromProto<core_database::schema::Res> for Response {
-    fn from_proto(proto: core_database::schema::Res) -> Self {
+impl FromProto<database::schema::Res> for Response {
+    fn from_proto(proto: database::schema::Res) -> Self {
         Self::DatabaseSchema { schema: proto.schema }
     }
 }
 
-impl FromProto<core_database::type_schema::Res> for Response {
-    fn from_proto(proto: core_database::type_schema::Res) -> Self {
+impl FromProto<database::type_schema::Res> for Response {
+    fn from_proto(proto: database::type_schema::Res) -> Self {
         Self::DatabaseTypeSchema { schema: proto.schema }
     }
 }
 
-impl FromProto<core_database::rule_schema::Res> for Response {
-    fn from_proto(proto: core_database::rule_schema::Res) -> Self {
+impl FromProto<database::rule_schema::Res> for Response {
+    fn from_proto(proto: database::rule_schema::Res) -> Self {
         Self::DatabaseRuleSchema { schema: proto.schema }
     }
 }
