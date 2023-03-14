@@ -31,7 +31,7 @@ use std::{
 use chrono::NaiveDateTime;
 use futures::{FutureExt, Stream, StreamExt};
 
-use crate::common::{error::ConnectionError, Result};
+use crate::common::{error::ConnectionError, Result, IID};
 
 #[derive(Clone, Debug)]
 pub enum Concept {
@@ -206,7 +206,7 @@ pub enum Thing {
 // impl ConceptApi for Thing {}
 
 // impl ThingApi for Thing {
-//     fn get_iid(&self) -> &Vec<u8> {
+//     fn get_iid(&self) -> &IID {
 //         match self {
 //             Thing::Entity(x) => { x.get_iid() }
 //             Thing::Relation(x) => { x.get_iid() }
@@ -219,13 +219,13 @@ pub enum Thing {
 //       1 million copies of the same data when matching concepts of homogeneous types
 #[derive(Clone, Debug)]
 pub struct Entity {
-    pub iid: Vec<u8>,
+    pub iid: IID,
     pub type_: EntityType,
 }
 
 // impl ThingApi for Entity {
 //     // TODO: use enum_dispatch macro to avoid manually writing the duplicates of this method
-//     fn get_iid(&self) -> &Vec<u8> {
+//     fn get_iid(&self) -> &IID {
 //         &self.iid
 //     }
 // }
@@ -236,7 +236,7 @@ pub struct Entity {
 
 #[derive(Clone, Debug)]
 pub struct Relation {
-    pub iid: Vec<u8>,
+    pub iid: IID,
     pub type_: RelationType,
 }
 
@@ -248,7 +248,7 @@ pub struct Relation {
 //
 // default_impl! {
 // impl ThingApi {
-//     fn get_iid(&self) -> &Vec<u8> {
+//     fn get_iid(&self) -> &IID {
 //         &self.iid
 //     }
 // } for Entity, Relation
@@ -260,45 +260,11 @@ pub struct Relation {
 
 #[derive(Clone, Debug)]
 pub enum Attribute {
-    Boolean(BooleanAttribute),
-    Long(LongAttribute),
-    Double(DoubleAttribute),
-    String(StringAttribute),
-    DateTime(DateTimeAttribute),
-}
-
-#[derive(Clone, Debug)]
-pub struct BooleanAttribute {
-    pub iid: Vec<u8>,
-    pub value: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct LongAttribute {
-    pub iid: Vec<u8>,
-    pub value: i64,
-}
-
-impl LongAttribute {}
-
-#[derive(Clone, Debug)]
-pub struct DoubleAttribute {
-    pub iid: Vec<u8>,
-    pub value: f64,
-}
-
-#[derive(Clone, Debug)]
-pub struct StringAttribute {
-    pub iid: Vec<u8>,
-    pub value: String,
-}
-
-impl StringAttribute {}
-
-#[derive(Clone, Debug)]
-pub struct DateTimeAttribute {
-    pub iid: Vec<u8>,
-    pub value: NaiveDateTime,
+    Boolean { iid: IID, value: bool },
+    Long { iid: IID, value: i64 },
+    Double { iid: IID, value: f64 },
+    String { iid: IID, value: String },
+    DateTime { iid: IID, value: NaiveDateTime },
 }
 
 pub mod attribute {

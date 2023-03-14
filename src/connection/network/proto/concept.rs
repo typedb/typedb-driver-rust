@@ -32,10 +32,9 @@ use super::TryFromProto;
 use crate::{
     answer::{ConceptMap, Numeric},
     concept::{
-        Attribute, AttributeType, BooleanAttribute, BooleanAttributeType, Concept, DateTimeAttribute,
-        DateTimeAttributeType, DoubleAttribute, DoubleAttributeType, Entity, EntityType, LongAttribute,
-        LongAttributeType, Relation, RelationType, RoleType, RootAttributeType, RootThingType, ScopedLabel,
-        StringAttribute, StringAttributeType, Thing, ThingType, Type,
+        Attribute, AttributeType, BooleanAttributeType, Concept, DateTimeAttributeType, DoubleAttributeType, Entity,
+        EntityType, LongAttributeType, Relation, RelationType, RoleType, RootAttributeType, RootThingType, ScopedLabel,
+        StringAttributeType, Thing, ThingType, Type,
     },
     connection::network::proto::FromProto,
     error::{ConnectionError, InternalError},
@@ -144,7 +143,7 @@ impl TryFromProto<ThingProto> for Entity {
     fn try_from_proto(proto: ThingProto) -> Result<Self> {
         Ok(Self {
             type_: EntityType::from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?),
-            iid: proto.iid,
+            iid: proto.iid.into(),
         })
     }
 }
@@ -153,7 +152,7 @@ impl TryFromProto<ThingProto> for Relation {
     fn try_from_proto(proto: ThingProto) -> Result<Self> {
         Ok(Self {
             type_: RelationType::from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?),
-            iid: proto.iid,
+            iid: proto.iid.into(),
         })
     }
 }
@@ -163,34 +162,33 @@ impl TryFromProto<ThingProto> for Attribute {
         let value = proto.value.and_then(|v| v.value).ok_or(ConnectionError::MissingResponseField("value"))?;
 
         let value_type = proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?.value_type;
-        let iid = proto.iid;
+        let iid = proto.iid.into();
 
         match ValueType::try_from_proto(value_type)? {
             ValueType::Object => todo!(),
-            ValueType::Boolean => Ok(Self::Boolean(BooleanAttribute {
+            ValueType::Boolean => Ok(Self::Boolean {
                 value: if let ValueProto::Boolean(value) = value { value } else { unreachable!() },
                 iid,
-            })),
-            ValueType::Long => Ok(Self::Long(LongAttribute {
-                value: if let ValueProto::Long(value) = value { value } else { unreachable!() },
-                iid,
-            })),
-            ValueType::Double => Ok(Self::Double(DoubleAttribute {
+            }),
+            ValueType::Long => {
+                Ok(Self::Long { value: if let ValueProto::Long(value) = value { value } else { unreachable!() }, iid })
+            }
+            ValueType::Double => Ok(Self::Double {
                 value: if let ValueProto::Double(value) = value { value } else { unreachable!() },
                 iid,
-            })),
-            ValueType::String => Ok(Self::String(StringAttribute {
+            }),
+            ValueType::String => Ok(Self::String {
                 value: if let ValueProto::String(value) = value { value } else { unreachable!() },
                 iid,
-            })),
-            ValueType::Datetime => Ok(Self::DateTime(DateTimeAttribute {
+            }),
+            ValueType::Datetime => Ok(Self::DateTime {
                 value: if let ValueProto::DateTime(value) = value {
                     NaiveDateTime::from_timestamp_opt(value / 1000, (value % 1000) as u32 * 1_000_000).unwrap()
                 } else {
                     unreachable!()
                 },
                 iid,
-            })),
+            }),
         }
     }
 }
