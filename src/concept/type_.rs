@@ -34,12 +34,6 @@ impl RootThingType {
     }
 }
 
-impl Default for RootThingType {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct EntityType {
     pub label: String,
@@ -64,8 +58,8 @@ impl RelationType {
 
 #[derive(Clone, Debug)]
 pub struct AttributeType {
-    label: String,
-    value_type: ValueType,
+    pub label: String,
+    pub value_type: ValueType,
 }
 
 impl AttributeType {
