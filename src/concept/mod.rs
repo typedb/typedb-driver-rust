@@ -20,10 +20,10 @@
  */
 
 mod type_;
-pub use type_::*;
+pub use type_::{AttributeType, EntityType, RelationType, RoleType, RootThingType, ScopedLabel, ValueType};
 
 mod thing;
-pub use thing::*;
+pub use thing::{Attribute, Entity, Relation, Value};
 
 // #[derive(Clone, Debug)]
 // pub enum Concept {

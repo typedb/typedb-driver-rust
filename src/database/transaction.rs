@@ -21,7 +21,7 @@
 
 use std::{fmt, marker::PhantomData, sync::Arc};
 
-use super::query::QueryManager;
+use super::{concept::ConceptManager, query::QueryManager};
 use crate::{
     common::{Result, TransactionType},
     connection::TransactionStream,
@@ -33,6 +33,7 @@ pub struct Transaction<'a> {
     options: Options,
 
     query: QueryManager,
+    concept: ConceptManager,
     transaction_stream: Arc<TransactionStream>,
 
     _lifetime_guard: PhantomData<&'a ()>,
@@ -45,6 +46,7 @@ impl Transaction<'_> {
             type_: transaction_stream.type_(),
             options: transaction_stream.options().clone(),
             query: QueryManager::new(transaction_stream.clone()),
+            concept: ConceptManager::new(transaction_stream.clone()),
             transaction_stream,
             _lifetime_guard: PhantomData::default(),
         }
@@ -60,6 +62,10 @@ impl Transaction<'_> {
 
     pub fn query(&self) -> &QueryManager {
         &self.query
+    }
+
+    pub(crate) fn concept(&self) -> &ConceptManager {
+        &self.concept
     }
 
     pub async fn commit(self) -> Result {
