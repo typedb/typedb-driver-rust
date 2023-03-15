@@ -75,7 +75,7 @@ impl TryFromProto<ConceptProto> for Concept {
                 }
             }
             concept_proto::Concept::Type(type_) => match Encoding::try_from_proto(type_.encoding)? {
-                Encoding::ThingType => Ok(Self::ThingType(RootThingType::default())),
+                Encoding::ThingType => Ok(Self::ThingType(RootThingType::new())),
                 Encoding::EntityType => Ok(Self::EntityType(EntityType::from_proto(type_))),
                 Encoding::RelationType => Ok(Self::RelationType(RelationType::from_proto(type_))),
                 Encoding::AttributeType => Ok(Self::AttributeType(AttributeType::try_from_proto(type_)?)),
@@ -136,31 +136,31 @@ impl FromProto<TypeProto> for RoleType {
 
 impl TryFromProto<ThingProto> for Entity {
     fn try_from_proto(proto: ThingProto) -> Result<Self> {
-        Ok(Self {
-            type_: EntityType::from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?),
-            iid: proto.iid.into(),
-        })
+        Ok(Self::new(
+            proto.iid.into(),
+            EntityType::from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?),
+        ))
     }
 }
 
 impl TryFromProto<ThingProto> for Relation {
     fn try_from_proto(proto: ThingProto) -> Result<Self> {
-        Ok(Self {
-            type_: RelationType::from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?),
-            iid: proto.iid.into(),
-        })
+        Ok(Self::new(
+            proto.iid.into(),
+            RelationType::from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?),
+        ))
     }
 }
 
 impl TryFromProto<ThingProto> for Attribute {
     fn try_from_proto(proto: ThingProto) -> Result<Self> {
-        Ok(Self {
-            type_: AttributeType::try_from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?)?,
-            iid: proto.iid.into(),
-            value: Value::try_from_proto(
+        Ok(Self::new(
+            proto.iid.into(),
+            AttributeType::try_from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?)?,
+            Value::try_from_proto(
                 proto.value.and_then(|v| v.value).ok_or(ConnectionError::MissingResponseField("value"))?,
             )?,
-        })
+        ))
     }
 }
 

@@ -20,7 +20,6 @@
  */
 
 use chrono::NaiveDateTime;
-use enum_dispatch::enum_dispatch;
 
 use super::type_::*;
 use crate::common::IID;
@@ -51,10 +50,22 @@ pub struct Entity {
     pub type_: EntityType,
 }
 
+impl Entity {
+    pub fn new(iid: IID, type_: EntityType) -> Self {
+        Self { iid, type_ }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Relation {
     pub iid: IID,
     pub type_: RelationType,
+}
+
+impl Relation {
+    pub fn new(iid: IID, type_: RelationType) -> Self {
+        Self { iid, type_ }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -62,6 +73,12 @@ pub struct Attribute {
     pub iid: IID,
     pub type_: AttributeType,
     pub value: Value,
+}
+
+impl Attribute {
+    pub fn new(iid: IID, type_: AttributeType, value: Value) -> Self {
+        Self { iid, type_, value }
+    }
 }
 
 #[derive(Clone, Debug)]
