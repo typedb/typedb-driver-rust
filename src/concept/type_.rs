@@ -22,26 +22,6 @@
 use std::fmt;
 
 #[derive(Clone, Debug)]
-pub enum Type {
-    Thing(ThingType),
-    Role(RoleType),
-}
-
-#[derive(Clone, Debug)]
-pub enum ThingType {
-    Root(RootThingType),
-    Entity(EntityType),
-    Relation(RelationType),
-    Attribute(AttributeType),
-}
-
-#[derive(Debug)]
-pub enum EntityOrThingType {
-    EntityType(EntityType),
-    RootThingType(RootThingType),
-}
-
-#[derive(Clone, Debug)]
 pub struct RootThingType {
     pub label: String,
 }
@@ -83,87 +63,25 @@ impl RelationType {
 }
 
 #[derive(Clone, Debug)]
-pub enum AttributeType {
-    Root(RootAttributeType),
-    Boolean(BooleanAttributeType),
-    Long(LongAttributeType),
-    Double(DoubleAttributeType),
-    String(StringAttributeType),
-    DateTime(DateTimeAttributeType),
+pub struct AttributeType {
+    label: String,
+    value_type: ValueType,
 }
 
-#[derive(Clone, Debug)]
-pub struct RootAttributeType {
-    pub label: String,
-}
-
-impl RootAttributeType {
-    const LABEL: &'static str = "attribute";
-
-    pub fn new() -> Self {
-        Self { label: String::from(Self::LABEL) }
-    }
-}
-
-impl Default for RootAttributeType {
-    fn default() -> Self {
-        Self::new()
+impl AttributeType {
+    pub fn new(label: String, value_type: ValueType) -> Self {
+        Self { label, value_type }
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct BooleanAttributeType {
-    pub label: String,
-}
-
-impl BooleanAttributeType {
-    pub fn new(label: String) -> Self {
-        Self { label }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct LongAttributeType {
-    pub label: String,
-}
-
-impl LongAttributeType {
-    pub fn new(label: String) -> Self {
-        Self { label }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct DoubleAttributeType {
-    pub label: String,
-}
-
-impl DoubleAttributeType {
-    pub fn new(label: String) -> Self {
-        Self { label }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct StringAttributeType {
-    pub label: String,
-}
-
-impl StringAttributeType {
-    pub fn new(label: String) -> Self {
-        Self { label }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct DateTimeAttributeType {
-    pub label: String,
-}
-
-impl DateTimeAttributeType {
-    pub fn new(label: String) -> Self {
-        Self { label }
-    }
+pub enum ValueType {
+    Object,
+    Boolean,
+    Long,
+    Double,
+    String,
+    DateTime,
 }
 
 #[derive(Clone, Debug)]
