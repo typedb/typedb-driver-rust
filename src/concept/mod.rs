@@ -25,8 +25,21 @@ pub use type_::*;
 mod thing;
 pub use thing::*;
 
+// #[derive(Clone, Debug)]
+// pub enum Concept {
+//     Type(Type),
+//     Thing(Thing),
+// }
+
 #[derive(Clone, Debug)]
 pub enum Concept {
-    Type(Type),
-    Thing(Thing),
+    ThingType(RootThingType),
+    EntityType(EntityType),
+    RelationType(RelationType),
+    RoleType(RoleType),
+    AttributeType(AttributeType),
+
+    Entity(Entity),
+    Relation(Relation),
+    Attribute(Attribute),
 }

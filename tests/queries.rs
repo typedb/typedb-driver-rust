@@ -28,7 +28,7 @@ use futures::StreamExt;
 use serial_test::serial;
 use tokio::sync::mpsc;
 use typedb_client::{
-    concept::{Attribute, Concept, Thing},
+    concept::{Attribute, Concept, Value},
     error::ConnectionError,
     Connection, DatabaseManager, Error, Options, Session,
     SessionType::{Data, Schema},
@@ -346,7 +346,7 @@ test_for_each_arg! {
                 match result {
                     Ok(concept_map) => {
                         for (_, concept) in concept_map {
-                            if let Concept::Thing(Thing::Attribute(Attribute::Long { value, .. })) = concept {
+                            if let Concept::Attribute(Attribute { value: Value::Long(value), .. }) = concept {
                                 sum += value
                             }
                         }
@@ -372,21 +372,21 @@ test_for_each_arg! {
 // FIXME: should be removed after concept API is implemented
 fn unwrap_date_time(concept: Concept) -> NaiveDateTime {
     match concept {
-        Concept::Thing(Thing::Attribute(Attribute::DateTime { value, .. })) => value,
+        Concept::Attribute(Attribute { value: Value::DateTime(value), .. }) => value,
         _ => unreachable!(),
     }
 }
 
 fn unwrap_string(concept: Concept) -> String {
     match concept {
-        Concept::Thing(Thing::Attribute(Attribute::String { value, .. })) => value,
+        Concept::Attribute(Attribute { value: Value::String(value), .. }) => value,
         _ => unreachable!(),
     }
 }
 
 fn unwrap_long(concept: Concept) -> i64 {
     match concept {
-        Concept::Thing(Thing::Attribute(Attribute::Long { value, .. })) => value,
+        Concept::Attribute(Attribute { value: Value::Long(value), .. }) => value,
         _ => unreachable!(),
     }
 }
