@@ -19,6 +19,7 @@
  * under the License.
  */
 
+mod concept;
 mod database;
 mod database_manager;
 mod query;

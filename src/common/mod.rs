@@ -46,3 +46,9 @@ pub enum TransactionType {
     Read = 0,
     Write = 1,
 }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum OwnsFilter {
+    Keys,
+    All,
+}
