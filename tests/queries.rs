@@ -19,6 +19,8 @@
  * under the License.
  */
 
+mod common;
+
 use std::{sync::Arc, time::Instant};
 
 use chrono::{NaiveDate, NaiveDateTime};
