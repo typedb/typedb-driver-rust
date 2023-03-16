@@ -21,19 +21,29 @@
 
 package(default_visibility = ["//visibility:public"])
 
-load("@rules_rust//rust:defs.bzl", "rust_test", "rustfmt_test")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test", "rustfmt_test")
 load("@vaticle_bazel_distribution//artifact:rules.bzl", "artifact_extractor")
 load("@vaticle_dependencies//tool/checkstyle:rules.bzl", "checkstyle_test")
 load("@vaticle_typedb_common//runner:rules.bzl", "native_typedb_artifact")
 
+rust_library(
+    name = "common",
+    srcs = [
+        "common.rs",
+    ],
+    deps = [
+        "//:typedb_client",
+        "@crates//:futures",
+    ],
+)
 
 rust_test(
     name = "queries",
     srcs = [
-        "common.rs",
         "queries.rs",
     ],
     deps = [
+        ":common",
         "//:typedb_client",
         "@crates//:chrono",
         "@crates//:futures",
@@ -45,10 +55,10 @@ rust_test(
 rust_test(
     name = "runtimes",
     srcs = [
-        "common.rs",
         "runtimes.rs",
     ],
     deps = [
+        ":common",
         "//:typedb_client",
         "@crates//:async-std",
         "@crates//:futures",

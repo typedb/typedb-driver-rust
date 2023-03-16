@@ -19,8 +19,6 @@
  * under the License.
  */
 
-mod common;
-
 use futures::StreamExt;
 use serial_test::serial;
 use typedb_client::{DatabaseManager, Session, SessionType::Data, TransactionType::Write};
