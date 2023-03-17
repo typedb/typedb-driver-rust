@@ -19,8 +19,8 @@
  * under the License.
  */
 
-use cucumber::{StatsWriter, World, cli::Parser};
-use typedb_client::{Connection, DatabaseManager};
+use cucumber::{StatsWriter, World};
+use typedb_client::{Connection, DatabaseManager, Session};
 
 mod steps;
 
@@ -28,6 +28,7 @@ mod steps;
 pub struct TypeDBWorld {
     pub connection: Connection,
     pub databases: DatabaseManager,
+    pub sessions: Vec<Session>,
 }
 
 impl TypeDBWorld {
@@ -46,7 +47,7 @@ impl Default for TypeDBWorld {
     fn default() -> Self {
         let connection = Connection::new_plaintext("0.0.0.0:1729").unwrap();
         let databases = DatabaseManager::new(connection.clone());
-        Self { connection, databases }
+        Self { connection, databases, sessions: Vec::new() }
     }
 }
 
