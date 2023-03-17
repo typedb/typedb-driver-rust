@@ -25,7 +25,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use futures::{future::try_join_all, TryFutureExt};
 use typedb_client::Database;
 
-use crate::{generic_step_impl, TypeDBWorld};
+use crate::{generic_step_impl, steps::util, TypeDBWorld};
 
 generic_step_impl! {
     #[step(expr = "connection create database: {word}")]
@@ -35,16 +35,14 @@ generic_step_impl! {
 
     #[step(expr = "connection create database(s):")]
     async fn connection_create_databases(world: &mut TypeDBWorld, step: &Step) {
-        for name in step.table.as_ref().unwrap().rows.iter().flatten() {
+        for name in util::iter_table(step) {
             world.databases.create(name).await.unwrap();
         }
     }
 
     #[step("connection create databases in parallel:")]
     async fn connection_create_databases_in_parallel(world: &mut TypeDBWorld, step: &Step) {
-        try_join_all(step.table.as_ref().unwrap().rows.iter().flatten().map(|name| world.databases.create(name)))
-            .await
-            .unwrap();
+        try_join_all(util::iter_table(step).map(|name| world.databases.create(name))).await.unwrap();
     }
 
     #[step(expr = "connection delete database: {word}")]
@@ -54,24 +52,16 @@ generic_step_impl! {
 
     #[step(expr = "connection delete database(s):")]
     async fn connection_delete_databases(world: &mut TypeDBWorld, step: &Step) {
-        for name in step.table.as_ref().unwrap().rows.iter().flatten() {
+        for name in util::iter_table(step) {
             world.databases.get(name).and_then(Database::delete).await.unwrap();
         }
     }
 
     #[step(expr = "connection delete databases in parallel:")]
     async fn connection_delete_databases_in_parallel(world: &mut TypeDBWorld, step: &Step) {
-        try_join_all(
-            step.table
-                .as_ref()
-                .unwrap()
-                .rows
-                .iter()
-                .flatten()
-                .map(|name| world.databases.get(name).and_then(Database::delete)),
-        )
-        .await
-        .unwrap();
+        try_join_all(util::iter_table(step).map(|name| world.databases.get(name).and_then(Database::delete)))
+            .await
+            .unwrap();
     }
 
     #[step(expr = "connection delete database; throws exception: {word}")]
@@ -81,7 +71,7 @@ generic_step_impl! {
 
     #[step(expr = "connection delete database(s); throws exception")]
     async fn connection_delete_databases_throws_exception(world: &mut TypeDBWorld, step: &Step) {
-        for name in step.table.as_ref().unwrap().rows.iter().flatten() {
+        for name in util::iter_table(step) {
             assert!(world.databases.get(name).and_then(Database::delete).await.is_err());
         }
     }
@@ -93,8 +83,7 @@ generic_step_impl! {
 
     #[step(expr = "connection has database(s):")]
     async fn connection_has_databases(world: &mut TypeDBWorld, step: &Step) {
-        let names: HashSet<String> =
-            step.table.as_ref().unwrap().rows.iter().flatten().map(|name| name.to_owned()).collect();
+        let names: HashSet<String> = util::iter_table(step).map(|name| name.to_owned()).collect();
         let all_databases = world.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
         assert_eq!(names, all_databases);
     }
@@ -108,7 +97,7 @@ generic_step_impl! {
     async fn connection_does_not_have_databases(world: &mut TypeDBWorld, step: &Step) {
         let all_databases: HashSet<String> =
             world.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
-        for name in step.table.as_ref().unwrap().rows.iter().flatten() {
+        for name in util::iter_table(step) {
             assert!(!all_databases.contains(name));
         }
     }

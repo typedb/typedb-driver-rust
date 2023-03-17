@@ -26,8 +26,8 @@ mod steps;
 
 #[derive(Debug, World)]
 pub struct TypeDBWorld {
-    connection: Connection,
-    databases: DatabaseManager,
+    pub connection: Connection,
+    pub databases: DatabaseManager,
 }
 
 impl TypeDBWorld {
