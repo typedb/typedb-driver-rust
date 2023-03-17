@@ -19,5 +19,10 @@
  * under the License.
  */
 
-mod connection;
-mod util;
+use cucumber::gherkin::Step;
+
+use crate::TypeDBWorld;
+
+pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
+    step.table.as_ref().unwrap().rows.iter().flatten()
+}
