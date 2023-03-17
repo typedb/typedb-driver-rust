@@ -56,6 +56,21 @@ rust_test(
     ],
 )
 
+rust_test(
+    name = "behaviour",
+    srcs = ["behaviour.rs"] + glob(["steps/**/*.rs"]),
+    deps = [
+        "//:typedb_client",
+        "@crates//:cucumber",
+        "@crates//:futures",
+        "@crates//:serial_test",
+        "@crates//:tokio",
+    ],
+    data = [
+        "@vaticle_typedb_behaviour//connection:database.feature",
+    ],
+)
+
 native_typedb_artifact(
     name = "native-typedb-artifact",
     mac_artifact = "@vaticle_typedb_artifact_mac//file",

@@ -52,7 +52,11 @@ pub trait ThingAPI {
         transaction.concept().get_has_keys(self.get_iid().clone(), owns_filter)
     }
 
-    fn get_has_type<'t>(&self, transaction: &'t Transaction, attribute_type: AttributeType) -> BoxStream<'t, Result<Attribute>> {
+    fn get_has_type<'t>(
+        &self,
+        transaction: &'t Transaction,
+        attribute_type: AttributeType,
+    ) -> BoxStream<'t, Result<Attribute>> {
         transaction.concept().get_has_type(self.get_iid().clone(), attribute_type)
     }
 
