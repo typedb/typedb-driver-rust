@@ -19,6 +19,14 @@
  * under the License.
  */
 
-mod database;
-mod session;
 mod steps;
+
+use crate::TypeDBWorld;
+
+#[tokio::test]
+async fn test() {
+    // Bazel specific path: when running the test in bazel, the external data from
+    // @vaticle_typedb_behaviour is stored in a directory that is a sibling to
+    // the working directory.
+    assert!(TypeDBWorld::test("../vaticle_typedb_behaviour/connection/session.feature").await);
+}
