@@ -19,6 +19,8 @@
  * under the License.
  */
 
+#![deny(unused_must_use)]
+
 mod common;
 
 use futures::StreamExt;
