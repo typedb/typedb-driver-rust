@@ -19,27 +19,46 @@
  * under the License.
  */
 
-use cucumber::{StatsWriter, World};
-use typedb_client::{Connection, DatabaseManager, Session};
-
 mod steps;
+
+use cucumber::{StatsWriter, World};
+use futures::future::try_join_all;
+use typedb_client::{Connection, Database, DatabaseManager, Transaction};
+
+use self::steps::session_tracker::SessionTracker;
 
 #[derive(Debug, World)]
 pub struct TypeDBWorld {
     pub connection: Connection,
     pub databases: DatabaseManager,
-    pub sessions: Vec<Session>,
+    pub session_trackers: Vec<SessionTracker>,
 }
 
 impl TypeDBWorld {
     async fn test(glob: &'static str) -> bool {
         !Self::cucumber()
+            .repeat_failed()
             .fail_on_skipped()
             .max_concurrent_scenarios(Some(1))
             .with_default_cli()
+            .after(|_, _, _, _, world| {
+                Box::pin(async {
+                    try_join_all(world.unwrap().databases.all().await.unwrap().into_iter().map(Database::delete))
+                        .await
+                        .unwrap();
+                })
+            })
             .filter_run(glob, |_, _, sc| !sc.tags.iter().any(|t| t == "ignore" || t == "ignore-typedb"))
             .await
             .execution_has_failed()
+    }
+
+    fn transaction(&self) -> &Transaction {
+        self.session_trackers.get(0).unwrap().transaction()
+    }
+
+    pub fn take_transaction(&mut self) -> Transaction {
+        self.session_trackers.get_mut(0).unwrap().take_transaction()
     }
 }
 
@@ -47,7 +66,7 @@ impl Default for TypeDBWorld {
     fn default() -> Self {
         let connection = Connection::new_plaintext("0.0.0.0:1729").unwrap();
         let databases = DatabaseManager::new(connection.clone());
-        Self { connection, databases, sessions: Vec::new() }
+        Self { connection, databases, session_trackers: Vec::new() }
     }
 }
 

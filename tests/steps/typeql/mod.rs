@@ -20,16 +20,3 @@
  */
 
 mod steps;
-
-use serial_test::serial;
-
-use crate::TypeDBWorld;
-
-#[tokio::test]
-#[serial]
-async fn test() {
-    // Bazel specific path: when running the test in bazel, the external data from
-    // @vaticle_typedb_behaviour is stored in a directory that is a sibling to
-    // the working directory.
-    assert!(TypeDBWorld::test("../vaticle_typedb_behaviour/connection/session.feature").await);
-}

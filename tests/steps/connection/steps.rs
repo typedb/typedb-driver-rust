@@ -20,8 +20,6 @@
  */
 
 use cucumber::{given, then, when};
-use futures::future::try_join_all;
-use typedb_client::Database;
 
 use crate::{generic_step_impl, TypeDBWorld};
 
@@ -31,6 +29,6 @@ generic_step_impl! {
 
     #[step("connection does not have any database")]
     async fn connection_does_not_have_any_database(world: &mut TypeDBWorld) {
-        try_join_all(world.databases.all().await.unwrap().into_iter().map(Database::delete)).await.unwrap();
+        assert!(world.databases.all().await.unwrap().is_empty());
     }
 }

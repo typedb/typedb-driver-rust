@@ -21,6 +21,6 @@
 
 use cucumber::gherkin::Step;
 
-pub fn iter_table(step: &Step) -> impl Iterator<Item = &String> {
-    step.table.as_ref().unwrap().rows.iter().flatten()
+pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
+    step.table().unwrap().rows.iter().flatten().map(String::as_str)
 }
