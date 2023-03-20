@@ -52,6 +52,14 @@ impl Transaction<'_> {
         }
     }
 
+    pub fn is_open(&self) -> bool {
+        self.transaction_stream.is_open()
+    }
+
+    pub fn type_(&self) -> TransactionType {
+        self.type_
+    }
+
     pub fn query(&self) -> &QueryManager {
         &self.query
     }

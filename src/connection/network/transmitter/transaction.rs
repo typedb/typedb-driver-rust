@@ -84,8 +84,12 @@ impl TransactionTransmitter {
         Self { request_sink: buffer_sink, is_open, shutdown_sink }
     }
 
+    pub(in crate::connection) fn is_open(&self) -> bool {
+        self.is_open.load()
+    }
+
     pub(in crate::connection) async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
-        if !self.is_open.load() {
+        if !self.is_open() {
             return Err(ConnectionError::SessionIsClosed().into());
         }
         let (res_sink, recv) = oneshot_async();
@@ -97,7 +101,7 @@ impl TransactionTransmitter {
         &self,
         req: TransactionRequest,
     ) -> Result<impl Stream<Item = Result<TransactionResponse>>> {
-        if !self.is_open.load() {
+        if !self.is_open() {
             return Err(ConnectionError::SessionIsClosed().into());
         }
         let (res_part_sink, recv) = unbounded_async();
