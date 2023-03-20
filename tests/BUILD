@@ -70,6 +70,7 @@ rust_test(
     data = [
         "@vaticle_typedb_behaviour//connection:database.feature",
         "@vaticle_typedb_behaviour//connection:session.feature",
+        "@vaticle_typedb_behaviour//connection:transaction.feature",
     ],
 )
 

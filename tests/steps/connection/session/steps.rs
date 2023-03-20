@@ -28,20 +28,24 @@ use crate::{generic_step_impl, steps::util, TypeDBWorld};
 generic_step_impl! {
     #[step(expr = "connection open schema session for database: {word}")]
     async fn connection_open_schema_session_for_database(world: &mut TypeDBWorld, name: String) {
-        world.sessions.push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Schema).await.unwrap());
+        world
+            .session_trackers
+            .push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Schema).await.unwrap().into());
     }
 
     #[step(expr = "connection open (data )session for database: {word}")]
     async fn connection_open_data_session_for_database(world: &mut TypeDBWorld, name: String) {
-        world.sessions.push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Data).await.unwrap());
+        world
+            .session_trackers
+            .push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Data).await.unwrap().into());
     }
 
     #[step(expr = "connection open schema session(s) for database(s):")]
     async fn connection_open_schema_sessions_for_databases(world: &mut TypeDBWorld, step: &Step) {
         for name in util::iter_table(step) {
-            world
-                .sessions
-                .push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Schema).await.unwrap());
+            world.session_trackers.push(
+                Session::new(world.databases.get(name).await.unwrap(), SessionType::Schema).await.unwrap().into(),
+            );
         }
     }
 
@@ -49,8 +53,8 @@ generic_step_impl! {
     async fn connection_open_data_sessions_for_databases(world: &mut TypeDBWorld, step: &Step) {
         for name in util::iter_table(step) {
             world
-                .sessions
-                .push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Data).await.unwrap());
+                .session_trackers
+                .push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Data).await.unwrap().into());
         }
     }
 
@@ -60,8 +64,9 @@ generic_step_impl! {
             util::iter_table(step)
                 .map(|name| world.databases.get(name).and_then(|db| Session::new(db, SessionType::Data))),
         )
-        .await.unwrap();
-        world.sessions.extend(new_sessions.into_iter());
+        .await
+        .unwrap();
+        world.session_trackers.extend(new_sessions.into_iter().map(|session| session.into()));
     }
 
     #[step(expr = "session(s) is/are null: {word}")]
@@ -73,22 +78,22 @@ generic_step_impl! {
     #[step(expr = "session(s) is/are open: {word}")]
     #[step(expr = "sessions in parallel are open: {word}")]
     async fn sessions_are_open(world: &mut TypeDBWorld, is_open: bool) {
-        for session in &world.sessions {
-            assert!(session.is_open() == is_open);
+        for session_tracker in &world.session_trackers {
+            assert_eq!(session_tracker.session().is_open(), is_open);
         }
     }
 
     #[step(expr = "session(s) has/have database: {word}")]
     async fn sessions_have_database(world: &mut TypeDBWorld, name: String) {
-        assert_eq!(world.sessions.get(0).unwrap().database_name(), name)
+        assert_eq!(world.session_trackers.get(0).unwrap().session().database_name(), name)
     }
 
     #[step(expr = "session(s) has/have database(s):")]
     #[step(expr = "sessions in parallel have databases:")]
     async fn sessions_have_databases(world: &mut TypeDBWorld, step: &Step) {
-        assert_eq!(step.table.as_ref().unwrap().rows.len(), world.sessions.len());
-        for (name, session) in util::iter_table(step).zip(&world.sessions) {
-            assert_eq!(name, session.database_name());
+        assert_eq!(step.table.as_ref().unwrap().rows.len(), world.session_trackers.len());
+        for (name, session_tracker) in util::iter_table(step).zip(&world.session_trackers) {
+            assert_eq!(name, session_tracker.session().database_name());
         }
     }
 
