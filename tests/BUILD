@@ -107,7 +107,7 @@ rustfmt_test(
 
 checkstyle_test(
     name = "checkstyle",
-    include = glob(["*"]),
+    include = glob(["*", "**/*"]),
     license_type = "apache-header",
     size = "small",
 )
