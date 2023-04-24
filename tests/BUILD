@@ -73,8 +73,8 @@ artifact_extractor(
 )
 
 rustfmt_test(
-    name = "queries_rustfmt_test",
-    targets = ["queries", "runtimes"]
+    name = "rustfmt_test",
+    targets = ["tests"]
 )
 
 checkstyle_test(
