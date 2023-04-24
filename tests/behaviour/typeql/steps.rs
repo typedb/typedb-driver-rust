@@ -22,23 +22,23 @@
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 
-use crate::{behaviour::TypeDBWorld, generic_step_impl};
+use crate::{behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
     #[step(expr = "typeql define")]
-    async fn typeql_define(world: &mut TypeDBWorld, step: &Step) {
+    async fn typeql_define(world: &mut Context, step: &Step) {
         // FIXME parse
         world.transaction().query().define(step.docstring().unwrap()).await.unwrap();
     }
 
     #[step(expr = "typeql define; throws exception")]
-    async fn typeql_define_throws(world: &mut TypeDBWorld, step: &Step) {
+    async fn typeql_define_throws(world: &mut Context, step: &Step) {
         // FIXME parse
         assert!(world.transaction().query().define(step.docstring().unwrap()).await.is_err());
     }
 
     #[step(expr = "typeql define; throws exception containing {string}")]
-    async fn typeql_define_throws_exception(world: &mut TypeDBWorld, step: &Step, exception: String) {
+    async fn typeql_define_throws_exception(world: &mut Context, step: &Step, exception: String) {
         // FIXME parse
         let res = world.transaction().query().define(step.docstring().unwrap()).await;
         assert!(res.is_err());
@@ -46,20 +46,20 @@ generic_step_impl! {
     }
 
     #[step(expr = "typeql insert")]
-    async fn typeql_insert(world: &mut TypeDBWorld, step: &Step) {
+    async fn typeql_insert(world: &mut Context, step: &Step) {
         // FIXME parse
         let stream = world.transaction().query().insert(step.docstring().unwrap()).unwrap();
         stream.try_collect::<Vec<_>>().await.unwrap();
     }
 
     #[step(expr = "typeql insert; throws exception")]
-    async fn typeql_insert_throws(world: &mut TypeDBWorld, step: &Step) {
+    async fn typeql_insert_throws(world: &mut Context, step: &Step) {
         // FIXME parse
         assert!(world.transaction().query().insert(step.docstring().unwrap()).is_err());
     }
 
     #[step(expr = "typeql insert; throws exception containing {string}")]
-    async fn typeql_insert_throws_exception(world: &mut TypeDBWorld, step: &Step, exception: String) {
+    async fn typeql_insert_throws_exception(world: &mut Context, step: &Step, exception: String) {
         // FIXME parse
         let res = world.transaction().query().insert(step.docstring().unwrap()).unwrap().try_collect::<Vec<_>>().await;
         assert!(res.is_err());

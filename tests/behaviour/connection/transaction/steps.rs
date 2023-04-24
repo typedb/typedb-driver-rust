@@ -23,7 +23,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use typedb_client::TransactionType;
 
 use crate::{
-    behaviour::{util, TypeDBWorld},
+    behaviour::{util, Context},
     generic_step_impl,
 };
 
@@ -41,14 +41,14 @@ generic_step_impl! {
     // =============================================//
 
     #[step(expr = "(for each )session(,) open(s) transaction(s) of type: {word}")]
-    async fn session_opens_transaction_of_type(world: &mut TypeDBWorld, type_: String) {
+    async fn session_opens_transaction_of_type(world: &mut Context, type_: String) {
         for session_tracker in &mut world.session_trackers {
             session_tracker.open_transaction(parse_transaction_type(&type_)).await.unwrap();
         }
     }
 
     #[step(expr = "(for each )session(,) open transaction(s) of type:")]
-    async fn for_each_session_open_transactions_of_type(world: &mut TypeDBWorld, step: &Step) {
+    async fn for_each_session_open_transactions_of_type(world: &mut Context, step: &Step) {
         for type_ in util::iter_table(step) {
             let transaction_type = parse_transaction_type(&type_);
             for session_tracker in &mut world.session_trackers {
@@ -58,7 +58,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "(for each )session(,) open transaction(s) of type; throws exception: {word}")]
-    async fn for_each_session_open_transactions_of_type_throws_exception(world: &mut TypeDBWorld, type_: String) {
+    async fn for_each_session_open_transactions_of_type_throws_exception(world: &mut Context, type_: String) {
         let transaction_type = parse_transaction_type(&type_);
         for session_tracker in &mut world.session_trackers {
             assert!(session_tracker.open_transaction(transaction_type).await.is_err());
@@ -66,7 +66,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "(for each )session(,) open transaction(s) of type; throws exception")]
-    async fn for_each_session_open_transactions_of_type_throws_exception_table(world: &mut TypeDBWorld, step: &Step) {
+    async fn for_each_session_open_transactions_of_type_throws_exception_table(world: &mut Context, step: &Step) {
         for type_ in util::iter_table(step) {
             let transaction_type = parse_transaction_type(&type_);
             for session_tracker in &mut world.session_trackers {
@@ -78,14 +78,14 @@ generic_step_impl! {
     #[step(expr = "(for each )session(,) transaction(s) is/are null: {word}")]
     #[step(expr = "for each session, transactions in parallel are null: {word}")]
     #[step(expr = "for each session in parallel, transactions in parallel are null: {word}")]
-    async fn for_each_session_transactions_are_null(_world: &mut TypeDBWorld, is_null: bool) {
+    async fn for_each_session_transactions_are_null(_world: &mut Context, is_null: bool) {
         assert!(!is_null); // Rust transactions are not nullable
     }
 
     #[step(expr = "(for each )session(,) transaction(s) is/are open: {word}")]
     #[step(expr = "for each session, transactions in parallel are open: {word}")]
     #[step(expr = "for each session in parallel, transactions in parallel are open: {word}")]
-    async fn for_each_session_transactions_are_open(world: &mut TypeDBWorld, is_open: bool) {
+    async fn for_each_session_transactions_are_open(world: &mut Context, is_open: bool) {
         for session_tracker in &world.session_trackers {
             for transaction in session_tracker.transactions() {
                 assert_eq!(transaction.is_open(), is_open);
@@ -94,24 +94,24 @@ generic_step_impl! {
     }
 
     #[step(expr = "transaction commits")]
-    async fn transaction_commits(world: &mut TypeDBWorld) {
+    async fn transaction_commits(world: &mut Context) {
         world.take_transaction().commit().await.unwrap();
     }
 
     #[step(expr = "transaction commits; throws exception")]
-    async fn transaction_commits_throws(world: &mut TypeDBWorld) {
+    async fn transaction_commits_throws(world: &mut Context) {
         assert!(world.take_transaction().commit().await.is_err());
     }
 
     #[step(expr = "transaction commits; throws exception containing {string}")]
-    async fn transaction_commits_throws_exception(world: &mut TypeDBWorld, exception: String) {
+    async fn transaction_commits_throws_exception(world: &mut Context, exception: String) {
         let res = world.take_transaction().commit().await;
         assert!(res.is_err());
         assert!(res.unwrap_err().to_string().contains(&exception));
     }
 
     #[step(expr = "(for each )session(,) transaction(s) commit(s)")]
-    async fn for_each_session_transactions_commit(world: &mut TypeDBWorld) {
+    async fn for_each_session_transactions_commit(world: &mut Context) {
         for session_tracker in &mut world.session_trackers {
             for transaction in session_tracker.transactions_mut().drain(..) {
                 transaction.commit().await.unwrap();
@@ -120,7 +120,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "(for each )session(,) transaction(s) commit(s); throws exception")]
-    async fn for_each_session_transactions_commits_throws_exception(world: &mut TypeDBWorld) {
+    async fn for_each_session_transactions_commits_throws_exception(world: &mut Context) {
         for session_tracker in &mut world.session_trackers {
             for transaction in session_tracker.transactions_mut().drain(..) {
                 assert!(transaction.commit().await.is_err());
@@ -129,14 +129,14 @@ generic_step_impl! {
     }
 
     #[step(expr = "(for each )session(,) transaction close(s)")]
-    async fn for_each_session_transaction_closes(world: &mut TypeDBWorld) {
+    async fn for_each_session_transaction_closes(world: &mut Context) {
         for session_tracker in &mut world.session_trackers {
             session_tracker.transactions_mut().clear();
         }
     }
 
     #[step(expr = "(for each )session(,) transaction(s) has/have type: {word}")]
-    async fn for_each_session_transactions_have_type(world: &mut TypeDBWorld, type_: String) {
+    async fn for_each_session_transactions_have_type(world: &mut Context, type_: String) {
         let transaction_type = parse_transaction_type(&type_);
         for session_tracker in &world.session_trackers {
             assert_eq!(session_tracker.transactions().len(), 1);
@@ -146,7 +146,7 @@ generic_step_impl! {
 
     #[step(expr = "(for each )session(,) transaction(s) has/have type:")]
     #[step(expr = "for each session, transactions in parallel have type:")]
-    async fn for_each_session_transactions_have_types(world: &mut TypeDBWorld, step: &Step) {
+    async fn for_each_session_transactions_have_types(world: &mut Context, step: &Step) {
         let types: Vec<TransactionType> = util::iter_table(step).map(parse_transaction_type).collect();
         for session_tracker in &world.session_trackers {
             assert_eq!(types.len(), session_tracker.transactions().len());
@@ -161,7 +161,7 @@ generic_step_impl! {
     // ===========================================//
 
     #[step(expr = "for each session, open transaction(s) in parallel of type:")]
-    async fn for_each_session_open_transactions_in_parallel_of_type(world: &mut TypeDBWorld, step: &Step) {
+    async fn for_each_session_open_transactions_in_parallel_of_type(world: &mut Context, step: &Step) {
         for type_ in util::iter_table(step) {
             let transaction_type = parse_transaction_type(&type_);
             for session_tracker in &mut world.session_trackers {

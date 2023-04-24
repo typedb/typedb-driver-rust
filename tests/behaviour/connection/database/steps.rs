@@ -26,78 +26,78 @@ use futures::{future::try_join_all, TryFutureExt};
 use typedb_client::Database;
 
 use crate::{
-    behaviour::{util, TypeDBWorld},
+    behaviour::{util, Context},
     generic_step_impl,
 };
 
 generic_step_impl! {
     #[step(expr = "connection create database: {word}")]
-    async fn connection_create_database(world: &mut TypeDBWorld, name: String) {
+    async fn connection_create_database(world: &mut Context, name: String) {
         world.databases.create(name).await.unwrap();
     }
 
     #[step(expr = "connection create database(s):")]
-    async fn connection_create_databases(world: &mut TypeDBWorld, step: &Step) {
+    async fn connection_create_databases(world: &mut Context, step: &Step) {
         for name in util::iter_table(step) {
             world.databases.create(name).await.unwrap();
         }
     }
 
     #[step("connection create databases in parallel:")]
-    async fn connection_create_databases_in_parallel(world: &mut TypeDBWorld, step: &Step) {
+    async fn connection_create_databases_in_parallel(world: &mut Context, step: &Step) {
         try_join_all(util::iter_table(step).map(|name| world.databases.create(name))).await.unwrap();
     }
 
     #[step(expr = "connection delete database: {word}")]
-    async fn connection_delete_database(world: &mut TypeDBWorld, name: String) {
+    async fn connection_delete_database(world: &mut Context, name: String) {
         world.databases.get(name).and_then(Database::delete).await.unwrap();
     }
 
     #[step(expr = "connection delete database(s):")]
-    async fn connection_delete_databases(world: &mut TypeDBWorld, step: &Step) {
+    async fn connection_delete_databases(world: &mut Context, step: &Step) {
         for name in util::iter_table(step) {
             world.databases.get(name).and_then(Database::delete).await.unwrap();
         }
     }
 
     #[step(expr = "connection delete databases in parallel:")]
-    async fn connection_delete_databases_in_parallel(world: &mut TypeDBWorld, step: &Step) {
+    async fn connection_delete_databases_in_parallel(world: &mut Context, step: &Step) {
         try_join_all(util::iter_table(step).map(|name| world.databases.get(name).and_then(Database::delete)))
             .await
             .unwrap();
     }
 
     #[step(expr = "connection delete database; throws exception: {word}")]
-    async fn connection_delete_database_throws_exception(world: &mut TypeDBWorld, name: String) {
+    async fn connection_delete_database_throws_exception(world: &mut Context, name: String) {
         assert!(world.databases.get(name).and_then(Database::delete).await.is_err());
     }
 
     #[step(expr = "connection delete database(s); throws exception")]
-    async fn connection_delete_databases_throws_exception(world: &mut TypeDBWorld, step: &Step) {
+    async fn connection_delete_databases_throws_exception(world: &mut Context, step: &Step) {
         for name in util::iter_table(step) {
             assert!(world.databases.get(name).and_then(Database::delete).await.is_err());
         }
     }
 
     #[step(expr = "connection has database: {word}")]
-    async fn connection_has_database(world: &mut TypeDBWorld, name: String) {
+    async fn connection_has_database(world: &mut Context, name: String) {
         assert!(world.databases.contains(name).await.unwrap());
     }
 
     #[step(expr = "connection has database(s):")]
-    async fn connection_has_databases(world: &mut TypeDBWorld, step: &Step) {
+    async fn connection_has_databases(world: &mut Context, step: &Step) {
         let names: HashSet<String> = util::iter_table(step).map(|name| name.to_owned()).collect();
         let all_databases = world.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
         assert_eq!(names, all_databases);
     }
 
     #[step(expr = "connection does not have database: {word}")]
-    async fn connection_does_not_have_database(world: &mut TypeDBWorld, name: String) {
+    async fn connection_does_not_have_database(world: &mut Context, name: String) {
         assert!(!world.databases.contains(name).await.unwrap());
     }
 
     #[step(expr = "connection does not have database(s):")]
-    async fn connection_does_not_have_databases(world: &mut TypeDBWorld, step: &Step) {
+    async fn connection_does_not_have_databases(world: &mut Context, step: &Step) {
         let all_databases: HashSet<String> =
             world.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
         for name in util::iter_table(step) {

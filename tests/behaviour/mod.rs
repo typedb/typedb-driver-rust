@@ -31,13 +31,13 @@ use typedb_client::{Connection, Database, DatabaseManager, Transaction};
 use self::session_tracker::SessionTracker;
 
 #[derive(Debug, World)]
-pub struct TypeDBWorld {
+pub struct Context {
     pub connection: Connection,
     pub databases: DatabaseManager,
     pub session_trackers: Vec<SessionTracker>,
 }
 
-impl TypeDBWorld {
+impl Context {
     async fn test(glob: &'static str) -> bool {
         !Self::cucumber()
             .repeat_failed()
@@ -65,7 +65,7 @@ impl TypeDBWorld {
     }
 }
 
-impl Default for TypeDBWorld {
+impl Default for Context {
     fn default() -> Self {
         let connection = Connection::new_plaintext("0.0.0.0:1729").unwrap();
         let databases = DatabaseManager::new(connection.clone());
