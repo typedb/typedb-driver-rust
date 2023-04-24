@@ -19,13 +19,16 @@
  * under the License.
  */
 
-mod steps;
+mod connection;
+pub mod session_tracker;
+mod typeql;
+mod util;
 
 use cucumber::{StatsWriter, World};
 use futures::future::try_join_all;
 use typedb_client::{Connection, Database, DatabaseManager, Transaction};
 
-use self::steps::session_tracker::SessionTracker;
+use self::session_tracker::SessionTracker;
 
 #[derive(Debug, World)]
 pub struct TypeDBWorld {

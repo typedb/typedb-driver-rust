@@ -19,16 +19,17 @@
  * under the License.
  */
 
-use cucumber::{given, then, when};
+mod steps;
 
-use crate::{generic_step_impl, TypeDBWorld};
+use serial_test::serial;
 
-generic_step_impl! {
-    #[step("connection has been opened")]
-    async fn connection_has_been_opened(_: &mut TypeDBWorld) {}
+use crate::behaviour::TypeDBWorld;
 
-    #[step("connection does not have any database")]
-    async fn connection_does_not_have_any_database(world: &mut TypeDBWorld) {
-        assert!(world.databases.all().await.unwrap().is_empty());
-    }
+#[tokio::test]
+#[serial]
+async fn test() {
+    // Bazel specific path: when running the test in bazel, the external data from
+    // @vaticle_typedb_behaviour is stored in a directory that is a sibling to
+    // the working directory.
+    assert!(TypeDBWorld::test("../vaticle_typedb_behaviour/connection/session.feature").await);
 }

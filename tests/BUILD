@@ -26,45 +26,17 @@ load("@vaticle_bazel_distribution//artifact:rules.bzl", "artifact_extractor")
 load("@vaticle_dependencies//tool/checkstyle:rules.bzl", "checkstyle_test")
 load("@vaticle_typedb_common//runner:rules.bzl", "native_typedb_artifact")
 
-
 rust_test(
-    name = "queries",
-    srcs = [
-        "common.rs",
-        "queries.rs",
-    ],
-    deps = [
-        "//:typedb_client",
-        "@crates//:chrono",
-        "@crates//:futures",
-        "@crates//:serial_test",
-        "@crates//:tokio",
-    ],
-)
-
-rust_test(
-    name = "runtimes",
-    srcs = [
-        "common.rs",
-        "runtimes.rs",
-    ],
+    name = "tests",
+    srcs = glob(["**/*.rs"]),
     deps = [
         "//:typedb_client",
         "@crates//:async-std",
-        "@crates//:futures",
-        "@crates//:serial_test",
-        "@crates//:smol",
-    ],
-)
-
-rust_test(
-    name = "behaviour",
-    srcs = ["behaviour.rs"] + glob(["steps/**/*.rs"]),
-    deps = [
-        "//:typedb_client",
+        "@crates//:chrono",
         "@crates//:cucumber",
         "@crates//:futures",
         "@crates//:serial_test",
+        "@crates//:smol",
         "@crates//:tokio",
     ],
     data = [

@@ -22,7 +22,10 @@
 use cucumber::{gherkin::Step, given, then, when};
 use typedb_client::TransactionType;
 
-use crate::{generic_step_impl, steps::util, TypeDBWorld};
+use crate::{
+    behaviour::{util, TypeDBWorld},
+    generic_step_impl,
+};
 
 fn parse_transaction_type(type_: &str) -> TransactionType {
     match type_ {

@@ -23,7 +23,10 @@ use cucumber::{gherkin::Step, given, then, when};
 use futures::{future::try_join_all, TryFutureExt};
 use typedb_client::{Session, SessionType};
 
-use crate::{generic_step_impl, steps::util, TypeDBWorld};
+use crate::{
+    behaviour::{util, TypeDBWorld},
+    generic_step_impl,
+};
 
 generic_step_impl! {
     #[step(expr = "connection open schema session for database: {word}")]

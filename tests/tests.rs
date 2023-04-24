@@ -19,7 +19,5 @@
  * under the License.
  */
 
-mod connection;
-pub mod session_tracker;
-mod typeql;
-mod util;
+mod behaviour;
+mod integration;

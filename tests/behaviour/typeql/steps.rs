@@ -22,7 +22,7 @@
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 
-use crate::{generic_step_impl, TypeDBWorld};
+use crate::{behaviour::TypeDBWorld, generic_step_impl};
 
 generic_step_impl! {
     #[step(expr = "typeql define")]

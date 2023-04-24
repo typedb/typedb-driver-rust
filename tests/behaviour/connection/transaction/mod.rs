@@ -23,7 +23,7 @@ mod steps;
 
 use serial_test::serial;
 
-use crate::TypeDBWorld;
+use crate::behaviour::TypeDBWorld;
 
 #[tokio::test]
 #[serial]
