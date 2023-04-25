@@ -88,9 +88,9 @@ build:
         export ARTIFACT_PASSWORD=$REPO_VATICLE_PASSWORD
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         bazel build //...
-        tools/start-core-server.sh
+        source tools/start-cluster-servers.sh # use source to receive export vars
         bazel test //tests --test_env=ROOT_CA=$ROOT_CA --test_arg=-- --test_arg=behaviour::connection --test_arg=--test-threads=1 --test_output=streamed && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
-        tools/stop-core-server.sh
+        tools/stop-cluster-servers.sh
         exit $TEST_SUCCESS
     deploy-crate-snapshot:
       filter:
