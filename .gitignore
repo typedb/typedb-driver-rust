@@ -22,6 +22,8 @@
 .DS_Store
 .ijwb
 bazel-*
+.bazel-remote-cache.rc
+.bazel-cache-credential.json
 target
 Cargo.lock
 Cargo.toml
