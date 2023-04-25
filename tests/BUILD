@@ -38,6 +38,7 @@ rust_test(
         "@crates//:serial_test",
         "@crates//:smol",
         "@crates//:tokio",
+        "@vaticle_typeql//rust:typeql_lang",
     ],
     data = [
         "@vaticle_typedb_behaviour//connection:database.feature",
