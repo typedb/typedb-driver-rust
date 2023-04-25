@@ -55,6 +55,7 @@ build:
       command: |
         export ARTIFACT_USERNAME=$REPO_VATICLE_USERNAME
         export ARTIFACT_PASSWORD=$REPO_VATICLE_PASSWORD
+        bazel run @vaticle_dependencies//tool/bazelinstall:remote_cache_setup.sh
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         bazel build //...
         tools/start-core-server.sh
@@ -69,6 +70,7 @@ build:
       command: |
         export ARTIFACT_USERNAME=$REPO_VATICLE_USERNAME
         export ARTIFACT_PASSWORD=$REPO_VATICLE_PASSWORD
+        bazel run @vaticle_dependencies//tool/bazelinstall:remote_cache_setup.sh
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         bazel build //...
         source tools/start-cluster-servers.sh # use source to receive export vars
@@ -82,6 +84,7 @@ build:
       command: |
         export ARTIFACT_USERNAME=$REPO_VATICLE_USERNAME
         export ARTIFACT_PASSWORD=$REPO_VATICLE_PASSWORD
+        bazel run @vaticle_dependencies//tool/bazelinstall:remote_cache_setup.sh
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         bazel build //...
         source tools/start-cluster-servers.sh # use source to receive export vars
@@ -95,6 +98,7 @@ build:
       command: |
         export ARTIFACT_USERNAME=$REPO_VATICLE_USERNAME
         export ARTIFACT_PASSWORD=$REPO_VATICLE_PASSWORD
+        bazel run @vaticle_dependencies//tool/bazelinstall:remote_cache_setup.sh
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         bazel build //...
         tools/start-core-server.sh
@@ -108,10 +112,13 @@ build:
       image: vaticle-ubuntu-22.04
       dependencies:
         - build
+        - test-integration-core
+        - test-integration-cluster
+        - test-integration-runtimes
+        - test-behaviour-connection
       command: |
         export DEPLOY_CRATE_TOKEN=$REPO_VATICLE_CRATES_TOKEN
         bazel run --define version=$(git rev-parse HEAD) //:deploy_crate -- snapshot
-      dependencies: [build]
 
 release:
   filter:
