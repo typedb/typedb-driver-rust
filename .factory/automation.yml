@@ -118,6 +118,7 @@ build:
         - test-behaviour-connection
       command: |
         export DEPLOY_CRATE_TOKEN=$REPO_VATICLE_CRATES_TOKEN
+        bazel run @vaticle_dependencies//tool/bazelinstall:remote_cache_setup.sh
         bazel run --define version=$(git rev-parse HEAD) //:deploy_crate -- snapshot
 
 release:
