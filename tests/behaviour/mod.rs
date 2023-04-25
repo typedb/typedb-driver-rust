@@ -54,7 +54,7 @@ impl Context {
             .execution_has_failed()
     }
 
-    fn is_ignore_tag(t: &str) -> bool {
+    fn is_ignore_tag(t: &String) -> bool {
         t == "ignore" || t == "ignore-typedb" || t == "ignore-client-rust" || t == "ignore-typedb-client-rust"
     }
 
