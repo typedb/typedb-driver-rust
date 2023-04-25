@@ -26,7 +26,7 @@ mod util;
 
 use cucumber::{StatsWriter, World};
 use futures::future::try_join_all;
-use typedb_client::{Connection, Database, DatabaseManager, Transaction};
+use typedb_client::{Connection, Database, DatabaseManager, Result as TypeDBResult, Transaction};
 
 use self::session_tracker::SessionTracker;
 
@@ -46,14 +46,21 @@ impl Context {
             .with_default_cli()
             .after(|_, _, _, _, context| {
                 Box::pin(async {
-                    try_join_all(context.unwrap().databases.all().await.unwrap().into_iter().map(Database::delete))
-                        .await
-                        .unwrap();
+                    context.unwrap().after_scenario().await.unwrap();
                 })
             })
-            .filter_run(glob, |_, _, sc| !sc.tags.iter().any(|t| t == "ignore" || t == "ignore-typedb"))
+            .filter_run(glob, |_, _, sc| !sc.tags.iter().any(Self::is_ignore_tag))
             .await
             .execution_has_failed()
+    }
+
+    fn is_ignore_tag(t: &str) -> bool {
+        t == "ignore" || t == "ignore-typedb" || t == "ignore-client-rust" || t == "ignore-typedb-client-rust"
+    }
+
+    async fn after_scenario(&self) -> TypeDBResult {
+        try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
+        Ok(())
     }
 
     fn transaction(&self) -> &Transaction {
