@@ -44,9 +44,9 @@ impl Context {
             .fail_on_skipped()
             .max_concurrent_scenarios(Some(1))
             .with_default_cli()
-            .after(|_, _, _, _, world| {
+            .after(|_, _, _, _, context| {
                 Box::pin(async {
-                    try_join_all(world.unwrap().databases.all().await.unwrap().into_iter().map(Database::delete))
+                    try_join_all(context.unwrap().databases.all().await.unwrap().into_iter().map(Database::delete))
                         .await
                         .unwrap();
                 })

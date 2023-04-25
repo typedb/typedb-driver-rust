@@ -28,7 +28,7 @@ generic_step_impl! {
     async fn connection_has_been_opened(_: &mut Context) {}
 
     #[step("connection does not have any database")]
-    async fn connection_does_not_have_any_database(world: &mut Context) {
-        assert!(world.databases.all().await.unwrap().is_empty());
+    async fn connection_does_not_have_any_database(context: &mut Context) {
+        assert!(context.databases.all().await.unwrap().is_empty());
     }
 }

@@ -30,78 +30,78 @@ use crate::{
 
 generic_step_impl! {
     #[step(expr = "connection open schema session for database: {word}")]
-    async fn connection_open_schema_session_for_database(world: &mut Context, name: String) {
-        world
+    async fn connection_open_schema_session_for_database(context: &mut Context, name: String) {
+        context
             .session_trackers
-            .push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Schema).await.unwrap().into());
+            .push(Session::new(context.databases.get(name).await.unwrap(), SessionType::Schema).await.unwrap().into());
     }
 
     #[step(expr = "connection open (data )session for database: {word}")]
-    async fn connection_open_data_session_for_database(world: &mut Context, name: String) {
-        world
+    async fn connection_open_data_session_for_database(context: &mut Context, name: String) {
+        context
             .session_trackers
-            .push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Data).await.unwrap().into());
+            .push(Session::new(context.databases.get(name).await.unwrap(), SessionType::Data).await.unwrap().into());
     }
 
     #[step(expr = "connection open schema session(s) for database(s):")]
-    async fn connection_open_schema_sessions_for_databases(world: &mut Context, step: &Step) {
+    async fn connection_open_schema_sessions_for_databases(context: &mut Context, step: &Step) {
         for name in util::iter_table(step) {
-            world.session_trackers.push(
-                Session::new(world.databases.get(name).await.unwrap(), SessionType::Schema).await.unwrap().into(),
+            context.session_trackers.push(
+                Session::new(context.databases.get(name).await.unwrap(), SessionType::Schema).await.unwrap().into(),
             );
         }
     }
 
     #[step(expr = "connection open (data )session(s) for database(s):")]
-    async fn connection_open_data_sessions_for_databases(world: &mut Context, step: &Step) {
+    async fn connection_open_data_sessions_for_databases(context: &mut Context, step: &Step) {
         for name in util::iter_table(step) {
-            world
+            context
                 .session_trackers
-                .push(Session::new(world.databases.get(name).await.unwrap(), SessionType::Data).await.unwrap().into());
+                .push(Session::new(context.databases.get(name).await.unwrap(), SessionType::Data).await.unwrap().into());
         }
     }
 
     #[step(expr = "connection open (data )sessions in parallel for databases:")]
-    async fn connection_open_data_sessions_in_parallel_for_databases(world: &mut Context, step: &Step) {
+    async fn connection_open_data_sessions_in_parallel_for_databases(context: &mut Context, step: &Step) {
         let new_sessions = try_join_all(
             util::iter_table(step)
-                .map(|name| world.databases.get(name).and_then(|db| Session::new(db, SessionType::Data))),
+                .map(|name| context.databases.get(name).and_then(|db| Session::new(db, SessionType::Data))),
         )
         .await
         .unwrap();
-        world.session_trackers.extend(new_sessions.into_iter().map(|session| session.into()));
+        context.session_trackers.extend(new_sessions.into_iter().map(|session| session.into()));
     }
 
     #[step(expr = "session(s) is/are null: {word}")]
     #[step(expr = "sessions in parallel are null: {word}")]
-    async fn sessions_are_null(_world: &mut Context, is_null: bool) {
+    async fn sessions_are_null(_context: &mut Context, is_null: bool) {
         assert!(!is_null); // Rust sessions are not nullable
     }
 
     #[step(expr = "session(s) is/are open: {word}")]
     #[step(expr = "sessions in parallel are open: {word}")]
-    async fn sessions_are_open(world: &mut Context, is_open: bool) {
-        for session_tracker in &world.session_trackers {
+    async fn sessions_are_open(context: &mut Context, is_open: bool) {
+        for session_tracker in &context.session_trackers {
             assert_eq!(session_tracker.session().is_open(), is_open);
         }
     }
 
     #[step(expr = "session(s) has/have database: {word}")]
-    async fn sessions_have_database(world: &mut Context, name: String) {
-        assert_eq!(world.session_trackers.get(0).unwrap().session().database_name(), name)
+    async fn sessions_have_database(context: &mut Context, name: String) {
+        assert_eq!(context.session_trackers.get(0).unwrap().session().database_name(), name)
     }
 
     #[step(expr = "session(s) has/have database(s):")]
     #[step(expr = "sessions in parallel have databases:")]
-    async fn sessions_have_databases(world: &mut Context, step: &Step) {
-        assert_eq!(step.table.as_ref().unwrap().rows.len(), world.session_trackers.len());
-        for (name, session_tracker) in util::iter_table(step).zip(&world.session_trackers) {
+    async fn sessions_have_databases(context: &mut Context, step: &Step) {
+        assert_eq!(step.table.as_ref().unwrap().rows.len(), context.session_trackers.len());
+        for (name, session_tracker) in util::iter_table(step).zip(&context.session_trackers) {
             assert_eq!(name, session_tracker.session().database_name());
         }
     }
 
     #[step(expr = "set session option {word} to: {word}")]
-    async fn set_session_option_to(_world: &mut Context, _option: String, _value: String) {
+    async fn set_session_option_to(_context: &mut Context, _option: String, _value: String) {
         todo!()
         // if (!optionSetters.containsKey(option)) {
         //     throw new RuntimeException("Unrecognised option: " + option);
