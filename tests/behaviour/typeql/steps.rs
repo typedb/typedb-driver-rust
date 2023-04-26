@@ -45,14 +45,13 @@ generic_step_impl! {
 
     #[step(expr = "typeql define; throws exception containing {string}")]
     async fn typeql_define_throws_exception(context: &mut Context, step: &Step, exception: String) {
-        let parsed = parse_query(step.docstring().unwrap());
-        if parsed.is_ok() {
-            let res = context.transaction().query().define(&parsed.unwrap().to_string()).await;
-            assert!(res.is_err());
-            assert!(res.unwrap_err().to_string().contains(&exception));
-        }
-        else {
-            assert!(parsed.unwrap_err().to_string().contains(&exception));
+        match parse_query(step.docstring().unwrap()) {
+            Ok(parsed) => {
+                let res = context.transaction().query().define(&parsed.to_string()).await;
+                assert!(res.is_err());
+                assert!(res.unwrap_err().to_string().contains(&exception));
+            },
+            Err(error) => assert!(error.to_string().contains(&exception)),
         }
     }
 
@@ -80,19 +79,18 @@ generic_step_impl! {
 
     #[step(expr = "typeql insert; throws exception containing {string}")]
     async fn typeql_insert_throws_exception(context: &mut Context, step: &Step, exception: String) {
-        let parsed = parse_query(step.docstring().unwrap());
-        if parsed.is_ok() {
-            match context.transaction().query().insert(&parsed.unwrap().to_string()) {
-                Ok(unwraped) => {
-                    let res = unwraped.try_collect::<Vec<_>>().await;
-                    assert!(res.is_err());
-                    assert!(res.map(|_| ()).unwrap_err().to_string().contains(&exception));
-                },
-                Err(error) => assert!(error.to_string().contains(&exception)),
-            }
-        }
-        else {
-            assert!(parsed.unwrap_err().to_string().contains(&exception));
+        match parse_query(step.docstring().unwrap()) {
+            Ok(parsed) => {
+                match context.transaction().query().insert(&parsed.to_string()) {
+                    Ok(stream) => {
+                        let res = stream.try_collect::<Vec<_>>().await;
+                        assert!(res.is_err());
+                        assert!(res.map(|_| ()).unwrap_err().to_string().contains(&exception));
+                    },
+                    Err(error) => assert!(error.to_string().contains(&exception)),
+                }
+            },
+            Err(error) => assert!(error.to_string().contains(&exception)),
         }
     }
 }
