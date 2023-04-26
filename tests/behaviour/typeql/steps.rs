@@ -20,7 +20,7 @@
  */
 
 use cucumber::{gherkin::Step, given, then, when};
-use futures::TryStreamExt;
+use futures::{TryFutureExt, TryStreamExt};
 use typeql_lang::parse_query;
 
 use crate::{behaviour::Context, generic_step_impl};
@@ -45,14 +45,15 @@ generic_step_impl! {
 
     #[step(expr = "typeql define; throws exception containing {string}")]
     async fn typeql_define_throws_exception(context: &mut Context, step: &Step, exception: String) {
-        match parse_query(step.docstring().unwrap()) {
-            Ok(parsed) => {
-                let res = context.transaction().query().define(&parsed.to_string()).await;
-                assert!(res.is_err());
-                assert!(res.unwrap_err().to_string().contains(&exception));
-            },
-            Err(error) => assert!(error.to_string().contains(&exception)),
+        let result = async {
+            parse_query(step.docstring().unwrap())
+            .map_err(|error| error.to_string())
         }
+        .and_then(|parsed| async move {context.transaction().query().define(&parsed.to_string()).await
+            .map_err(|error| error.to_string())
+        }).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains(&exception));
     }
 
     #[step(expr = "typeql insert")]
@@ -79,18 +80,17 @@ generic_step_impl! {
 
     #[step(expr = "typeql insert; throws exception containing {string}")]
     async fn typeql_insert_throws_exception(context: &mut Context, step: &Step, exception: String) {
-        match parse_query(step.docstring().unwrap()) {
-            Ok(parsed) => {
-                match context.transaction().query().insert(&parsed.to_string()) {
-                    Ok(stream) => {
-                        let res = stream.try_collect::<Vec<_>>().await;
-                        assert!(res.is_err());
-                        assert!(res.map(|_| ()).unwrap_err().to_string().contains(&exception));
-                    },
-                    Err(error) => assert!(error.to_string().contains(&exception)),
-                }
-            },
-            Err(error) => assert!(error.to_string().contains(&exception)),
+        let result = async {
+            parse_query(step.docstring().unwrap())
+            .map_err(|error| error.to_string())
+            .and_then(|parsed| context.transaction().query().insert(&parsed.to_string())
+                .map_err(|error| error.to_string())
+            )
         }
+        .and_then(|stream| async {stream.try_collect::<Vec<_>>().await
+            .map_err(|error| error.to_string())
+        }).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains(&exception));
     }
 }
