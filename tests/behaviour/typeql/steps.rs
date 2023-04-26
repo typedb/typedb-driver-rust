@@ -82,8 +82,7 @@ generic_step_impl! {
     async fn typeql_insert_throws_exception(context: &mut Context, step: &Step, exception: String) {
         let parsed = parse_query(step.docstring().unwrap());
         if parsed.is_ok() {
-            let stream = context.transaction().query().insert(&parsed.unwrap().to_string());
-            match stream {
+            match context.transaction().query().insert(&parsed.unwrap().to_string()) {
                 Ok(unwraped) => {
                     let res = unwraped.try_collect::<Vec<_>>().await;
                     assert!(res.is_err());
