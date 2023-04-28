@@ -19,22 +19,21 @@
  * under the License.
  */
 
-mod type_;
-pub use type_::{AttributeType, EntityType, RelationType, RoleType, RootThingType, ScopedLabel, ValueType};
+use cucumber::{gherkin::Step, given, then, when};
 
-mod thing;
-pub use thing::{Attribute, Entity, Relation, Value};
+use crate::{
+    behaviour::{util, Context},
+    generic_step_impl,
+};
 
-#[derive(Clone, Debug)]
-pub enum Concept {
-    RoleType(RoleType),
-    ThingType(RootThingType),
+fn parse_transaction_type(type_: &str) -> TransactionType {
+    match type_ {
+        "write" => TransactionType::Write,
+        "read" => TransactionType::Read,
+        _ => unreachable!("`{type_}` is not a valid transaction type"),
+    }
+}
 
-    EntityType(EntityType),
-    RelationType(RelationType),
-    AttributeType(AttributeType),
+generic_step_impl! {
 
-    Entity(Entity),
-    Relation(Relation),
-    Attribute(Attribute),
 }

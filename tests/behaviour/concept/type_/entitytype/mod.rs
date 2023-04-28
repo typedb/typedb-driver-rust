@@ -19,22 +19,17 @@
  * under the License.
  */
 
-mod type_;
-pub use type_::{AttributeType, EntityType, RelationType, RoleType, RootThingType, ScopedLabel, ValueType};
+mod steps;
 
-mod thing;
-pub use thing::{Attribute, Entity, Relation, Value};
+use serial_test::serial;
 
-#[derive(Clone, Debug)]
-pub enum Concept {
-    RoleType(RoleType),
-    ThingType(RootThingType),
+use crate::behaviour::Context;
 
-    EntityType(EntityType),
-    RelationType(RelationType),
-    AttributeType(AttributeType),
-
-    Entity(Entity),
-    Relation(Relation),
-    Attribute(Attribute),
+#[tokio::test]
+#[serial]
+async fn test() {
+    // Bazel specific path: when running the test in bazel, the external data from
+    // @vaticle_typedb_behaviour is stored in a directory that is a sibling to
+    // the working directory.
+    assert!(Context::test("../vaticle_typedb_behaviour/concept/type/entitytype.feature").await);
 }
