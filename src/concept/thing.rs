@@ -21,48 +21,16 @@
 
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use futures::stream::BoxStream;
 
-use super::{
-    type_::{AttributeType, EntityType, RelationType, RoleType},
-    Concept,
-};
+use super::type_::{AttributeType, EntityType, RelationType};
 use crate::{
-    common::{OwnsFilter, Result, IID},
+    common::{Result, IID},
     Transaction,
 };
 
 #[async_trait]
 pub trait ThingAPI {
     fn get_iid(&self) -> &IID;
-
-    // fn get_type(&self) -> Concept /* ThingType */;
-
-    // fn is_inferred(&self) -> bool;
-
-    async fn set_has<'t>(&self, transaction: &'t Transaction, attribute: &Attribute) {
-        transaction.concept().set_has(self.get_iid().clone(), attribute.get_iid().clone()).await;
-    }
-
-    async fn unset_has<'t>(&self, transaction: &'t Transaction, attribute: &Attribute) {
-        transaction.concept().unset_has(self.get_iid().clone(), attribute.get_iid().clone()).await;
-    }
-
-    fn get_has<'t>(&self, transaction: &'t Transaction, owns_filter: OwnsFilter) -> BoxStream<'t, Result<Attribute>> {
-        transaction.concept().get_has_keys(self.get_iid().clone(), owns_filter)
-    }
-
-    fn get_has_type<'t>(&self, transaction: &'t Transaction, attribute_type: AttributeType) -> BoxStream<'t, Result<Attribute>> {
-        transaction.concept().get_has_type(self.get_iid().clone(), attribute_type)
-    }
-
-    fn get_relations<'t>(&self, transaction: &'t Transaction, role_type: RoleType) -> BoxStream<'t, Result<Relation>> {
-        transaction.concept().get_relations(self.get_iid().clone(), role_type)
-    }
-
-    fn get_playing<'t>(&self, transaction: &'t Transaction) -> BoxStream<'t, Result<RoleType>> {
-        transaction.concept().get_playing(self.get_iid().clone())
-    }
 }
 
 macro_rules! default_impl {
