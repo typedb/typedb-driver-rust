@@ -37,7 +37,15 @@ impl ConceptManager {
         self.transaction_stream.get_entity_type(label).await
     }
 
-    pub async fn delete_entity_type(&self, entity_type: EntityType) -> Result {
-        self.transaction_stream.delete_thing_type(entity_type.label).await
+    pub async fn put_entity_type(&self, label: String) -> Result<EntityType> {
+        self.transaction_stream.put_entity_type(label).await
+    }
+
+    pub async fn entity_type_delete(&self, entity_type: EntityType) -> Result {
+        self.transaction_stream.thing_type_delete(entity_type.label).await
+    }
+
+    pub async fn entity_type_get_supertype(&self, entity_type: EntityType) -> Result<EntityType> {
+        self.transaction_stream.entity_type_get_supertype(entity_type.label).await
     }
 }

@@ -29,8 +29,8 @@ use crate::{
     common::Result,
     concept::EntityType,
     connection::message::{
-        ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
-        TransactionRequest, TransactionResponse,
+        ConceptRequest, ConceptResponse, EntityTypeRequest, EntityTypeResponse, QueryRequest, QueryResponse,
+        ThingTypeRequest, ThingTypeResponse, TransactionRequest, TransactionResponse,
     },
     error::InternalError,
     Options, TransactionType,
@@ -129,9 +129,30 @@ impl TransactionStream {
         }
     }
 
-    pub(crate) async fn delete_thing_type(&self, label: String) -> Result {
+    pub(crate) async fn put_entity_type(&self, label: String) -> Result<EntityType> {
+        match self.single(TransactionRequest::Concept(ConceptRequest::PutEntityType { label })).await? {
+            TransactionResponse::Concept(ConceptResponse::PutEntityType { entity_type }) => Ok(entity_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn thing_type_delete(&self, label: String) -> Result {
         match self.single(TransactionRequest::ThingType(ThingTypeRequest::Delete { label })).await? {
             TransactionResponse::ThingType(ThingTypeResponse::Delete) => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn entity_type_get_supertype(&self, label: String) -> Result<EntityType> {
+        match self
+            .single(TransactionRequest::ThingType(ThingTypeRequest::EntityType(EntityTypeRequest::GetSupertype {
+                label,
+            })))
+            .await?
+        {
+            TransactionResponse::ThingType(ThingTypeResponse::EntityType(EntityTypeResponse::GetSupertype {
+                entity_type,
+            })) => Ok(entity_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }

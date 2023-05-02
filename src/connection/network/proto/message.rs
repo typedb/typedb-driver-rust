@@ -23,8 +23,8 @@ use std::time::Duration;
 
 use itertools::Itertools;
 use typedb_protocol::{
-    concept_manager, database, database_manager, query_manager, r#type, server_manager, session, thing_type,
-    transaction,
+    concept_manager, database, database_manager, entity_type, query_manager, r#type, server_manager, session,
+    thing_type, transaction,
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
@@ -34,8 +34,8 @@ use crate::{
     concept::EntityType,
     connection::{
         message::{
-            ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
-            ThingTypeResponse, TransactionRequest, TransactionResponse,
+            ConceptRequest, ConceptResponse, EntityTypeRequest, EntityTypeResponse, QueryRequest, QueryResponse,
+            Request, Response, ThingTypeRequest, ThingTypeResponse, TransactionRequest, TransactionResponse,
         },
         network::proto::TryIntoProto,
     },
@@ -379,6 +379,9 @@ impl IntoProto<concept_manager::Req> for ConceptRequest {
             Self::GetEntityType { label } => {
                 concept_manager::req::Req::GetEntityTypeReq(concept_manager::get_entity_type::Req { label })
             }
+            Self::PutEntityType { label } => {
+                concept_manager::req::Req::PutEntityTypeReq(concept_manager::put_entity_type::Req { label })
+            }
         };
         concept_manager::Req { req: Some(req) }
     }
@@ -390,6 +393,13 @@ impl TryFromProto<concept_manager::Res> for ConceptResponse {
             Some(concept_manager::res::Res::GetEntityTypeRes(concept_manager::get_entity_type::Res {
                 entity_type,
             })) => Ok(Self::GetEntityType { entity_type: entity_type.map(|proto| EntityType::from_proto(proto)) }),
+            Some(concept_manager::res::Res::PutEntityTypeRes(concept_manager::put_entity_type::Res {
+                entity_type,
+            })) => Ok(Self::PutEntityType {
+                entity_type: EntityType::from_proto(
+                    entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?,
+                ),
+            }),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
@@ -400,6 +410,9 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
     fn into_proto(self) -> r#type::Req {
         let (req, label) = match self {
             Self::Delete { label } => (thing_type::req::Req::ThingTypeDeleteReq(thing_type::delete::Req {}), label),
+            Self::EntityType(EntityTypeRequest::GetSupertype { label }) => {
+                (thing_type::req::Req::EntityTypeGetSupertypeReq(entity_type::get_supertype::Req {}), label)
+            }
         };
         r#type::Req { req: Some(r#type::req::Req::ThingTypeReq(thing_type::Req { label, req: Some(req) })) }
     }
@@ -409,6 +422,13 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
     fn try_from_proto(proto: thing_type::Res) -> Result<Self> {
         match proto.res {
             Some(thing_type::res::Res::ThingTypeDeleteRes(_)) => Ok(Self::Delete),
+            Some(thing_type::res::Res::EntityTypeGetSupertypeRes(entity_type::get_supertype::Res { entity_type })) => {
+                Ok(Self::EntityType(EntityTypeResponse::GetSupertype {
+                    entity_type: EntityType::from_proto(
+                        entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?,
+                    ),
+                }))
+            }
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }

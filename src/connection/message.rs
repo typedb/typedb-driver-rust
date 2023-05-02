@@ -154,19 +154,35 @@ pub(super) enum QueryResponse {
 #[derive(Debug)]
 pub(super) enum ConceptRequest {
     GetEntityType { label: String },
+    PutEntityType { label: String },
 }
 
 #[derive(Debug)]
 pub(super) enum ConceptResponse {
     GetEntityType { entity_type: Option<EntityType> },
+    PutEntityType { entity_type: EntityType },
 }
 
 #[derive(Debug)]
 pub(super) enum ThingTypeRequest {
     Delete { label: String },
+
+    EntityType(EntityTypeRequest),
 }
 
 #[derive(Debug)]
 pub(super) enum ThingTypeResponse {
     Delete,
+
+    EntityType(EntityTypeResponse),
+}
+
+#[derive(Debug)]
+pub(super) enum EntityTypeRequest {
+    GetSupertype { label: String },
+}
+
+#[derive(Debug)]
+pub(super) enum EntityTypeResponse {
+    GetSupertype { entity_type: EntityType },
 }

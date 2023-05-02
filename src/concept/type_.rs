@@ -47,11 +47,15 @@ impl EntityType {
     }
 
     pub async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
-        transaction.concept().delete_entity_type(self.clone()).await
+        transaction.concept().entity_type_delete(self.clone()).await
     }
 
     pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
         transaction.concept().get_entity_type(self.label.clone()).await.map(|res| res.is_some())
+    }
+
+    pub async fn get_supertype(&mut self, transaction: &Transaction<'_>) -> Result<Self> {
+        transaction.concept().entity_type_get_supertype(self.clone()).await
     }
 }
 

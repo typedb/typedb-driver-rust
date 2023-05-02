@@ -26,7 +26,7 @@ use crate::{behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
     #[step(expr = "delete entity type: {word}")]
-    async fn delete_thing_type(context: &mut Context, type_label: String) {
+    async fn delete_entity_type(context: &mut Context, type_label: String) {
         let tx = context.transaction();
         assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
             assert!(entity_type.is_some());
@@ -35,11 +35,36 @@ generic_step_impl! {
    }
 
     #[step(expr = "delete entity type: {word}; throws exception")]
-    async fn delete_thing_type_throws_exception(context: &mut Context, type_label: String) {
+    async fn delete_entity_type_throws_exception(context: &mut Context, type_label: String) {
         let tx = context.transaction();
         assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
             assert!(entity_type.is_some());
             entity_type.unwrap().delete(tx).await
         }).await.is_err()); // FIXME WET
+    }
+
+    #[step(expr = "put entity type: {word}")]
+    async fn put_entity_type(context: &mut Context, type_label: String) {
+        context.transaction().concept().put_entity_type(type_label).await.unwrap();
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) is null: (\S+)$")]
+    async fn entity_type_is_null(context: &mut Context, type_label: String, is_null: bool) {
+        let res = context.transaction().concept().get_entity_type(type_label).await;
+        assert!(res.is_ok());
+        if is_null {
+            assert!(res.unwrap().is_none());
+        } else {
+            assert!(res.unwrap().is_some());
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get supertype: (\S+)$")]
+    async fn entity_get_supertype(context: &mut Context, type_label: String, supertype: String) {
+        let tx = context.transaction();
+        assert_eq!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
+            assert!(entity_type.is_some());
+            entity_type.unwrap().get_supertype(tx).await
+        }).await.unwrap().label, supertype);
     }
 }
