@@ -28,7 +28,7 @@ pub use thing::{Attribute, Entity, Relation, Value};
 #[derive(Clone, Debug)]
 pub enum Concept {
     RoleType(RoleType),
-    ThingType(RootThingType),
+    RootThingType(RootThingType),
 
     EntityType(EntityType),
     RelationType(RelationType),

@@ -24,8 +24,10 @@ use std::collections::HashMap;
 use chrono::NaiveDateTime;
 use typedb_protocol::{
     attribute::value::Value as ValueProto, attribute_type::ValueType as ValueTypeProto, concept as concept_proto,
-    numeric::Value as NumericValue, r#type::Encoding, Concept as ConceptProto, ConceptMap as ConceptMapProto,
-    Numeric as NumericProto, Thing as ThingProto, Type as TypeProto,
+    numeric::Value as NumericValue, thing_type::Root as RootThingTypeProto, Attribute as AttributeProto,
+    AttributeType as AttributeTypeProto, Concept as ConceptProto, ConceptMap as ConceptMapProto, Entity as EntityProto,
+    EntityType as EntityTypeProto, Numeric as NumericProto, Relation as RelationProto,
+    RelationType as RelationTypeProto, RoleType as RoleTypeProto,
 };
 
 use super::TryFromProto;
@@ -65,41 +67,44 @@ impl TryFromProto<ConceptProto> for Concept {
     fn try_from_proto(proto: ConceptProto) -> Result<Self> {
         let concept = proto.concept.ok_or(ConnectionError::MissingResponseField("concept"))?;
         match concept {
-            concept_proto::Concept::Thing(thing) => {
-                let encoding = thing.r#type.clone().ok_or(ConnectionError::MissingResponseField("type"))?.encoding;
-                match Encoding::try_from_proto(encoding)? {
-                    Encoding::EntityType => Ok(Self::Entity(Entity::try_from_proto(thing)?)),
-                    Encoding::RelationType => Ok(Self::Relation(Relation::try_from_proto(thing)?)),
-                    Encoding::AttributeType => Ok(Self::Attribute(Attribute::try_from_proto(thing)?)),
-                    _ => todo!(),
-                }
+            concept_proto::Concept::EntityType(entity_type_proto) => {
+                Ok(Concept::EntityType(EntityType::from_proto(entity_type_proto)))
             }
-            concept_proto::Concept::Type(type_) => match Encoding::try_from_proto(type_.encoding)? {
-                Encoding::ThingType => Ok(Self::ThingType(RootThingType::new())),
-                Encoding::EntityType => Ok(Self::EntityType(EntityType::from_proto(type_))),
-                Encoding::RelationType => Ok(Self::RelationType(RelationType::from_proto(type_))),
-                Encoding::AttributeType => Ok(Self::AttributeType(AttributeType::try_from_proto(type_)?)),
-                Encoding::RoleType => Ok(Self::RoleType(RoleType::from_proto(type_))),
-            },
+            concept_proto::Concept::RelationType(relation_type_proto) => {
+                Ok(Concept::RelationType(RelationType::from_proto(relation_type_proto)))
+            }
+            concept_proto::Concept::AttributeType(attribute_type_proto) => {
+                AttributeType::try_from_proto(attribute_type_proto).map(Concept::AttributeType)
+            }
+
+            concept_proto::Concept::RoleType(role_type_proto) => {
+                Ok(Concept::RoleType(RoleType::from_proto(role_type_proto)))
+            }
+
+            concept_proto::Concept::Entity(entity_proto) => Entity::try_from_proto(entity_proto).map(Concept::Entity),
+            concept_proto::Concept::Relation(relation_proto) => {
+                Relation::try_from_proto(relation_proto).map(Concept::Relation)
+            }
+            concept_proto::Concept::Attribute(attribute_proto) => {
+                Attribute::try_from_proto(attribute_proto).map(Concept::Attribute)
+            }
+
+            concept_proto::Concept::RootThingType(_root_thing_type_proto) => todo!(),
         }
     }
 }
 
-impl TryFromProto<i32> for Encoding {
-    fn try_from_proto(proto: i32) -> Result<Self> {
-        Self::from_i32(proto).ok_or(InternalError::EnumOutOfBounds(proto, "Encoding").into())
+impl FromProto<EntityTypeProto> for EntityType {
+    fn from_proto(proto: EntityTypeProto) -> Self {
+        let EntityTypeProto { label, is_root, is_abstract } = proto;
+        Self::new(label, is_root, is_abstract)
     }
 }
 
-impl FromProto<TypeProto> for EntityType {
-    fn from_proto(proto: TypeProto) -> Self {
-        Self::new(proto.label)
-    }
-}
-
-impl FromProto<TypeProto> for RelationType {
-    fn from_proto(proto: TypeProto) -> Self {
-        Self::new(proto.label)
+impl FromProto<RelationTypeProto> for RelationType {
+    fn from_proto(proto: RelationTypeProto) -> Self {
+        let RelationTypeProto { label, is_root, is_abstract } = proto;
+        Self::new(label)
     }
 }
 
@@ -122,41 +127,42 @@ impl TryFromProto<i32> for ValueType {
     }
 }
 
-impl TryFromProto<TypeProto> for AttributeType {
-    fn try_from_proto(proto: TypeProto) -> Result<Self> {
+impl TryFromProto<AttributeTypeProto> for AttributeType {
+    fn try_from_proto(proto: AttributeTypeProto) -> Result<Self> {
         Ok(Self::new(proto.label, ValueType::try_from_proto(proto.value_type)?))
     }
 }
 
-impl FromProto<TypeProto> for RoleType {
-    fn from_proto(proto: TypeProto) -> Self {
-        Self::new(ScopedLabel::new(proto.scope, proto.label))
+impl FromProto<RoleTypeProto> for RoleType {
+    fn from_proto(proto: RoleTypeProto) -> Self {
+        let RoleTypeProto { label, is_root, is_abstract, scope } = proto;
+        Self::new(ScopedLabel::new(scope, label))
     }
 }
 
-impl TryFromProto<ThingProto> for Entity {
-    fn try_from_proto(proto: ThingProto) -> Result<Self> {
+impl TryFromProto<EntityProto> for Entity {
+    fn try_from_proto(proto: EntityProto) -> Result<Self> {
         Ok(Self::new(
             proto.iid.into(),
-            EntityType::from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?),
+            EntityType::from_proto(proto.entity_type.ok_or(ConnectionError::MissingResponseField("type"))?),
         ))
     }
 }
 
-impl TryFromProto<ThingProto> for Relation {
-    fn try_from_proto(proto: ThingProto) -> Result<Self> {
+impl TryFromProto<RelationProto> for Relation {
+    fn try_from_proto(proto: RelationProto) -> Result<Self> {
         Ok(Self::new(
             proto.iid.into(),
-            RelationType::from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?),
+            RelationType::from_proto(proto.relation_type.ok_or(ConnectionError::MissingResponseField("type"))?),
         ))
     }
 }
 
-impl TryFromProto<ThingProto> for Attribute {
-    fn try_from_proto(proto: ThingProto) -> Result<Self> {
+impl TryFromProto<AttributeProto> for Attribute {
+    fn try_from_proto(proto: AttributeProto) -> Result<Self> {
         Ok(Self::new(
             proto.iid.into(),
-            AttributeType::try_from_proto(proto.r#type.ok_or(ConnectionError::MissingResponseField("type"))?)?,
+            AttributeType::try_from_proto(proto.attribute_type.ok_or(ConnectionError::MissingResponseField("type"))?)?,
             Value::try_from_proto(
                 proto.value.and_then(|v| v.value).ok_or(ConnectionError::MissingResponseField("value"))?,
             )?,

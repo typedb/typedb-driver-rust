@@ -22,15 +22,13 @@
 use std::fmt;
 
 #[derive(Clone, Debug)]
-pub struct RootThingType {
-    pub label: String,
-}
+pub struct RootThingType;
 
 impl RootThingType {
     const LABEL: &'static str = "thing";
 
     pub fn new() -> Self {
-        Self { label: String::from(Self::LABEL) }
+        Self
     }
 }
 

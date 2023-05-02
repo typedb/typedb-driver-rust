@@ -64,7 +64,7 @@ impl Transaction<'_> {
         &self.query
     }
 
-    pub(crate) fn concept(&self) -> &ConceptManager {
+    pub fn concept(&self) -> &ConceptManager {
         &self.concept
     }
 

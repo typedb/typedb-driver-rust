@@ -21,46 +21,23 @@
 
 use std::sync::Arc;
 
-use futures::stream::BoxStream;
-
-use crate::{
-    common::{OwnsFilter, IID},
-    concept::{Attribute, AttributeType, Relation, RoleType},
-    connection::TransactionStream,
-    Result,
-};
+use crate::{concept::EntityType, connection::TransactionStream, Result};
 
 #[derive(Debug)]
-pub(crate) struct ConceptManager {
+pub struct ConceptManager {
     transaction_stream: Arc<TransactionStream>,
 }
 
 impl ConceptManager {
-    pub(super) fn new(transaction_stream: Arc<TransactionStream>) -> ConceptManager {
+    pub(crate) fn new(transaction_stream: Arc<TransactionStream>) -> ConceptManager {
         ConceptManager { transaction_stream }
     }
 
-    pub(crate) async fn set_has(&self, owner: IID, attribute: IID) {
+    pub async fn get_entity_type(&self, label: String) -> Result<Option<EntityType>> {
         todo!()
     }
 
-    pub(crate) async fn unset_has(&self, owner: IID, attribute: IID) {
-        todo!()
-    }
-
-    pub(crate) fn get_has_keys(&self, owner: IID, owns_filter: OwnsFilter) -> BoxStream<Result<Attribute>> {
-        todo!()
-    }
-
-    pub(crate) fn get_has_type(&self, owner: IID, attribute_type: AttributeType) -> BoxStream<Result<Attribute>> {
-        todo!()
-    }
-
-    pub(crate) fn get_relations(&self, player: IID, role: RoleType) -> BoxStream<Result<Relation>> {
-        todo!()
-    }
-
-    pub(crate) fn get_playing(&self, player: IID) -> BoxStream<Result<RoleType>> {
+    pub async fn delete_entity_type(&self, entity_type: &EntityType) -> Result {
         todo!()
     }
 }
