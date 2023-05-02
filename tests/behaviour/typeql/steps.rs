@@ -58,9 +58,9 @@ generic_step_impl! {
     async fn typeql_insert(context: &mut Context, step: &Step) {
         let parsed = parse_query(step.docstring().unwrap());
         assert!(parsed.is_ok());
-        let stream = context.transaction().query().insert(&parsed.unwrap().to_string());
-        assert!(stream.is_ok());
-        let res = stream.unwrap().try_collect::<Vec<_>>().await;
+        let inserted = context.transaction().query().insert(&parsed.unwrap().to_string());
+        assert!(inserted.is_ok());
+        let res = inserted.unwrap().try_collect::<Vec<_>>().await;
         assert!(res.is_ok());
     }
 
@@ -68,9 +68,9 @@ generic_step_impl! {
     async fn typeql_insert_throws(context: &mut Context, step: &Step) {
         let parsed = parse_query(step.docstring().unwrap());
         if parsed.is_ok() {
-            let stream = context.transaction().query().insert(&parsed.unwrap().to_string());
-            if stream.is_ok() {
-                let res = stream.unwrap().try_collect::<Vec<_>>().await;
+            let inserted = context.transaction().query().insert(&parsed.unwrap().to_string());
+            if inserted.is_ok() {
+                let res = inserted.unwrap().try_collect::<Vec<_>>().await;
                 assert!(res.is_err());
             }
         }
@@ -83,7 +83,7 @@ generic_step_impl! {
                 context.transaction().query().insert(&parsed.to_string()).map_err(|error| error.to_string())
             })
         }
-        .and_then(|stream| async { stream.try_collect::<Vec<_>>().await.map_err(|error| error.to_string()) })
+        .and_then(|inserted| async { inserted.try_collect::<Vec<_>>().await.map_err(|error| error.to_string()) })
         .await;
         assert!(result.is_err());
         assert!(result.unwrap_err().contains(&exception));
