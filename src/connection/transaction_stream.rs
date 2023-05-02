@@ -27,7 +27,11 @@ use super::network::transmitter::TransactionTransmitter;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::Result,
-    connection::message::{QueryRequest, QueryResponse, TransactionRequest, TransactionResponse},
+    concept::EntityType,
+    connection::message::{
+        ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
+        TransactionRequest, TransactionResponse,
+    },
     error::InternalError,
     Options, TransactionType,
 };
@@ -114,6 +118,20 @@ impl TransactionStream {
     pub(crate) async fn match_aggregate(&self, query: String, options: Options) -> Result<Numeric> {
         match self.query_single(QueryRequest::MatchAggregate { query, options }).await? {
             QueryResponse::MatchAggregate { answer } => Ok(answer),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn get_entity_type(&self, label: String) -> Result<Option<EntityType>> {
+        match self.single(TransactionRequest::Concept(ConceptRequest::GetEntityType { label })).await? {
+            TransactionResponse::Concept(ConceptResponse::GetEntityType { entity_type }) => Ok(entity_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn delete_thing_type(&self, label: String) -> Result {
+        match self.single(TransactionRequest::ThingType(ThingTypeRequest::Delete { label })).await? {
+            TransactionResponse::ThingType(ThingTypeResponse::Delete) => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }

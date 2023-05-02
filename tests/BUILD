@@ -40,6 +40,7 @@ rust_test(
         "@crates//:tokio",
     ],
     data = [
+        "@vaticle_typedb_behaviour//concept/type:entitytype.feature",
         "@vaticle_typedb_behaviour//connection:database.feature",
         "@vaticle_typedb_behaviour//connection:session.feature",
         "@vaticle_typedb_behaviour//connection:transaction.feature",

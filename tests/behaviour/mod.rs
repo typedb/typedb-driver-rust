@@ -19,6 +19,7 @@
  * under the License.
  */
 
+mod concept;
 mod connection;
 pub mod session_tracker;
 mod typeql;

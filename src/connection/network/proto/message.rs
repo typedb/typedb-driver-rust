@@ -22,14 +22,21 @@
 use std::time::Duration;
 
 use itertools::Itertools;
-use typedb_protocol::{database, database_manager, query_manager, server_manager, session, transaction};
+use typedb_protocol::{
+    concept_manager, database, database_manager, query_manager, r#type, server_manager, session, thing_type,
+    transaction,
+};
 
 use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{info::DatabaseInfo, RequestID, Result},
+    concept::EntityType,
     connection::{
-        message::{QueryRequest, QueryResponse, Request, Response, TransactionRequest, TransactionResponse},
+        message::{
+            ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
+            ThingTypeResponse, TransactionRequest, TransactionResponse,
+        },
         network::proto::TryIntoProto,
     },
     error::{ConnectionError, InternalError},
@@ -258,6 +265,12 @@ impl IntoProto<transaction::Req> for TransactionRequest {
             TransactionRequest::Query(query_request) => {
                 transaction::req::Req::QueryManagerReq(query_request.into_proto())
             }
+            TransactionRequest::Concept(concept_request) => {
+                transaction::req::Req::ConceptManagerReq(concept_request.into_proto())
+            }
+            TransactionRequest::ThingType(thing_type_request) => {
+                transaction::req::Req::TypeReq(thing_type_request.into_proto())
+            }
             TransactionRequest::Stream { request_id: req_id } => {
                 request_id = Some(req_id);
                 transaction::req::Req::StreamReq(transaction::stream::Req {})
@@ -280,6 +293,12 @@ impl TryFromProto<transaction::Res> for TransactionResponse {
             Some(transaction::res::Res::RollbackRes(_)) => Ok(TransactionResponse::Rollback),
             Some(transaction::res::Res::QueryManagerRes(res)) => {
                 Ok(TransactionResponse::Query(QueryResponse::try_from_proto(res)?))
+            }
+            Some(transaction::res::Res::ConceptManagerRes(res)) => {
+                Ok(TransactionResponse::Concept(ConceptResponse::try_from_proto(res)?))
+            }
+            Some(transaction::res::Res::TypeRes(r#type::Res { res: Some(r#type::res::Res::ThingTypeRes(res)) })) => {
+                Ok(TransactionResponse::ThingType(ThingTypeResponse::try_from_proto(res)?))
             }
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
@@ -358,6 +377,48 @@ impl TryFromProto<query_manager::ResPart> for QueryResponse {
             Some(query_manager::res_part::Res::UpdateResPart(res)) => Ok(QueryResponse::Update {
                 answers: res.answers.into_iter().map(ConceptMap::try_from_proto).try_collect()?,
             }),
+            Some(_) => todo!(),
+            None => Err(ConnectionError::MissingResponseField("res").into()),
+        }
+    }
+}
+
+impl IntoProto<concept_manager::Req> for ConceptRequest {
+    fn into_proto(self) -> concept_manager::Req {
+        let req = match self {
+            Self::GetEntityType { label } => {
+                concept_manager::req::Req::GetEntityTypeReq(concept_manager::get_entity_type::Req { label })
+            }
+        };
+        concept_manager::Req { req: Some(req) }
+    }
+}
+
+impl TryFromProto<concept_manager::Res> for ConceptResponse {
+    fn try_from_proto(proto: concept_manager::Res) -> Result<Self> {
+        match proto.res {
+            Some(concept_manager::res::Res::GetEntityTypeRes(concept_manager::get_entity_type::Res {
+                entity_type,
+            })) => Ok(Self::GetEntityType { entity_type: entity_type.map(|proto| EntityType::from_proto(proto)) }),
+            Some(_) => todo!(),
+            None => Err(ConnectionError::MissingResponseField("res").into()),
+        }
+    }
+}
+
+impl IntoProto<r#type::Req> for ThingTypeRequest {
+    fn into_proto(self) -> r#type::Req {
+        let (req, label) = match self {
+            Self::Delete { label } => (thing_type::req::Req::ThingTypeDeleteReq(thing_type::delete::Req {}), label),
+        };
+        r#type::Req { req: Some(r#type::req::Req::ThingTypeReq(thing_type::Req { label, req: Some(req) })) }
+    }
+}
+
+impl TryFromProto<thing_type::Res> for ThingTypeResponse {
+    fn try_from_proto(proto: thing_type::Res) -> Result<Self> {
+        match proto.res {
+            Some(thing_type::res::Res::ThingTypeDeleteRes(_)) => Ok(Self::Delete),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }

@@ -28,6 +28,7 @@ use typedb_protocol::transaction;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID},
+    concept::EntityType,
     Options, SessionType, TransactionType,
 };
 
@@ -99,6 +100,8 @@ pub(super) enum TransactionRequest {
     Commit,
     Rollback,
     Query(QueryRequest),
+    Concept(ConceptRequest),
+    ThingType(ThingTypeRequest),
     Stream { request_id: RequestID },
 }
 
@@ -108,6 +111,8 @@ pub(super) enum TransactionResponse {
     Commit,
     Rollback,
     Query(QueryResponse),
+    Concept(ConceptResponse),
+    ThingType(ThingTypeResponse),
 }
 
 #[derive(Debug)]
@@ -144,4 +149,24 @@ pub(super) enum QueryResponse {
 
     MatchGroup {},          // TODO: ConceptMapGroup
     MatchGroupAggregate {}, // TODO: NumericGroup
+}
+
+#[derive(Debug)]
+pub(super) enum ConceptRequest {
+    GetEntityType { label: String },
+}
+
+#[derive(Debug)]
+pub(super) enum ConceptResponse {
+    GetEntityType { entity_type: Option<EntityType> },
+}
+
+#[derive(Debug)]
+pub(super) enum ThingTypeRequest {
+    Delete { label: String },
+}
+
+#[derive(Debug)]
+pub(super) enum ThingTypeResponse {
+    Delete,
 }

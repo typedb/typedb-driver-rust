@@ -20,20 +20,26 @@
  */
 
 use cucumber::{gherkin::Step, given, then, when};
+use futures::TryFutureExt;
 
-use crate::{
-    behaviour::{util, Context},
-    generic_step_impl,
-};
-
-fn parse_transaction_type(type_: &str) -> TransactionType {
-    match type_ {
-        "write" => TransactionType::Write,
-        "read" => TransactionType::Read,
-        _ => unreachable!("`{type_}` is not a valid transaction type"),
-    }
-}
+use crate::{behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
+    #[step(expr = "delete entity type: {word}")]
+    async fn delete_thing_type(context: &mut Context, type_label: String) {
+        let tx = context.transaction();
+        assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
+            assert!(entity_type.is_some());
+            entity_type.unwrap().delete(tx).await
+        }).await.is_ok());
+   }
 
+    #[step(expr = "delete entity type: {word}; throws exception")]
+    async fn delete_thing_type_throws_exception(context: &mut Context, type_label: String) {
+        let tx = context.transaction();
+        assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
+            assert!(entity_type.is_some());
+            entity_type.unwrap().delete(tx).await
+        }).await.is_err()); // FIXME WET
+    }
 }

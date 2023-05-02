@@ -21,6 +21,8 @@
 
 use std::fmt;
 
+use crate::{Result, Transaction};
+
 #[derive(Clone, Debug)]
 pub struct RootThingType;
 
@@ -35,11 +37,21 @@ impl RootThingType {
 #[derive(Clone, Debug)]
 pub struct EntityType {
     pub label: String,
+    pub is_root: bool,
+    pub is_abstract: bool,
 }
 
 impl EntityType {
-    pub fn new(label: String) -> Self {
-        Self { label }
+    pub fn new(label: String, is_root: bool, is_abstract: bool) -> Self {
+        Self { label, is_root, is_abstract }
+    }
+
+    pub async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
+        transaction.concept().delete_entity_type(self.clone()).await
+    }
+
+    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_entity_type(self.label.clone()).await.map(|res| res.is_some())
     }
 }
 

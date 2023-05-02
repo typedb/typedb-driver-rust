@@ -34,10 +34,10 @@ impl ConceptManager {
     }
 
     pub async fn get_entity_type(&self, label: String) -> Result<Option<EntityType>> {
-        todo!()
+        self.transaction_stream.get_entity_type(label).await
     }
 
-    pub async fn delete_entity_type(&self, entity_type: &EntityType) -> Result {
-        todo!()
+    pub async fn delete_entity_type(&self, entity_type: EntityType) -> Result {
+        self.transaction_stream.delete_thing_type(entity_type.label).await
     }
 }
