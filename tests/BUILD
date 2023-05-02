@@ -31,6 +31,7 @@ rust_test(
     srcs = glob(["**/*.rs"]),
     deps = [
         "//:typedb_client",
+        "@vaticle_typeql//rust:typeql_lang",
         "@crates//:async-std",
         "@crates//:chrono",
         "@crates//:cucumber",
@@ -38,7 +39,6 @@ rust_test(
         "@crates//:serial_test",
         "@crates//:smol",
         "@crates//:tokio",
-        "@vaticle_typeql//rust:typeql_lang",
     ],
     data = [
         "@vaticle_typedb_behaviour//connection:database.feature",
