@@ -29,8 +29,8 @@ pub struct ConceptManager {
 }
 
 impl ConceptManager {
-    pub(crate) fn new(transaction_stream: Arc<TransactionStream>) -> ConceptManager {
-        ConceptManager { transaction_stream }
+    pub(crate) fn new(transaction_stream: Arc<TransactionStream>) -> Self {
+        Self { transaction_stream }
     }
 
     pub async fn get_entity_type(&self, label: String) -> Result<Option<EntityType>> {

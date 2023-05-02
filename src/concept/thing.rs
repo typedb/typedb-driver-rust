@@ -23,10 +23,7 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 
 use super::type_::{AttributeType, EntityType, RelationType};
-use crate::{
-    common::{Result, IID},
-    Transaction,
-};
+use crate::common::IID;
 
 #[async_trait]
 pub trait ThingAPI {

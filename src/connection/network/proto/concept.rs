@@ -24,18 +24,17 @@ use std::collections::HashMap;
 use chrono::NaiveDateTime;
 use typedb_protocol::{
     attribute::value::Value as ValueProto, attribute_type::ValueType as ValueTypeProto, concept as concept_proto,
-    numeric::Value as NumericValue, thing_type::Root as RootThingTypeProto, Attribute as AttributeProto,
-    AttributeType as AttributeTypeProto, Concept as ConceptProto, ConceptMap as ConceptMapProto, Entity as EntityProto,
-    EntityType as EntityTypeProto, Numeric as NumericProto, Relation as RelationProto,
-    RelationType as RelationTypeProto, RoleType as RoleTypeProto,
+    numeric::Value as NumericValue, Attribute as AttributeProto, AttributeType as AttributeTypeProto,
+    Concept as ConceptProto, ConceptMap as ConceptMapProto, Entity as EntityProto, EntityType as EntityTypeProto,
+    Numeric as NumericProto, Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto,
 };
 
 use super::TryFromProto;
 use crate::{
     answer::{ConceptMap, Numeric},
     concept::{
-        Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, RootThingType,
-        ScopedLabel, Value, ValueType,
+        Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, ScopedLabel, Value,
+        ValueType,
     },
     connection::network::proto::FromProto,
     error::{ConnectionError, InternalError},
@@ -45,9 +44,9 @@ use crate::{
 impl TryFromProto<NumericProto> for Numeric {
     fn try_from_proto(proto: NumericProto) -> Result<Self> {
         match proto.value {
-            Some(NumericValue::LongValue(long)) => Ok(Numeric::Long(long)),
-            Some(NumericValue::DoubleValue(double)) => Ok(Numeric::Double(double)),
-            Some(NumericValue::Nan(_)) => Ok(Numeric::NaN),
+            Some(NumericValue::LongValue(long)) => Ok(Self::Long(long)),
+            Some(NumericValue::DoubleValue(double)) => Ok(Self::Double(double)),
+            Some(NumericValue::Nan(_)) => Ok(Self::NaN),
             None => Err(ConnectionError::MissingResponseField("value").into()),
         }
     }
@@ -68,17 +67,17 @@ impl TryFromProto<ConceptProto> for Concept {
         let concept = proto.concept.ok_or(ConnectionError::MissingResponseField("concept"))?;
         match concept {
             concept_proto::Concept::EntityType(entity_type_proto) => {
-                Ok(Concept::EntityType(EntityType::from_proto(entity_type_proto)))
+                Ok(Self::EntityType(EntityType::from_proto(entity_type_proto)))
             }
             concept_proto::Concept::RelationType(relation_type_proto) => {
-                Ok(Concept::RelationType(RelationType::from_proto(relation_type_proto)))
+                Ok(Self::RelationType(RelationType::from_proto(relation_type_proto)))
             }
             concept_proto::Concept::AttributeType(attribute_type_proto) => {
                 AttributeType::try_from_proto(attribute_type_proto).map(Concept::AttributeType)
             }
 
             concept_proto::Concept::RoleType(role_type_proto) => {
-                Ok(Concept::RoleType(RoleType::from_proto(role_type_proto)))
+                Ok(Self::RoleType(RoleType::from_proto(role_type_proto)))
             }
 
             concept_proto::Concept::Entity(entity_proto) => Entity::try_from_proto(entity_proto).map(Concept::Entity),
@@ -103,7 +102,7 @@ impl FromProto<EntityTypeProto> for EntityType {
 
 impl FromProto<RelationTypeProto> for RelationType {
     fn from_proto(proto: RelationTypeProto) -> Self {
-        let RelationTypeProto { label, is_root, is_abstract } = proto;
+        let RelationTypeProto { label, is_root: _, is_abstract: _ } = proto;
         Self::new(label)
     }
 }
@@ -135,7 +134,7 @@ impl TryFromProto<AttributeTypeProto> for AttributeType {
 
 impl FromProto<RoleTypeProto> for RoleType {
     fn from_proto(proto: RoleTypeProto) -> Self {
-        let RoleTypeProto { label, is_root, is_abstract, scope } = proto;
+        let RoleTypeProto { label, is_root: _, is_abstract: _, scope } = proto;
         Self::new(ScopedLabel::new(scope, label))
     }
 }

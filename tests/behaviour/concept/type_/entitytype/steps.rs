@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use cucumber::{gherkin::Step, given, then, when};
+use cucumber::{given, then, when};
 use futures::TryFutureExt;
 
 use crate::{behaviour::Context, generic_step_impl};

@@ -27,8 +27,8 @@ use crate::{Options, SessionType, TransactionType};
 impl IntoProto<session::Type> for SessionType {
     fn into_proto(self) -> session::Type {
         match self {
-            SessionType::Data => session::Type::Data,
-            SessionType::Schema => session::Type::Schema,
+            Self::Data => session::Type::Data,
+            Self::Schema => session::Type::Schema,
         }
     }
 }
@@ -36,8 +36,8 @@ impl IntoProto<session::Type> for SessionType {
 impl IntoProto<transaction::Type> for TransactionType {
     fn into_proto(self) -> transaction::Type {
         match self {
-            TransactionType::Read => transaction::Type::Read,
-            TransactionType::Write => transaction::Type::Write,
+            Self::Read => transaction::Type::Read,
+            Self::Write => transaction::Type::Write,
         }
     }
 }
