@@ -21,6 +21,8 @@
 
 use std::fmt;
 
+use futures::Stream;
+
 use crate::{Result, Transaction};
 
 #[derive(Clone, Debug)]
@@ -56,6 +58,10 @@ impl EntityType {
 
     pub async fn get_supertype(&mut self, transaction: &Transaction<'_>) -> Result<Self> {
         transaction.concept().entity_type_get_supertype(self.clone()).await
+    }
+
+    pub fn get_subtypes(&mut self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
+        transaction.concept().entity_type_get_subtypes(self.clone())
     }
 }
 

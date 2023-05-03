@@ -19,10 +19,14 @@
  * under the License.
  */
 
-use cucumber::{given, then, when};
-use futures::TryFutureExt;
+use cucumber::{gherkin::Step, given, then, when};
+use futures::{TryFutureExt, TryStreamExt};
+use typedb_client::Result as TypeDBResult;
 
-use crate::{behaviour::Context, generic_step_impl};
+use crate::{
+    behaviour::{util::iter_table, Context},
+    generic_step_impl,
+};
 
 generic_step_impl! {
     #[step(expr = "delete entity type: {word}")]
@@ -62,9 +66,34 @@ generic_step_impl! {
     #[step(regex = r"^entity\( ?(\S+) ?\) get supertype: (\S+)$")]
     async fn entity_get_supertype(context: &mut Context, type_label: String, supertype: String) {
         let tx = context.transaction();
-        assert_eq!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
-            assert!(entity_type.is_some());
-            entity_type.unwrap().get_supertype(tx).await
-        }).await.unwrap().label, supertype);
+        assert_eq!(
+            tx.concept()
+                .get_entity_type(type_label)
+                .and_then(|entity_type| async move {
+                    assert!(entity_type.is_some());
+                    entity_type.unwrap().get_supertype(tx).await
+                }).await.unwrap().label,
+            supertype
+        );
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get subtypes do not contain:")]
+    async fn entity_get_subtypes_do_not_contain(context: &mut Context, step: &Step, type_label: String) {
+        let tx = context.transaction();
+        let actuals = tx
+            .concept()
+            .get_entity_type(type_label)
+            .and_then(|entity_type| async move {
+                assert!(entity_type.is_some());
+                let stream = entity_type.unwrap().get_subtypes(tx);
+                assert!(stream.is_ok());
+                stream.unwrap().map_ok(|et| et.label).try_collect::<Vec<_>>().await
+            })
+            .await;
+        assert!(actuals.is_ok());
+        let actuals = actuals.unwrap();
+        for subtype in iter_table(step) {
+            assert!(actuals.iter().all(|actual| actual != subtype));
+        }
     }
 }

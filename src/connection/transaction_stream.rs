@@ -157,6 +157,20 @@ impl TransactionStream {
         }
     }
 
+    pub(crate) fn entity_type_get_subtypes(&self, label: String) -> Result<impl Stream<Item = Result<EntityType>>> {
+        Ok(self
+            .stream(TransactionRequest::ThingType(ThingTypeRequest::EntityType(EntityTypeRequest::GetSubtypes {
+                label,
+            })))?
+            .flat_map(|result| match result {
+                Ok(TransactionResponse::ThingType(ThingTypeResponse::EntityType(
+                    EntityTypeResponse::GetSubtypes { entity_types },
+                ))) => stream_iter(entity_types.into_iter().map(Ok)),
+                Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+                Err(err) => stream_once(Err(err)),
+            }))
+    }
+
     async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         self.transaction_transmitter.single(req).await
     }

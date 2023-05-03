@@ -302,6 +302,9 @@ impl TryFromProto<transaction::ResPart> for TransactionResponse {
             Some(transaction::res_part::Res::QueryManagerResPart(res_part)) => {
                 Ok(Self::Query(QueryResponse::try_from_proto(res_part)?))
             }
+            Some(transaction::res_part::Res::TypeResPart(r#type::ResPart {
+                res: Some(r#type::res_part::Res::ThingTypeResPart(res)),
+            })) => Ok(Self::ThingType(ThingTypeResponse::try_from_proto(res)?)),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
@@ -413,6 +416,10 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
             Self::EntityType(EntityTypeRequest::GetSupertype { label }) => {
                 (thing_type::req::Req::EntityTypeGetSupertypeReq(entity_type::get_supertype::Req {}), label)
             }
+            Self::EntityType(EntityTypeRequest::GetSubtypes { label }) => (
+                thing_type::req::Req::EntityTypeGetSubtypesReq(entity_type::get_subtypes::Req { transitivity: 0 }),
+                label,
+            ),
         };
         r#type::Req { req: Some(r#type::req::Req::ThingTypeReq(thing_type::Req { label, req: Some(req) })) }
     }
@@ -429,6 +436,20 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
                     ),
                 }))
             }
+            Some(_) => todo!(),
+            None => Err(ConnectionError::MissingResponseField("res").into()),
+        }
+    }
+}
+
+impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
+    fn try_from_proto(proto: thing_type::ResPart) -> Result<Self> {
+        match proto.res {
+            Some(thing_type::res_part::Res::EntityTypeGetSubtypesResPart(entity_type::get_subtypes::ResPart {
+                entity_types,
+            })) => Ok(Self::EntityType(EntityTypeResponse::GetSubtypes {
+                entity_types: entity_types.into_iter().map(EntityType::from_proto).collect(),
+            })),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }

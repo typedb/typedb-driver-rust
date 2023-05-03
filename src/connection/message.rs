@@ -180,9 +180,11 @@ pub(super) enum ThingTypeResponse {
 #[derive(Debug)]
 pub(super) enum EntityTypeRequest {
     GetSupertype { label: String },
+    GetSubtypes { label: String },
 }
 
 #[derive(Debug)]
 pub(super) enum EntityTypeResponse {
     GetSupertype { entity_type: EntityType },
+    GetSubtypes { entity_types: Vec<EntityType> },
 }

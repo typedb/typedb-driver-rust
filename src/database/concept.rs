@@ -21,6 +21,8 @@
 
 use std::sync::Arc;
 
+use futures::Stream;
+
 use crate::{concept::EntityType, connection::TransactionStream, Result};
 
 #[derive(Debug)]
@@ -47,5 +49,9 @@ impl ConceptManager {
 
     pub async fn entity_type_get_supertype(&self, entity_type: EntityType) -> Result<EntityType> {
         self.transaction_stream.entity_type_get_supertype(entity_type.label).await
+    }
+
+    pub fn entity_type_get_subtypes(&self, entity_type: EntityType) -> Result<impl Stream<Item = Result<EntityType>>> {
+        self.transaction_stream.entity_type_get_subtypes(entity_type.label)
     }
 }
