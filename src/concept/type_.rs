@@ -23,7 +23,7 @@ use std::fmt;
 
 use futures::Stream;
 
-use crate::{Result, Transaction};
+use crate::{common::Transitivity, Result, Transaction};
 
 #[derive(Clone, Debug)]
 pub struct RootThingType;
@@ -61,7 +61,7 @@ impl EntityType {
     }
 
     pub fn get_subtypes(&mut self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
-        transaction.concept().entity_type_get_subtypes(self.clone())
+        transaction.concept().entity_type_get_subtypes(self.clone(), Transitivity::Transitive)
     }
 }
 

@@ -19,10 +19,10 @@
  * under the License.
  */
 
-use typedb_protocol::{session, transaction, Options as OptionsProto};
+use typedb_protocol::{r#type::Transitivity as TransitivityProto, session, transaction, Options as OptionsProto};
 
 use super::IntoProto;
-use crate::{Options, SessionType, TransactionType};
+use crate::{common::Transitivity, Options, SessionType, TransactionType};
 
 impl IntoProto<session::Type> for SessionType {
     fn into_proto(self) -> session::Type {
@@ -55,6 +55,15 @@ impl IntoProto<OptionsProto> for Options {
             transaction_timeout_millis: self.transaction_timeout.map(|val| val.as_millis() as i32),
             schema_lock_acquire_timeout_millis: self.schema_lock_acquire_timeout.map(|val| val.as_millis() as i32),
             read_any_replica: self.read_any_replica,
+        }
+    }
+}
+
+impl IntoProto<TransitivityProto> for Transitivity {
+    fn into_proto(self) -> TransitivityProto {
+        match self {
+            Self::Explicit => TransitivityProto::Explicit,
+            Self::Transitive => TransitivityProto::Transitive,
         }
     }
 }

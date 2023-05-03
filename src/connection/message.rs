@@ -27,7 +27,7 @@ use typedb_protocol::transaction;
 
 use crate::{
     answer::{ConceptMap, Numeric},
-    common::{address::Address, info::DatabaseInfo, RequestID, SessionID},
+    common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity},
     concept::EntityType,
     Options, SessionType, TransactionType,
 };
@@ -165,26 +165,16 @@ pub(super) enum ConceptResponse {
 
 #[derive(Debug)]
 pub(super) enum ThingTypeRequest {
-    Delete { label: String },
+    ThingTypeDelete { label: String },
 
-    EntityType(EntityTypeRequest),
+    EntityTypeGetSupertype { label: String },
+    EntityTypeGetSubtypes { label: String, transitivity: Transitivity },
 }
 
 #[derive(Debug)]
 pub(super) enum ThingTypeResponse {
-    Delete,
+    ThingTypeDelete,
 
-    EntityType(EntityTypeResponse),
-}
-
-#[derive(Debug)]
-pub(super) enum EntityTypeRequest {
-    GetSupertype { label: String },
-    GetSubtypes { label: String },
-}
-
-#[derive(Debug)]
-pub(super) enum EntityTypeResponse {
-    GetSupertype { entity_type: EntityType },
-    GetSubtypes { entity_types: Vec<EntityType> },
+    EntityTypeGetSupertype { entity_type: EntityType },
+    EntityTypeGetSubtypes { entity_types: Vec<EntityType> },
 }

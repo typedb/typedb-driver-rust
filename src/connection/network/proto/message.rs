@@ -34,8 +34,8 @@ use crate::{
     concept::EntityType,
     connection::{
         message::{
-            ConceptRequest, ConceptResponse, EntityTypeRequest, EntityTypeResponse, QueryRequest, QueryResponse,
-            Request, Response, ThingTypeRequest, ThingTypeResponse, TransactionRequest, TransactionResponse,
+            ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
+            ThingTypeResponse, TransactionRequest, TransactionResponse,
         },
         network::proto::TryIntoProto,
     },
@@ -412,12 +412,16 @@ impl TryFromProto<concept_manager::Res> for ConceptResponse {
 impl IntoProto<r#type::Req> for ThingTypeRequest {
     fn into_proto(self) -> r#type::Req {
         let (req, label) = match self {
-            Self::Delete { label } => (thing_type::req::Req::ThingTypeDeleteReq(thing_type::delete::Req {}), label),
-            Self::EntityType(EntityTypeRequest::GetSupertype { label }) => {
+            Self::ThingTypeDelete { label } => {
+                (thing_type::req::Req::ThingTypeDeleteReq(thing_type::delete::Req {}), label)
+            }
+            Self::EntityTypeGetSupertype { label } => {
                 (thing_type::req::Req::EntityTypeGetSupertypeReq(entity_type::get_supertype::Req {}), label)
             }
-            Self::EntityType(EntityTypeRequest::GetSubtypes { label }) => (
-                thing_type::req::Req::EntityTypeGetSubtypesReq(entity_type::get_subtypes::Req { transitivity: 0 }),
+            Self::EntityTypeGetSubtypes { label, transitivity } => (
+                thing_type::req::Req::EntityTypeGetSubtypesReq(entity_type::get_subtypes::Req {
+                    transitivity: transitivity.into_proto().into(),
+                }),
                 label,
             ),
         };
@@ -428,13 +432,13 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
 impl TryFromProto<thing_type::Res> for ThingTypeResponse {
     fn try_from_proto(proto: thing_type::Res) -> Result<Self> {
         match proto.res {
-            Some(thing_type::res::Res::ThingTypeDeleteRes(_)) => Ok(Self::Delete),
+            Some(thing_type::res::Res::ThingTypeDeleteRes(_)) => Ok(Self::ThingTypeDelete),
             Some(thing_type::res::Res::EntityTypeGetSupertypeRes(entity_type::get_supertype::Res { entity_type })) => {
-                Ok(Self::EntityType(EntityTypeResponse::GetSupertype {
+                Ok(Self::EntityTypeGetSupertype {
                     entity_type: EntityType::from_proto(
                         entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?,
                     ),
-                }))
+                })
             }
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
@@ -447,9 +451,9 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
         match proto.res {
             Some(thing_type::res_part::Res::EntityTypeGetSubtypesResPart(entity_type::get_subtypes::ResPart {
                 entity_types,
-            })) => Ok(Self::EntityType(EntityTypeResponse::GetSubtypes {
+            })) => Ok(Self::EntityTypeGetSubtypes {
                 entity_types: entity_types.into_iter().map(EntityType::from_proto).collect(),
-            })),
+            }),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }

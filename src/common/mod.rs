@@ -48,6 +48,12 @@ pub enum TransactionType {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Transitivity {
+    Explicit,
+    Transitive,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum OwnsFilter {
     Keys,
     All,

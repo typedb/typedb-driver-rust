@@ -26,11 +26,11 @@ use futures::{stream, Stream, StreamExt};
 use super::network::transmitter::TransactionTransmitter;
 use crate::{
     answer::{ConceptMap, Numeric},
-    common::Result,
+    common::{Result, Transitivity},
     concept::EntityType,
     connection::message::{
-        ConceptRequest, ConceptResponse, EntityTypeRequest, EntityTypeResponse, QueryRequest, QueryResponse,
-        ThingTypeRequest, ThingTypeResponse, TransactionRequest, TransactionResponse,
+        ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
+        TransactionRequest, TransactionResponse,
     },
     error::InternalError,
     Options, TransactionType,
@@ -137,38 +137,35 @@ impl TransactionStream {
     }
 
     pub(crate) async fn thing_type_delete(&self, label: String) -> Result {
-        match self.single(TransactionRequest::ThingType(ThingTypeRequest::Delete { label })).await? {
-            TransactionResponse::ThingType(ThingTypeResponse::Delete) => Ok(()),
+        match self.single(TransactionRequest::ThingType(ThingTypeRequest::ThingTypeDelete { label })).await? {
+            TransactionResponse::ThingType(ThingTypeResponse::ThingTypeDelete) => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
     pub(crate) async fn entity_type_get_supertype(&self, label: String) -> Result<EntityType> {
-        match self
-            .single(TransactionRequest::ThingType(ThingTypeRequest::EntityType(EntityTypeRequest::GetSupertype {
-                label,
-            })))
-            .await?
-        {
-            TransactionResponse::ThingType(ThingTypeResponse::EntityType(EntityTypeResponse::GetSupertype {
-                entity_type,
-            })) => Ok(entity_type),
+        match self.single(TransactionRequest::ThingType(ThingTypeRequest::EntityTypeGetSupertype { label })).await? {
+            TransactionResponse::ThingType(ThingTypeResponse::EntityTypeGetSupertype { entity_type }) => {
+                Ok(entity_type)
+            }
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) fn entity_type_get_subtypes(&self, label: String) -> Result<impl Stream<Item = Result<EntityType>>> {
-        Ok(self
-            .stream(TransactionRequest::ThingType(ThingTypeRequest::EntityType(EntityTypeRequest::GetSubtypes {
-                label,
-            })))?
-            .flat_map(|result| match result {
-                Ok(TransactionResponse::ThingType(ThingTypeResponse::EntityType(
-                    EntityTypeResponse::GetSubtypes { entity_types },
-                ))) => stream_iter(entity_types.into_iter().map(Ok)),
-                Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
-                Err(err) => stream_once(Err(err)),
-            }))
+    pub(crate) fn entity_type_get_subtypes(
+        &self,
+        label: String,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<EntityType>>> {
+        let stream = self
+            .stream(TransactionRequest::ThingType(ThingTypeRequest::EntityTypeGetSubtypes { label, transitivity }))?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(TransactionResponse::ThingType(ThingTypeResponse::EntityTypeGetSubtypes { entity_types })) => {
+                stream_iter(entity_types.into_iter().map(Ok))
+            }
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
     }
 
     async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
