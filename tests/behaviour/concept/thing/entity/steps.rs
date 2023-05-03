@@ -19,5 +19,18 @@
  * under the License.
  */
 
-mod thing;
-mod type_;
+use cucumber::{given, then, when};
+use futures::TryFutureExt;
+
+use crate::{behaviour::Context, generic_step_impl};
+
+generic_step_impl! {
+    #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance")]
+    async fn entity_type_create_new_instance(context: &mut Context, _var: String, type_label: String) {
+        let tx = context.transaction();
+        assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
+            assert!(entity_type.is_some());
+            entity_type.unwrap().create(tx).await
+        }).await.is_ok());
+    }
+}

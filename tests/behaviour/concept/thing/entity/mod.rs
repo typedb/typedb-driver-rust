@@ -19,5 +19,4 @@
  * under the License.
  */
 
-mod thing;
-mod type_;
+mod steps;

@@ -28,7 +28,7 @@ use typedb_protocol::transaction;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity},
-    concept::EntityType,
+    concept::{Entity, EntityType},
     Options, SessionType, TransactionType,
 };
 
@@ -194,8 +194,7 @@ pub(super) enum ThingTypeRequest {
     // ThingTypeSetPlays,
     // ThingTypeUnsetPlays,
     // ThingTypeGetSyntax,
-
-    // EntityTypeCreate,
+    EntityTypeCreate { label: String },
     EntityTypeGetSupertype { label: String },
     // EntityTypeSetSupertype,
     // EntityTypeGetSupertypes,
@@ -241,8 +240,7 @@ pub(super) enum ThingTypeResponse {
     // ThingTypeSetPlays,
     // ThingTypeUnsetPlays,
     // ThingTypeGetSyntax,
-
-    // EntityTypeCreate,
+    EntityTypeCreate { entity: Entity },
     EntityTypeGetSupertype { entity_type: EntityType },
     // EntityTypeSetSupertype,
     // EntityTypeGetSupertypes,

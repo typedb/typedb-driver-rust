@@ -27,7 +27,7 @@ use super::network::transmitter::TransactionTransmitter;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{Result, Transitivity},
-    concept::EntityType,
+    concept::{Entity, EntityType},
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
         TransactionRequest, TransactionResponse,
@@ -139,6 +139,13 @@ impl TransactionStream {
     pub(crate) async fn thing_type_delete(&self, label: String) -> Result {
         match self.single(TransactionRequest::ThingType(ThingTypeRequest::ThingTypeDelete { label })).await? {
             TransactionResponse::ThingType(ThingTypeResponse::ThingTypeDelete) => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn entity_type_create(&self, label: String) -> Result<Entity> {
+        match self.single(TransactionRequest::ThingType(ThingTypeRequest::EntityTypeCreate { label })).await? {
+            TransactionResponse::ThingType(ThingTypeResponse::EntityTypeCreate { entity }) => Ok(entity),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }

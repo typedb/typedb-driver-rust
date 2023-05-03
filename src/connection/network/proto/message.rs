@@ -31,7 +31,7 @@ use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{info::DatabaseInfo, RequestID, Result},
-    concept::EntityType,
+    concept::{Entity, EntityType},
     connection::{
         message::{
             ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
@@ -415,6 +415,9 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
             Self::ThingTypeDelete { label } => {
                 (thing_type::req::Req::ThingTypeDeleteReq(thing_type::delete::Req {}), label)
             }
+            Self::EntityTypeCreate { label } => {
+                (thing_type::req::Req::EntityTypeCreateReq(entity_type::create::Req {}), label)
+            }
             Self::EntityTypeGetSupertype { label } => {
                 (thing_type::req::Req::EntityTypeGetSupertypeReq(entity_type::get_supertype::Req {}), label)
             }
@@ -433,6 +436,11 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
     fn try_from_proto(proto: thing_type::Res) -> Result<Self> {
         match proto.res {
             Some(thing_type::res::Res::ThingTypeDeleteRes(_)) => Ok(Self::ThingTypeDelete),
+            Some(thing_type::res::Res::EntityTypeCreateRes(entity_type::create::Res { entity })) => {
+                Ok(Self::EntityTypeCreate {
+                    entity: Entity::try_from_proto(entity.ok_or(ConnectionError::MissingResponseField("entity_type"))?)?,
+                })
+            }
             Some(thing_type::res::Res::EntityTypeGetSupertypeRes(entity_type::get_supertype::Res { entity_type })) => {
                 Ok(Self::EntityTypeGetSupertype {
                     entity_type: EntityType::from_proto(

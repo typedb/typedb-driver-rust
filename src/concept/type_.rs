@@ -23,7 +23,7 @@ use std::fmt;
 
 use futures::Stream;
 
-use crate::{common::Transitivity, Result, Transaction};
+use crate::{common::Transitivity, concept::Entity, Result, Transaction};
 
 #[derive(Clone, Debug)]
 pub struct RootThingType;
@@ -50,6 +50,10 @@ impl EntityType {
 
     pub async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().entity_type_delete(self.clone()).await
+    }
+
+    pub async fn create(&mut self, transaction: &Transaction<'_>) -> Result<Entity> {
+        transaction.concept().entity_type_create(self.clone()).await
     }
 
     pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {

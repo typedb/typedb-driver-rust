@@ -23,7 +23,12 @@ use std::sync::Arc;
 
 use futures::Stream;
 
-use crate::{common::Transitivity, concept::EntityType, connection::TransactionStream, Result};
+use crate::{
+    common::Transitivity,
+    concept::{Entity, EntityType},
+    connection::TransactionStream,
+    Result,
+};
 
 #[derive(Debug)]
 pub struct ConceptManager {
@@ -45,6 +50,10 @@ impl ConceptManager {
 
     pub(crate) async fn entity_type_delete(&self, entity_type: EntityType) -> Result {
         self.transaction_stream.thing_type_delete(entity_type.label).await
+    }
+
+    pub(crate) async fn entity_type_create(&self, entity_type: EntityType) -> Result<Entity> {
+        self.transaction_stream.entity_type_create(entity_type.label).await
     }
 
     pub(crate) async fn entity_type_get_supertype(&self, entity_type: EntityType) -> Result<EntityType> {

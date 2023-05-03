@@ -21,7 +21,6 @@
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::{TryFutureExt, TryStreamExt};
-use typedb_client::Result as TypeDBResult;
 
 use crate::{
     behaviour::{util::iter_table, Context},
