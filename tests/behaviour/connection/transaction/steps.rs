@@ -20,12 +20,20 @@
  */
 
 use cucumber::{gherkin::Step, given, then, when};
-use typedb_client::TransactionType;
+use typedb_client::{Options, TransactionType};
 
 use crate::{
     behaviour::{parameter::TransactionTypeParam, util::iter_table, Context},
     generic_step_impl,
 };
+
+fn parse_transaction_type(type_: &str) -> TransactionType {
+    match type_ {
+        "write" => TransactionType::Write,
+        "read" => TransactionType::Read,
+        _ => unreachable!("`{type_}` is not a valid transaction type"),
+    }
+}
 
 generic_step_impl! {
     // =============================================//

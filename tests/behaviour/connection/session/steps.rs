@@ -113,4 +113,9 @@ generic_step_impl! {
         // }
         // optionSetters.get(option).accept(sessionOptions, value);
     }
+
+    #[step(expr = "connection close all sessions")]
+    async fn connection_close_all_sessions(context: &mut Context) {
+        context.session_trackers.clear();
+    }
 }

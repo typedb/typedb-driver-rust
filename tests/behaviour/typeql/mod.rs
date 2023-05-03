@@ -20,3 +20,23 @@
  */
 
 mod steps;
+use serial_test::serial;
+
+use crate::behaviour::Context;
+
+#[tokio::test]
+#[serial]
+async fn test() {
+    // Bazel specific path: when running the test in bazel, the external data from
+    // @vaticle_typedb_behaviour is stored in a directory that is a sibling to
+    // the working directory.
+    // assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/define.feature").await);
+    // assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/undefine.feature").await);
+    // assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/insert.feature").await);
+    // assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/delete.feature").await);
+    // assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/update.feature").await);
+    // assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/match.feature").await);
+    assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/get.feature").await);
+    // assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/rule-validation.feature").await);
+
+}
