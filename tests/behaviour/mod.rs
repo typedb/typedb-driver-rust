@@ -64,7 +64,7 @@ impl Context {
         Ok(())
     }
 
-    fn transaction(&self) -> &Transaction {
+    pub fn transaction(&self) -> &Transaction {
         self.session_trackers.get(0).unwrap().transaction()
     }
 
