@@ -68,13 +68,13 @@ impl SessionTracker {
     pub fn transaction(&self) -> &Transaction {
         // SAFETY: the returned transaction borrows SessionTracker, which from the POV of lifetimes is equivalent to
         // borrowing SessionTracker::session.
-        unsafe { std::mem::transmute(self.transactions.get(0).unwrap()) }
+        unsafe { std::mem::transmute(self.transactions.last().unwrap()) }
     }
 
     pub fn take_transaction(&mut self) -> Transaction {
         // SAFETY: the returned transaction borrows SessionTracker, which from the POV of lifetimes is equivalent to
         // borrowing SessionTracker::session.
-        unsafe { std::mem::transmute(self.transactions.remove(0)) }
+        unsafe { std::mem::transmute(self.transactions.pop()) }
     }
 
     pub fn transactions(&self) -> &Vec<Transaction> {
