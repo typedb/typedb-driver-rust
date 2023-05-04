@@ -438,7 +438,9 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
             Some(thing_type::res::Res::ThingTypeDeleteRes(_)) => Ok(Self::ThingTypeDelete),
             Some(thing_type::res::Res::EntityTypeCreateRes(entity_type::create::Res { entity })) => {
                 Ok(Self::EntityTypeCreate {
-                    entity: Entity::try_from_proto(entity.ok_or(ConnectionError::MissingResponseField("entity_type"))?)?,
+                    entity: Entity::try_from_proto(
+                        entity.ok_or(ConnectionError::MissingResponseField("entity_type"))?,
+                    )?,
                 })
             }
             Some(thing_type::res::Res::EntityTypeGetSupertypeRes(entity_type::get_supertype::Res { entity_type })) => {
