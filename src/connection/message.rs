@@ -182,9 +182,9 @@ pub(super) enum ConceptResponse {
 #[derive(Debug)]
 pub(super) enum ThingTypeRequest {
     ThingTypeDelete { label: String },
-    // ThingTypeSetLabel,
-    // ThingTypeSetAbstract,
-    // ThingTypeUnsetAbstract,
+    ThingTypeSetLabel { old_label: String, new_label: String },
+    ThingTypeSetAbstract { label: String },
+    ThingTypeUnsetAbstract { label: String },
     // ThingTypeGetOwns,
     // ThingTypeGetOwnsOverridden,
     // ThingTypeSetOwns,
@@ -196,8 +196,8 @@ pub(super) enum ThingTypeRequest {
     // ThingTypeGetSyntax,
     EntityTypeCreate { label: String },
     EntityTypeGetSupertype { label: String },
-    // EntityTypeSetSupertype,
-    // EntityTypeGetSupertypes,
+    EntityTypeSetSupertype { label: String, supertype_label: String },
+    EntityTypeGetSupertypes { label: String },
     EntityTypeGetSubtypes { label: String, transitivity: Transitivity },
     // EntityTypeGetInstances,
 
@@ -228,9 +228,9 @@ pub(super) enum ThingTypeRequest {
 #[derive(Debug)]
 pub(super) enum ThingTypeResponse {
     ThingTypeDelete,
-    // ThingTypeSetLabel,
-    // ThingTypeSetAbstract,
-    // ThingTypeUnsetAbstract,
+    ThingTypeSetLabel,
+    ThingTypeSetAbstract,
+    ThingTypeUnsetAbstract,
     // ThingTypeGetOwns,
     // ThingTypeGetOwnsOverridden,
     // ThingTypeSetOwns,
@@ -241,10 +241,10 @@ pub(super) enum ThingTypeResponse {
     // ThingTypeUnsetPlays,
     // ThingTypeGetSyntax,
     EntityTypeCreate { entity: Entity },
-    EntityTypeGetSupertype { entity_type: EntityType },
-    // EntityTypeSetSupertype,
-    // EntityTypeGetSupertypes,
-    EntityTypeGetSubtypes { entity_types: Vec<EntityType> },
+    EntityTypeGetSupertype { supertype: EntityType },
+    EntityTypeSetSupertype,
+    EntityTypeGetSupertypes { supertypes: Vec<EntityType> },
+    EntityTypeGetSubtypes { subtypes: Vec<EntityType> },
     // EntityTypeGetInstances,
 
     // RelationTypeCreate,

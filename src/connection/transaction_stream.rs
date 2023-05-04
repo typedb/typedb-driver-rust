@@ -143,6 +143,30 @@ impl TransactionStream {
         }
     }
 
+    pub(crate) async fn thing_type_set_label(&self, old_label: String, new_label: String) -> Result {
+        match self
+            .single(TransactionRequest::ThingType(ThingTypeRequest::ThingTypeSetLabel { old_label, new_label }))
+            .await?
+        {
+            TransactionResponse::ThingType(ThingTypeResponse::ThingTypeSetLabel) => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn thing_type_set_abstract(&self, label: String) -> Result {
+        match self.single(TransactionRequest::ThingType(ThingTypeRequest::ThingTypeSetAbstract { label })).await? {
+            TransactionResponse::ThingType(ThingTypeResponse::ThingTypeSetAbstract) => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn thing_type_unset_abstract(&self, label: String) -> Result {
+        match self.single(TransactionRequest::ThingType(ThingTypeRequest::ThingTypeUnsetAbstract { label })).await? {
+            TransactionResponse::ThingType(ThingTypeResponse::ThingTypeUnsetAbstract) => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
     pub(crate) async fn entity_type_create(&self, label: String) -> Result<Entity> {
         match self.single(TransactionRequest::ThingType(ThingTypeRequest::EntityTypeCreate { label })).await? {
             TransactionResponse::ThingType(ThingTypeResponse::EntityTypeCreate { entity }) => Ok(entity),
@@ -152,11 +176,32 @@ impl TransactionStream {
 
     pub(crate) async fn entity_type_get_supertype(&self, label: String) -> Result<EntityType> {
         match self.single(TransactionRequest::ThingType(ThingTypeRequest::EntityTypeGetSupertype { label })).await? {
-            TransactionResponse::ThingType(ThingTypeResponse::EntityTypeGetSupertype { entity_type }) => {
+            TransactionResponse::ThingType(ThingTypeResponse::EntityTypeGetSupertype { supertype: entity_type }) => {
                 Ok(entity_type)
             }
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
+    }
+
+    pub(crate) async fn entity_type_set_supertype(&self, label: String, supertype_label: String) -> Result {
+        match self
+            .single(TransactionRequest::ThingType(ThingTypeRequest::EntityTypeSetSupertype { label, supertype_label }))
+            .await?
+        {
+            TransactionResponse::ThingType(ThingTypeResponse::EntityTypeSetSupertype) => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn entity_type_get_supertypes(&self, label: String) -> Result<impl Stream<Item = Result<EntityType>>> {
+        let stream = self.stream(TransactionRequest::ThingType(ThingTypeRequest::EntityTypeGetSupertypes { label }))?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(TransactionResponse::ThingType(ThingTypeResponse::EntityTypeGetSupertypes {
+                supertypes: entity_types,
+            })) => stream_iter(entity_types.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
     }
 
     pub(crate) fn entity_type_get_subtypes(
@@ -167,7 +212,7 @@ impl TransactionStream {
         let stream = self
             .stream(TransactionRequest::ThingType(ThingTypeRequest::EntityTypeGetSubtypes { label, transitivity }))?;
         Ok(stream.flat_map(|result| match result {
-            Ok(TransactionResponse::ThingType(ThingTypeResponse::EntityTypeGetSubtypes { entity_types })) => {
+            Ok(TransactionResponse::ThingType(ThingTypeResponse::EntityTypeGetSubtypes { subtypes: entity_types })) => {
                 stream_iter(entity_types.into_iter().map(Ok))
             }
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),

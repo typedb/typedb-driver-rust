@@ -52,7 +52,19 @@ impl EntityType {
         transaction.concept().entity_type_delete(self.clone()).await
     }
 
-    pub async fn create(&mut self, transaction: &Transaction<'_>) -> Result<Entity> {
+    pub async fn set_label(&mut self, transaction: &Transaction<'_>, new_label: String) -> Result {
+        transaction.concept().entity_type_set_label(self.clone(), new_label).await
+    }
+
+    pub async fn set_abstract(&mut self, transaction: &Transaction<'_>) -> Result {
+        transaction.concept().entity_type_set_abstract(self.clone()).await
+    }
+
+    pub async fn unset_abstract(&mut self, transaction: &Transaction<'_>) -> Result {
+        transaction.concept().entity_type_unset_abstract(self.clone()).await
+    }
+
+    pub async fn create(&self, transaction: &Transaction<'_>) -> Result<Entity> {
         transaction.concept().entity_type_create(self.clone()).await
     }
 
@@ -60,11 +72,19 @@ impl EntityType {
         transaction.concept().get_entity_type(self.label.clone()).await.map(|res| res.is_some())
     }
 
-    pub async fn get_supertype(&mut self, transaction: &Transaction<'_>) -> Result<Self> {
+    pub async fn get_supertype(&self, transaction: &Transaction<'_>) -> Result<Self> {
         transaction.concept().entity_type_get_supertype(self.clone()).await
     }
 
-    pub fn get_subtypes(&mut self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
+    pub async fn set_supertype(&mut self, transaction: &Transaction<'_>, supertype_label: String) -> Result {
+        transaction.concept().entity_type_set_supertype(self.clone(), supertype_label).await
+    }
+
+    pub fn get_supertypes(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
+        transaction.concept().entity_type_get_supertypes(self.clone())
+    }
+
+    pub fn get_subtypes(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
         transaction.concept().entity_type_get_subtypes(self.clone(), Transitivity::Transitive)
     }
 }

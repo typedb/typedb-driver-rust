@@ -24,7 +24,7 @@ use std::time::Duration;
 use itertools::Itertools;
 use typedb_protocol::{
     concept_manager, database, database_manager, entity_type, query_manager, r#type, server_manager, session,
-    thing_type, transaction,
+    thing_type, transaction, EntityType as EntityTypeProto,
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
@@ -415,11 +415,29 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
             Self::ThingTypeDelete { label } => {
                 (thing_type::req::Req::ThingTypeDeleteReq(thing_type::delete::Req {}), label)
             }
+            Self::ThingTypeSetLabel { old_label, new_label } => {
+                (thing_type::req::Req::ThingTypeSetLabelReq(thing_type::set_label::Req { label: new_label }), old_label)
+            }
+            Self::ThingTypeSetAbstract { label } => {
+                (thing_type::req::Req::ThingTypeSetAbstractReq(thing_type::set_abstract::Req {}), label)
+            }
+            Self::ThingTypeUnsetAbstract { label } => {
+                (thing_type::req::Req::ThingTypeUnsetAbstractReq(thing_type::unset_abstract::Req {}), label)
+            }
             Self::EntityTypeCreate { label } => {
                 (thing_type::req::Req::EntityTypeCreateReq(entity_type::create::Req {}), label)
             }
             Self::EntityTypeGetSupertype { label } => {
                 (thing_type::req::Req::EntityTypeGetSupertypeReq(entity_type::get_supertype::Req {}), label)
+            }
+            Self::EntityTypeSetSupertype { label, supertype_label } => (
+                thing_type::req::Req::EntityTypeSetSupertypeReq(entity_type::set_supertype::Req {
+                    entity_type: Some(EntityTypeProto { label: supertype_label, ..Default::default() }),
+                }),
+                label,
+            ),
+            Self::EntityTypeGetSupertypes { label } => {
+                (thing_type::req::Req::EntityTypeGetSupertypesReq(entity_type::get_supertypes::Req {}), label)
             }
             Self::EntityTypeGetSubtypes { label, transitivity } => (
                 thing_type::req::Req::EntityTypeGetSubtypesReq(entity_type::get_subtypes::Req {
@@ -436,6 +454,9 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
     fn try_from_proto(proto: thing_type::Res) -> Result<Self> {
         match proto.res {
             Some(thing_type::res::Res::ThingTypeDeleteRes(_)) => Ok(Self::ThingTypeDelete),
+            Some(thing_type::res::Res::ThingTypeSetLabelRes(_)) => Ok(Self::ThingTypeSetLabel),
+            Some(thing_type::res::Res::ThingTypeSetAbstractRes(_)) => Ok(Self::ThingTypeSetAbstract),
+            Some(thing_type::res::Res::ThingTypeUnsetAbstractRes(_)) => Ok(Self::ThingTypeUnsetAbstract),
             Some(thing_type::res::Res::EntityTypeCreateRes(entity_type::create::Res { entity })) => {
                 Ok(Self::EntityTypeCreate {
                     entity: Entity::try_from_proto(
@@ -445,11 +466,12 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
             }
             Some(thing_type::res::Res::EntityTypeGetSupertypeRes(entity_type::get_supertype::Res { entity_type })) => {
                 Ok(Self::EntityTypeGetSupertype {
-                    entity_type: EntityType::from_proto(
+                    supertype: EntityType::from_proto(
                         entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?,
                     ),
                 })
             }
+            Some(thing_type::res::Res::EntityTypeSetSupertypeRes(_)) => Ok(Self::EntityTypeSetSupertype),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
@@ -459,10 +481,15 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
 impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
     fn try_from_proto(proto: thing_type::ResPart) -> Result<Self> {
         match proto.res {
+            Some(thing_type::res_part::Res::EntityTypeGetSupertypesResPart(entity_type::get_supertypes::ResPart {
+                entity_types,
+            })) => Ok(Self::EntityTypeGetSupertypes {
+                supertypes: entity_types.into_iter().map(EntityType::from_proto).collect(),
+            }),
             Some(thing_type::res_part::Res::EntityTypeGetSubtypesResPart(entity_type::get_subtypes::ResPart {
                 entity_types,
             })) => Ok(Self::EntityTypeGetSubtypes {
-                entity_types: entity_types.into_iter().map(EntityType::from_proto).collect(),
+                subtypes: entity_types.into_iter().map(EntityType::from_proto).collect(),
             }),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),

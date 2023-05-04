@@ -75,56 +75,110 @@ generic_step_impl! {
         }
     }
 
+    #[step(regex = r"^entity\( ?(\S+) ?\) set label: (\S+)$")]
+    async fn entity_type_set_label(context: &mut Context, type_label: String, new_label: String) {
+        let tx = context.transaction();
+        assert!(get_entity_type(tx, type_label).await.set_label(tx, new_label).await.is_ok());
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get label: (\S+)$")]
+    async fn entity_type_get_label(context: &mut Context, type_label: String, get_label: String) {
+        assert_eq!(get_entity_type(context.transaction(), type_label).await.label, get_label);
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) set abstract: (\S+)$")]
+    async fn entity_type_set_abstract(context: &mut Context, type_label: String, is_abstract: bool) {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await;
+        if is_abstract {
+            assert!(entity_type.set_abstract(tx).await.is_ok());
+        } else {
+            assert!(entity_type.unset_abstract(tx).await.is_ok());
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) set abstract: (\S+); throws exception$")]
+    async fn entity_type_set_abstract_throws(context: &mut Context, type_label: String, is_abstract: bool) {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await;
+        if is_abstract {
+            assert!(entity_type.set_abstract(tx).await.is_err());
+        } else {
+            assert!(entity_type.unset_abstract(tx).await.is_err());
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) is abstract: (\S+)$")]
+    async fn entity_type_is_abstract(context: &mut Context, type_label: String, is_abstract: bool) {
+        assert_eq!(get_entity_type(context.transaction(), type_label).await.is_abstract, is_abstract);
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) set supertype: (\S+)$")]
+    async fn entity_set_supertype(context: &mut Context, type_label: String, supertype: String) {
+        let tx = context.transaction();
+        assert!(get_entity_type(tx, type_label).await.set_supertype(tx, supertype).await.is_ok());
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) set supertype: (\S+); throws exception$")]
+    async fn entity_set_supertype_throws(context: &mut Context, type_label: String, supertype: String) {
+        let tx = context.transaction();
+        assert!(try_get_entity_type(tx, type_label)
+            .and_then(|mut entity_type| async move { entity_type.set_supertype(tx, supertype).await })
+            .await
+            .is_err());
+    }
+
     #[step(regex = r"^entity\( ?(\S+) ?\) get supertype: (\S+)$")]
     async fn entity_get_supertype(context: &mut Context, type_label: String, supertype: String) {
         let tx = context.transaction();
-        assert_eq!(
-            tx.concept()
-                .get_entity_type(type_label)
-                .and_then(|entity_type| async move {
-                    assert!(entity_type.is_some());
-                    entity_type.unwrap().get_supertype(tx).await
-                })
-                .await
-                .unwrap()
-                .label,
-            supertype
-        );
+        assert_eq!(get_entity_type(tx, type_label).await.get_supertype(tx).await.unwrap().label, supertype);
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get supertypes contain:")]
+    async fn entity_get_supertypes_contain(context: &mut Context, step: &Step, type_label: String) {
+        let tx = context.transaction();
+        let stream = get_entity_type(tx, type_label).await.get_supertypes(tx);
+        assert!(stream.is_ok());
+        let actuals = stream.unwrap().map_ok(|et| et.label).try_collect::<Vec<_>>().await;
+        assert!(actuals.is_ok());
+        let actuals = actuals.unwrap();
+        for supertype in iter_table(step) {
+            assert!(actuals.iter().any(|actual| actual == supertype));
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get supertypes do not contain:")]
+    async fn entity_get_supertypes_do_not_contain(context: &mut Context, step: &Step, type_label: String) {
+        let tx = context.transaction();
+        let stream = get_entity_type(tx, type_label).await.get_supertypes(tx);
+        assert!(stream.is_ok());
+        let actuals = stream.unwrap().map_ok(|et| et.label).try_collect::<Vec<_>>().await;
+        assert!(actuals.is_ok());
+        let actuals = actuals.unwrap();
+        for supertype in iter_table(step) {
+            assert!(actuals.iter().all(|actual| actual != supertype));
+        }
     }
 
     #[step(regex = r"^entity\( ?(\S+) ?\) get subtypes contain:")]
     async fn entity_get_subtypes_contain(context: &mut Context, step: &Step, type_label: String) {
         let tx = context.transaction();
-        let actuals = tx
-            .concept()
-            .get_entity_type(type_label)
-            .and_then(|entity_type| async move {
-                assert!(entity_type.is_some());
-                let stream = entity_type.unwrap().get_subtypes(tx);
-                assert!(stream.is_ok());
-                stream.unwrap().map_ok(|et| et.label).try_collect::<Vec<_>>().await
-            })
-            .await;
+        let stream = get_entity_type(tx, type_label).await.get_subtypes(tx);
+        assert!(stream.is_ok());
+        let actuals = stream.unwrap().map_ok(|et| et.label).try_collect::<Vec<_>>().await;
         assert!(actuals.is_ok());
         let actuals = actuals.unwrap();
         for subtype in iter_table(step) {
-            assert!(actuals.iter().any(|actual| actual != subtype));
+            assert!(actuals.iter().any(|actual| actual == subtype));
         }
     }
 
     #[step(regex = r"^entity\( ?(\S+) ?\) get subtypes do not contain:")]
     async fn entity_get_subtypes_do_not_contain(context: &mut Context, step: &Step, type_label: String) {
         let tx = context.transaction();
-        let actuals = tx
-            .concept()
-            .get_entity_type(type_label)
-            .and_then(|entity_type| async move {
-                assert!(entity_type.is_some());
-                let stream = entity_type.unwrap().get_subtypes(tx);
-                assert!(stream.is_ok());
-                stream.unwrap().map_ok(|et| et.label).try_collect::<Vec<_>>().await
-            })
-            .await;
+        let stream = get_entity_type(tx, type_label).await.get_subtypes(tx);
+        assert!(stream.is_ok());
+        let actuals = stream.unwrap().map_ok(|et| et.label).try_collect::<Vec<_>>().await;
         assert!(actuals.is_ok());
         let actuals = actuals.unwrap();
         for subtype in iter_table(step) {
