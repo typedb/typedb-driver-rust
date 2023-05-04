@@ -21,34 +21,47 @@
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::{TryFutureExt, TryStreamExt};
+use typedb_client::{concept::EntityType, Result as TypeDBResult, Transaction};
 
 use crate::{
     behaviour::{util::iter_table, Context},
     generic_step_impl,
 };
 
+async fn get_entity_type(tx: &Transaction<'_>, type_label: String) -> EntityType {
+    let entity_type = tx.concept().get_entity_type(type_label).await;
+    assert!(entity_type.is_ok());
+    let entity_type = entity_type.unwrap();
+    assert!(entity_type.is_some());
+    entity_type.unwrap()
+}
+
+async fn try_get_entity_type(tx: &Transaction<'_>, type_label: String) -> TypeDBResult<EntityType> {
+    tx.concept().get_entity_type(type_label).await.map(|entity_type| {
+        assert!(entity_type.is_some());
+        entity_type.unwrap()
+    })
+}
+
 generic_step_impl! {
+    #[step(expr = "put entity type: {word}")]
+    async fn put_entity_type(context: &mut Context, type_label: String) {
+        context.transaction().concept().put_entity_type(type_label).await.unwrap();
+    }
+
     #[step(expr = "delete entity type: {word}")]
     async fn delete_entity_type(context: &mut Context, type_label: String) {
         let tx = context.transaction();
-        assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
-            assert!(entity_type.is_some());
-            entity_type.unwrap().delete(tx).await
-        }).await.is_ok());
-   }
+        assert!(get_entity_type(tx, type_label).await.delete(tx).await.is_ok());
+    }
 
     #[step(expr = "delete entity type: {word}; throws exception")]
     async fn delete_entity_type_throws_exception(context: &mut Context, type_label: String) {
         let tx = context.transaction();
-        assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
-            assert!(entity_type.is_some());
-            entity_type.unwrap().delete(tx).await
-        }).await.is_err()); // FIXME WET
-    }
-
-    #[step(expr = "put entity type: {word}")]
-    async fn put_entity_type(context: &mut Context, type_label: String) {
-        context.transaction().concept().put_entity_type(type_label).await.unwrap();
+        assert!(try_get_entity_type(tx, type_label)
+            .and_then(|mut entity_type| async move { entity_type.delete(tx).await })
+            .await
+            .is_err());
     }
 
     #[step(regex = r"^entity\( ?(\S+) ?\) is null: (\S+)$")]
@@ -71,9 +84,32 @@ generic_step_impl! {
                 .and_then(|entity_type| async move {
                     assert!(entity_type.is_some());
                     entity_type.unwrap().get_supertype(tx).await
-                }).await.unwrap().label,
+                })
+                .await
+                .unwrap()
+                .label,
             supertype
         );
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get subtypes contain:")]
+    async fn entity_get_subtypes_contain(context: &mut Context, step: &Step, type_label: String) {
+        let tx = context.transaction();
+        let actuals = tx
+            .concept()
+            .get_entity_type(type_label)
+            .and_then(|entity_type| async move {
+                assert!(entity_type.is_some());
+                let stream = entity_type.unwrap().get_subtypes(tx);
+                assert!(stream.is_ok());
+                stream.unwrap().map_ok(|et| et.label).try_collect::<Vec<_>>().await
+            })
+            .await;
+        assert!(actuals.is_ok());
+        let actuals = actuals.unwrap();
+        for subtype in iter_table(step) {
+            assert!(actuals.iter().any(|actual| actual != subtype));
+        }
     }
 
     #[step(regex = r"^entity\( ?(\S+) ?\) get subtypes do not contain:")]
