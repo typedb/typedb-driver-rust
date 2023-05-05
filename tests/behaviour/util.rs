@@ -19,8 +19,32 @@
  * under the License.
  */
 
+use std::str::FromStr;
+
 use cucumber::gherkin::Step;
+use typedb_client::TransactionType;
 
 pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
     step.table().unwrap().rows.iter().flatten().map(String::as_str)
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct TransactionTypeParse(TransactionType);
+
+impl Into<TransactionType> for TransactionTypeParse {
+    fn into(self) -> TransactionType {
+        self.0
+    }
+}
+
+impl FromStr for TransactionTypeParse {
+    type Err = ();
+
+    fn from_str(type_: &str) -> Result<Self, Self::Err> {
+        Ok(match type_ {
+            "write" => Self(TransactionType::Write),
+            "read" => Self(TransactionType::Read),
+            _ => unreachable!("`{type_}` is not a valid transaction type"),
+        })
+    }
 }
