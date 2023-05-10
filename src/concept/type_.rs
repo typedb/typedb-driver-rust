@@ -23,7 +23,7 @@ use std::fmt;
 
 use futures::Stream;
 
-use crate::{common::Transitivity, concept::Entity, Result, Transaction};
+use crate::{common::Transitivity, concept::Entity, Annotation, Result, Transaction};
 
 #[derive(Clone, Debug)]
 pub struct RootThingType;
@@ -64,6 +64,41 @@ impl EntityType {
         transaction.concept().entity_type_unset_abstract(self.clone()).await
     }
 
+    pub fn get_owns(
+        &self,
+        transaction: &Transaction<'_>,
+        value_type: Option<ValueType>,
+        transitivity: Transitivity,
+        annotation_filter: &[Annotation],
+    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+        transaction.concept().entity_type_get_owns(self.clone(), value_type, transitivity, annotation_filter.to_vec())
+    }
+
+    pub async fn get_owns_overridden(
+        &self,
+        transaction: &Transaction<'_>,
+        overridden_attribute_type: AttributeType,
+    ) -> Result<Option<AttributeType>> {
+        transaction.concept().entity_type_get_owns_overridden(self.clone(), overridden_attribute_type).await
+    }
+
+    pub async fn set_owns(
+        &mut self,
+        transaction: &Transaction<'_>,
+        attribute_type: AttributeType,
+        overridden_attribute_type: Option<AttributeType>,
+        annotations: &[Annotation],
+    ) -> Result {
+        transaction
+            .concept()
+            .entity_type_set_owns(self.clone(), attribute_type, overridden_attribute_type, annotations.to_vec())
+            .await
+    }
+
+    pub async fn unset_owns(&mut self, transaction: &Transaction<'_>, attribute_type: AttributeType) -> Result {
+        transaction.concept().entity_type_unset_owns(self.clone(), attribute_type).await
+    }
+
     pub async fn create(&self, transaction: &Transaction<'_>) -> Result<Entity> {
         transaction.concept().entity_type_create(self.clone()).await
     }
@@ -76,8 +111,8 @@ impl EntityType {
         transaction.concept().entity_type_get_supertype(self.clone()).await
     }
 
-    pub async fn set_supertype(&mut self, transaction: &Transaction<'_>, supertype_label: String) -> Result {
-        transaction.concept().entity_type_set_supertype(self.clone(), supertype_label).await
+    pub async fn set_supertype(&mut self, transaction: &Transaction<'_>, supertype: EntityType) -> Result {
+        transaction.concept().entity_type_set_supertype(self.clone(), supertype).await
     }
 
     pub fn get_supertypes(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
@@ -92,27 +127,31 @@ impl EntityType {
 #[derive(Clone, Debug)]
 pub struct RelationType {
     pub label: String,
+    pub is_root: bool,
+    pub is_abstract: bool,
 }
 
 impl RelationType {
-    pub fn new(label: String) -> Self {
-        Self { label }
+    pub fn new(label: String, is_root: bool, is_abstract: bool) -> Self {
+        Self { label, is_root, is_abstract }
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct AttributeType {
     pub label: String,
+    pub is_root: bool,
+    pub is_abstract: bool,
     pub value_type: ValueType,
 }
 
 impl AttributeType {
-    pub fn new(label: String, value_type: ValueType) -> Self {
-        Self { label, value_type }
+    pub fn new(label: String, is_root: bool, is_abstract: bool, value_type: ValueType) -> Self {
+        Self { label, is_root, is_abstract, value_type }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum ValueType {
     Object,
     Boolean,

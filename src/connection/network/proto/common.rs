@@ -19,25 +19,28 @@
  * under the License.
  */
 
-use typedb_protocol::{r#type::Transitivity as TransitivityProto, session, transaction, Options as OptionsProto};
+use typedb_protocol::{
+    r#type::{Annotation as AnnotationProto, Transitivity as TransitivityProto},
+    session, transaction, Options as OptionsProto,
+};
 
 use super::IntoProto;
-use crate::{common::Transitivity, Options, SessionType, TransactionType};
+use crate::{Annotation, Options, SessionType, TransactionType, Transitivity};
 
-impl IntoProto<session::Type> for SessionType {
-    fn into_proto(self) -> session::Type {
+impl IntoProto<i32> for SessionType {
+    fn into_proto(self) -> i32 {
         match self {
-            Self::Data => session::Type::Data,
-            Self::Schema => session::Type::Schema,
+            Self::Data => session::Type::Data.into(),
+            Self::Schema => session::Type::Schema.into(),
         }
     }
 }
 
-impl IntoProto<transaction::Type> for TransactionType {
-    fn into_proto(self) -> transaction::Type {
+impl IntoProto<i32> for TransactionType {
+    fn into_proto(self) -> i32 {
         match self {
-            Self::Read => transaction::Type::Read,
-            Self::Write => transaction::Type::Write,
+            Self::Read => transaction::Type::Read.into(),
+            Self::Write => transaction::Type::Write.into(),
         }
     }
 }
@@ -59,11 +62,20 @@ impl IntoProto<OptionsProto> for Options {
     }
 }
 
-impl IntoProto<TransitivityProto> for Transitivity {
-    fn into_proto(self) -> TransitivityProto {
+impl IntoProto<i32> for Transitivity {
+    fn into_proto(self) -> i32 {
         match self {
-            Self::Explicit => TransitivityProto::Explicit,
-            Self::Transitive => TransitivityProto::Transitive,
+            Self::Explicit => TransitivityProto::Explicit.into(),
+            Self::Transitive => TransitivityProto::Transitive.into(),
+        }
+    }
+}
+
+impl IntoProto<i32> for Annotation {
+    fn into_proto(self) -> i32 {
+        match self {
+            Self::Key => AnnotationProto::Key.into(),
+            Self::Unique => AnnotationProto::Unique.into(),
         }
     }
 }

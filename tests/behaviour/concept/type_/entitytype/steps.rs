@@ -21,7 +21,7 @@
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::{TryFutureExt, TryStreamExt};
-use typedb_client::{concept::EntityType, Result as TypeDBResult, Transaction};
+use typedb_client::{concept::EntityType, Annotation::Key, Result as TypeDBResult, Transaction};
 
 use crate::{
     behaviour::{util::iter_table, Context},
@@ -30,7 +30,7 @@ use crate::{
 
 async fn get_entity_type(tx: &Transaction<'_>, type_label: String) -> EntityType {
     let entity_type = tx.concept().get_entity_type(type_label).await;
-    assert!(entity_type.is_ok());
+    assert!(entity_type.is_ok(), "{entity_type:?}");
     let entity_type = entity_type.unwrap();
     assert!(entity_type.is_some());
     entity_type.unwrap()
@@ -114,16 +114,19 @@ generic_step_impl! {
     }
 
     #[step(regex = r"^entity\( ?(\S+) ?\) set supertype: (\S+)$")]
-    async fn entity_set_supertype(context: &mut Context, type_label: String, supertype: String) {
+    async fn entity_set_supertype(context: &mut Context, type_label: String, supertype_label: String) {
         let tx = context.transaction();
+        let supertype = get_entity_type(tx, supertype_label).await;
         assert!(get_entity_type(tx, type_label).await.set_supertype(tx, supertype).await.is_ok());
     }
 
     #[step(regex = r"^entity\( ?(\S+) ?\) set supertype: (\S+); throws exception$")]
-    async fn entity_set_supertype_throws(context: &mut Context, type_label: String, supertype: String) {
+    async fn entity_set_supertype_throws(context: &mut Context, type_label: String, supertype_label: String) {
         let tx = context.transaction();
+        let supertype = try_get_entity_type(tx, supertype_label).await;
+        assert!(supertype.is_ok());
         assert!(try_get_entity_type(tx, type_label)
-            .and_then(|mut entity_type| async move { entity_type.set_supertype(tx, supertype).await })
+            .and_then(|mut entity_type| async move { entity_type.set_supertype(tx, supertype.unwrap()).await })
             .await
             .is_err());
     }

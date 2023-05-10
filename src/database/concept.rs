@@ -25,9 +25,9 @@ use futures::Stream;
 
 use crate::{
     common::Transitivity,
-    concept::{Entity, EntityType},
+    concept::{AttributeType, Entity, EntityType, ValueType},
     connection::TransactionStream,
-    Result,
+    Annotation, Result,
 };
 
 #[derive(Debug)]
@@ -48,6 +48,10 @@ impl ConceptManager {
         self.transaction_stream.put_entity_type(label).await
     }
 
+    pub async fn put_attribute_type(&self, label: String, value_type: ValueType) -> Result<AttributeType> {
+        self.transaction_stream.put_attribute_type(label, value_type).await
+    }
+
     pub(crate) async fn entity_type_delete(&self, entity_type: EntityType) -> Result {
         self.transaction_stream.thing_type_delete(entity_type.label).await
     }
@@ -64,6 +68,45 @@ impl ConceptManager {
         self.transaction_stream.thing_type_unset_abstract(entity_type.label).await
     }
 
+    pub fn entity_type_get_owns(
+        &self,
+        entity_type: EntityType,
+        value_type: Option<ValueType>,
+        transitivity: Transitivity,
+        annotation_filter: Vec<Annotation>,
+    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+        self.transaction_stream.thing_type_get_owns(entity_type.label, value_type, transitivity, annotation_filter)
+    }
+
+    pub async fn entity_type_get_owns_overridden(
+        &self,
+        entity_type: EntityType,
+        overridden_attribute_type: AttributeType,
+    ) -> Result<Option<AttributeType>> {
+        self.transaction_stream.thing_type_get_owns_overridden(entity_type.label, overridden_attribute_type.label).await
+    }
+
+    pub async fn entity_type_set_owns(
+        &self,
+        entity_type: EntityType,
+        attribute_type: AttributeType,
+        overridden_attribute_type: Option<AttributeType>,
+        annotations: Vec<Annotation>,
+    ) -> Result {
+        self.transaction_stream
+            .thing_type_set_owns(
+                entity_type.label,
+                attribute_type.label,
+                overridden_attribute_type.map(|at| at.label),
+                annotations,
+            )
+            .await
+    }
+
+    pub async fn entity_type_unset_owns(&self, entity_type: EntityType, attribute_type: AttributeType) -> Result {
+        self.transaction_stream.thing_type_unset_owns(entity_type.label, attribute_type.label).await
+    }
+
     pub(crate) async fn entity_type_create(&self, entity_type: EntityType) -> Result<Entity> {
         self.transaction_stream.entity_type_create(entity_type.label).await
     }
@@ -72,8 +115,8 @@ impl ConceptManager {
         self.transaction_stream.entity_type_get_supertype(entity_type.label).await
     }
 
-    pub(crate) async fn entity_type_set_supertype(&self, entity_type: EntityType, supertype_label: String) -> Result {
-        self.transaction_stream.entity_type_set_supertype(entity_type.label, supertype_label).await
+    pub(crate) async fn entity_type_set_supertype(&self, entity_type: EntityType, supertype: EntityType) -> Result {
+        self.transaction_stream.entity_type_set_supertype(entity_type.label, supertype.label).await
     }
 
     pub(crate) fn entity_type_get_supertypes(

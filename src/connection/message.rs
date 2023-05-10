@@ -28,8 +28,8 @@ use typedb_protocol::transaction;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity},
-    concept::{Entity, EntityType},
-    Options, SessionType, TransactionType,
+    concept::{AttributeType, Entity, EntityType, ValueType},
+    Annotation, Options, SessionType, TransactionType,
 };
 
 #[derive(Debug)]
@@ -158,7 +158,7 @@ pub(super) enum ConceptRequest {
     // GetAttributeType,
     PutEntityType { label: String },
     // PutRelationType,
-    // PutAttributeType,
+    PutAttributeType { label: String, value_type: ValueType },
     // GetEntity,
     // GetRelation,
     // GetAttribute,
@@ -172,7 +172,7 @@ pub(super) enum ConceptResponse {
     // GetAttributeType,
     PutEntityType { entity_type: EntityType },
     // PutRelationType,
-    // PutAttributeType,
+    PutAttributeType { attribute_type: AttributeType },
     // GetEntity,
     // GetRelation,
     // GetAttribute,
@@ -181,24 +181,61 @@ pub(super) enum ConceptResponse {
 
 #[derive(Debug)]
 pub(super) enum ThingTypeRequest {
-    ThingTypeDelete { label: String },
-    ThingTypeSetLabel { old_label: String, new_label: String },
-    ThingTypeSetAbstract { label: String },
-    ThingTypeUnsetAbstract { label: String },
-    // ThingTypeGetOwns,
-    // ThingTypeGetOwnsOverridden,
-    // ThingTypeSetOwns,
-    // ThingTypeUnsetOwns,
+    ThingTypeDelete {
+        label: String,
+    },
+    ThingTypeSetLabel {
+        old_label: String,
+        new_label: String,
+    },
+    ThingTypeSetAbstract {
+        label: String,
+    },
+    ThingTypeUnsetAbstract {
+        label: String,
+    },
+    ThingTypeGetOwns {
+        label: String,
+        value_type: Option<ValueType>,
+        transitivity: Transitivity,
+        annotation_filter: Vec<Annotation>,
+    },
+    ThingTypeGetOwnsOverridden {
+        label: String,
+        overridden_attribute_label: String,
+    },
+    ThingTypeSetOwns {
+        label: String,
+        attribute_label: String,
+        overridden_attribute_label: Option<String>,
+        annotations: Vec<Annotation>,
+    },
+    ThingTypeUnsetOwns {
+        label: String,
+        attribute_label: String,
+    },
     // ThingTypeGetPlays,
     // ThingTypeGetPlaysOverridden,
     // ThingTypeSetPlays,
     // ThingTypeUnsetPlays,
     // ThingTypeGetSyntax,
-    EntityTypeCreate { label: String },
-    EntityTypeGetSupertype { label: String },
-    EntityTypeSetSupertype { label: String, supertype_label: String },
-    EntityTypeGetSupertypes { label: String },
-    EntityTypeGetSubtypes { label: String, transitivity: Transitivity },
+    EntityTypeCreate {
+        label: String,
+    },
+    EntityTypeGetSupertype {
+        label: String,
+    },
+    EntityTypeSetSupertype {
+        label: String,
+        supertype_label: String,
+    },
+    EntityTypeGetSupertypes {
+        label: String,
+    },
+    EntityTypeGetSubtypes {
+        label: String,
+        transitivity: Transitivity,
+    },
     // EntityTypeGetInstances,
 
     // RelationTypeCreate,
@@ -231,10 +268,10 @@ pub(super) enum ThingTypeResponse {
     ThingTypeSetLabel,
     ThingTypeSetAbstract,
     ThingTypeUnsetAbstract,
-    // ThingTypeGetOwns,
-    // ThingTypeGetOwnsOverridden,
-    // ThingTypeSetOwns,
-    // ThingTypeUnsetOwns,
+    ThingTypeGetOwns { attribute_types: Vec<AttributeType> },
+    ThingTypeGetOwnsOverridden { attribute_type: Option<AttributeType> },
+    ThingTypeSetOwns,
+    ThingTypeUnsetOwns,
     // ThingTypeGetPlays,
     // ThingTypeGetPlaysOverridden,
     // ThingTypeSetPlays,

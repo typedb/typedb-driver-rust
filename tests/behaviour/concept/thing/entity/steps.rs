@@ -33,4 +33,13 @@ generic_step_impl! {
             entity_type.unwrap().create(tx).await
         }).await.is_ok());
     }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) create new instance; throws exception")]
+    async fn entity_type_create_new_instance_throws(context: &mut Context, type_label: String) {
+        let tx = context.transaction();
+        assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
+            assert!(entity_type.is_some());
+            entity_type.unwrap().create(tx).await
+        }).await.is_err());
+    }
 }

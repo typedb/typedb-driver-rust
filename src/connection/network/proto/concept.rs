@@ -29,14 +29,13 @@ use typedb_protocol::{
     Numeric as NumericProto, Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto,
 };
 
-use super::TryFromProto;
+use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     concept::{
         Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, ScopedLabel, Value,
         ValueType,
     },
-    connection::network::proto::FromProto,
     error::{ConnectionError, InternalError},
     Result,
 };
@@ -102,8 +101,8 @@ impl FromProto<EntityTypeProto> for EntityType {
 
 impl FromProto<RelationTypeProto> for RelationType {
     fn from_proto(proto: RelationTypeProto) -> Self {
-        let RelationTypeProto { label, is_root: _, is_abstract: _ } = proto;
-        Self::new(label)
+        let RelationTypeProto { label, is_root, is_abstract } = proto;
+        Self::new(label, is_root, is_abstract)
     }
 }
 
@@ -126,9 +125,23 @@ impl TryFromProto<i32> for ValueType {
     }
 }
 
+impl IntoProto<i32> for ValueType {
+    fn into_proto(self) -> i32 {
+        match self {
+            Self::Object => ValueTypeProto::Object.into(),
+            Self::Boolean => ValueTypeProto::Boolean.into(),
+            Self::Long => ValueTypeProto::Long.into(),
+            Self::Double => ValueTypeProto::Double.into(),
+            Self::String => ValueTypeProto::String.into(),
+            Self::DateTime => ValueTypeProto::Datetime.into(),
+        }
+    }
+}
+
 impl TryFromProto<AttributeTypeProto> for AttributeType {
     fn try_from_proto(proto: AttributeTypeProto) -> Result<Self> {
-        Ok(Self::new(proto.label, ValueType::try_from_proto(proto.value_type)?))
+        let AttributeTypeProto { label, is_root, is_abstract, value_type } = proto;
+        Ok(Self::new(label, is_root, is_abstract, ValueType::try_from_proto(value_type)?))
     }
 }
 

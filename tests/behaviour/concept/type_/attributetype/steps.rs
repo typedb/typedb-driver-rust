@@ -19,16 +19,16 @@
  * under the License.
  */
 
-#![deny(unused_must_use)]
+use cucumber::{given, then, when};
 
-mod answer;
-mod common;
-pub mod concept;
-mod connection;
-mod database;
-
-pub use self::{
-    common::{error, Annotation, Credential, Error, Options, Result, SessionType, TransactionType, Transitivity},
-    connection::Connection,
-    database::{Database, DatabaseManager, Session, Transaction},
+use crate::{
+    behaviour::{util::ValueTypeParse, Context},
+    generic_step_impl,
 };
+
+generic_step_impl! {
+    #[step(expr = "put attribute type: {word}, with value type: {word}")]
+    async fn put_attribute_type(context: &mut Context, type_label: String, value_type: ValueTypeParse) {
+        context.transaction().concept().put_attribute_type(type_label, value_type.into()).await.unwrap();
+    }
+}

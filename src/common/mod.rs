@@ -54,7 +54,7 @@ pub enum Transitivity {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum OwnsFilter {
-    Keys,
-    All,
+pub enum Annotation {
+    Key,
+    Unique,
 }

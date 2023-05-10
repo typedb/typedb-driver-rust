@@ -24,22 +24,20 @@ use std::time::Duration;
 use itertools::Itertools;
 use typedb_protocol::{
     concept_manager, database, database_manager, entity_type, query_manager, r#type, server_manager, session,
-    thing_type, transaction, EntityType as EntityTypeProto,
+    thing_type, transaction, AttributeType as AttributeTypeProto, EntityType as EntityTypeProto,
 };
 
-use super::{FromProto, IntoProto, TryFromProto};
+use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{info::DatabaseInfo, RequestID, Result},
-    concept::{Entity, EntityType},
-    connection::{
-        message::{
-            ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
-            ThingTypeResponse, TransactionRequest, TransactionResponse,
-        },
-        network::proto::TryIntoProto,
+    concept::{AttributeType, Entity, EntityType},
+    connection::message::{
+        ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
+        ThingTypeResponse, TransactionRequest, TransactionResponse,
     },
     error::{ConnectionError, InternalError},
+    Annotation,
 };
 
 impl TryIntoProto<server_manager::all::Req> for Request {
@@ -128,7 +126,7 @@ impl TryIntoProto<session::open::Req> for Request {
         match self {
             Self::SessionOpen { database_name, session_type, options } => Ok(session::open::Req {
                 database: database_name,
-                r#type: session_type.into_proto().into(),
+                r#type: session_type.into_proto(),
                 options: Some(options.into_proto()),
             }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
@@ -253,7 +251,7 @@ impl IntoProto<transaction::Req> for TransactionRequest {
             Self::Open { session_id, transaction_type, options, network_latency } => {
                 transaction::req::Req::OpenReq(transaction::open::Req {
                     session_id: session_id.into(),
-                    r#type: transaction_type.into_proto().into(),
+                    r#type: transaction_type.into_proto(),
                     options: Some(options.into_proto()),
                     network_latency_millis: network_latency.as_millis() as i32,
                 })
@@ -385,6 +383,12 @@ impl IntoProto<concept_manager::Req> for ConceptRequest {
             Self::PutEntityType { label } => {
                 concept_manager::req::Req::PutEntityTypeReq(concept_manager::put_entity_type::Req { label })
             }
+            Self::PutAttributeType { label, value_type } => {
+                concept_manager::req::Req::PutAttributeTypeReq(concept_manager::put_attribute_type::Req {
+                    label,
+                    value_type: value_type.into_proto(),
+                })
+            }
         };
         concept_manager::Req { req: Some(req) }
     }
@@ -402,6 +406,13 @@ impl TryFromProto<concept_manager::Res> for ConceptResponse {
                 entity_type: EntityType::from_proto(
                     entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?,
                 ),
+            }),
+            Some(concept_manager::res::Res::PutAttributeTypeRes(concept_manager::put_attribute_type::Res {
+                attribute_type,
+            })) => Ok(Self::PutAttributeType {
+                attribute_type: AttributeType::try_from_proto(
+                    attribute_type.ok_or(ConnectionError::MissingResponseField("attribute_type"))?,
+                )?,
             }),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
@@ -424,6 +435,38 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
             Self::ThingTypeUnsetAbstract { label } => {
                 (thing_type::req::Req::ThingTypeUnsetAbstractReq(thing_type::unset_abstract::Req {}), label)
             }
+            Self::ThingTypeGetOwns { label, value_type, transitivity, annotation_filter } => (
+                thing_type::req::Req::ThingTypeGetOwnsReq(thing_type::get_owns::Req {
+                    filter: value_type.map(IntoProto::into_proto),
+                    transitivity: transitivity.into_proto(),
+                    annotations: annotation_filter.into_iter().map(Annotation::into_proto()).collect(),
+                }),
+                label,
+            ),
+            Self::ThingTypeGetOwnsOverridden { label, overridden_attribute_label } => (
+                thing_type::req::Req::ThingTypeGetOwnsOverriddenReq(thing_type::get_owns_overridden::Req {
+                    attribute_type: Some(AttributeTypeProto {
+                        label: overridden_attribute_label,
+                        ..Default::default()
+                    }),
+                }),
+                label,
+            ),
+            Self::ThingTypeSetOwns { label, attribute_label, overridden_attribute_label, annotations } => (
+                thing_type::req::Req::ThingTypeSetOwnsReq(thing_type::set_owns::Req {
+                    attribute_type: Some(AttributeTypeProto { label: attribute_label, ..Default::default() }),
+                    overridden_type: overridden_attribute_label
+                        .map(|label| AttributeTypeProto { label, ..Default::default() }),
+                    annotations: annotations.into_iter().map(|anno| anno.into_proto()).collect(),
+                }),
+                label,
+            ),
+            Self::ThingTypeUnsetOwns { label, attribute_label } => (
+                thing_type::req::Req::ThingTypeUnsetOwnsReq(thing_type::unset_owns::Req {
+                    attribute_type: Some(AttributeTypeProto { label: attribute_label, ..Default::default() }),
+                }),
+                label,
+            ),
             Self::EntityTypeCreate { label } => {
                 (thing_type::req::Req::EntityTypeCreateReq(entity_type::create::Req {}), label)
             }
@@ -441,7 +484,7 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
             }
             Self::EntityTypeGetSubtypes { label, transitivity } => (
                 thing_type::req::Req::EntityTypeGetSubtypesReq(entity_type::get_subtypes::Req {
-                    transitivity: transitivity.into_proto().into(),
+                    transitivity: transitivity.into_proto(),
                 }),
                 label,
             ),
@@ -457,6 +500,13 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
             Some(thing_type::res::Res::ThingTypeSetLabelRes(_)) => Ok(Self::ThingTypeSetLabel),
             Some(thing_type::res::Res::ThingTypeSetAbstractRes(_)) => Ok(Self::ThingTypeSetAbstract),
             Some(thing_type::res::Res::ThingTypeUnsetAbstractRes(_)) => Ok(Self::ThingTypeUnsetAbstract),
+            Some(thing_type::res::Res::ThingTypeGetOwnsOverriddenRes(thing_type::get_owns_overridden::Res {
+                attribute_type,
+            })) => Ok(Self::ThingTypeGetOwnsOverridden {
+                attribute_type: attribute_type.map(AttributeType::try_from_proto).transpose()?,
+            }),
+            Some(thing_type::res::Res::ThingTypeSetOwnsRes(_)) => Ok(Self::ThingTypeSetOwns),
+            Some(thing_type::res::Res::ThingTypeUnsetOwnsRes(_)) => Ok(Self::ThingTypeUnsetOwns),
             Some(thing_type::res::Res::EntityTypeCreateRes(entity_type::create::Res { entity })) => {
                 Ok(Self::EntityTypeCreate {
                     entity: Entity::try_from_proto(
@@ -481,6 +531,11 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
 impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
     fn try_from_proto(proto: thing_type::ResPart) -> Result<Self> {
         match proto.res {
+            Some(thing_type::res_part::Res::ThingTypeGetOwnsResPart(thing_type::get_owns::ResPart {
+                attribute_types,
+            })) => Ok(Self::ThingTypeGetOwns {
+                attribute_types: attribute_types.into_iter().map(AttributeType::try_from_proto).try_collect()?,
+            }),
             Some(thing_type::res_part::Res::EntityTypeGetSupertypesResPart(entity_type::get_supertypes::ResPart {
                 entity_types,
             })) => Ok(Self::EntityTypeGetSupertypes {

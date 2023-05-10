@@ -19,5 +19,6 @@
  * under the License.
  */
 
+mod attributetype;
 mod entitytype;
 // mod thingtype;

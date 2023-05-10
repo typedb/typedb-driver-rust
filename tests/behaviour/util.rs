@@ -19,13 +19,37 @@
  * under the License.
  */
 
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 
 use cucumber::gherkin::Step;
-use typedb_client::TransactionType;
+use typedb_client::{concept::ValueType, TransactionType};
 
 pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
     step.table().unwrap().rows.iter().flatten().map(String::as_str)
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ValueTypeParse(ValueType);
+
+impl Into<ValueType> for ValueTypeParse {
+    fn into(self) -> ValueType {
+        self.0
+    }
+}
+
+impl FromStr for ValueTypeParse {
+    type Err = ();
+
+    fn from_str(type_: &str) -> Result<Self, Self::Err> {
+        Ok(match type_ {
+            "boolean" => Self(ValueType::Boolean),
+            "long" => Self(ValueType::Long),
+            "double" => Self(ValueType::Double),
+            "string" => Self(ValueType::String),
+            "datetime" => Self(ValueType::DateTime),
+            _ => unreachable!("`{type_}` is not a valid value type"),
+        })
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
