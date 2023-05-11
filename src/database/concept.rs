@@ -25,7 +25,7 @@ use futures::Stream;
 
 use crate::{
     common::{Transitivity, IID},
-    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Value, ValueType},
     connection::TransactionStream,
     Annotation, Result, SchemaException,
 };
@@ -272,5 +272,115 @@ impl ConceptManager {
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<Relation>>> {
         self.transaction_stream.relation_type_get_instances(relation_type.label, transitivity)
+    }
+
+    pub(crate) async fn attribute_type_delete(&self, attribute_type: AttributeType) -> Result {
+        self.transaction_stream.thing_type_delete(attribute_type.label).await
+    }
+
+    pub(crate) async fn attribute_type_set_label(&self, attribute_type: AttributeType, new_label: String) -> Result {
+        self.transaction_stream.thing_type_set_label(attribute_type.label, new_label).await
+    }
+
+    pub(crate) async fn attribute_type_set_abstract(&self, attribute_type: AttributeType) -> Result {
+        self.transaction_stream.thing_type_set_abstract(attribute_type.label).await
+    }
+
+    pub(crate) async fn attribute_type_unset_abstract(&self, attribute_type: AttributeType) -> Result {
+        self.transaction_stream.thing_type_unset_abstract(attribute_type.label).await
+    }
+
+    pub(crate) fn attribute_type_get_owns(
+        &self,
+        attribute_type: AttributeType,
+        value_type: Option<ValueType>,
+        transitivity: Transitivity,
+        annotation_filter: Vec<Annotation>,
+    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+        self.transaction_stream.thing_type_get_owns(attribute_type.label, value_type, transitivity, annotation_filter)
+    }
+
+    pub(crate) async fn attribute_type_get_owns_overridden(
+        &self,
+        attribute_type: AttributeType,
+        overridden_attribute_type: AttributeType,
+    ) -> Result<Option<AttributeType>> {
+        self.transaction_stream
+            .thing_type_get_owns_overridden(attribute_type.label, overridden_attribute_type.label)
+            .await
+    }
+
+    pub(crate) async fn attribute_type_set_owns(
+        &self,
+        owner_attribute_type: AttributeType,
+        attribute_type: AttributeType,
+        overridden_attribute_type: Option<AttributeType>,
+        annotations: Vec<Annotation>,
+    ) -> Result {
+        self.transaction_stream
+            .thing_type_set_owns(
+                owner_attribute_type.label,
+                attribute_type.label,
+                overridden_attribute_type.map(|at| at.label),
+                annotations,
+            )
+            .await
+    }
+
+    pub(crate) async fn attribute_type_unset_owns(
+        &self,
+        owner_attribute_type: AttributeType,
+        attribute_type: AttributeType,
+    ) -> Result {
+        self.transaction_stream.thing_type_unset_owns(owner_attribute_type.label, attribute_type.label).await
+    }
+
+    pub(crate) async fn attribute_type_put(&self, attribute_type: AttributeType, value: Value) -> Result<Attribute> {
+        self.transaction_stream.attribute_type_put(attribute_type.label, value).await
+    }
+
+    pub(crate) async fn attribute_type_get(
+        &self,
+        attribute_type: AttributeType,
+        value: Value,
+    ) -> Result<Option<Attribute>> {
+        self.transaction_stream.attribute_type_get(attribute_type.label, value).await
+    }
+
+    pub(crate) async fn attribute_type_get_supertype(&self, attribute_type: AttributeType) -> Result<AttributeType> {
+        self.transaction_stream.attribute_type_get_supertype(attribute_type.label).await
+    }
+
+    pub(crate) async fn attribute_type_set_supertype(
+        &self,
+        attribute_type: AttributeType,
+        supertype: AttributeType,
+    ) -> Result {
+        self.transaction_stream.attribute_type_set_supertype(attribute_type.label, supertype.label).await
+    }
+
+    pub(crate) fn attribute_type_get_supertypes(
+        &self,
+        attribute_type: AttributeType,
+    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+        self.transaction_stream.attribute_type_get_supertypes(attribute_type.label)
+    }
+
+    pub(crate) fn attribute_type_get_subtypes(
+        &self,
+        attribute_type: AttributeType,
+        transitivity: Transitivity,
+        value_type: Option<ValueType>,
+    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+        self.transaction_stream.attribute_type_get_subtypes(attribute_type.label, transitivity, value_type)
+    }
+
+    pub(crate) fn attribute_type_get_instances(
+        &self,
+        attribute_type: AttributeType,
+        transitivity: Transitivity,
+        value_type: Option<ValueType>,
+    ) -> Result<impl Stream<Item = Result<Attribute>>> {
+        self.transaction_stream.attribute_type_get_instances(attribute_type.label, transitivity, value_type)
     }
 }

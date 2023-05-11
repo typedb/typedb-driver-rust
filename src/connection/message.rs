@@ -28,7 +28,7 @@ use typedb_protocol::transaction;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity, IID},
-    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Value, ValueType},
     Annotation, Options, SchemaException, SessionType, TransactionType,
 };
 
@@ -266,14 +266,34 @@ pub(super) enum ThingTypeRequest {
     // RelationTypeGetRelatesOverridden,
     // RelationTypeSetRelates,
     // RelationTypeUnsetRelates,
-
-    // AttributeTypePut,
-    // AttributeTypeGet,
-    // AttributeTypeGetSupertype,
-    // AttributeTypeSetSupertype,
-    // AttributeTypeGetSupertypes,
-    // AttributeTypeGetSubtypes,
-    // AttributeTypeGetInstances,
+    AttributeTypePut {
+        label: String,
+        value: Value,
+    },
+    AttributeTypeGet {
+        label: String,
+        value: Value,
+    },
+    AttributeTypeGetSupertype {
+        label: String,
+    },
+    AttributeTypeSetSupertype {
+        label: String,
+        supertype_label: String,
+    },
+    AttributeTypeGetSupertypes {
+        label: String,
+    },
+    AttributeTypeGetSubtypes {
+        label: String,
+        transitivity: Transitivity,
+        value_type: Option<ValueType>,
+    },
+    AttributeTypeGetInstances {
+        label: String,
+        transitivity: Transitivity,
+        value_type: Option<ValueType>,
+    },
     // AttributeTypeGetRegex,
     // AttributeTypeSetRegex,
     // AttributeTypeGetOwners,
@@ -311,14 +331,13 @@ pub(super) enum ThingTypeResponse {
     // RelationTypeGetRelatesOverridden,
     // RelationTypeSetRelates,
     // RelationTypeUnsetRelates,
-
-    // AttributeTypePut,
-    // AttributeTypeGet,
-    // AttributeTypeGetSupertype,
-    // AttributeTypeSetSupertype,
-    // AttributeTypeGetSupertypes,
-    // AttributeTypeGetSubtypes,
-    // AttributeTypeGetInstances,
+    AttributeTypePut { attribute: Attribute },
+    AttributeTypeGet { attribute: Option<Attribute> },
+    AttributeTypeGetSupertype { supertype: AttributeType },
+    AttributeTypeSetSupertype,
+    AttributeTypeGetSupertypes { supertypes: Vec<AttributeType> },
+    AttributeTypeGetSubtypes { subtypes: Vec<AttributeType> },
+    AttributeTypeGetInstances { attributes: Vec<Attribute> },
     // AttributeTypeGetRegex,
     // AttributeTypeSetRegex,
     // AttributeTypeGetOwners,

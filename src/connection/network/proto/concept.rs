@@ -23,10 +23,13 @@ use std::collections::HashMap;
 
 use chrono::NaiveDateTime;
 use typedb_protocol::{
-    attribute::value::Value as ValueProto, attribute_type::ValueType as ValueTypeProto, concept as concept_proto,
-    numeric::Value as NumericValue, Attribute as AttributeProto, AttributeType as AttributeTypeProto,
-    Concept as ConceptProto, ConceptMap as ConceptMapProto, Entity as EntityProto, EntityType as EntityTypeProto,
-    Numeric as NumericProto, Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto,
+    attribute::{value::Value as ValueProtoInner, Value as ValueProto},
+    attribute_type::ValueType as ValueTypeProto,
+    concept as concept_proto,
+    numeric::Value as NumericValue,
+    Attribute as AttributeProto, AttributeType as AttributeTypeProto, Concept as ConceptProto,
+    ConceptMap as ConceptMapProto, Entity as EntityProto, EntityType as EntityTypeProto, Numeric as NumericProto,
+    Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto,
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
@@ -175,23 +178,36 @@ impl TryFromProto<AttributeProto> for Attribute {
         Ok(Self::new(
             proto.iid.into(),
             AttributeType::try_from_proto(proto.attribute_type.ok_or(ConnectionError::MissingResponseField("type"))?)?,
-            Value::try_from_proto(
-                proto.value.and_then(|v| v.value).ok_or(ConnectionError::MissingResponseField("value"))?,
-            )?,
+            Value::try_from_proto(proto.value.ok_or(ConnectionError::MissingResponseField("value"))?)?,
         ))
     }
 }
 
 impl TryFromProto<ValueProto> for Value {
     fn try_from_proto(proto: ValueProto) -> Result<Self> {
-        match proto {
-            ValueProto::Boolean(value) => Ok(Self::Boolean(value)),
-            ValueProto::Long(value) => Ok(Self::Long(value)),
-            ValueProto::Double(value) => Ok(Self::Double(value)),
-            ValueProto::String(value) => Ok(Self::String(value)),
-            ValueProto::DateTime(value) => Ok(Self::DateTime(
+        match proto.value {
+            Some(ValueProtoInner::Boolean(value)) => Ok(Self::Boolean(value)),
+            Some(ValueProtoInner::Long(value)) => Ok(Self::Long(value)),
+            Some(ValueProtoInner::Double(value)) => Ok(Self::Double(value)),
+            Some(ValueProtoInner::String(value)) => Ok(Self::String(value)),
+            Some(ValueProtoInner::DateTime(value)) => Ok(Self::DateTime(
                 NaiveDateTime::from_timestamp_opt(value / 1000, (value % 1000) as u32 * 1_000_000).unwrap(),
             )),
+            None => Err(ConnectionError::MissingResponseField("value").into()),
+        }
+    }
+}
+
+impl IntoProto<ValueProto> for Value {
+    fn into_proto(self) -> ValueProto {
+        ValueProto {
+            value: Some(match self {
+                Self::Boolean(value) => ValueProtoInner::Boolean(value),
+                Self::Long(value) => ValueProtoInner::Long(value),
+                Self::Double(value) => ValueProtoInner::Double(value),
+                Self::String(value) => ValueProtoInner::String(value),
+                Self::DateTime(value) => ValueProtoInner::DateTime(value.timestamp_millis()),
+            }),
         }
     }
 }

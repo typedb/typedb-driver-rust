@@ -27,7 +27,7 @@ use super::network::transmitter::TransactionTransmitter;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{Result, Transitivity, IID},
-    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Value, ValueType},
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
         TransactionRequest, TransactionResponse,
@@ -404,6 +404,82 @@ impl TransactionStream {
         let stream = self.thing_type_stream(ThingTypeRequest::RelationTypeGetInstances { label, transitivity })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::RelationTypeGetInstances { relations }) => stream_iter(relations.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) async fn attribute_type_put(&self, label: String, value: Value) -> Result<Attribute> {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypePut { label, value }).await? {
+            ThingTypeResponse::AttributeTypePut { attribute } => Ok(attribute),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn attribute_type_get(&self, label: String, value: Value) -> Result<Option<Attribute>> {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypeGet { label, value }).await? {
+            ThingTypeResponse::AttributeTypeGet { attribute } => Ok(attribute),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn attribute_type_get_supertype(&self, label: String) -> Result<AttributeType> {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypeGetSupertype { label }).await? {
+            ThingTypeResponse::AttributeTypeGetSupertype { supertype: attribute_type } => Ok(attribute_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn attribute_type_set_supertype(&self, label: String, supertype_label: String) -> Result {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypeSetSupertype { label, supertype_label }).await? {
+            ThingTypeResponse::AttributeTypeSetSupertype => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn attribute_type_get_supertypes(
+        &self,
+        label: String,
+    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+        let stream = self.thing_type_stream(ThingTypeRequest::AttributeTypeGetSupertypes { label })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::AttributeTypeGetSupertypes { supertypes: attribute_types }) => {
+                stream_iter(attribute_types.into_iter().map(Ok))
+            }
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) fn attribute_type_get_subtypes(
+        &self,
+        label: String,
+        transitivity: Transitivity,
+        value_type: Option<ValueType>,
+    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+        let stream =
+            self.thing_type_stream(ThingTypeRequest::AttributeTypeGetSubtypes { label, transitivity, value_type })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::AttributeTypeGetSubtypes { subtypes: attribute_types }) => {
+                stream_iter(attribute_types.into_iter().map(Ok))
+            }
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) fn attribute_type_get_instances(
+        &self,
+        label: String,
+        transitivity: Transitivity,
+        value_type: Option<ValueType>,
+    ) -> Result<impl Stream<Item = Result<Attribute>>> {
+        let stream =
+            self.thing_type_stream(ThingTypeRequest::AttributeTypeGetInstances { label, transitivity, value_type })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::AttributeTypeGetInstances { attributes }) => {
+                stream_iter(attributes.into_iter().map(Ok))
+            }
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
         }))
