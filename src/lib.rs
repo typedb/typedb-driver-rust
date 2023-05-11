@@ -28,7 +28,10 @@ mod connection;
 mod database;
 
 pub use self::{
-    common::{error, Annotation, Credential, Error, Options, Result, SessionType, TransactionType, Transitivity},
+    common::{
+        error, Annotation, Credential, Error, Options, Result, SchemaException, SessionType, TransactionType,
+        Transitivity,
+    },
     connection::Connection,
     database::{Database, DatabaseManager, Session, Transaction},
 };

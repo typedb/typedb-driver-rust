@@ -21,11 +21,18 @@
 
 use typedb_protocol::{
     r#type::{Annotation as AnnotationProto, Transitivity as TransitivityProto},
-    session, transaction, Options as OptionsProto,
+    session, transaction, Exception, Options as OptionsProto,
 };
 
-use super::IntoProto;
-use crate::{Annotation, Options, SessionType, TransactionType, Transitivity};
+use super::{FromProto, IntoProto};
+use crate::{Annotation, Options, SchemaException, SessionType, TransactionType, Transitivity};
+
+impl FromProto<Exception> for SchemaException {
+    fn from_proto(proto: Exception) -> Self {
+        let Exception { code, message } = proto;
+        Self { code, message }
+    }
+}
 
 impl IntoProto<i32> for SessionType {
     fn into_proto(self) -> i32 {

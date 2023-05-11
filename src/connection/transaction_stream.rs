@@ -26,14 +26,14 @@ use futures::{stream, Stream, StreamExt};
 use super::network::transmitter::TransactionTransmitter;
 use crate::{
     answer::{ConceptMap, Numeric},
-    common::{Result, Transitivity},
-    concept::{AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
+    common::{Result, Transitivity, IID},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
         TransactionRequest, TransactionResponse,
     },
     error::InternalError,
-    Annotation, Options, TransactionType,
+    Annotation, Options, SchemaException, TransactionType,
 };
 
 pub(crate) struct TransactionStream {
@@ -162,6 +162,36 @@ impl TransactionStream {
             ConceptResponse::PutAttributeType { attribute_type } => Ok(attribute_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
+    }
+
+    pub(crate) async fn get_entity(&self, iid: IID) -> Result<Option<Entity>> {
+        match self.concept_single(ConceptRequest::GetEntity { iid }).await? {
+            ConceptResponse::GetEntity { entity } => Ok(entity),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn get_relation(&self, iid: IID) -> Result<Option<Relation>> {
+        match self.concept_single(ConceptRequest::GetRelation { iid }).await? {
+            ConceptResponse::GetRelation { relation } => Ok(relation),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn get_attribute(&self, iid: IID) -> Result<Option<Attribute>> {
+        match self.concept_single(ConceptRequest::GetAttribute { iid }).await? {
+            ConceptResponse::GetAttribute { attribute } => Ok(attribute),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn get_schema_exceptions(&self) -> Result<impl Stream<Item = Result<SchemaException>>> {
+        let stream = self.concept_stream(ConceptRequest::GetSchemaExceptions)?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ConceptResponse::GetSchemaExceptions { exceptions }) => stream_iter(exceptions.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
     }
 
     pub(crate) async fn thing_type_delete(&self, label: String) -> Result {
@@ -411,6 +441,14 @@ impl TransactionStream {
     fn query_stream(&self, req: QueryRequest) -> Result<impl Stream<Item = Result<QueryResponse>>> {
         Ok(self.stream(TransactionRequest::Query(req))?.map(|response| match response {
             Ok(TransactionResponse::Query(res)) => Ok(res),
+            Ok(other) => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+            Err(err) => Err(err),
+        }))
+    }
+
+    fn concept_stream(&self, req: ConceptRequest) -> Result<impl Stream<Item = Result<ConceptResponse>>> {
+        Ok(self.stream(TransactionRequest::Concept(req))?.map(|response| match response {
+            Ok(TransactionResponse::Concept(res)) => Ok(res),
             Ok(other) => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
             Err(err) => Err(err),
         }))

@@ -32,13 +32,13 @@ use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{info::DatabaseInfo, RequestID, Result},
-    concept::{AttributeType, Entity, EntityType, Relation, RelationType},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType},
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
         ThingTypeResponse, TransactionRequest, TransactionResponse,
     },
     error::{ConnectionError, InternalError},
-    Annotation,
+    Annotation, SchemaException,
 };
 
 impl TryIntoProto<server_manager::all::Req> for Request {
@@ -399,6 +399,18 @@ impl IntoProto<concept_manager::Req> for ConceptRequest {
                     value_type: value_type.into_proto(),
                 })
             }
+            Self::GetEntity { iid } => {
+                concept_manager::req::Req::GetEntityReq(concept_manager::get_entity::Req { iid: iid.into() })
+            }
+            Self::GetRelation { iid } => {
+                concept_manager::req::Req::GetRelationReq(concept_manager::get_relation::Req { iid: iid.into() })
+            }
+            Self::GetAttribute { iid } => {
+                concept_manager::req::Req::GetAttributeReq(concept_manager::get_attribute::Req { iid: iid.into() })
+            }
+            Self::GetSchemaExceptions => {
+                concept_manager::req::Req::GetSchemaExceptionsReq(concept_manager::get_schema_exceptions::Req {})
+            }
         };
         concept_manager::Req { req: Some(req) }
     }
@@ -439,7 +451,20 @@ impl TryFromProto<concept_manager::Res> for ConceptResponse {
                     attribute_type.ok_or(ConnectionError::MissingResponseField("attribute_type"))?,
                 )?,
             }),
-            Some(_) => todo!(),
+            Some(concept_manager::res::Res::GetEntityRes(concept_manager::get_entity::Res { entity })) => {
+                Ok(Self::GetEntity { entity: entity.map(Entity::try_from_proto).transpose()? })
+            }
+            Some(concept_manager::res::Res::GetRelationRes(concept_manager::get_relation::Res { relation })) => {
+                Ok(Self::GetRelation { relation: relation.map(Relation::try_from_proto).transpose()? })
+            }
+            Some(concept_manager::res::Res::GetAttributeRes(concept_manager::get_attribute::Res { attribute })) => {
+                Ok(Self::GetAttribute { attribute: attribute.map(Attribute::try_from_proto).transpose()? })
+            }
+            Some(concept_manager::res::Res::GetSchemaExceptionsRes(concept_manager::get_schema_exceptions::Res {
+                exceptions,
+            })) => Ok(Self::GetSchemaExceptions {
+                exceptions: exceptions.into_iter().map(SchemaException::from_proto).collect(),
+            }),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }

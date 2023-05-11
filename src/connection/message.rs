@@ -27,9 +27,9 @@ use typedb_protocol::transaction;
 
 use crate::{
     answer::{ConceptMap, Numeric},
-    common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity},
-    concept::{AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
-    Annotation, Options, SessionType, TransactionType,
+    common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity, IID},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
+    Annotation, Options, SchemaException, SessionType, TransactionType,
 };
 
 #[derive(Debug)]
@@ -159,10 +159,10 @@ pub(super) enum ConceptRequest {
     PutEntityType { label: String },
     PutRelationType { label: String },
     PutAttributeType { label: String, value_type: ValueType },
-    // GetEntity,
-    // GetRelation,
-    // GetAttribute,
-    // GetSchemaExceptions,
+    GetEntity { iid: IID },
+    GetRelation { iid: IID },
+    GetAttribute { iid: IID },
+    GetSchemaExceptions,
 }
 
 #[derive(Debug)]
@@ -173,10 +173,10 @@ pub(super) enum ConceptResponse {
     PutEntityType { entity_type: EntityType },
     PutRelationType { relation_type: RelationType },
     PutAttributeType { attribute_type: AttributeType },
-    // GetEntity,
-    // GetRelation,
-    // GetAttribute,
-    // GetSchemaExceptions,
+    GetEntity { entity: Option<Entity> },
+    GetRelation { relation: Option<Relation> },
+    GetAttribute { attribute: Option<Attribute> },
+    GetSchemaExceptions { exceptions: Vec<SchemaException> },
 }
 
 #[derive(Debug)]

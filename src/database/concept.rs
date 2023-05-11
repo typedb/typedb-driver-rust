@@ -24,10 +24,10 @@ use std::sync::Arc;
 use futures::Stream;
 
 use crate::{
-    common::Transitivity,
-    concept::{AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
+    common::{Transitivity, IID},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
     connection::TransactionStream,
-    Annotation, Result,
+    Annotation, Result, SchemaException,
 };
 
 #[derive(Debug)]
@@ -64,6 +64,22 @@ impl ConceptManager {
         self.transaction_stream.put_attribute_type(label, value_type).await
     }
 
+    pub async fn get_entity(&self, iid: IID) -> Result<Option<Entity>> {
+        self.transaction_stream.get_entity(iid).await
+    }
+
+    pub async fn get_relation(&self, iid: IID) -> Result<Option<Relation>> {
+        self.transaction_stream.get_relation(iid).await
+    }
+
+    pub async fn get_attribute(&self, iid: IID) -> Result<Option<Attribute>> {
+        self.transaction_stream.get_attribute(iid).await
+    }
+
+    pub fn get_schema_exceptions(&self) -> Result<impl Stream<Item = Result<SchemaException>>> {
+        self.transaction_stream.get_schema_exceptions()
+    }
+
     pub(crate) async fn entity_type_delete(&self, entity_type: EntityType) -> Result {
         self.transaction_stream.thing_type_delete(entity_type.label).await
     }
@@ -80,7 +96,7 @@ impl ConceptManager {
         self.transaction_stream.thing_type_unset_abstract(entity_type.label).await
     }
 
-    pub fn entity_type_get_owns(
+    pub(crate) fn entity_type_get_owns(
         &self,
         entity_type: EntityType,
         value_type: Option<ValueType>,
@@ -90,7 +106,7 @@ impl ConceptManager {
         self.transaction_stream.thing_type_get_owns(entity_type.label, value_type, transitivity, annotation_filter)
     }
 
-    pub async fn entity_type_get_owns_overridden(
+    pub(crate) async fn entity_type_get_owns_overridden(
         &self,
         entity_type: EntityType,
         overridden_attribute_type: AttributeType,
@@ -98,7 +114,7 @@ impl ConceptManager {
         self.transaction_stream.thing_type_get_owns_overridden(entity_type.label, overridden_attribute_type.label).await
     }
 
-    pub async fn entity_type_set_owns(
+    pub(crate) async fn entity_type_set_owns(
         &self,
         entity_type: EntityType,
         attribute_type: AttributeType,
@@ -115,7 +131,11 @@ impl ConceptManager {
             .await
     }
 
-    pub async fn entity_type_unset_owns(&self, entity_type: EntityType, attribute_type: AttributeType) -> Result {
+    pub(crate) async fn entity_type_unset_owns(
+        &self,
+        entity_type: EntityType,
+        attribute_type: AttributeType,
+    ) -> Result {
         self.transaction_stream.thing_type_unset_owns(entity_type.label, attribute_type.label).await
     }
 
@@ -170,7 +190,7 @@ impl ConceptManager {
         self.transaction_stream.thing_type_unset_abstract(relation_type.label).await
     }
 
-    pub fn relation_type_get_owns(
+    pub(crate) fn relation_type_get_owns(
         &self,
         relation_type: RelationType,
         value_type: Option<ValueType>,
@@ -180,7 +200,7 @@ impl ConceptManager {
         self.transaction_stream.thing_type_get_owns(relation_type.label, value_type, transitivity, annotation_filter)
     }
 
-    pub async fn relation_type_get_owns_overridden(
+    pub(crate) async fn relation_type_get_owns_overridden(
         &self,
         relation_type: RelationType,
         overridden_attribute_type: AttributeType,
@@ -190,7 +210,7 @@ impl ConceptManager {
             .await
     }
 
-    pub async fn relation_type_set_owns(
+    pub(crate) async fn relation_type_set_owns(
         &self,
         relation_type: RelationType,
         attribute_type: AttributeType,
@@ -207,7 +227,11 @@ impl ConceptManager {
             .await
     }
 
-    pub async fn relation_type_unset_owns(&self, relation_type: RelationType, attribute_type: AttributeType) -> Result {
+    pub(crate) async fn relation_type_unset_owns(
+        &self,
+        relation_type: RelationType,
+        attribute_type: AttributeType,
+    ) -> Result {
         self.transaction_stream.thing_type_unset_owns(relation_type.label, attribute_type.label).await
     }
 

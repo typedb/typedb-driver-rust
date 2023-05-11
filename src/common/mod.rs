@@ -53,4 +53,12 @@ pub enum Transitivity {
     Transitive,
 }
 
+//TODO cleanup
 pub use typeql_lang::pattern::Annotation;
+
+// TODO move
+#[derive(Clone, Debug)]
+pub struct SchemaException {
+    pub code: String,
+    pub message: String,
+}
