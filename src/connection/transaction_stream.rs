@@ -129,6 +129,13 @@ impl TransactionStream {
         }
     }
 
+    pub(crate) async fn get_attribute_type(&self, label: String) -> Result<Option<AttributeType>> {
+        match self.concept_single(ConceptRequest::GetAttributeType { label }).await? {
+            ConceptResponse::GetAttributeType { attribute_type } => Ok(attribute_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
     pub(crate) async fn put_entity_type(&self, label: String) -> Result<EntityType> {
         match self.concept_single(ConceptRequest::PutEntityType { label }).await? {
             ConceptResponse::PutEntityType { entity_type } => Ok(entity_type),

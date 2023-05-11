@@ -20,11 +20,17 @@
  */
 
 use cucumber::{gherkin::Step, given, then, when};
-use futures::{TryFutureExt, TryStreamExt};
-use typedb_client::{concept::EntityType, Annotation::Key, Result as TypeDBResult, Transaction};
+use futures::{StreamExt, TryFutureExt, TryStreamExt};
+use typedb_client::{
+    concept::{AttributeType, EntityType},
+    Result as TypeDBResult, Transaction, Transitivity,
+};
 
 use crate::{
-    behaviour::{util::iter_table, Context},
+    behaviour::{
+        util::{iter_table, AnnotationsParse},
+        Context,
+    },
     generic_step_impl,
 };
 
@@ -40,6 +46,21 @@ async fn try_get_entity_type(tx: &Transaction<'_>, type_label: String) -> TypeDB
     tx.concept().get_entity_type(type_label).await.map(|entity_type| {
         assert!(entity_type.is_some());
         entity_type.unwrap()
+    })
+}
+
+async fn get_attribute_type(tx: &Transaction<'_>, type_label: String) -> AttributeType {
+    let attribute_type = tx.concept().get_attribute_type(type_label).await;
+    assert!(attribute_type.is_ok(), "{attribute_type:?}");
+    let attribute_type = attribute_type.unwrap();
+    assert!(attribute_type.is_some());
+    attribute_type.unwrap()
+}
+
+async fn try_get_attribute_type(tx: &Transaction<'_>, type_label: String) -> TypeDBResult<AttributeType> {
+    tx.concept().get_attribute_type(type_label).await.map(|attribute_type| {
+        assert!(attribute_type.is_some());
+        attribute_type.unwrap()
     })
 }
 
@@ -186,6 +207,227 @@ generic_step_impl! {
         let actuals = actuals.unwrap();
         for subtype in iter_table(step) {
             assert!(actuals.iter().all(|actual| actual != subtype));
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) set owns attribute type: (\S+)$")]
+    async fn entity_type_set_owns_attribute_type(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+    ) {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await;
+        let attribute_type = get_attribute_type(tx, attribute_type_label).await;
+        // FIXME barf ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v~~~~~v
+        assert!(entity_type.set_owns(tx, attribute_type, None, &[]).await.is_ok());
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) set owns attribute type: (\S+), with annotations: ([^;]*)$")]
+    async fn entity_type_set_owns_attribute_type_with_annotations(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+        annotations: AnnotationsParse,
+    ) {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await;
+        let attribute_type = get_attribute_type(tx, attribute_type_label).await;
+        assert!(entity_type.set_owns(tx, attribute_type, None, &annotations).await.is_ok());
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) set owns attribute type: (\S+); throws exception$")]
+    async fn entity_type_set_owns_attribute_type_throws(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+    ) {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await;
+        let attribute_type = get_attribute_type(tx, attribute_type_label).await;
+        assert!(entity_type.set_owns(tx, attribute_type, None, &[]).await.is_err());
+    }
+
+    #[step(
+        regex = r"^entity\( ?(\S+) ?\) set owns attribute type: (\S+), with annotations: ([^;]*); throws exception$"
+    )]
+    async fn entity_type_set_owns_attribute_type_with_annotations_throws(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+        annotations: AnnotationsParse,
+    ) {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await;
+        let attribute_type = get_attribute_type(tx, attribute_type_label).await;
+        assert!(entity_type.set_owns(tx, attribute_type, None, &annotations).await.is_err());
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) unset owns attribute type: (\S+)$")]
+    async fn entity_type_unset_owns_attribute_type(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+    ) {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await;
+        let attribute_type = get_attribute_type(tx, attribute_type_label).await;
+        assert!(entity_type.unset_owns(tx, attribute_type).await.is_ok());
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns attribute types contain:$")]
+    async fn entity_type_get_owns_attribute_types(context: &mut Context, step: &Step, type_label: String) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let actuals: Vec<String> = entity_type
+            .get_owns(tx, None, Transitivity::Transitive, &[])
+            .unwrap()
+            .map(|at| at.map(|t| t.label))
+            .try_collect()
+            .await
+            .unwrap();
+        for attribute in iter_table(step) {
+            assert!(actuals.iter().any(|actual| actual == attribute));
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns types with annotations: (\S+); contain:$")]
+    async fn entity_type_get_owns_attribute_types_with_annotations(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+        annotations: AnnotationsParse,
+    ) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let actuals: Vec<String> = entity_type
+            .get_owns(tx, None, Transitivity::Transitive, &annotations)
+            .unwrap()
+            .map(|at| at.map(|t| t.label))
+            .try_collect()
+            .await
+            .unwrap();
+        for attribute in iter_table(step) {
+            assert!(actuals.iter().any(|actual| actual == attribute), "{attribute} not in {actuals:?}");
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns attribute types do not contain:$")]
+    async fn entity_type_get_owns_attribute_types_do_not_contain(context: &mut Context, step: &Step, type_label: String) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let actuals: Vec<String> = entity_type
+            .get_owns(tx, None, Transitivity::Transitive, &[])
+            .unwrap()
+            .map(|at| at.map(|t| t.label))
+            .try_collect()
+            .await
+            .unwrap();
+        for attribute in iter_table(step) {
+            assert!(actuals.iter().all(|actual| actual != attribute));
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns types with annotations: (\S+); do not contain:$")]
+    async fn entity_type_get_owns_attribute_types_with_annotations_do_not_contain(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+        annotations: AnnotationsParse,
+    ) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let actuals: Vec<String> = entity_type
+            .get_owns(tx, None, Transitivity::Transitive, &annotations)
+            .unwrap()
+            .map(|at| at.map(|t| t.label))
+            .try_collect()
+            .await
+            .unwrap();
+        for attribute in iter_table(step) {
+            assert!(actuals.iter().all(|actual| actual != attribute));
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns explicit attribute types contain:$")]
+    async fn entity_type_get_owns_explicit_attribute_types(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+    ) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let actuals: Vec<String> = entity_type
+            .get_owns(tx, None, Transitivity::Explicit, &[])
+            .unwrap()
+            .map(|at| at.map(|t| t.label))
+            .try_collect()
+            .await
+            .unwrap();
+        for attribute in iter_table(step) {
+            assert!(actuals.iter().any(|actual| actual == attribute), "{attribute} not in {actuals:?}");
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns explicit attribute types do not contain:$")]
+    async fn entity_type_get_owns_explicit_attribute_types_do_not_contain(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+    ) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let actuals: Vec<String> = entity_type
+            .get_owns(tx, None, Transitivity::Explicit, &[])
+            .unwrap()
+            .map(|at| at.map(|t| t.label))
+            .try_collect()
+            .await
+            .unwrap();
+        for attribute in iter_table(step) {
+            assert!(actuals.iter().all(|actual| actual != attribute));
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns explicit types with annotations: (\S+); contain:$")]
+    async fn entity_type_get_owns_explicit_attribute_types_with_annotations(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+        annotations: AnnotationsParse,
+    ) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let actuals: Vec<String> = entity_type
+            .get_owns(tx, None, Transitivity::Explicit, &annotations)
+            .unwrap()
+            .map(|at| at.map(|t| t.label))
+            .try_collect()
+            .await
+            .unwrap();
+        for attribute in iter_table(step) {
+            assert!(actuals.iter().any(|actual| actual == attribute), "{attribute} not in {actuals:?}");
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns explicit types with annotations: (\S+); do not contain:$")]
+    async fn entity_type_get_owns_explicit_attribute_types_with_annotations_do_not_contain(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+        annotations: AnnotationsParse,
+    ) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let actuals: Vec<String> = entity_type
+            .get_owns(tx, None, Transitivity::Explicit, &annotations)
+            .unwrap()
+            .map(|at| at.map(|t| t.label))
+            .try_collect()
+            .await
+            .unwrap();
+        for attribute in iter_table(step) {
+            assert!(actuals.iter().all(|actual| actual != attribute));
         }
     }
 }

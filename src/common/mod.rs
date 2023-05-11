@@ -53,8 +53,4 @@ pub enum Transitivity {
     Transitive,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Annotation {
-    Key,
-    Unique,
-}
+pub use typeql_lang::pattern::Annotation;

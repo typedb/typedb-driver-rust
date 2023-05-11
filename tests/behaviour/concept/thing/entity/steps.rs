@@ -25,7 +25,7 @@ use futures::TryFutureExt;
 use crate::{behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
-    #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance")]
+    #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance$")]
     async fn entity_type_create_new_instance(context: &mut Context, _var: String, type_label: String) {
         let tx = context.transaction();
         assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
@@ -34,7 +34,7 @@ generic_step_impl! {
         }).await.is_ok());
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) create new instance; throws exception")]
+    #[step(regex = r"^entity\( ?(\S+) ?\) create new instance; throws exception$")]
     async fn entity_type_create_new_instance_throws(context: &mut Context, type_label: String) {
         let tx = context.transaction();
         assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {

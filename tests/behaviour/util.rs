@@ -19,10 +19,10 @@
  * under the License.
  */
 
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, ops::Deref, str::FromStr};
 
 use cucumber::gherkin::Step;
-use typedb_client::{concept::ValueType, TransactionType};
+use typedb_client::{concept::ValueType, Annotation, TransactionType};
 
 pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
     step.table().unwrap().rows.iter().flatten().map(String::as_str)
@@ -70,5 +70,39 @@ impl FromStr for TransactionTypeParse {
             "read" => Self(TransactionType::Read),
             _ => unreachable!("`{type_}` is not a valid transaction type"),
         })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct AnnotationsParse(Vec<Annotation>);
+
+impl Deref for AnnotationsParse {
+    type Target = Vec<Annotation>;
+
+    fn deref(&self) -> &Vec<Annotation> {
+        &self.0
+    }
+}
+
+impl Into<Vec<Annotation>> for AnnotationsParse {
+    fn into(self) -> Vec<Annotation> {
+        self.0
+    }
+}
+
+impl FromStr for AnnotationsParse {
+    type Err = ();
+
+    fn from_str(annotations: &str) -> Result<Self, Self::Err> {
+        Ok(Self(
+            annotations
+                .split(';')
+                .map(|annotation| match annotation.trim() {
+                    "key" => Annotation::Key,
+                    "unique" => Annotation::Unique,
+                    _ => unreachable!(),
+                })
+                .collect(),
+        ))
     }
 }

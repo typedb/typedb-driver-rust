@@ -44,6 +44,10 @@ impl ConceptManager {
         self.transaction_stream.get_entity_type(label).await
     }
 
+    pub async fn get_attribute_type(&self, label: String) -> Result<Option<AttributeType>> {
+        self.transaction_stream.get_attribute_type(label).await
+    }
+
     pub async fn put_entity_type(&self, label: String) -> Result<EntityType> {
         self.transaction_stream.put_entity_type(label).await
     }

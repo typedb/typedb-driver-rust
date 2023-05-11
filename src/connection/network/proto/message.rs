@@ -380,6 +380,9 @@ impl IntoProto<concept_manager::Req> for ConceptRequest {
             Self::GetEntityType { label } => {
                 concept_manager::req::Req::GetEntityTypeReq(concept_manager::get_entity_type::Req { label })
             }
+            Self::GetAttributeType { label } => {
+                concept_manager::req::Req::GetAttributeTypeReq(concept_manager::get_attribute_type::Req { label })
+            }
             Self::PutEntityType { label } => {
                 concept_manager::req::Req::PutEntityTypeReq(concept_manager::put_entity_type::Req { label })
             }
@@ -399,7 +402,12 @@ impl TryFromProto<concept_manager::Res> for ConceptResponse {
         match proto.res {
             Some(concept_manager::res::Res::GetEntityTypeRes(concept_manager::get_entity_type::Res {
                 entity_type,
-            })) => Ok(Self::GetEntityType { entity_type: entity_type.map(|proto| EntityType::from_proto(proto)) }),
+            })) => Ok(Self::GetEntityType { entity_type: entity_type.map(EntityType::from_proto) }),
+            Some(concept_manager::res::Res::GetAttributeTypeRes(concept_manager::get_attribute_type::Res {
+                attribute_type,
+            })) => Ok(Self::GetAttributeType {
+                attribute_type: attribute_type.map(AttributeType::try_from_proto).transpose()?,
+            }),
             Some(concept_manager::res::Res::PutEntityTypeRes(concept_manager::put_entity_type::Res {
                 entity_type,
             })) => Ok(Self::PutEntityType {
@@ -439,7 +447,7 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
                 thing_type::req::Req::ThingTypeGetOwnsReq(thing_type::get_owns::Req {
                     filter: value_type.map(IntoProto::into_proto),
                     transitivity: transitivity.into_proto(),
-                    annotations: annotation_filter.into_iter().map(Annotation::into_proto()).collect(),
+                    annotations: annotation_filter.into_iter().map(Annotation::into_proto).collect(),
                 }),
                 label,
             ),

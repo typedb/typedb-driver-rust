@@ -155,7 +155,7 @@ pub(super) enum QueryResponse {
 pub(super) enum ConceptRequest {
     GetEntityType { label: String },
     // GetRelationType,
-    // GetAttributeType,
+    GetAttributeType { label: String },
     PutEntityType { label: String },
     // PutRelationType,
     PutAttributeType { label: String, value_type: ValueType },
@@ -169,7 +169,7 @@ pub(super) enum ConceptRequest {
 pub(super) enum ConceptResponse {
     GetEntityType { entity_type: Option<EntityType> },
     // GetRelationType,
-    // GetAttributeType,
+    GetAttributeType { attribute_type: Option<AttributeType> },
     PutEntityType { entity_type: EntityType },
     // PutRelationType,
     PutAttributeType { attribute_type: AttributeType },
