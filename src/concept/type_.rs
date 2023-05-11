@@ -23,7 +23,8 @@ use std::fmt;
 
 use futures::Stream;
 
-use crate::{common::Transitivity, concept::Entity, Annotation, Result, Transaction};
+use super::{Entity, Relation};
+use crate::{common::Transitivity, Annotation, Result, Transaction};
 
 #[derive(Clone, Debug)]
 pub struct RootThingType;
@@ -134,6 +135,81 @@ pub struct RelationType {
 impl RelationType {
     pub fn new(label: String, is_root: bool, is_abstract: bool) -> Self {
         Self { label, is_root, is_abstract }
+    }
+
+    pub async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
+        transaction.concept().relation_type_delete(self.clone()).await
+    }
+
+    pub async fn set_label(&mut self, transaction: &Transaction<'_>, new_label: String) -> Result {
+        transaction.concept().relation_type_set_label(self.clone(), new_label).await
+    }
+
+    pub async fn set_abstract(&mut self, transaction: &Transaction<'_>) -> Result {
+        transaction.concept().relation_type_set_abstract(self.clone()).await
+    }
+
+    pub async fn unset_abstract(&mut self, transaction: &Transaction<'_>) -> Result {
+        transaction.concept().relation_type_unset_abstract(self.clone()).await
+    }
+
+    pub fn get_owns(
+        &self,
+        transaction: &Transaction<'_>,
+        value_type: Option<ValueType>,
+        transitivity: Transitivity,
+        annotation_filter: &[Annotation],
+    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+        transaction.concept().relation_type_get_owns(self.clone(), value_type, transitivity, annotation_filter.to_vec())
+    }
+
+    pub async fn get_owns_overridden(
+        &self,
+        transaction: &Transaction<'_>,
+        overridden_attribute_type: AttributeType,
+    ) -> Result<Option<AttributeType>> {
+        transaction.concept().relation_type_get_owns_overridden(self.clone(), overridden_attribute_type).await
+    }
+
+    pub async fn set_owns(
+        &mut self,
+        transaction: &Transaction<'_>,
+        attribute_type: AttributeType,
+        overridden_attribute_type: Option<AttributeType>,
+        annotations: &[Annotation],
+    ) -> Result {
+        transaction
+            .concept()
+            .relation_type_set_owns(self.clone(), attribute_type, overridden_attribute_type, annotations.to_vec())
+            .await
+    }
+
+    pub async fn unset_owns(&mut self, transaction: &Transaction<'_>, attribute_type: AttributeType) -> Result {
+        transaction.concept().relation_type_unset_owns(self.clone(), attribute_type).await
+    }
+
+    pub async fn create(&self, transaction: &Transaction<'_>) -> Result<Relation> {
+        transaction.concept().relation_type_create(self.clone()).await
+    }
+
+    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_relation_type(self.label.clone()).await.map(|res| res.is_some())
+    }
+
+    pub async fn get_supertype(&self, transaction: &Transaction<'_>) -> Result<Self> {
+        transaction.concept().relation_type_get_supertype(self.clone()).await
+    }
+
+    pub async fn set_supertype(&mut self, transaction: &Transaction<'_>, supertype: RelationType) -> Result {
+        transaction.concept().relation_type_set_supertype(self.clone(), supertype).await
+    }
+
+    pub fn get_supertypes(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
+        transaction.concept().relation_type_get_supertypes(self.clone())
+    }
+
+    pub fn get_subtypes(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
+        transaction.concept().relation_type_get_subtypes(self.clone(), Transitivity::Transitive)
     }
 }
 

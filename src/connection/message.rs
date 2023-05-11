@@ -28,7 +28,7 @@ use typedb_protocol::transaction;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity},
-    concept::{AttributeType, Entity, EntityType, ValueType},
+    concept::{AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
     Annotation, Options, SessionType, TransactionType,
 };
 
@@ -154,10 +154,10 @@ pub(super) enum QueryResponse {
 #[derive(Debug)]
 pub(super) enum ConceptRequest {
     GetEntityType { label: String },
-    // GetRelationType,
+    GetRelationType { label: String },
     GetAttributeType { label: String },
     PutEntityType { label: String },
-    // PutRelationType,
+    PutRelationType { label: String },
     PutAttributeType { label: String, value_type: ValueType },
     // GetEntity,
     // GetRelation,
@@ -168,10 +168,10 @@ pub(super) enum ConceptRequest {
 #[derive(Debug)]
 pub(super) enum ConceptResponse {
     GetEntityType { entity_type: Option<EntityType> },
-    // GetRelationType,
+    GetRelationType { relation_type: Option<RelationType> },
     GetAttributeType { attribute_type: Option<AttributeType> },
     PutEntityType { entity_type: EntityType },
-    // PutRelationType,
+    PutRelationType { relation_type: RelationType },
     PutAttributeType { attribute_type: AttributeType },
     // GetEntity,
     // GetRelation,
@@ -237,12 +237,23 @@ pub(super) enum ThingTypeRequest {
         transitivity: Transitivity,
     },
     // EntityTypeGetInstances,
-
-    // RelationTypeCreate,
-    // RelationTypeGetSupertype,
-    // RelationTypeSetSupertype,
-    // RelationTypeGetSupertypes,
-    // RelationTypeGetSubtypes,
+    RelationTypeCreate {
+        label: String,
+    },
+    RelationTypeGetSupertype {
+        label: String,
+    },
+    RelationTypeSetSupertype {
+        label: String,
+        supertype_label: String,
+    },
+    RelationTypeGetSupertypes {
+        label: String,
+    },
+    RelationTypeGetSubtypes {
+        label: String,
+        transitivity: Transitivity,
+    },
     // RelationTypeGetInstances,
     // RelationTypeGetRelates,
     // RelationTypeGetRelatesForRoleLabel,
@@ -283,12 +294,11 @@ pub(super) enum ThingTypeResponse {
     EntityTypeGetSupertypes { supertypes: Vec<EntityType> },
     EntityTypeGetSubtypes { subtypes: Vec<EntityType> },
     // EntityTypeGetInstances,
-
-    // RelationTypeCreate,
-    // RelationTypeGetSupertype,
-    // RelationTypeSetSupertype,
-    // RelationTypeGetSupertypes,
-    // RelationTypeGetSubtypes,
+    RelationTypeCreate { relation: Relation },
+    RelationTypeGetSupertype { supertype: RelationType },
+    RelationTypeSetSupertype,
+    RelationTypeGetSupertypes { supertypes: Vec<RelationType> },
+    RelationTypeGetSubtypes { subtypes: Vec<RelationType> },
     // RelationTypeGetInstances,
     // RelationTypeGetRelates,
     // RelationTypeGetRelatesForRoleLabel,

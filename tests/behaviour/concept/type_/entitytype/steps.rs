@@ -313,7 +313,11 @@ generic_step_impl! {
     }
 
     #[step(regex = r"^entity\( ?(\S+) ?\) get owns attribute types do not contain:$")]
-    async fn entity_type_get_owns_attribute_types_do_not_contain(context: &mut Context, step: &Step, type_label: String) {
+    async fn entity_type_get_owns_attribute_types_do_not_contain(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+    ) {
         let tx = context.transaction();
         let entity_type = get_entity_type(tx, type_label).await;
         let actuals: Vec<String> = entity_type
@@ -350,11 +354,7 @@ generic_step_impl! {
     }
 
     #[step(regex = r"^entity\( ?(\S+) ?\) get owns explicit attribute types contain:$")]
-    async fn entity_type_get_owns_explicit_attribute_types(
-        context: &mut Context,
-        step: &Step,
-        type_label: String,
-    ) {
+    async fn entity_type_get_owns_explicit_attribute_types(context: &mut Context, step: &Step, type_label: String) {
         let tx = context.transaction();
         let entity_type = get_entity_type(tx, type_label).await;
         let actuals: Vec<String> = entity_type
@@ -429,5 +429,42 @@ generic_step_impl! {
         for attribute in iter_table(step) {
             assert!(actuals.iter().all(|actual| actual != attribute));
         }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns overridden attribute\( ?(\S+) ?\) is null: (\S*)$")]
+    async fn entity_type_get_owns_overridden_attribute_type(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+        is_null: bool,
+    ) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let attribute_type = get_attribute_type(tx, attribute_type_label).await;
+        let res = entity_type.get_owns_overridden(tx, attribute_type).await;
+        assert!(res.is_ok());
+        if is_null {
+            assert!(res.unwrap().is_none());
+        } else {
+            assert!(res.unwrap().is_some());
+        }
+    }
+
+    #[step(regex = r"^entity\( ?(\S+) ?\) get owns overridden attribute\( ?(\S+) ?\) get label: (\S+)$")]
+    async fn entity_type_get_owns_overridden_attribute_type_label(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+        overridden_label: String,
+    ) {
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label).await;
+        let attribute_type = get_attribute_type(tx, attribute_type_label).await;
+        let res = entity_type.get_owns_overridden(tx, attribute_type).await;
+        assert!(res.is_ok());
+        let Ok(res) = res else { unreachable!() };
+        assert!(res.is_some());
+        let Some(res) = res else { unreachable!() };
+        assert_eq!(res.label, overridden_label);
     }
 }

@@ -25,7 +25,7 @@ use futures::Stream;
 
 use crate::{
     common::Transitivity,
-    concept::{AttributeType, Entity, EntityType, ValueType},
+    concept::{AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
     connection::TransactionStream,
     Annotation, Result,
 };
@@ -44,12 +44,20 @@ impl ConceptManager {
         self.transaction_stream.get_entity_type(label).await
     }
 
+    pub async fn get_relation_type(&self, label: String) -> Result<Option<RelationType>> {
+        self.transaction_stream.get_relation_type(label).await
+    }
+
     pub async fn get_attribute_type(&self, label: String) -> Result<Option<AttributeType>> {
         self.transaction_stream.get_attribute_type(label).await
     }
 
     pub async fn put_entity_type(&self, label: String) -> Result<EntityType> {
         self.transaction_stream.put_entity_type(label).await
+    }
+
+    pub async fn put_relation_type(&self, label: String) -> Result<RelationType> {
+        self.transaction_stream.put_relation_type(label).await
     }
 
     pub async fn put_attribute_type(&self, label: String, value_type: ValueType) -> Result<AttributeType> {
@@ -136,5 +144,93 @@ impl ConceptManager {
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<EntityType>>> {
         self.transaction_stream.entity_type_get_subtypes(entity_type.label, transitivity)
+    }
+
+    pub(crate) async fn relation_type_delete(&self, relation_type: RelationType) -> Result {
+        self.transaction_stream.thing_type_delete(relation_type.label).await
+    }
+
+    pub(crate) async fn relation_type_set_label(&self, relation_type: RelationType, new_label: String) -> Result {
+        self.transaction_stream.thing_type_set_label(relation_type.label, new_label).await
+    }
+
+    pub(crate) async fn relation_type_set_abstract(&self, relation_type: RelationType) -> Result {
+        self.transaction_stream.thing_type_set_abstract(relation_type.label).await
+    }
+
+    pub(crate) async fn relation_type_unset_abstract(&self, relation_type: RelationType) -> Result {
+        self.transaction_stream.thing_type_unset_abstract(relation_type.label).await
+    }
+
+    pub fn relation_type_get_owns(
+        &self,
+        relation_type: RelationType,
+        value_type: Option<ValueType>,
+        transitivity: Transitivity,
+        annotation_filter: Vec<Annotation>,
+    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+        self.transaction_stream.thing_type_get_owns(relation_type.label, value_type, transitivity, annotation_filter)
+    }
+
+    pub async fn relation_type_get_owns_overridden(
+        &self,
+        relation_type: RelationType,
+        overridden_attribute_type: AttributeType,
+    ) -> Result<Option<AttributeType>> {
+        self.transaction_stream
+            .thing_type_get_owns_overridden(relation_type.label, overridden_attribute_type.label)
+            .await
+    }
+
+    pub async fn relation_type_set_owns(
+        &self,
+        relation_type: RelationType,
+        attribute_type: AttributeType,
+        overridden_attribute_type: Option<AttributeType>,
+        annotations: Vec<Annotation>,
+    ) -> Result {
+        self.transaction_stream
+            .thing_type_set_owns(
+                relation_type.label,
+                attribute_type.label,
+                overridden_attribute_type.map(|at| at.label),
+                annotations,
+            )
+            .await
+    }
+
+    pub async fn relation_type_unset_owns(&self, relation_type: RelationType, attribute_type: AttributeType) -> Result {
+        self.transaction_stream.thing_type_unset_owns(relation_type.label, attribute_type.label).await
+    }
+
+    pub(crate) async fn relation_type_create(&self, relation_type: RelationType) -> Result<Relation> {
+        self.transaction_stream.relation_type_create(relation_type.label).await
+    }
+
+    pub(crate) async fn relation_type_get_supertype(&self, relation_type: RelationType) -> Result<RelationType> {
+        self.transaction_stream.relation_type_get_supertype(relation_type.label).await
+    }
+
+    pub(crate) async fn relation_type_set_supertype(
+        &self,
+        relation_type: RelationType,
+        supertype: RelationType,
+    ) -> Result {
+        self.transaction_stream.relation_type_set_supertype(relation_type.label, supertype.label).await
+    }
+
+    pub(crate) fn relation_type_get_supertypes(
+        &self,
+        relation_type: RelationType,
+    ) -> Result<impl Stream<Item = Result<RelationType>>> {
+        self.transaction_stream.relation_type_get_supertypes(relation_type.label)
+    }
+
+    pub(crate) fn relation_type_get_subtypes(
+        &self,
+        relation_type: RelationType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RelationType>>> {
+        self.transaction_stream.relation_type_get_subtypes(relation_type.label, transitivity)
     }
 }

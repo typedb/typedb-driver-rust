@@ -23,15 +23,16 @@ use std::time::Duration;
 
 use itertools::Itertools;
 use typedb_protocol::{
-    concept_manager, database, database_manager, entity_type, query_manager, r#type, server_manager, session,
-    thing_type, transaction, AttributeType as AttributeTypeProto, EntityType as EntityTypeProto,
+    concept_manager, database, database_manager, entity_type, query_manager, r#type, relation_type, server_manager,
+    session, thing_type, transaction, AttributeType as AttributeTypeProto, EntityType as EntityTypeProto,
+    RelationType as RelationTypeProto,
 };
 
 use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{info::DatabaseInfo, RequestID, Result},
-    concept::{AttributeType, Entity, EntityType},
+    concept::{AttributeType, Entity, EntityType, Relation, RelationType},
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
         ThingTypeResponse, TransactionRequest, TransactionResponse,
@@ -380,11 +381,17 @@ impl IntoProto<concept_manager::Req> for ConceptRequest {
             Self::GetEntityType { label } => {
                 concept_manager::req::Req::GetEntityTypeReq(concept_manager::get_entity_type::Req { label })
             }
+            Self::GetRelationType { label } => {
+                concept_manager::req::Req::GetRelationTypeReq(concept_manager::get_relation_type::Req { label })
+            }
             Self::GetAttributeType { label } => {
                 concept_manager::req::Req::GetAttributeTypeReq(concept_manager::get_attribute_type::Req { label })
             }
             Self::PutEntityType { label } => {
                 concept_manager::req::Req::PutEntityTypeReq(concept_manager::put_entity_type::Req { label })
+            }
+            Self::PutRelationType { label } => {
+                concept_manager::req::Req::PutRelationTypeReq(concept_manager::put_relation_type::Req { label })
             }
             Self::PutAttributeType { label, value_type } => {
                 concept_manager::req::Req::PutAttributeTypeReq(concept_manager::put_attribute_type::Req {
@@ -403,6 +410,9 @@ impl TryFromProto<concept_manager::Res> for ConceptResponse {
             Some(concept_manager::res::Res::GetEntityTypeRes(concept_manager::get_entity_type::Res {
                 entity_type,
             })) => Ok(Self::GetEntityType { entity_type: entity_type.map(EntityType::from_proto) }),
+            Some(concept_manager::res::Res::GetRelationTypeRes(concept_manager::get_relation_type::Res {
+                relation_type,
+            })) => Ok(Self::GetRelationType { relation_type: relation_type.map(RelationType::from_proto) }),
             Some(concept_manager::res::Res::GetAttributeTypeRes(concept_manager::get_attribute_type::Res {
                 attribute_type,
             })) => Ok(Self::GetAttributeType {
@@ -413,6 +423,13 @@ impl TryFromProto<concept_manager::Res> for ConceptResponse {
             })) => Ok(Self::PutEntityType {
                 entity_type: EntityType::from_proto(
                     entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?,
+                ),
+            }),
+            Some(concept_manager::res::Res::PutRelationTypeRes(concept_manager::put_relation_type::Res {
+                relation_type,
+            })) => Ok(Self::PutRelationType {
+                relation_type: RelationType::from_proto(
+                    relation_type.ok_or(ConnectionError::MissingResponseField("relation_type"))?,
                 ),
             }),
             Some(concept_manager::res::Res::PutAttributeTypeRes(concept_manager::put_attribute_type::Res {
@@ -496,6 +513,27 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
                 }),
                 label,
             ),
+            Self::RelationTypeCreate { label } => {
+                (thing_type::req::Req::RelationTypeCreateReq(relation_type::create::Req {}), label)
+            }
+            Self::RelationTypeGetSupertype { label } => {
+                (thing_type::req::Req::RelationTypeGetSupertypeReq(relation_type::get_supertype::Req {}), label)
+            }
+            Self::RelationTypeSetSupertype { label, supertype_label } => (
+                thing_type::req::Req::RelationTypeSetSupertypeReq(relation_type::set_supertype::Req {
+                    relation_type: Some(RelationTypeProto { label: supertype_label, ..Default::default() }),
+                }),
+                label,
+            ),
+            Self::RelationTypeGetSupertypes { label } => {
+                (thing_type::req::Req::RelationTypeGetSupertypesReq(relation_type::get_supertypes::Req {}), label)
+            }
+            Self::RelationTypeGetSubtypes { label, transitivity } => (
+                thing_type::req::Req::RelationTypeGetSubtypesReq(relation_type::get_subtypes::Req {
+                    transitivity: transitivity.into_proto(),
+                }),
+                label,
+            ),
         };
         r#type::Req { req: Some(r#type::req::Req::ThingTypeReq(thing_type::Req { label, req: Some(req) })) }
     }
@@ -530,6 +568,21 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
                 })
             }
             Some(thing_type::res::Res::EntityTypeSetSupertypeRes(_)) => Ok(Self::EntityTypeSetSupertype),
+            Some(thing_type::res::Res::RelationTypeCreateRes(relation_type::create::Res { relation })) => {
+                Ok(Self::RelationTypeCreate {
+                    relation: Relation::try_from_proto(
+                        relation.ok_or(ConnectionError::MissingResponseField("relation_type"))?,
+                    )?,
+                })
+            }
+            Some(thing_type::res::Res::RelationTypeGetSupertypeRes(relation_type::get_supertype::Res {
+                relation_type,
+            })) => Ok(Self::RelationTypeGetSupertype {
+                supertype: RelationType::from_proto(
+                    relation_type.ok_or(ConnectionError::MissingResponseField("relation_type"))?,
+                ),
+            }),
+            Some(thing_type::res::Res::RelationTypeSetSupertypeRes(_)) => Ok(Self::RelationTypeSetSupertype),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
@@ -553,6 +606,16 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
                 entity_types,
             })) => Ok(Self::EntityTypeGetSubtypes {
                 subtypes: entity_types.into_iter().map(EntityType::from_proto).collect(),
+            }),
+            Some(thing_type::res_part::Res::RelationTypeGetSupertypesResPart(
+                relation_type::get_supertypes::ResPart { relation_types },
+            )) => Ok(Self::RelationTypeGetSupertypes {
+                supertypes: relation_types.into_iter().map(RelationType::from_proto).collect(),
+            }),
+            Some(thing_type::res_part::Res::RelationTypeGetSubtypesResPart(relation_type::get_subtypes::ResPart {
+                relation_types,
+            })) => Ok(Self::RelationTypeGetSubtypes {
+                subtypes: relation_types.into_iter().map(RelationType::from_proto).collect(),
             }),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),

@@ -27,7 +27,7 @@ use super::network::transmitter::TransactionTransmitter;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{Result, Transitivity},
-    concept::{AttributeType, Entity, EntityType, ValueType},
+    concept::{AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
         TransactionRequest, TransactionResponse,
@@ -129,6 +129,13 @@ impl TransactionStream {
         }
     }
 
+    pub(crate) async fn get_relation_type(&self, label: String) -> Result<Option<RelationType>> {
+        match self.concept_single(ConceptRequest::GetRelationType { label }).await? {
+            ConceptResponse::GetRelationType { relation_type } => Ok(relation_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
     pub(crate) async fn get_attribute_type(&self, label: String) -> Result<Option<AttributeType>> {
         match self.concept_single(ConceptRequest::GetAttributeType { label }).await? {
             ConceptResponse::GetAttributeType { attribute_type } => Ok(attribute_type),
@@ -139,6 +146,13 @@ impl TransactionStream {
     pub(crate) async fn put_entity_type(&self, label: String) -> Result<EntityType> {
         match self.concept_single(ConceptRequest::PutEntityType { label }).await? {
             ConceptResponse::PutEntityType { entity_type } => Ok(entity_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn put_relation_type(&self, label: String) -> Result<RelationType> {
+        match self.concept_single(ConceptRequest::PutRelationType { label }).await? {
+            ConceptResponse::PutRelationType { relation_type } => Ok(relation_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
@@ -283,6 +297,56 @@ impl TransactionStream {
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::EntityTypeGetSubtypes { subtypes: entity_types }) => {
                 stream_iter(entity_types.into_iter().map(Ok))
+            }
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) async fn relation_type_create(&self, label: String) -> Result<Relation> {
+        match self.thing_type_single(ThingTypeRequest::RelationTypeCreate { label }).await? {
+            ThingTypeResponse::RelationTypeCreate { relation } => Ok(relation),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn relation_type_get_supertype(&self, label: String) -> Result<RelationType> {
+        match self.thing_type_single(ThingTypeRequest::RelationTypeGetSupertype { label }).await? {
+            ThingTypeResponse::RelationTypeGetSupertype { supertype: relation_type } => Ok(relation_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn relation_type_set_supertype(&self, label: String, supertype_label: String) -> Result {
+        match self.thing_type_single(ThingTypeRequest::RelationTypeSetSupertype { label, supertype_label }).await? {
+            ThingTypeResponse::RelationTypeSetSupertype => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn relation_type_get_supertypes(
+        &self,
+        label: String,
+    ) -> Result<impl Stream<Item = Result<RelationType>>> {
+        let stream = self.thing_type_stream(ThingTypeRequest::RelationTypeGetSupertypes { label })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::RelationTypeGetSupertypes { supertypes: relation_types }) => {
+                stream_iter(relation_types.into_iter().map(Ok))
+            }
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) fn relation_type_get_subtypes(
+        &self,
+        label: String,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RelationType>>> {
+        let stream = self.thing_type_stream(ThingTypeRequest::RelationTypeGetSubtypes { label, transitivity })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::RelationTypeGetSubtypes { subtypes: relation_types }) => {
+                stream_iter(relation_types.into_iter().map(Ok))
             }
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
