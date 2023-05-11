@@ -303,6 +303,19 @@ impl TransactionStream {
         }))
     }
 
+    pub(crate) fn entity_type_get_instances(
+        &self,
+        label: String,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<Entity>>> {
+        let stream = self.thing_type_stream(ThingTypeRequest::EntityTypeGetInstances { label, transitivity })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::EntityTypeGetInstances { entities }) => stream_iter(entities.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
     pub(crate) async fn relation_type_create(&self, label: String) -> Result<Relation> {
         match self.thing_type_single(ThingTypeRequest::RelationTypeCreate { label }).await? {
             ThingTypeResponse::RelationTypeCreate { relation } => Ok(relation),
@@ -348,6 +361,19 @@ impl TransactionStream {
             Ok(ThingTypeResponse::RelationTypeGetSubtypes { subtypes: relation_types }) => {
                 stream_iter(relation_types.into_iter().map(Ok))
             }
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) fn relation_type_get_instances(
+        &self,
+        label: String,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<Relation>>> {
+        let stream = self.thing_type_stream(ThingTypeRequest::RelationTypeGetInstances { label, transitivity })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::RelationTypeGetInstances { relations }) => stream_iter(relations.into_iter().map(Ok)),
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
         }))

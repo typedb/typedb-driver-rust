@@ -123,6 +123,10 @@ impl EntityType {
     pub fn get_subtypes(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
         transaction.concept().entity_type_get_subtypes(self.clone(), Transitivity::Transitive)
     }
+
+    pub fn get_instances(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Entity>>> {
+        transaction.concept().entity_type_get_instances(self.clone(), Transitivity::Transitive)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -210,6 +214,10 @@ impl RelationType {
 
     pub fn get_subtypes(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Self>>> {
         transaction.concept().relation_type_get_subtypes(self.clone(), Transitivity::Transitive)
+    }
+
+    pub fn get_instances(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Relation>>> {
+        transaction.concept().relation_type_get_instances(self.clone(), Transitivity::Transitive)
     }
 }
 

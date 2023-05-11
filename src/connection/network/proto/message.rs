@@ -513,6 +513,12 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
                 }),
                 label,
             ),
+            Self::EntityTypeGetInstances { label, transitivity } => (
+                thing_type::req::Req::EntityTypeGetInstancesReq(entity_type::get_instances::Req {
+                    transitivity: transitivity.into_proto(),
+                }),
+                label,
+            ),
             Self::RelationTypeCreate { label } => {
                 (thing_type::req::Req::RelationTypeCreateReq(relation_type::create::Req {}), label)
             }
@@ -530,6 +536,12 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
             }
             Self::RelationTypeGetSubtypes { label, transitivity } => (
                 thing_type::req::Req::RelationTypeGetSubtypesReq(relation_type::get_subtypes::Req {
+                    transitivity: transitivity.into_proto(),
+                }),
+                label,
+            ),
+            Self::RelationTypeGetInstances { label, transitivity } => (
+                thing_type::req::Req::RelationTypeGetInstancesReq(relation_type::get_instances::Req {
                     transitivity: transitivity.into_proto(),
                 }),
                 label,
@@ -607,6 +619,11 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
             })) => Ok(Self::EntityTypeGetSubtypes {
                 subtypes: entity_types.into_iter().map(EntityType::from_proto).collect(),
             }),
+            Some(thing_type::res_part::Res::EntityTypeGetInstancesResPart(entity_type::get_instances::ResPart {
+                entities,
+            })) => Ok(Self::EntityTypeGetInstances {
+                entities: entities.into_iter().map(Entity::try_from_proto).try_collect()?,
+            }),
             Some(thing_type::res_part::Res::RelationTypeGetSupertypesResPart(
                 relation_type::get_supertypes::ResPart { relation_types },
             )) => Ok(Self::RelationTypeGetSupertypes {
@@ -616,6 +633,11 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
                 relation_types,
             })) => Ok(Self::RelationTypeGetSubtypes {
                 subtypes: relation_types.into_iter().map(RelationType::from_proto).collect(),
+            }),
+            Some(thing_type::res_part::Res::RelationTypeGetInstancesResPart(
+                relation_type::get_instances::ResPart { relations },
+            )) => Ok(Self::RelationTypeGetInstances {
+                relations: relations.into_iter().map(Relation::try_from_proto).try_collect()?,
             }),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),

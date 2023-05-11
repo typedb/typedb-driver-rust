@@ -21,7 +21,6 @@
 
 mod steps;
 
-/*
 use serial_test::serial;
 
 use crate::behaviour::Context;
@@ -34,4 +33,3 @@ async fn test() {
     // the working directory.
     assert!(Context::test("../vaticle_typedb_behaviour/concept/type/relationtype.feature").await);
 }
-*/

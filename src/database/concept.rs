@@ -146,6 +146,14 @@ impl ConceptManager {
         self.transaction_stream.entity_type_get_subtypes(entity_type.label, transitivity)
     }
 
+    pub(crate) fn entity_type_get_instances(
+        &self,
+        entity_type: EntityType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<Entity>>> {
+        self.transaction_stream.entity_type_get_instances(entity_type.label, transitivity)
+    }
+
     pub(crate) async fn relation_type_delete(&self, relation_type: RelationType) -> Result {
         self.transaction_stream.thing_type_delete(relation_type.label).await
     }
@@ -232,5 +240,13 @@ impl ConceptManager {
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<RelationType>>> {
         self.transaction_stream.relation_type_get_subtypes(relation_type.label, transitivity)
+    }
+
+    pub(crate) fn relation_type_get_instances(
+        &self,
+        relation_type: RelationType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<Relation>>> {
+        self.transaction_stream.relation_type_get_instances(relation_type.label, transitivity)
     }
 }
