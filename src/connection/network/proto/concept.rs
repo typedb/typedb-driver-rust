@@ -27,17 +27,18 @@ use typedb_protocol::{
     attribute_type::ValueType as ValueTypeProto,
     concept as concept_proto,
     numeric::Value as NumericValue,
-    Attribute as AttributeProto, AttributeType as AttributeTypeProto, Concept as ConceptProto,
-    ConceptMap as ConceptMapProto, Entity as EntityProto, EntityType as EntityTypeProto, Numeric as NumericProto,
-    Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto,
+    thing_type as thing_type_proto, Attribute as AttributeProto, AttributeType as AttributeTypeProto,
+    Concept as ConceptProto, ConceptMap as ConceptMapProto, Entity as EntityProto, EntityType as EntityTypeProto,
+    Numeric as NumericProto, Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto,
+    ThingType as ThingTypeProto,
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     concept::{
-        Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, ScopedLabel, Value,
-        ValueType,
+        Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, RootThingType,
+        ScopedLabel, ThingType, Value, ValueType,
     },
     error::{ConnectionError, InternalError},
     Result,
@@ -75,22 +76,40 @@ impl TryFromProto<ConceptProto> for Concept {
                 Ok(Self::RelationType(RelationType::from_proto(relation_type_proto)))
             }
             concept_proto::Concept::AttributeType(attribute_type_proto) => {
-                AttributeType::try_from_proto(attribute_type_proto).map(Concept::AttributeType)
+                AttributeType::try_from_proto(attribute_type_proto).map(Self::AttributeType)
             }
 
             concept_proto::Concept::RoleType(role_type_proto) => {
                 Ok(Self::RoleType(RoleType::from_proto(role_type_proto)))
             }
 
-            concept_proto::Concept::Entity(entity_proto) => Entity::try_from_proto(entity_proto).map(Concept::Entity),
+            concept_proto::Concept::Entity(entity_proto) => Entity::try_from_proto(entity_proto).map(Self::Entity),
             concept_proto::Concept::Relation(relation_proto) => {
-                Relation::try_from_proto(relation_proto).map(Concept::Relation)
+                Relation::try_from_proto(relation_proto).map(Self::Relation)
             }
             concept_proto::Concept::Attribute(attribute_proto) => {
-                Attribute::try_from_proto(attribute_proto).map(Concept::Attribute)
+                Attribute::try_from_proto(attribute_proto).map(Self::Attribute)
             }
 
-            concept_proto::Concept::RootThingType(_root_thing_type_proto) => todo!(),
+            concept_proto::Concept::RootThingType(_root_thing_type_proto) => Ok(Self::RootThingType(RootThingType)),
+        }
+    }
+}
+
+impl TryFromProto<ThingTypeProto> for ThingType {
+    fn try_from_proto(proto: ThingTypeProto) -> Result<Self> {
+        match proto.r#type {
+            Some(thing_type_proto::Type::EntityType(entity_type_proto)) => {
+                Ok(Self::EntityType(EntityType::from_proto(entity_type_proto)))
+            }
+            Some(thing_type_proto::Type::RelationType(relation_type_proto)) => {
+                Ok(Self::RelationType(RelationType::from_proto(relation_type_proto)))
+            }
+            Some(thing_type_proto::Type::AttributeType(attribute_type_proto)) => {
+                AttributeType::try_from_proto(attribute_type_proto).map(Self::AttributeType)
+            }
+            Some(thing_type_proto::Type::RootThingType(_)) => Ok(Self::RootThingType(RootThingType)),
+            None => Err(ConnectionError::MissingResponseField("type").into()),
         }
     }
 }

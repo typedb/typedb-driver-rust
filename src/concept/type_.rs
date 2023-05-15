@@ -533,6 +533,23 @@ impl AttributeType {
             Some(self.value_type),
         )
     }
+
+    pub async fn get_regex(&self, transaction: &Transaction<'_>) -> Result<String> {
+        transaction.concept().attribute_type_get_regex(self.clone()).await
+    }
+
+    pub async fn set_regex(&self, transaction: &Transaction<'_>, regex: String) -> Result {
+        transaction.concept().attribute_type_set_regex(self.clone(), regex).await
+    }
+
+    pub fn get_owners(
+        &self,
+        transaction: &Transaction<'_>,
+        transitivity: Transitivity,
+        annotations: &[Annotation],
+    ) -> Result<impl Stream<Item = Result<ThingType>>> {
+        transaction.concept().attribute_type_get_owners(self.clone(), transitivity, annotations.to_vec())
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

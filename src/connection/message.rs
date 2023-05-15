@@ -327,9 +327,18 @@ pub(super) enum ThingTypeRequest {
         transitivity: Transitivity,
         value_type: Option<ValueType>,
     },
-    // AttributeTypeGetRegex,
-    // AttributeTypeSetRegex,
-    // AttributeTypeGetOwners,
+    AttributeTypeGetRegex {
+        attribute_type: AttributeType,
+    },
+    AttributeTypeSetRegex {
+        attribute_type: AttributeType,
+        regex: String,
+    },
+    AttributeTypeGetOwners {
+        attribute_type: AttributeType,
+        transitivity: Transitivity,
+        annotations: Vec<Annotation>,
+    },
 }
 
 #[derive(Debug)]
@@ -371,7 +380,7 @@ pub(super) enum ThingTypeResponse {
     AttributeTypeGetSupertypes { supertypes: Vec<AttributeType> },
     AttributeTypeGetSubtypes { subtypes: Vec<AttributeType> },
     AttributeTypeGetInstances { attributes: Vec<Attribute> },
-    // AttributeTypeGetRegex,
-    // AttributeTypeSetRegex,
-    // AttributeTypeGetOwners,
+    AttributeTypeGetRegex { regex: String },
+    AttributeTypeSetRegex,
+    AttributeTypeGetOwners { thing_types: Vec<ThingType> },
 }

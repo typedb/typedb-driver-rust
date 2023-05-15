@@ -31,7 +31,7 @@ use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{info::DatabaseInfo, RequestID, Result},
-    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, ValueType},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, ThingType, ValueType},
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
         ThingTypeResponse, TransactionRequest, TransactionResponse,
@@ -505,7 +505,7 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
                 thing_type::req::Req::ThingTypeSetOwnsReq(thing_type::set_owns::Req {
                     attribute_type: Some(attribute_type.into_proto()),
                     overridden_type: overridden_attribute_type.map(AttributeType::into_proto),
-                    annotations: annotations.into_iter().map(|anno| anno.into_proto()).collect(),
+                    annotations: annotations.into_iter().map(Annotation::into_proto).collect(),
                 }),
                 thing_type.label().to_owned(),
             ),
@@ -668,6 +668,21 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
                 }),
                 attribute_type.label,
             ),
+            Self::AttributeTypeGetRegex { attribute_type } => (
+                thing_type::req::Req::AttributeTypeGetRegexReq(attribute_type::get_regex::Req {}),
+                attribute_type.label,
+            ),
+            Self::AttributeTypeSetRegex { attribute_type, regex } => (
+                thing_type::req::Req::AttributeTypeSetRegexReq(attribute_type::set_regex::Req { regex }),
+                attribute_type.label,
+            ),
+            Self::AttributeTypeGetOwners { attribute_type, transitivity, annotations } => (
+                thing_type::req::Req::AttributeTypeGetOwnersReq(attribute_type::get_owners::Req {
+                    transitivity: transitivity.into_proto(),
+                    annotations: annotations.into_iter().map(Annotation::into_proto).collect(),
+                }),
+                attribute_type.label,
+            ),
         };
         r#type::Req { req: Some(r#type::req::Req::ThingTypeReq(thing_type::Req { label, req: Some(req) })) }
     }
@@ -749,7 +764,10 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
                 )?,
             }),
             Some(thing_type::res::Res::AttributeTypeSetSupertypeRes(_)) => Ok(Self::AttributeTypeSetSupertype),
-            Some(_) => todo!(),
+            Some(thing_type::res::Res::AttributeTypeGetRegexRes(attribute_type::get_regex::Res { regex })) => {
+                Ok(Self::AttributeTypeGetRegex { regex })
+            }
+            Some(thing_type::res::Res::AttributeTypeSetRegexRes(_)) => Ok(Self::AttributeTypeSetRegex),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
@@ -818,7 +836,11 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
             )) => Ok(Self::AttributeTypeGetInstances {
                 attributes: attributes.into_iter().map(Attribute::try_from_proto).try_collect()?,
             }),
-            Some(_) => todo!(),
+            Some(thing_type::res_part::Res::AttributeTypeGetOwnersResPart(attribute_type::get_owners::ResPart {
+                thing_types,
+            })) => Ok(Self::AttributeTypeGetOwners {
+                thing_types: thing_types.into_iter().map(ThingType::try_from_proto).try_collect()?,
+            }),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }

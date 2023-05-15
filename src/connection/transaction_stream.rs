@@ -637,6 +637,40 @@ impl TransactionStream {
         }))
     }
 
+    pub(crate) async fn attribute_type_get_regex(&self, attribute_type: AttributeType) -> Result<String> {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypeGetRegex { attribute_type }).await? {
+            ThingTypeResponse::AttributeTypeGetRegex { regex } => Ok(regex),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn attribute_type_set_regex(&self, attribute_type: AttributeType, regex: String) -> Result {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypeSetRegex { attribute_type, regex }).await? {
+            ThingTypeResponse::AttributeTypeSetRegex => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn attribute_type_get_owners(
+        &self,
+        attribute_type: AttributeType,
+        transitivity: Transitivity,
+        annotations: Vec<Annotation>,
+    ) -> Result<impl Stream<Item = Result<ThingType>>> {
+        let stream = self.thing_type_stream(ThingTypeRequest::AttributeTypeGetOwners {
+            attribute_type,
+            transitivity,
+            annotations,
+        })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::AttributeTypeGetOwners { thing_types }) => {
+                stream_iter(thing_types.into_iter().map(Ok))
+            }
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
     async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         self.transaction_transmitter.single(req).await
     }

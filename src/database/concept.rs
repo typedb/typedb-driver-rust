@@ -324,4 +324,21 @@ impl ConceptManager {
     ) -> Result<impl Stream<Item = Result<Attribute>>> {
         self.transaction_stream.attribute_type_get_instances(attribute_type, transitivity, value_type)
     }
+
+    pub(crate) async fn attribute_type_get_regex(&self, attribute_type: AttributeType) -> Result<String> {
+        self.transaction_stream.attribute_type_get_regex(attribute_type).await
+    }
+
+    pub(crate) async fn attribute_type_set_regex(&self, attribute_type: AttributeType, regex: String) -> Result {
+        self.transaction_stream.attribute_type_set_regex(attribute_type, regex).await
+    }
+
+    pub(crate) fn attribute_type_get_owners(
+        &self,
+        attribute_type: AttributeType,
+        transitivity: Transitivity,
+        annotations: Vec<Annotation>,
+    ) -> Result<impl Stream<Item = Result<ThingType>>> {
+        self.transaction_stream.attribute_type_get_owners(attribute_type, transitivity, annotations)
+    }
 }
