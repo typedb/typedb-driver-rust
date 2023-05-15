@@ -288,6 +288,62 @@ impl TransactionStream {
         }
     }
 
+    pub(crate) fn thing_type_get_plays(
+        &self,
+        thing_type: ThingType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        let stream = self.thing_type_stream(ThingTypeRequest::ThingTypeGetPlays { thing_type, transitivity })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::ThingTypeGetPlays { role_types }) => stream_iter(role_types.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) async fn thing_type_get_plays_overridden(
+        &self,
+        thing_type: ThingType,
+        overridden_role_type: RoleType,
+    ) -> Result<Option<RoleType>> {
+        match self
+            .thing_type_single(ThingTypeRequest::ThingTypeGetPlaysOverridden { thing_type, overridden_role_type })
+            .await?
+        {
+            ThingTypeResponse::ThingTypeGetPlaysOverridden { role_type } => Ok(role_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn thing_type_set_plays(
+        &self,
+        thing_type: ThingType,
+        role_type: RoleType,
+        overridden_role_type: Option<RoleType>,
+    ) -> Result {
+        match self
+            .thing_type_single(ThingTypeRequest::ThingTypeSetPlays { thing_type, role_type, overridden_role_type })
+            .await?
+        {
+            ThingTypeResponse::ThingTypeSetPlays => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn thing_type_unset_plays(&self, thing_type: ThingType, role_type: RoleType) -> Result {
+        match self.thing_type_single(ThingTypeRequest::ThingTypeUnsetPlays { thing_type, role_type }).await? {
+            ThingTypeResponse::ThingTypeUnsetPlays => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn thing_type_get_syntax(&self, thing_type: ThingType) -> Result<String> {
+        match self.thing_type_single(ThingTypeRequest::ThingTypeGetSyntax { thing_type }).await? {
+            ThingTypeResponse::ThingTypeGetSyntax { syntax } => Ok(syntax),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
     pub(crate) async fn entity_type_create(&self, entity_type: EntityType) -> Result<Entity> {
         match self.thing_type_single(ThingTypeRequest::EntityTypeCreate { entity_type }).await? {
             ThingTypeResponse::EntityTypeCreate { entity } => Ok(entity),

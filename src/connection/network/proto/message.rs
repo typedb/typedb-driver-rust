@@ -515,6 +515,35 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
                 }),
                 thing_type.label().to_owned(),
             ),
+            Self::ThingTypeGetPlays { thing_type, transitivity } => (
+                thing_type::req::Req::ThingTypeGetPlaysReq(thing_type::get_plays::Req {
+                    transitivity: Some(transitivity.into_proto()),
+                }),
+                thing_type.label().to_owned(),
+            ),
+            Self::ThingTypeGetPlaysOverridden { thing_type, overridden_role_type } => (
+                thing_type::req::Req::ThingTypeGetPlaysOverriddenReq(thing_type::get_plays_overridden::Req {
+                    role_type: Some(overridden_role_type.into_proto()),
+                }),
+                thing_type.label().to_owned(),
+            ),
+            Self::ThingTypeSetPlays { thing_type, role_type, overridden_role_type } => (
+                thing_type::req::Req::ThingTypeSetPlaysReq(thing_type::set_plays::Req {
+                    role_type: Some(role_type.into_proto()),
+                    overridden_role_type: overridden_role_type.map(RoleType::into_proto),
+                }),
+                thing_type.label().to_owned(),
+            ),
+            Self::ThingTypeUnsetPlays { thing_type, role_type } => (
+                thing_type::req::Req::ThingTypeUnsetPlaysReq(thing_type::unset_plays::Req {
+                    role_type: Some(role_type.into_proto()),
+                }),
+                thing_type.label().to_owned(),
+            ),
+            Self::ThingTypeGetSyntax { thing_type } => (
+                thing_type::req::Req::ThingTypeGetSyntaxReq(thing_type::get_syntax::Req {}),
+                thing_type.label().to_owned(),
+            ),
             Self::EntityTypeCreate { entity_type } => {
                 (thing_type::req::Req::EntityTypeCreateReq(entity_type::create::Req {}), entity_type.label)
             }
@@ -627,6 +656,14 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
             }),
             Some(thing_type::res::Res::ThingTypeSetOwnsRes(_)) => Ok(Self::ThingTypeSetOwns),
             Some(thing_type::res::Res::ThingTypeUnsetOwnsRes(_)) => Ok(Self::ThingTypeUnsetOwns),
+            Some(thing_type::res::Res::ThingTypeGetPlaysOverriddenRes(thing_type::get_plays_overridden::Res {
+                role_type,
+            })) => Ok(Self::ThingTypeGetPlaysOverridden { role_type: role_type.map(RoleType::from_proto) }),
+            Some(thing_type::res::Res::ThingTypeSetPlaysRes(_)) => Ok(Self::ThingTypeSetPlays),
+            Some(thing_type::res::Res::ThingTypeUnsetPlaysRes(_)) => Ok(Self::ThingTypeUnsetPlays),
+            Some(thing_type::res::Res::ThingTypeGetSyntaxRes(thing_type::get_syntax::Res { syntax })) => {
+                Ok(Self::ThingTypeGetSyntax { syntax })
+            }
             Some(thing_type::res::Res::EntityTypeCreateRes(entity_type::create::Res { entity })) => {
                 Ok(Self::EntityTypeCreate {
                     entity: Entity::try_from_proto(entity.ok_or(ConnectionError::MissingResponseField("entity"))?)?,
@@ -687,6 +724,11 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
             })) => Ok(Self::ThingTypeGetOwns {
                 attribute_types: attribute_types.into_iter().map(AttributeType::try_from_proto).try_collect()?,
             }),
+            Some(thing_type::res_part::Res::ThingTypeGetPlaysResPart(thing_type::get_plays::ResPart {
+                role_types,
+            })) => {
+                Ok(Self::ThingTypeGetPlays { role_types: role_types.into_iter().map(RoleType::from_proto).collect() })
+            }
             Some(thing_type::res_part::Res::EntityTypeGetSupertypesResPart(entity_type::get_supertypes::ResPart {
                 entity_types,
             })) => Ok(Self::EntityTypeGetSupertypes {

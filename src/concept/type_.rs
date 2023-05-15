@@ -119,6 +119,39 @@ impl EntityType {
         transaction.concept().entity_type_unset_owns(self.clone(), attribute_type).await
     }
 
+    pub fn get_plays(
+        &self,
+        transaction: &Transaction<'_>,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().entity_type_get_plays(self.clone(), transitivity)
+    }
+
+    pub async fn get_plays_overridden(
+        &self,
+        transaction: &Transaction<'_>,
+        overridden_role_type: RoleType,
+    ) -> Result<Option<RoleType>> {
+        transaction.concept().entity_type_get_plays_overridden(self.clone(), overridden_role_type).await
+    }
+
+    pub async fn set_plays(
+        &mut self,
+        transaction: &Transaction<'_>,
+        role_type: RoleType,
+        overridden_role_type: Option<RoleType>,
+    ) -> Result {
+        transaction.concept().entity_type_set_plays(self.clone(), role_type, overridden_role_type).await
+    }
+
+    pub async fn unset_plays(&mut self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
+        transaction.concept().entity_type_unset_plays(self.clone(), role_type).await
+    }
+
+    pub async fn get_syntax(&mut self, transaction: &Transaction<'_>) -> Result<String> {
+        transaction.concept().entity_type_get_syntax(self.clone()).await
+    }
+
     pub async fn create(&self, transaction: &Transaction<'_>) -> Result<Entity> {
         transaction.concept().entity_type_create(self.clone()).await
     }
@@ -209,6 +242,39 @@ impl RelationType {
 
     pub async fn unset_owns(&mut self, transaction: &Transaction<'_>, attribute_type: AttributeType) -> Result {
         transaction.concept().relation_type_unset_owns(self.clone(), attribute_type).await
+    }
+
+    pub fn get_plays(
+        &self,
+        transaction: &Transaction<'_>,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().relation_type_get_plays(self.clone(), transitivity)
+    }
+
+    pub async fn get_plays_overridden(
+        &self,
+        transaction: &Transaction<'_>,
+        overridden_role_type: RoleType,
+    ) -> Result<Option<RoleType>> {
+        transaction.concept().relation_type_get_plays_overridden(self.clone(), overridden_role_type).await
+    }
+
+    pub async fn set_plays(
+        &mut self,
+        transaction: &Transaction<'_>,
+        role_type: RoleType,
+        overridden_role_type: Option<RoleType>,
+    ) -> Result {
+        transaction.concept().relation_type_set_plays(self.clone(), role_type, overridden_role_type).await
+    }
+
+    pub async fn unset_plays(&mut self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
+        transaction.concept().relation_type_unset_plays(self.clone(), role_type).await
+    }
+
+    pub async fn get_syntax(&mut self, transaction: &Transaction<'_>) -> Result<String> {
+        transaction.concept().relation_type_get_syntax(self.clone()).await
     }
 
     pub async fn create(&self, transaction: &Transaction<'_>) -> Result<Relation> {
@@ -309,6 +375,39 @@ impl AttributeType {
         transaction.concept().attribute_type_unset_owns(self.clone(), attribute_type).await
     }
 
+    pub fn get_plays(
+        &self,
+        transaction: &Transaction<'_>,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().attribute_type_get_plays(self.clone(), transitivity)
+    }
+
+    pub async fn get_plays_overridden(
+        &self,
+        transaction: &Transaction<'_>,
+        overridden_role_type: RoleType,
+    ) -> Result<Option<RoleType>> {
+        transaction.concept().attribute_type_get_plays_overridden(self.clone(), overridden_role_type).await
+    }
+
+    pub async fn set_plays(
+        &mut self,
+        transaction: &Transaction<'_>,
+        role_type: RoleType,
+        overridden_role_type: Option<RoleType>,
+    ) -> Result {
+        transaction.concept().attribute_type_set_plays(self.clone(), role_type, overridden_role_type).await
+    }
+
+    pub async fn unset_plays(&mut self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
+        transaction.concept().attribute_type_unset_plays(self.clone(), role_type).await
+    }
+
+    pub async fn get_syntax(&mut self, transaction: &Transaction<'_>) -> Result<String> {
+        transaction.concept().attribute_type_get_syntax(self.clone()).await
+    }
+
     pub async fn put(&self, transaction: &Transaction<'_>, value: Value) -> Result<Attribute> {
         transaction.concept().attribute_type_put(self.clone(), value).await
     }
@@ -360,11 +459,13 @@ pub enum ValueType {
 #[derive(Clone, Debug)]
 pub struct RoleType {
     pub label: ScopedLabel,
+    pub is_root: bool,
+    pub is_abstract: bool,
 }
 
 impl RoleType {
-    pub fn new(label: ScopedLabel) -> Self {
-        Self { label }
+    pub fn new(label: ScopedLabel, is_root: bool, is_abstract: bool) -> Self {
+        Self { label, is_root, is_abstract }
     }
 }
 
