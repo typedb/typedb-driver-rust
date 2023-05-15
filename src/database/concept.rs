@@ -82,107 +82,87 @@ impl ConceptManager {
         self.transaction_stream.get_schema_exceptions()
     }
 
-    pub(crate) async fn entity_type_delete(&self, entity_type: EntityType) -> Result {
-        self.transaction_stream.thing_type_delete(ThingType::EntityType(entity_type)).await
+    pub(crate) async fn thing_type_delete(&self, thing_type: ThingType) -> Result {
+        self.transaction_stream.thing_type_delete(thing_type).await
     }
 
-    pub(crate) async fn entity_type_set_label(&self, entity_type: EntityType, new_label: String) -> Result {
-        self.transaction_stream.thing_type_set_label(ThingType::EntityType(entity_type), new_label).await
+    pub(crate) async fn thing_type_set_label(&self, thing_type: ThingType, new_label: String) -> Result {
+        self.transaction_stream.thing_type_set_label(thing_type, new_label).await
     }
 
-    pub(crate) async fn entity_type_set_abstract(&self, entity_type: EntityType) -> Result {
-        self.transaction_stream.thing_type_set_abstract(ThingType::EntityType(entity_type)).await
+    pub(crate) async fn thing_type_set_abstract(&self, thing_type: ThingType) -> Result {
+        self.transaction_stream.thing_type_set_abstract(thing_type).await
     }
 
-    pub(crate) async fn entity_type_unset_abstract(&self, entity_type: EntityType) -> Result {
-        self.transaction_stream.thing_type_unset_abstract(ThingType::EntityType(entity_type)).await
+    pub(crate) async fn thing_type_unset_abstract(&self, thing_type: ThingType) -> Result {
+        self.transaction_stream.thing_type_unset_abstract(thing_type).await
     }
 
-    pub(crate) fn entity_type_get_owns(
+    pub(crate) fn thing_type_get_owns(
         &self,
-        entity_type: EntityType,
+        thing_type: ThingType,
         value_type: Option<ValueType>,
         transitivity: Transitivity,
         annotation_filter: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
-        self.transaction_stream.thing_type_get_owns(
-            ThingType::EntityType(entity_type),
-            value_type,
-            transitivity,
-            annotation_filter,
-        )
+        self.transaction_stream.thing_type_get_owns(thing_type, value_type, transitivity, annotation_filter)
     }
 
-    pub(crate) async fn entity_type_get_owns_overridden(
+    pub(crate) async fn thing_type_get_owns_overridden(
         &self,
-        entity_type: EntityType,
+        thing_type: ThingType,
         overridden_attribute_type: AttributeType,
     ) -> Result<Option<AttributeType>> {
-        self.transaction_stream
-            .thing_type_get_owns_overridden(ThingType::EntityType(entity_type), overridden_attribute_type)
-            .await
+        self.transaction_stream.thing_type_get_owns_overridden(thing_type, overridden_attribute_type).await
     }
 
-    pub(crate) async fn entity_type_set_owns(
+    pub(crate) async fn thing_type_set_owns(
         &self,
-        entity_type: EntityType,
+        thing_type: ThingType,
         attribute_type: AttributeType,
         overridden_attribute_type: Option<AttributeType>,
         annotations: Vec<Annotation>,
     ) -> Result {
         self.transaction_stream
-            .thing_type_set_owns(
-                ThingType::EntityType(entity_type),
-                attribute_type,
-                overridden_attribute_type,
-                annotations,
-            )
+            .thing_type_set_owns(thing_type, attribute_type, overridden_attribute_type, annotations)
             .await
     }
 
-    pub(crate) async fn entity_type_unset_owns(
-        &self,
-        entity_type: EntityType,
-        attribute_type: AttributeType,
-    ) -> Result {
-        self.transaction_stream.thing_type_unset_owns(ThingType::EntityType(entity_type), attribute_type).await
+    pub(crate) async fn thing_type_unset_owns(&self, thing_type: ThingType, attribute_type: AttributeType) -> Result {
+        self.transaction_stream.thing_type_unset_owns(thing_type, attribute_type).await
     }
 
-    pub(crate) fn entity_type_get_plays(
+    pub(crate) fn thing_type_get_plays(
         &self,
-        entity_type: EntityType,
+        thing_type: ThingType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<RoleType>>> {
-        self.transaction_stream.thing_type_get_plays(ThingType::EntityType(entity_type), transitivity)
+        self.transaction_stream.thing_type_get_plays(thing_type, transitivity)
     }
 
-    pub(crate) async fn entity_type_get_plays_overridden(
+    pub(crate) async fn thing_type_get_plays_overridden(
         &self,
-        entity_type: EntityType,
+        thing_type: ThingType,
         overridden_role_type: RoleType,
     ) -> Result<Option<RoleType>> {
-        self.transaction_stream
-            .thing_type_get_plays_overridden(ThingType::EntityType(entity_type), overridden_role_type)
-            .await
+        self.transaction_stream.thing_type_get_plays_overridden(thing_type, overridden_role_type).await
     }
 
-    pub(crate) async fn entity_type_set_plays(
+    pub(crate) async fn thing_type_set_plays(
         &self,
-        entity_type: EntityType,
+        thing_type: ThingType,
         role_type: RoleType,
         overridden_role_type: Option<RoleType>,
     ) -> Result {
-        self.transaction_stream
-            .thing_type_set_plays(ThingType::EntityType(entity_type), role_type, overridden_role_type)
-            .await
+        self.transaction_stream.thing_type_set_plays(thing_type, role_type, overridden_role_type).await
     }
 
-    pub(crate) async fn entity_type_unset_plays(&self, entity_type: EntityType, role_type: RoleType) -> Result {
-        self.transaction_stream.thing_type_unset_plays(ThingType::EntityType(entity_type), role_type).await
+    pub(crate) async fn thing_type_unset_plays(&self, thing_type: ThingType, role_type: RoleType) -> Result {
+        self.transaction_stream.thing_type_unset_plays(thing_type, role_type).await
     }
 
-    pub(crate) async fn entity_type_get_syntax(&self, entity_type: EntityType) -> Result<String> {
-        self.transaction_stream.thing_type_get_syntax(ThingType::EntityType(entity_type)).await
+    pub(crate) async fn thing_type_get_syntax(&self, thing_type: ThingType) -> Result<String> {
+        self.transaction_stream.thing_type_get_syntax(thing_type).await
     }
 
     pub(crate) async fn entity_type_create(&self, entity_type: EntityType) -> Result<Entity> {
@@ -218,109 +198,6 @@ impl ConceptManager {
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<Entity>>> {
         self.transaction_stream.entity_type_get_instances(entity_type, transitivity)
-    }
-
-    pub(crate) async fn relation_type_delete(&self, relation_type: RelationType) -> Result {
-        self.transaction_stream.thing_type_delete(ThingType::RelationType(relation_type)).await
-    }
-
-    pub(crate) async fn relation_type_set_label(&self, relation_type: RelationType, new_label: String) -> Result {
-        self.transaction_stream.thing_type_set_label(ThingType::RelationType(relation_type), new_label).await
-    }
-
-    pub(crate) async fn relation_type_set_abstract(&self, relation_type: RelationType) -> Result {
-        self.transaction_stream.thing_type_set_abstract(ThingType::RelationType(relation_type)).await
-    }
-
-    pub(crate) async fn relation_type_unset_abstract(&self, relation_type: RelationType) -> Result {
-        self.transaction_stream.thing_type_unset_abstract(ThingType::RelationType(relation_type)).await
-    }
-
-    pub(crate) fn relation_type_get_owns(
-        &self,
-        relation_type: RelationType,
-        value_type: Option<ValueType>,
-        transitivity: Transitivity,
-        annotation_filter: Vec<Annotation>,
-    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
-        self.transaction_stream.thing_type_get_owns(
-            ThingType::RelationType(relation_type),
-            value_type,
-            transitivity,
-            annotation_filter,
-        )
-    }
-
-    pub(crate) async fn relation_type_get_owns_overridden(
-        &self,
-        relation_type: RelationType,
-        overridden_attribute_type: AttributeType,
-    ) -> Result<Option<AttributeType>> {
-        self.transaction_stream
-            .thing_type_get_owns_overridden(ThingType::RelationType(relation_type), overridden_attribute_type)
-            .await
-    }
-
-    pub(crate) async fn relation_type_set_owns(
-        &self,
-        relation_type: RelationType,
-        attribute_type: AttributeType,
-        overridden_attribute_type: Option<AttributeType>,
-        annotations: Vec<Annotation>,
-    ) -> Result {
-        self.transaction_stream
-            .thing_type_set_owns(
-                ThingType::RelationType(relation_type),
-                attribute_type,
-                overridden_attribute_type,
-                annotations,
-            )
-            .await
-    }
-
-    pub(crate) async fn relation_type_unset_owns(
-        &self,
-        relation_type: RelationType,
-        attribute_type: AttributeType,
-    ) -> Result {
-        self.transaction_stream.thing_type_unset_owns(ThingType::RelationType(relation_type), attribute_type).await
-    }
-
-    pub(crate) fn relation_type_get_plays(
-        &self,
-        relation_type: RelationType,
-        transitivity: Transitivity,
-    ) -> Result<impl Stream<Item = Result<RoleType>>> {
-        self.transaction_stream.thing_type_get_plays(ThingType::RelationType(relation_type), transitivity)
-    }
-
-    pub(crate) async fn relation_type_get_plays_overridden(
-        &self,
-        relation_type: RelationType,
-        overridden_role_type: RoleType,
-    ) -> Result<Option<RoleType>> {
-        self.transaction_stream
-            .thing_type_get_plays_overridden(ThingType::RelationType(relation_type), overridden_role_type)
-            .await
-    }
-
-    pub(crate) async fn relation_type_set_plays(
-        &self,
-        relation_type: RelationType,
-        role_type: RoleType,
-        overridden_role_type: Option<RoleType>,
-    ) -> Result {
-        self.transaction_stream
-            .thing_type_set_plays(ThingType::RelationType(relation_type), role_type, overridden_role_type)
-            .await
-    }
-
-    pub(crate) async fn relation_type_unset_plays(&self, relation_type: RelationType, role_type: RoleType) -> Result {
-        self.transaction_stream.thing_type_unset_plays(ThingType::RelationType(relation_type), role_type).await
-    }
-
-    pub(crate) async fn relation_type_get_syntax(&self, relation_type: RelationType) -> Result<String> {
-        self.transaction_stream.thing_type_get_syntax(ThingType::RelationType(relation_type)).await
     }
 
     pub(crate) async fn relation_type_create(&self, relation_type: RelationType) -> Result<Relation> {
@@ -360,115 +237,6 @@ impl ConceptManager {
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<Relation>>> {
         self.transaction_stream.relation_type_get_instances(relation_type, transitivity)
-    }
-
-    pub(crate) async fn attribute_type_delete(&self, attribute_type: AttributeType) -> Result {
-        self.transaction_stream.thing_type_delete(ThingType::AttributeType(attribute_type)).await
-    }
-
-    pub(crate) async fn attribute_type_set_label(&self, attribute_type: AttributeType, new_label: String) -> Result {
-        self.transaction_stream.thing_type_set_label(ThingType::AttributeType(attribute_type), new_label).await
-    }
-
-    pub(crate) async fn attribute_type_set_abstract(&self, attribute_type: AttributeType) -> Result {
-        self.transaction_stream.thing_type_set_abstract(ThingType::AttributeType(attribute_type)).await
-    }
-
-    pub(crate) async fn attribute_type_unset_abstract(&self, attribute_type: AttributeType) -> Result {
-        self.transaction_stream.thing_type_unset_abstract(ThingType::AttributeType(attribute_type)).await
-    }
-
-    pub(crate) fn attribute_type_get_owns(
-        &self,
-        attribute_type: AttributeType,
-        value_type: Option<ValueType>,
-        transitivity: Transitivity,
-        annotation_filter: Vec<Annotation>,
-    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
-        self.transaction_stream.thing_type_get_owns(
-            ThingType::AttributeType(attribute_type),
-            value_type,
-            transitivity,
-            annotation_filter,
-        )
-    }
-
-    pub(crate) async fn attribute_type_get_owns_overridden(
-        &self,
-        attribute_type: AttributeType,
-        overridden_attribute_type: AttributeType,
-    ) -> Result<Option<AttributeType>> {
-        self.transaction_stream
-            .thing_type_get_owns_overridden(ThingType::AttributeType(attribute_type), overridden_attribute_type)
-            .await
-    }
-
-    pub(crate) async fn attribute_type_set_owns(
-        &self,
-        owner_attribute_type: AttributeType,
-        attribute_type: AttributeType,
-        overridden_attribute_type: Option<AttributeType>,
-        annotations: Vec<Annotation>,
-    ) -> Result {
-        self.transaction_stream
-            .thing_type_set_owns(
-                ThingType::AttributeType(owner_attribute_type),
-                attribute_type,
-                overridden_attribute_type,
-                annotations,
-            )
-            .await
-    }
-
-    pub(crate) async fn attribute_type_unset_owns(
-        &self,
-        owner_attribute_type: AttributeType,
-        attribute_type: AttributeType,
-    ) -> Result {
-        self.transaction_stream
-            .thing_type_unset_owns(ThingType::AttributeType(owner_attribute_type), attribute_type)
-            .await
-    }
-
-    pub(crate) fn attribute_type_get_plays(
-        &self,
-        attribute_type: AttributeType,
-        transitivity: Transitivity,
-    ) -> Result<impl Stream<Item = Result<RoleType>>> {
-        self.transaction_stream.thing_type_get_plays(ThingType::AttributeType(attribute_type), transitivity)
-    }
-
-    pub(crate) async fn attribute_type_get_plays_overridden(
-        &self,
-        attribute_type: AttributeType,
-        overridden_role_type: RoleType,
-    ) -> Result<Option<RoleType>> {
-        self.transaction_stream
-            .thing_type_get_plays_overridden(ThingType::AttributeType(attribute_type), overridden_role_type)
-            .await
-    }
-
-    pub(crate) async fn attribute_type_set_plays(
-        &self,
-        attribute_type: AttributeType,
-        role_type: RoleType,
-        overridden_role_type: Option<RoleType>,
-    ) -> Result {
-        self.transaction_stream
-            .thing_type_set_plays(ThingType::AttributeType(attribute_type), role_type, overridden_role_type)
-            .await
-    }
-
-    pub(crate) async fn attribute_type_unset_plays(
-        &self,
-        attribute_type: AttributeType,
-        role_type: RoleType,
-    ) -> Result {
-        self.transaction_stream.thing_type_unset_plays(ThingType::AttributeType(attribute_type), role_type).await
-    }
-
-    pub(crate) async fn attribute_type_get_syntax(&self, attribute_type: AttributeType) -> Result<String> {
-        self.transaction_stream.thing_type_get_syntax(ThingType::AttributeType(attribute_type)).await
     }
 
     pub(crate) async fn attribute_type_put(&self, attribute_type: AttributeType, value: Value) -> Result<Attribute> {
