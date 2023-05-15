@@ -239,6 +239,43 @@ impl ConceptManager {
         self.transaction_stream.relation_type_get_instances(relation_type, transitivity)
     }
 
+    pub(crate) fn relation_type_get_relates(
+        &self,
+        relation_type: RelationType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        self.transaction_stream.relation_type_get_relates(relation_type, transitivity)
+    }
+
+    pub(crate) async fn relation_type_get_relates_for_role_label(
+        &self,
+        relation_type: RelationType,
+        role_label: String,
+    ) -> Result<Option<RoleType>> {
+        self.transaction_stream.relation_type_get_relates_for_role_label(relation_type, role_label).await
+    }
+
+    pub(crate) async fn relation_type_get_relates_overridden(
+        &self,
+        relation_type: RelationType,
+        overridden_role_label: String,
+    ) -> Result<Option<RoleType>> {
+        self.transaction_stream.relation_type_get_relates_overridden(relation_type, overridden_role_label).await
+    }
+
+    pub(crate) async fn relation_type_set_relates(
+        &self,
+        relation_type: RelationType,
+        role_label: String,
+        overridden_role_label: Option<String>,
+    ) -> Result {
+        self.transaction_stream.relation_type_set_relates(relation_type, role_label, overridden_role_label).await
+    }
+
+    pub(crate) async fn relation_type_unset_relates(&self, relation_type: RelationType, role_label: String) -> Result {
+        self.transaction_stream.relation_type_unset_relates(relation_type, role_label).await
+    }
+
     pub(crate) async fn attribute_type_put(&self, attribute_type: AttributeType, value: Value) -> Result<Attribute> {
         self.transaction_stream.attribute_type_put(attribute_type, value).await
     }

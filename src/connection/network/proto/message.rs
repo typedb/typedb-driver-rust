@@ -601,6 +601,37 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
                 }),
                 relation_type.label,
             ),
+            Self::RelationTypeGetRelates { relation_type, transitivity } => (
+                thing_type::req::Req::RelationTypeGetRelatesReq(relation_type::get_relates::Req {
+                    transitivity: transitivity.into_proto(),
+                }),
+                relation_type.label,
+            ),
+            Self::RelationTypeGetRelatesForRoleLabel { relation_type, role_label } => (
+                thing_type::req::Req::RelationTypeGetRelatesForRoleLabelReq(
+                    relation_type::get_relates_for_role_label::Req { label: role_label },
+                ),
+                relation_type.label,
+            ),
+            Self::RelationTypeGetRelatesOverridden { relation_type, role_label } => (
+                thing_type::req::Req::RelationTypeGetRelatesOverriddenReq(relation_type::get_relates_overridden::Req {
+                    label: role_label,
+                }),
+                relation_type.label,
+            ),
+            Self::RelationTypeSetRelates { relation_type, role_label, overridden_role_label } => (
+                thing_type::req::Req::RelationTypeSetRelatesReq(relation_type::set_relates::Req {
+                    label: role_label,
+                    overridden_label: overridden_role_label,
+                }),
+                relation_type.label,
+            ),
+            Self::RelationTypeUnsetRelates { relation_type, role_label } => (
+                thing_type::req::Req::RelationTypeUnsetRelatesReq(relation_type::unset_relates::Req {
+                    label: role_label,
+                }),
+                relation_type.label,
+            ),
             Self::AttributeTypePut { attribute_type, value } => (
                 thing_type::req::Req::AttributeTypePutReq(attribute_type::put::Req { value: Some(value.into_proto()) }),
                 attribute_type.label,
@@ -692,6 +723,14 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
                 ),
             }),
             Some(thing_type::res::Res::RelationTypeSetSupertypeRes(_)) => Ok(Self::RelationTypeSetSupertype),
+            Some(thing_type::res::Res::RelationTypeGetRelatesForRoleLabelRes(
+                relation_type::get_relates_for_role_label::Res { role_type },
+            )) => Ok(Self::RelationTypeGetRelatesForRoleLabel { role_type: role_type.map(RoleType::from_proto) }),
+            Some(thing_type::res::Res::RelationTypeGetRelatesOverriddenRes(
+                relation_type::get_relates_overridden::Res { role_type },
+            )) => Ok(Self::RelationTypeGetRelatesOverridden { role_type: role_type.map(RoleType::from_proto) }),
+            Some(thing_type::res::Res::RelationTypeSetRelatesRes(_)) => Ok(Self::RelationTypeSetRelates),
+            Some(thing_type::res::Res::RelationTypeUnsetRelatesRes(_)) => Ok(Self::RelationTypeUnsetRelates),
             Some(thing_type::res::Res::AttributeTypePutRes(attribute_type::put::Res { attribute })) => {
                 Ok(Self::AttributeTypePut {
                     attribute: Attribute::try_from_proto(
@@ -758,6 +797,11 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
                 relation_type::get_instances::ResPart { relations },
             )) => Ok(Self::RelationTypeGetInstances {
                 relations: relations.into_iter().map(Relation::try_from_proto).try_collect()?,
+            }),
+            Some(thing_type::res_part::Res::RelationTypeGetRelatesResPart(relation_type::get_relates::ResPart {
+                role_types,
+            })) => Ok(Self::RelationTypeGetRelates {
+                role_types: role_types.into_iter().map(RoleType::from_proto).collect(),
             }),
             Some(thing_type::res_part::Res::AttributeTypeGetSupertypesResPart(
                 attribute_type::get_supertypes::ResPart { attribute_types },

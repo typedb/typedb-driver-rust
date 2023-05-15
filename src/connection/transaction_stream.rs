@@ -476,6 +476,77 @@ impl TransactionStream {
         }))
     }
 
+    pub(crate) fn relation_type_get_relates(
+        &self,
+        relation_type: RelationType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        let stream =
+            self.thing_type_stream(ThingTypeRequest::RelationTypeGetRelates { relation_type, transitivity })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingTypeResponse::RelationTypeGetRelates { role_types }) => stream_iter(role_types.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) async fn relation_type_get_relates_for_role_label(
+        &self,
+        relation_type: RelationType,
+        role_label: String,
+    ) -> Result<Option<RoleType>> {
+        match self
+            .thing_type_single(ThingTypeRequest::RelationTypeGetRelatesForRoleLabel { relation_type, role_label })
+            .await?
+        {
+            ThingTypeResponse::RelationTypeGetRelatesForRoleLabel { role_type } => Ok(role_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn relation_type_get_relates_overridden(
+        &self,
+        relation_type: RelationType,
+        overridden_role_label: String,
+    ) -> Result<Option<RoleType>> {
+        match self
+            .thing_type_single(ThingTypeRequest::RelationTypeGetRelatesOverridden {
+                relation_type,
+                role_label: overridden_role_label,
+            })
+            .await?
+        {
+            ThingTypeResponse::RelationTypeGetRelatesOverridden { role_type } => Ok(role_type),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn relation_type_set_relates(
+        &self,
+        relation_type: RelationType,
+        role_label: String,
+        overridden_role_label: Option<String>,
+    ) -> Result {
+        match self
+            .thing_type_single(ThingTypeRequest::RelationTypeSetRelates {
+                relation_type,
+                role_label,
+                overridden_role_label,
+            })
+            .await?
+        {
+            ThingTypeResponse::RelationTypeSetRelates => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn relation_type_unset_relates(&self, relation_type: RelationType, role_label: String) -> Result {
+        match self.thing_type_single(ThingTypeRequest::RelationTypeUnsetRelates { relation_type, role_label }).await? {
+            ThingTypeResponse::RelationTypeUnsetRelates => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
     pub(crate) async fn attribute_type_put(&self, attribute_type: AttributeType, value: Value) -> Result<Attribute> {
         match self.thing_type_single(ThingTypeRequest::AttributeTypePut { attribute_type, value }).await? {
             ThingTypeResponse::AttributeTypePut { attribute } => Ok(attribute),

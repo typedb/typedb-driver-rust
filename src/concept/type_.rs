@@ -91,7 +91,12 @@ impl EntityType {
         transitivity: Transitivity,
         annotation_filter: &[Annotation],
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
-        transaction.concept().thing_type_get_owns(ThingType::EntityType(self.clone()), value_type, transitivity, annotation_filter.to_vec())
+        transaction.concept().thing_type_get_owns(
+            ThingType::EntityType(self.clone()),
+            value_type,
+            transitivity,
+            annotation_filter.to_vec(),
+        )
     }
 
     pub async fn get_owns_overridden(
@@ -99,7 +104,10 @@ impl EntityType {
         transaction: &Transaction<'_>,
         overridden_attribute_type: AttributeType,
     ) -> Result<Option<AttributeType>> {
-        transaction.concept().thing_type_get_owns_overridden(ThingType::EntityType(self.clone()), overridden_attribute_type).await
+        transaction
+            .concept()
+            .thing_type_get_owns_overridden(ThingType::EntityType(self.clone()), overridden_attribute_type)
+            .await
     }
 
     pub async fn set_owns(
@@ -111,7 +119,12 @@ impl EntityType {
     ) -> Result {
         transaction
             .concept()
-            .thing_type_set_owns(ThingType::EntityType(self.clone()), attribute_type, overridden_attribute_type, annotations.to_vec())
+            .thing_type_set_owns(
+                ThingType::EntityType(self.clone()),
+                attribute_type,
+                overridden_attribute_type,
+                annotations.to_vec(),
+            )
             .await
     }
 
@@ -132,7 +145,10 @@ impl EntityType {
         transaction: &Transaction<'_>,
         overridden_role_type: RoleType,
     ) -> Result<Option<RoleType>> {
-        transaction.concept().thing_type_get_plays_overridden(ThingType::EntityType(self.clone()), overridden_role_type).await
+        transaction
+            .concept()
+            .thing_type_get_plays_overridden(ThingType::EntityType(self.clone()), overridden_role_type)
+            .await
     }
 
     pub async fn set_plays(
@@ -141,7 +157,10 @@ impl EntityType {
         role_type: RoleType,
         overridden_role_type: Option<RoleType>,
     ) -> Result {
-        transaction.concept().thing_type_set_plays(ThingType::EntityType(self.clone()), role_type, overridden_role_type).await
+        transaction
+            .concept()
+            .thing_type_set_plays(ThingType::EntityType(self.clone()), role_type, overridden_role_type)
+            .await
     }
 
     pub async fn unset_plays(&mut self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
@@ -193,7 +212,6 @@ impl RelationType {
         Self { label, is_root, is_abstract }
     }
 
-
     pub async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().thing_type_delete(ThingType::RelationType(self.clone())).await
     }
@@ -217,7 +235,12 @@ impl RelationType {
         transitivity: Transitivity,
         annotation_filter: &[Annotation],
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
-        transaction.concept().thing_type_get_owns(ThingType::RelationType(self.clone()), value_type, transitivity, annotation_filter.to_vec())
+        transaction.concept().thing_type_get_owns(
+            ThingType::RelationType(self.clone()),
+            value_type,
+            transitivity,
+            annotation_filter.to_vec(),
+        )
     }
 
     pub async fn get_owns_overridden(
@@ -225,7 +248,10 @@ impl RelationType {
         transaction: &Transaction<'_>,
         overridden_attribute_type: AttributeType,
     ) -> Result<Option<AttributeType>> {
-        transaction.concept().thing_type_get_owns_overridden(ThingType::RelationType(self.clone()), overridden_attribute_type).await
+        transaction
+            .concept()
+            .thing_type_get_owns_overridden(ThingType::RelationType(self.clone()), overridden_attribute_type)
+            .await
     }
 
     pub async fn set_owns(
@@ -237,7 +263,12 @@ impl RelationType {
     ) -> Result {
         transaction
             .concept()
-            .thing_type_set_owns(ThingType::RelationType(self.clone()), attribute_type, overridden_attribute_type, annotations.to_vec())
+            .thing_type_set_owns(
+                ThingType::RelationType(self.clone()),
+                attribute_type,
+                overridden_attribute_type,
+                annotations.to_vec(),
+            )
             .await
     }
 
@@ -258,7 +289,10 @@ impl RelationType {
         transaction: &Transaction<'_>,
         overridden_role_type: RoleType,
     ) -> Result<Option<RoleType>> {
-        transaction.concept().thing_type_get_plays_overridden(ThingType::RelationType(self.clone()), overridden_role_type).await
+        transaction
+            .concept()
+            .thing_type_get_plays_overridden(ThingType::RelationType(self.clone()), overridden_role_type)
+            .await
     }
 
     pub async fn set_plays(
@@ -267,7 +301,10 @@ impl RelationType {
         role_type: RoleType,
         overridden_role_type: Option<RoleType>,
     ) -> Result {
-        transaction.concept().thing_type_set_plays(ThingType::RelationType(self.clone()), role_type, overridden_role_type).await
+        transaction
+            .concept()
+            .thing_type_set_plays(ThingType::RelationType(self.clone()), role_type, overridden_role_type)
+            .await
     }
 
     pub async fn unset_plays(&mut self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
@@ -304,6 +341,43 @@ impl RelationType {
 
     pub fn get_instances(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Relation>>> {
         transaction.concept().relation_type_get_instances(self.clone(), Transitivity::Transitive)
+    }
+
+    pub fn get_relates(
+        &self,
+        transaction: Transaction<'_>,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().relation_type_get_relates(self.clone(), transitivity)
+    }
+
+    pub async fn get_relates_for_role_label(
+        &self,
+        transaction: Transaction<'_>,
+        role_label: String,
+    ) -> Result<Option<RoleType>> {
+        transaction.concept().relation_type_get_relates_for_role_label(self.clone(), role_label).await
+    }
+
+    pub async fn get_relates_overridden(
+        &self,
+        transaction: Transaction<'_>,
+        overridden_role_label: String,
+    ) -> Result<Option<RoleType>> {
+        transaction.concept().relation_type_get_relates_overridden(self.clone(), overridden_role_label).await
+    }
+
+    pub async fn set_relates(
+        &mut self,
+        transaction: Transaction<'_>,
+        role_label: String,
+        overridden_role_label: Option<String>,
+    ) -> Result {
+        transaction.concept().relation_type_set_relates(self.clone(), role_label, overridden_role_label).await
+    }
+
+    pub async fn unset_relates(&mut self, transaction: Transaction<'_>, role_label: String) -> Result {
+        transaction.concept().relation_type_unset_relates(self.clone(), role_label).await
     }
 }
 
@@ -343,7 +417,12 @@ impl AttributeType {
         transitivity: Transitivity,
         annotation_filter: &[Annotation],
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
-        transaction.concept().thing_type_get_owns(ThingType::AttributeType(self.clone()), value_type, transitivity, annotation_filter.to_vec())
+        transaction.concept().thing_type_get_owns(
+            ThingType::AttributeType(self.clone()),
+            value_type,
+            transitivity,
+            annotation_filter.to_vec(),
+        )
     }
 
     pub async fn get_owns_overridden(
@@ -351,7 +430,10 @@ impl AttributeType {
         transaction: &Transaction<'_>,
         overridden_attribute_type: AttributeType,
     ) -> Result<Option<AttributeType>> {
-        transaction.concept().thing_type_get_owns_overridden(ThingType::AttributeType(self.clone()), overridden_attribute_type).await
+        transaction
+            .concept()
+            .thing_type_get_owns_overridden(ThingType::AttributeType(self.clone()), overridden_attribute_type)
+            .await
     }
 
     pub async fn set_owns(
@@ -363,7 +445,12 @@ impl AttributeType {
     ) -> Result {
         transaction
             .concept()
-            .thing_type_set_owns(ThingType::AttributeType(self.clone()), attribute_type, overridden_attribute_type, annotations.to_vec())
+            .thing_type_set_owns(
+                ThingType::AttributeType(self.clone()),
+                attribute_type,
+                overridden_attribute_type,
+                annotations.to_vec(),
+            )
             .await
     }
 
@@ -384,7 +471,10 @@ impl AttributeType {
         transaction: &Transaction<'_>,
         overridden_role_type: RoleType,
     ) -> Result<Option<RoleType>> {
-        transaction.concept().thing_type_get_plays_overridden(ThingType::AttributeType(self.clone()), overridden_role_type).await
+        transaction
+            .concept()
+            .thing_type_get_plays_overridden(ThingType::AttributeType(self.clone()), overridden_role_type)
+            .await
     }
 
     pub async fn set_plays(
@@ -393,7 +483,10 @@ impl AttributeType {
         role_type: RoleType,
         overridden_role_type: Option<RoleType>,
     ) -> Result {
-        transaction.concept().thing_type_set_plays(ThingType::AttributeType(self.clone()), role_type, overridden_role_type).await
+        transaction
+            .concept()
+            .thing_type_set_plays(ThingType::AttributeType(self.clone()), role_type, overridden_role_type)
+            .await
     }
 
     pub async fn unset_plays(&mut self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
