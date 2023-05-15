@@ -27,7 +27,9 @@ use super::network::transmitter::TransactionTransmitter;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{Result, Transitivity, IID},
-    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Value, ValueType},
+    concept::{
+        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, ThingType, Value, ValueType,
+    },
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
         TransactionRequest, TransactionResponse,
@@ -194,29 +196,29 @@ impl TransactionStream {
         }))
     }
 
-    pub(crate) async fn thing_type_delete(&self, label: String) -> Result {
-        match self.thing_type_single(ThingTypeRequest::ThingTypeDelete { label }).await? {
+    pub(crate) async fn thing_type_delete(&self, thing_type: ThingType) -> Result {
+        match self.thing_type_single(ThingTypeRequest::ThingTypeDelete { thing_type }).await? {
             ThingTypeResponse::ThingTypeDelete => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn thing_type_set_label(&self, old_label: String, new_label: String) -> Result {
-        match self.thing_type_single(ThingTypeRequest::ThingTypeSetLabel { old_label, new_label }).await? {
+    pub(crate) async fn thing_type_set_label(&self, thing_type: ThingType, new_label: String) -> Result {
+        match self.thing_type_single(ThingTypeRequest::ThingTypeSetLabel { thing_type, new_label }).await? {
             ThingTypeResponse::ThingTypeSetLabel => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn thing_type_set_abstract(&self, label: String) -> Result {
-        match self.thing_type_single(ThingTypeRequest::ThingTypeSetAbstract { label }).await? {
+    pub(crate) async fn thing_type_set_abstract(&self, thing_type: ThingType) -> Result {
+        match self.thing_type_single(ThingTypeRequest::ThingTypeSetAbstract { thing_type }).await? {
             ThingTypeResponse::ThingTypeSetAbstract => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn thing_type_unset_abstract(&self, label: String) -> Result {
-        match self.thing_type_single(ThingTypeRequest::ThingTypeUnsetAbstract { label }).await? {
+    pub(crate) async fn thing_type_unset_abstract(&self, thing_type: ThingType) -> Result {
+        match self.thing_type_single(ThingTypeRequest::ThingTypeUnsetAbstract { thing_type }).await? {
             ThingTypeResponse::ThingTypeUnsetAbstract => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
@@ -224,13 +226,13 @@ impl TransactionStream {
 
     pub(crate) fn thing_type_get_owns(
         &self,
-        label: String,
+        thing_type: ThingType,
         value_type: Option<ValueType>,
         transitivity: Transitivity,
         annotation_filter: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
         let stream = self.thing_type_stream(ThingTypeRequest::ThingTypeGetOwns {
-            label,
+            thing_type,
             value_type,
             transitivity,
             annotation_filter,
@@ -246,11 +248,11 @@ impl TransactionStream {
 
     pub(crate) async fn thing_type_get_owns_overridden(
         &self,
-        label: String,
-        overridden_attribute_label: String,
+        thing_type: ThingType,
+        overridden_attribute_type: AttributeType,
     ) -> Result<Option<AttributeType>> {
         match self
-            .thing_type_single(ThingTypeRequest::ThingTypeGetOwnsOverridden { label, overridden_attribute_label })
+            .thing_type_single(ThingTypeRequest::ThingTypeGetOwnsOverridden { thing_type, overridden_attribute_type })
             .await?
         {
             ThingTypeResponse::ThingTypeGetOwnsOverridden { attribute_type } => Ok(attribute_type),
@@ -260,16 +262,16 @@ impl TransactionStream {
 
     pub(crate) async fn thing_type_set_owns(
         &self,
-        label: String,
-        attribute_label: String,
-        overridden_attribute_label: Option<String>,
+        thing_type: ThingType,
+        attribute_type: AttributeType,
+        overridden_attribute_type: Option<AttributeType>,
         annotations: Vec<Annotation>,
     ) -> Result {
         match self
             .thing_type_single(ThingTypeRequest::ThingTypeSetOwns {
-                label,
-                attribute_label,
-                overridden_attribute_label,
+                thing_type,
+                attribute_type,
+                overridden_attribute_type,
                 annotations,
             })
             .await?
@@ -279,36 +281,39 @@ impl TransactionStream {
         }
     }
 
-    pub(crate) async fn thing_type_unset_owns(&self, label: String, attribute_label: String) -> Result {
-        match self.thing_type_single(ThingTypeRequest::ThingTypeUnsetOwns { label, attribute_label }).await? {
+    pub(crate) async fn thing_type_unset_owns(&self, thing_type: ThingType, attribute_type: AttributeType) -> Result {
+        match self.thing_type_single(ThingTypeRequest::ThingTypeUnsetOwns { thing_type, attribute_type }).await? {
             ThingTypeResponse::ThingTypeUnsetOwns => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn entity_type_create(&self, label: String) -> Result<Entity> {
-        match self.thing_type_single(ThingTypeRequest::EntityTypeCreate { label }).await? {
+    pub(crate) async fn entity_type_create(&self, entity_type: EntityType) -> Result<Entity> {
+        match self.thing_type_single(ThingTypeRequest::EntityTypeCreate { entity_type }).await? {
             ThingTypeResponse::EntityTypeCreate { entity } => Ok(entity),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn entity_type_get_supertype(&self, label: String) -> Result<EntityType> {
-        match self.thing_type_single(ThingTypeRequest::EntityTypeGetSupertype { label }).await? {
+    pub(crate) async fn entity_type_get_supertype(&self, entity_type: EntityType) -> Result<EntityType> {
+        match self.thing_type_single(ThingTypeRequest::EntityTypeGetSupertype { entity_type }).await? {
             ThingTypeResponse::EntityTypeGetSupertype { supertype: entity_type } => Ok(entity_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn entity_type_set_supertype(&self, label: String, supertype_label: String) -> Result {
-        match self.thing_type_single(ThingTypeRequest::EntityTypeSetSupertype { label, supertype_label }).await? {
+    pub(crate) async fn entity_type_set_supertype(&self, entity_type: EntityType, supertype: EntityType) -> Result {
+        match self.thing_type_single(ThingTypeRequest::EntityTypeSetSupertype { entity_type, supertype }).await? {
             ThingTypeResponse::EntityTypeSetSupertype => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) fn entity_type_get_supertypes(&self, label: String) -> Result<impl Stream<Item = Result<EntityType>>> {
-        let stream = self.thing_type_stream(ThingTypeRequest::EntityTypeGetSupertypes { label })?;
+    pub(crate) fn entity_type_get_supertypes(
+        &self,
+        entity_type: EntityType,
+    ) -> Result<impl Stream<Item = Result<EntityType>>> {
+        let stream = self.thing_type_stream(ThingTypeRequest::EntityTypeGetSupertypes { entity_type })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::EntityTypeGetSupertypes { supertypes: entity_types }) => {
                 stream_iter(entity_types.into_iter().map(Ok))
@@ -320,10 +325,10 @@ impl TransactionStream {
 
     pub(crate) fn entity_type_get_subtypes(
         &self,
-        label: String,
+        entity_type: EntityType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<EntityType>>> {
-        let stream = self.thing_type_stream(ThingTypeRequest::EntityTypeGetSubtypes { label, transitivity })?;
+        let stream = self.thing_type_stream(ThingTypeRequest::EntityTypeGetSubtypes { entity_type, transitivity })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::EntityTypeGetSubtypes { subtypes: entity_types }) => {
                 stream_iter(entity_types.into_iter().map(Ok))
@@ -335,10 +340,10 @@ impl TransactionStream {
 
     pub(crate) fn entity_type_get_instances(
         &self,
-        label: String,
+        entity_type: EntityType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<Entity>>> {
-        let stream = self.thing_type_stream(ThingTypeRequest::EntityTypeGetInstances { label, transitivity })?;
+        let stream = self.thing_type_stream(ThingTypeRequest::EntityTypeGetInstances { entity_type, transitivity })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::EntityTypeGetInstances { entities }) => stream_iter(entities.into_iter().map(Ok)),
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
@@ -346,22 +351,26 @@ impl TransactionStream {
         }))
     }
 
-    pub(crate) async fn relation_type_create(&self, label: String) -> Result<Relation> {
-        match self.thing_type_single(ThingTypeRequest::RelationTypeCreate { label }).await? {
+    pub(crate) async fn relation_type_create(&self, relation_type: RelationType) -> Result<Relation> {
+        match self.thing_type_single(ThingTypeRequest::RelationTypeCreate { relation_type }).await? {
             ThingTypeResponse::RelationTypeCreate { relation } => Ok(relation),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn relation_type_get_supertype(&self, label: String) -> Result<RelationType> {
-        match self.thing_type_single(ThingTypeRequest::RelationTypeGetSupertype { label }).await? {
+    pub(crate) async fn relation_type_get_supertype(&self, relation_type: RelationType) -> Result<RelationType> {
+        match self.thing_type_single(ThingTypeRequest::RelationTypeGetSupertype { relation_type }).await? {
             ThingTypeResponse::RelationTypeGetSupertype { supertype: relation_type } => Ok(relation_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn relation_type_set_supertype(&self, label: String, supertype_label: String) -> Result {
-        match self.thing_type_single(ThingTypeRequest::RelationTypeSetSupertype { label, supertype_label }).await? {
+    pub(crate) async fn relation_type_set_supertype(
+        &self,
+        relation_type: RelationType,
+        supertype: RelationType,
+    ) -> Result {
+        match self.thing_type_single(ThingTypeRequest::RelationTypeSetSupertype { relation_type, supertype }).await? {
             ThingTypeResponse::RelationTypeSetSupertype => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
@@ -369,9 +378,9 @@ impl TransactionStream {
 
     pub(crate) fn relation_type_get_supertypes(
         &self,
-        label: String,
+        relation_type: RelationType,
     ) -> Result<impl Stream<Item = Result<RelationType>>> {
-        let stream = self.thing_type_stream(ThingTypeRequest::RelationTypeGetSupertypes { label })?;
+        let stream = self.thing_type_stream(ThingTypeRequest::RelationTypeGetSupertypes { relation_type })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::RelationTypeGetSupertypes { supertypes: relation_types }) => {
                 stream_iter(relation_types.into_iter().map(Ok))
@@ -383,10 +392,11 @@ impl TransactionStream {
 
     pub(crate) fn relation_type_get_subtypes(
         &self,
-        label: String,
+        relation_type: RelationType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<RelationType>>> {
-        let stream = self.thing_type_stream(ThingTypeRequest::RelationTypeGetSubtypes { label, transitivity })?;
+        let stream =
+            self.thing_type_stream(ThingTypeRequest::RelationTypeGetSubtypes { relation_type, transitivity })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::RelationTypeGetSubtypes { subtypes: relation_types }) => {
                 stream_iter(relation_types.into_iter().map(Ok))
@@ -398,10 +408,11 @@ impl TransactionStream {
 
     pub(crate) fn relation_type_get_instances(
         &self,
-        label: String,
+        relation_type: RelationType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<Relation>>> {
-        let stream = self.thing_type_stream(ThingTypeRequest::RelationTypeGetInstances { label, transitivity })?;
+        let stream =
+            self.thing_type_stream(ThingTypeRequest::RelationTypeGetInstances { relation_type, transitivity })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::RelationTypeGetInstances { relations }) => stream_iter(relations.into_iter().map(Ok)),
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
@@ -409,29 +420,37 @@ impl TransactionStream {
         }))
     }
 
-    pub(crate) async fn attribute_type_put(&self, label: String, value: Value) -> Result<Attribute> {
-        match self.thing_type_single(ThingTypeRequest::AttributeTypePut { label, value }).await? {
+    pub(crate) async fn attribute_type_put(&self, attribute_type: AttributeType, value: Value) -> Result<Attribute> {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypePut { attribute_type, value }).await? {
             ThingTypeResponse::AttributeTypePut { attribute } => Ok(attribute),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn attribute_type_get(&self, label: String, value: Value) -> Result<Option<Attribute>> {
-        match self.thing_type_single(ThingTypeRequest::AttributeTypeGet { label, value }).await? {
+    pub(crate) async fn attribute_type_get(
+        &self,
+        attribute_type: AttributeType,
+        value: Value,
+    ) -> Result<Option<Attribute>> {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypeGet { attribute_type, value }).await? {
             ThingTypeResponse::AttributeTypeGet { attribute } => Ok(attribute),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn attribute_type_get_supertype(&self, label: String) -> Result<AttributeType> {
-        match self.thing_type_single(ThingTypeRequest::AttributeTypeGetSupertype { label }).await? {
+    pub(crate) async fn attribute_type_get_supertype(&self, attribute_type: AttributeType) -> Result<AttributeType> {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypeGetSupertype { attribute_type }).await? {
             ThingTypeResponse::AttributeTypeGetSupertype { supertype: attribute_type } => Ok(attribute_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn attribute_type_set_supertype(&self, label: String, supertype_label: String) -> Result {
-        match self.thing_type_single(ThingTypeRequest::AttributeTypeSetSupertype { label, supertype_label }).await? {
+    pub(crate) async fn attribute_type_set_supertype(
+        &self,
+        attribute_type: AttributeType,
+        supertype: AttributeType,
+    ) -> Result {
+        match self.thing_type_single(ThingTypeRequest::AttributeTypeSetSupertype { attribute_type, supertype }).await? {
             ThingTypeResponse::AttributeTypeSetSupertype => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
@@ -439,9 +458,9 @@ impl TransactionStream {
 
     pub(crate) fn attribute_type_get_supertypes(
         &self,
-        label: String,
+        attribute_type: AttributeType,
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
-        let stream = self.thing_type_stream(ThingTypeRequest::AttributeTypeGetSupertypes { label })?;
+        let stream = self.thing_type_stream(ThingTypeRequest::AttributeTypeGetSupertypes { attribute_type })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::AttributeTypeGetSupertypes { supertypes: attribute_types }) => {
                 stream_iter(attribute_types.into_iter().map(Ok))
@@ -453,12 +472,15 @@ impl TransactionStream {
 
     pub(crate) fn attribute_type_get_subtypes(
         &self,
-        label: String,
+        attribute_type: AttributeType,
         transitivity: Transitivity,
         value_type: Option<ValueType>,
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
-        let stream =
-            self.thing_type_stream(ThingTypeRequest::AttributeTypeGetSubtypes { label, transitivity, value_type })?;
+        let stream = self.thing_type_stream(ThingTypeRequest::AttributeTypeGetSubtypes {
+            attribute_type,
+            transitivity,
+            value_type,
+        })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::AttributeTypeGetSubtypes { subtypes: attribute_types }) => {
                 stream_iter(attribute_types.into_iter().map(Ok))
@@ -470,12 +492,15 @@ impl TransactionStream {
 
     pub(crate) fn attribute_type_get_instances(
         &self,
-        label: String,
+        attribute_type: AttributeType,
         transitivity: Transitivity,
         value_type: Option<ValueType>,
     ) -> Result<impl Stream<Item = Result<Attribute>>> {
-        let stream =
-            self.thing_type_stream(ThingTypeRequest::AttributeTypeGetInstances { label, transitivity, value_type })?;
+        let stream = self.thing_type_stream(ThingTypeRequest::AttributeTypeGetInstances {
+            attribute_type,
+            transitivity,
+            value_type,
+        })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::AttributeTypeGetInstances { attributes }) => {
                 stream_iter(attributes.into_iter().map(Ok))

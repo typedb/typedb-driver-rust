@@ -28,7 +28,9 @@ use typedb_protocol::transaction;
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity, IID},
-    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Value, ValueType},
+    concept::{
+        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, ThingType, Value, ValueType,
+    },
     Annotation, Options, SchemaException, SessionType, TransactionType,
 };
 
@@ -182,37 +184,37 @@ pub(super) enum ConceptResponse {
 #[derive(Debug)]
 pub(super) enum ThingTypeRequest {
     ThingTypeDelete {
-        label: String,
+        thing_type: ThingType,
     },
     ThingTypeSetLabel {
-        old_label: String,
+        thing_type: ThingType,
         new_label: String,
     },
     ThingTypeSetAbstract {
-        label: String,
+        thing_type: ThingType,
     },
     ThingTypeUnsetAbstract {
-        label: String,
+        thing_type: ThingType,
     },
     ThingTypeGetOwns {
-        label: String,
+        thing_type: ThingType,
         value_type: Option<ValueType>,
         transitivity: Transitivity,
         annotation_filter: Vec<Annotation>,
     },
     ThingTypeGetOwnsOverridden {
-        label: String,
-        overridden_attribute_label: String,
+        thing_type: ThingType,
+        overridden_attribute_type: AttributeType,
     },
     ThingTypeSetOwns {
-        label: String,
-        attribute_label: String,
-        overridden_attribute_label: Option<String>,
+        thing_type: ThingType,
+        attribute_type: AttributeType,
+        overridden_attribute_type: Option<AttributeType>,
         annotations: Vec<Annotation>,
     },
     ThingTypeUnsetOwns {
-        label: String,
-        attribute_label: String,
+        thing_type: ThingType,
+        attribute_type: AttributeType,
     },
     // ThingTypeGetPlays,
     // ThingTypeGetPlaysOverridden,
@@ -220,45 +222,45 @@ pub(super) enum ThingTypeRequest {
     // ThingTypeUnsetPlays,
     // ThingTypeGetSyntax,
     EntityTypeCreate {
-        label: String,
+        entity_type: EntityType,
     },
     EntityTypeGetSupertype {
-        label: String,
+        entity_type: EntityType,
     },
     EntityTypeSetSupertype {
-        label: String,
-        supertype_label: String,
+        entity_type: EntityType,
+        supertype: EntityType,
     },
     EntityTypeGetSupertypes {
-        label: String,
+        entity_type: EntityType,
     },
     EntityTypeGetSubtypes {
-        label: String,
+        entity_type: EntityType,
         transitivity: Transitivity,
     },
     EntityTypeGetInstances {
-        label: String,
+        entity_type: EntityType,
         transitivity: Transitivity,
     },
     RelationTypeCreate {
-        label: String,
+        relation_type: RelationType,
     },
     RelationTypeGetSupertype {
-        label: String,
+        relation_type: RelationType,
     },
     RelationTypeSetSupertype {
-        label: String,
-        supertype_label: String,
+        relation_type: RelationType,
+        supertype: RelationType,
     },
     RelationTypeGetSupertypes {
-        label: String,
+        relation_type: RelationType,
     },
     RelationTypeGetSubtypes {
-        label: String,
+        relation_type: RelationType,
         transitivity: Transitivity,
     },
     RelationTypeGetInstances {
-        label: String,
+        relation_type: RelationType,
         transitivity: Transitivity,
     },
     // RelationTypeGetRelates,
@@ -267,30 +269,30 @@ pub(super) enum ThingTypeRequest {
     // RelationTypeSetRelates,
     // RelationTypeUnsetRelates,
     AttributeTypePut {
-        label: String,
+        attribute_type: AttributeType,
         value: Value,
     },
     AttributeTypeGet {
-        label: String,
+        attribute_type: AttributeType,
         value: Value,
     },
     AttributeTypeGetSupertype {
-        label: String,
+        attribute_type: AttributeType,
     },
     AttributeTypeSetSupertype {
-        label: String,
-        supertype_label: String,
+        attribute_type: AttributeType,
+        supertype: AttributeType,
     },
     AttributeTypeGetSupertypes {
-        label: String,
+        attribute_type: AttributeType,
     },
     AttributeTypeGetSubtypes {
-        label: String,
+        attribute_type: AttributeType,
         transitivity: Transitivity,
         value_type: Option<ValueType>,
     },
     AttributeTypeGetInstances {
-        label: String,
+        attribute_type: AttributeType,
         transitivity: Transitivity,
         value_type: Option<ValueType>,
     },

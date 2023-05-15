@@ -27,6 +27,25 @@ use super::{Attribute, Entity, Relation, Value};
 use crate::{common::Transitivity, Annotation, Result, Transaction};
 
 #[derive(Clone, Debug)]
+pub enum ThingType {
+    RootThingType(RootThingType),
+    EntityType(EntityType),
+    RelationType(RelationType),
+    AttributeType(AttributeType),
+}
+
+impl ThingType {
+    pub fn label(&self) -> &str {
+        match self {
+            Self::RootThingType(_) => RootThingType::LABEL,
+            Self::EntityType(entity_type) => &entity_type.label,
+            Self::RelationType(relation_type) => &relation_type.label,
+            Self::AttributeType(attribute_type) => &attribute_type.label,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct RootThingType;
 
 impl RootThingType {

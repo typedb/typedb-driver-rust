@@ -20,7 +20,7 @@
  */
 
 use typedb_protocol::{
-    r#type::{Annotation as AnnotationProto, Transitivity as TransitivityProto},
+    r#type::{annotation, Annotation as AnnotationProto, Transitivity as TransitivityProto},
     session, transaction, Exception, Options as OptionsProto,
 };
 
@@ -78,11 +78,11 @@ impl IntoProto<i32> for Transitivity {
     }
 }
 
-impl IntoProto<i32> for Annotation {
-    fn into_proto(self) -> i32 {
+impl IntoProto<AnnotationProto> for Annotation {
+    fn into_proto(self) -> AnnotationProto {
         match self {
-            Self::Key => AnnotationProto::Key.into(),
-            Self::Unique => AnnotationProto::Unique.into(),
+            Self::Key => AnnotationProto { annotation: Some(annotation::Annotation::Key(true)) },
+            Self::Unique => AnnotationProto { annotation: Some(annotation::Annotation::Unique(true)) },
         }
     }
 }

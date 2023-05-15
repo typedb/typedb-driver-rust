@@ -24,15 +24,14 @@ use std::time::Duration;
 use itertools::Itertools;
 use typedb_protocol::{
     attribute_type, concept_manager, database, database_manager, entity_type, query_manager, r#type, relation_type,
-    server_manager, session, thing_type, transaction, AttributeType as AttributeTypeProto,
-    EntityType as EntityTypeProto, RelationType as RelationTypeProto,
+    server_manager, session, thing_type, transaction,
 };
 
 use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{info::DatabaseInfo, RequestID, Result},
-    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, ValueType},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, ValueType},
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
         ThingTypeResponse, TransactionRequest, TransactionResponse,
@@ -473,137 +472,141 @@ impl TryFromProto<concept_manager::Res> for ConceptResponse {
 impl IntoProto<r#type::Req> for ThingTypeRequest {
     fn into_proto(self) -> r#type::Req {
         let (req, label) = match self {
-            Self::ThingTypeDelete { label } => {
-                (thing_type::req::Req::ThingTypeDeleteReq(thing_type::delete::Req {}), label)
+            Self::ThingTypeDelete { thing_type } => {
+                (thing_type::req::Req::ThingTypeDeleteReq(thing_type::delete::Req {}), thing_type.label().to_owned())
             }
-            Self::ThingTypeSetLabel { old_label, new_label } => {
-                (thing_type::req::Req::ThingTypeSetLabelReq(thing_type::set_label::Req { label: new_label }), old_label)
-            }
-            Self::ThingTypeSetAbstract { label } => {
-                (thing_type::req::Req::ThingTypeSetAbstractReq(thing_type::set_abstract::Req {}), label)
-            }
-            Self::ThingTypeUnsetAbstract { label } => {
-                (thing_type::req::Req::ThingTypeUnsetAbstractReq(thing_type::unset_abstract::Req {}), label)
-            }
-            Self::ThingTypeGetOwns { label, value_type, transitivity, annotation_filter } => (
+            Self::ThingTypeSetLabel { thing_type, new_label } => (
+                thing_type::req::Req::ThingTypeSetLabelReq(thing_type::set_label::Req { label: new_label }),
+                thing_type.label().to_owned(),
+            ),
+            Self::ThingTypeSetAbstract { thing_type } => (
+                thing_type::req::Req::ThingTypeSetAbstractReq(thing_type::set_abstract::Req {}),
+                thing_type.label().to_owned(),
+            ),
+            Self::ThingTypeUnsetAbstract { thing_type } => (
+                thing_type::req::Req::ThingTypeUnsetAbstractReq(thing_type::unset_abstract::Req {}),
+                thing_type.label().to_owned(),
+            ),
+            Self::ThingTypeGetOwns { thing_type, value_type, transitivity, annotation_filter } => (
                 thing_type::req::Req::ThingTypeGetOwnsReq(thing_type::get_owns::Req {
                     filter: value_type.map(IntoProto::into_proto),
                     transitivity: transitivity.into_proto(),
                     annotations: annotation_filter.into_iter().map(Annotation::into_proto).collect(),
                 }),
-                label,
+                thing_type.label().to_owned(),
             ),
-            Self::ThingTypeGetOwnsOverridden { label, overridden_attribute_label } => (
+            Self::ThingTypeGetOwnsOverridden { thing_type, overridden_attribute_type } => (
                 thing_type::req::Req::ThingTypeGetOwnsOverriddenReq(thing_type::get_owns_overridden::Req {
-                    attribute_type: Some(AttributeTypeProto {
-                        label: overridden_attribute_label,
-                        ..Default::default()
-                    }),
+                    attribute_type: Some(overridden_attribute_type.into_proto()),
                 }),
-                label,
+                thing_type.label().to_owned(),
             ),
-            Self::ThingTypeSetOwns { label, attribute_label, overridden_attribute_label, annotations } => (
+            Self::ThingTypeSetOwns { thing_type, attribute_type, overridden_attribute_type, annotations } => (
                 thing_type::req::Req::ThingTypeSetOwnsReq(thing_type::set_owns::Req {
-                    attribute_type: Some(AttributeTypeProto { label: attribute_label, ..Default::default() }),
-                    overridden_type: overridden_attribute_label
-                        .map(|label| AttributeTypeProto { label, ..Default::default() }),
+                    attribute_type: Some(attribute_type.into_proto()),
+                    overridden_type: overridden_attribute_type.map(AttributeType::into_proto),
                     annotations: annotations.into_iter().map(|anno| anno.into_proto()).collect(),
                 }),
-                label,
+                thing_type.label().to_owned(),
             ),
-            Self::ThingTypeUnsetOwns { label, attribute_label } => (
+            Self::ThingTypeUnsetOwns { thing_type, attribute_type } => (
                 thing_type::req::Req::ThingTypeUnsetOwnsReq(thing_type::unset_owns::Req {
-                    attribute_type: Some(AttributeTypeProto { label: attribute_label, ..Default::default() }),
+                    attribute_type: Some(attribute_type.into_proto()),
                 }),
-                label,
+                thing_type.label().to_owned(),
             ),
-            Self::EntityTypeCreate { label } => {
-                (thing_type::req::Req::EntityTypeCreateReq(entity_type::create::Req {}), label)
+            Self::EntityTypeCreate { entity_type } => {
+                (thing_type::req::Req::EntityTypeCreateReq(entity_type::create::Req {}), entity_type.label)
             }
-            Self::EntityTypeGetSupertype { label } => {
-                (thing_type::req::Req::EntityTypeGetSupertypeReq(entity_type::get_supertype::Req {}), label)
+            Self::EntityTypeGetSupertype { entity_type } => {
+                (thing_type::req::Req::EntityTypeGetSupertypeReq(entity_type::get_supertype::Req {}), entity_type.label)
             }
-            Self::EntityTypeSetSupertype { label, supertype_label } => (
+            Self::EntityTypeSetSupertype { entity_type, supertype } => (
                 thing_type::req::Req::EntityTypeSetSupertypeReq(entity_type::set_supertype::Req {
-                    entity_type: Some(EntityTypeProto { label: supertype_label, ..Default::default() }),
+                    entity_type: Some(supertype.into_proto()),
                 }),
-                label,
+                entity_type.label,
             ),
-            Self::EntityTypeGetSupertypes { label } => {
-                (thing_type::req::Req::EntityTypeGetSupertypesReq(entity_type::get_supertypes::Req {}), label)
-            }
-            Self::EntityTypeGetSubtypes { label, transitivity } => (
+            Self::EntityTypeGetSupertypes { entity_type } => (
+                thing_type::req::Req::EntityTypeGetSupertypesReq(entity_type::get_supertypes::Req {}),
+                entity_type.label,
+            ),
+            Self::EntityTypeGetSubtypes { entity_type, transitivity } => (
                 thing_type::req::Req::EntityTypeGetSubtypesReq(entity_type::get_subtypes::Req {
                     transitivity: transitivity.into_proto(),
                 }),
-                label,
+                entity_type.label,
             ),
-            Self::EntityTypeGetInstances { label, transitivity } => (
+            Self::EntityTypeGetInstances { entity_type, transitivity } => (
                 thing_type::req::Req::EntityTypeGetInstancesReq(entity_type::get_instances::Req {
                     transitivity: transitivity.into_proto(),
                 }),
-                label,
+                entity_type.label,
             ),
-            Self::RelationTypeCreate { label } => {
-                (thing_type::req::Req::RelationTypeCreateReq(relation_type::create::Req {}), label)
+            Self::RelationTypeCreate { relation_type } => {
+                (thing_type::req::Req::RelationTypeCreateReq(relation_type::create::Req {}), relation_type.label)
             }
-            Self::RelationTypeGetSupertype { label } => {
-                (thing_type::req::Req::RelationTypeGetSupertypeReq(relation_type::get_supertype::Req {}), label)
-            }
-            Self::RelationTypeSetSupertype { label, supertype_label } => (
+            Self::RelationTypeGetSupertype { relation_type } => (
+                thing_type::req::Req::RelationTypeGetSupertypeReq(relation_type::get_supertype::Req {}),
+                relation_type.label,
+            ),
+            Self::RelationTypeSetSupertype { relation_type, supertype } => (
                 thing_type::req::Req::RelationTypeSetSupertypeReq(relation_type::set_supertype::Req {
-                    relation_type: Some(RelationTypeProto { label: supertype_label, ..Default::default() }),
+                    relation_type: Some(supertype.into_proto()),
                 }),
-                label,
+                relation_type.label,
             ),
-            Self::RelationTypeGetSupertypes { label } => {
-                (thing_type::req::Req::RelationTypeGetSupertypesReq(relation_type::get_supertypes::Req {}), label)
-            }
-            Self::RelationTypeGetSubtypes { label, transitivity } => (
+            Self::RelationTypeGetSupertypes { relation_type } => (
+                thing_type::req::Req::RelationTypeGetSupertypesReq(relation_type::get_supertypes::Req {}),
+                relation_type.label,
+            ),
+            Self::RelationTypeGetSubtypes { relation_type, transitivity } => (
                 thing_type::req::Req::RelationTypeGetSubtypesReq(relation_type::get_subtypes::Req {
                     transitivity: transitivity.into_proto(),
                 }),
-                label,
+                relation_type.label,
             ),
-            Self::RelationTypeGetInstances { label, transitivity } => (
+            Self::RelationTypeGetInstances { relation_type, transitivity } => (
                 thing_type::req::Req::RelationTypeGetInstancesReq(relation_type::get_instances::Req {
                     transitivity: transitivity.into_proto(),
                 }),
-                label,
+                relation_type.label,
             ),
-            Self::AttributeTypePut { label, value } => (
+            Self::AttributeTypePut { attribute_type, value } => (
                 thing_type::req::Req::AttributeTypePutReq(attribute_type::put::Req { value: Some(value.into_proto()) }),
-                label,
+                attribute_type.label,
             ),
-            Self::AttributeTypeGet { label, value } => (
+            Self::AttributeTypeGet { attribute_type, value } => (
                 thing_type::req::Req::AttributeTypeGetReq(attribute_type::get::Req { value: Some(value.into_proto()) }),
-                label,
+                attribute_type.label,
             ),
-            Self::AttributeTypeGetSupertype { label } => {
-                (thing_type::req::Req::AttributeTypeGetSupertypeReq(attribute_type::get_supertype::Req {}), label)
-            }
-            Self::AttributeTypeSetSupertype { label, supertype_label } => (
+            Self::AttributeTypeGetSupertype { attribute_type } => (
+                thing_type::req::Req::AttributeTypeGetSupertypeReq(attribute_type::get_supertype::Req {}),
+                attribute_type.label,
+            ),
+            Self::AttributeTypeSetSupertype { attribute_type, supertype } => (
                 thing_type::req::Req::AttributeTypeSetSupertypeReq(attribute_type::set_supertype::Req {
-                    attribute_type: Some(AttributeTypeProto { label: supertype_label, ..Default::default() }),
+                    attribute_type: Some(supertype.into_proto()),
                 }),
-                label,
+                attribute_type.label,
             ),
-            Self::AttributeTypeGetSupertypes { label } => {
-                (thing_type::req::Req::AttributeTypeGetSupertypesReq(attribute_type::get_supertypes::Req {}), label)
-            }
-            Self::AttributeTypeGetSubtypes { label, transitivity, value_type } => (
+            Self::AttributeTypeGetSupertypes { attribute_type } => (
+                thing_type::req::Req::AttributeTypeGetSupertypesReq(attribute_type::get_supertypes::Req {}),
+                attribute_type.label,
+            ),
+            Self::AttributeTypeGetSubtypes { attribute_type, transitivity, value_type } => (
                 thing_type::req::Req::AttributeTypeGetSubtypesReq(attribute_type::get_subtypes::Req {
                     transitivity: transitivity.into_proto(),
                     value_type: value_type.map(ValueType::into_proto),
                 }),
-                label,
+                attribute_type.label,
             ),
-            Self::AttributeTypeGetInstances { label, transitivity, value_type } => (
+            Self::AttributeTypeGetInstances { attribute_type, transitivity, value_type } => (
                 thing_type::req::Req::AttributeTypeGetInstancesReq(attribute_type::get_instances::Req {
                     transitivity: transitivity.into_proto(),
                     value_type: value_type.map(ValueType::into_proto),
                 }),
-                label,
+                attribute_type.label,
             ),
         };
         r#type::Req { req: Some(r#type::req::Req::ThingTypeReq(thing_type::Req { label, req: Some(req) })) }

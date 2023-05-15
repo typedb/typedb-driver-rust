@@ -102,10 +102,24 @@ impl FromProto<EntityTypeProto> for EntityType {
     }
 }
 
+impl IntoProto<EntityTypeProto> for EntityType {
+    fn into_proto(self) -> EntityTypeProto {
+        let EntityType { label, is_root, is_abstract } = self;
+        EntityTypeProto { label, is_root, is_abstract }
+    }
+}
+
 impl FromProto<RelationTypeProto> for RelationType {
     fn from_proto(proto: RelationTypeProto) -> Self {
         let RelationTypeProto { label, is_root, is_abstract } = proto;
         Self::new(label, is_root, is_abstract)
+    }
+}
+
+impl IntoProto<RelationTypeProto> for RelationType {
+    fn into_proto(self) -> RelationTypeProto {
+        let RelationType { label, is_root, is_abstract } = self;
+        RelationTypeProto { label, is_root, is_abstract }
     }
 }
 
@@ -148,10 +162,24 @@ impl TryFromProto<AttributeTypeProto> for AttributeType {
     }
 }
 
+impl IntoProto<AttributeTypeProto> for AttributeType {
+    fn into_proto(self) -> AttributeTypeProto {
+        let AttributeType { label, is_root, is_abstract, value_type } = self;
+        AttributeTypeProto { label, is_root, is_abstract, value_type: value_type.into_proto() }
+    }
+}
+
 impl FromProto<RoleTypeProto> for RoleType {
     fn from_proto(proto: RoleTypeProto) -> Self {
-        let RoleTypeProto { label, is_root: _, is_abstract: _, scope } = proto;
-        Self::new(ScopedLabel::new(scope, label))
+        let RoleTypeProto { scope, label, is_root, is_abstract } = proto;
+        Self::new(ScopedLabel::new(scope, label), is_root, is_abstract)
+    }
+}
+
+impl IntoProto<RoleTypeProto> for RoleType {
+    fn into_proto(self) -> RoleTypeProto {
+        let RoleType { label, is_root, is_abstract } = self;
+        RoleTypeProto { scope: label.scope, label: label.name, is_root, is_abstract }
     }
 }
 
