@@ -68,6 +68,10 @@ impl EntityType {
         Self { label, is_root, is_abstract }
     }
 
+    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_entity_type(self.label.clone()).await.map(|res| res.is_some())
+    }
+
     pub async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().thing_type_delete(ThingType::EntityType(self.clone())).await
     }
@@ -173,10 +177,6 @@ impl EntityType {
 
     pub async fn create(&self, transaction: &Transaction<'_>) -> Result<Entity> {
         transaction.concept().entity_type_create(self.clone()).await
-    }
-
-    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
-        transaction.concept().get_entity_type(self.label.clone()).await.map(|res| res.is_some())
     }
 
     pub async fn get_supertype(&self, transaction: &Transaction<'_>) -> Result<Self> {
