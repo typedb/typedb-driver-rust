@@ -37,11 +37,11 @@ use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     concept::{
-        Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, RootThingType,
-        ScopedLabel, Thing, ThingType, Value, ValueType,
+        Attribute, AttributeType, Concept, Entity, EntityType, HasFilter, Relation, RelationType, RoleType,
+        RootThingType, ScopedLabel, Thing, ThingType, Value, ValueType,
     },
     error::{ConnectionError, InternalError},
-    Result,
+    Annotation, Result,
 };
 
 impl TryFromProto<NumericProto> for Numeric {
@@ -114,6 +114,18 @@ impl TryFromProto<ThingTypeProto> for ThingType {
     }
 }
 
+impl IntoProto<ThingTypeProto> for ThingType {
+    fn into_proto(self) -> ThingTypeProto {
+        let thing_type_inner_proto = match self {
+            Self::EntityType(entity_type) => thing_type::Type::EntityType(entity_type.into_proto()),
+            Self::RelationType(relation_type) => thing_type::Type::RelationType(relation_type.into_proto()),
+            Self::AttributeType(attribute_type) => thing_type::Type::AttributeType(attribute_type.into_proto()),
+            Self::RootThingType(_) => thing_type::Type::RootThingType(thing_type::Root {}),
+        };
+        ThingTypeProto { r#type: Some(thing_type_inner_proto) }
+    }
+}
+
 impl FromProto<EntityTypeProto> for EntityType {
     fn from_proto(proto: EntityTypeProto) -> Self {
         let EntityTypeProto { label, is_root, is_abstract } = proto;
@@ -141,6 +153,19 @@ impl IntoProto<RelationTypeProto> for RelationType {
         RelationTypeProto { label, is_root, is_abstract }
     }
 }
+impl TryFromProto<AttributeTypeProto> for AttributeType {
+    fn try_from_proto(proto: AttributeTypeProto) -> Result<Self> {
+        let AttributeTypeProto { label, is_root, is_abstract, value_type } = proto;
+        Ok(Self::new(label, is_root, is_abstract, ValueType::try_from_proto(value_type)?))
+    }
+}
+
+impl IntoProto<AttributeTypeProto> for AttributeType {
+    fn into_proto(self) -> AttributeTypeProto {
+        let AttributeType { label, is_root, is_abstract, value_type } = self;
+        AttributeTypeProto { label, is_root, is_abstract, value_type: value_type.into_proto() }
+    }
+}
 
 impl TryFromProto<i32> for ValueType {
     fn try_from_proto(proto: i32) -> Result<Self> {
@@ -166,20 +191,6 @@ impl IntoProto<i32> for ValueType {
             Self::String => ValueTypeProto::String.into(),
             Self::DateTime => ValueTypeProto::Datetime.into(),
         }
-    }
-}
-
-impl TryFromProto<AttributeTypeProto> for AttributeType {
-    fn try_from_proto(proto: AttributeTypeProto) -> Result<Self> {
-        let AttributeTypeProto { label, is_root, is_abstract, value_type } = proto;
-        Ok(Self::new(label, is_root, is_abstract, ValueType::try_from_proto(value_type)?))
-    }
-}
-
-impl IntoProto<AttributeTypeProto> for AttributeType {
-    fn into_proto(self) -> AttributeTypeProto {
-        let AttributeType { label, is_root, is_abstract, value_type } = self;
-        AttributeTypeProto { label, is_root, is_abstract, value_type: value_type.into_proto() }
     }
 }
 
@@ -212,12 +223,33 @@ impl TryFromProto<ThingProto> for Thing {
     }
 }
 
+impl IntoProto<ThingProto> for Thing {
+    fn into_proto(self) -> ThingProto {
+        let thing_inner_proto = match self {
+            Self::Entity(entity) => thing::Thing::Entity(entity.into_proto()),
+            Self::Relation(relation) => thing::Thing::Relation(relation.into_proto()),
+            Self::Attribute(attribute) => thing::Thing::Attribute(attribute.into_proto()),
+        };
+        ThingProto { thing: Some(thing_inner_proto) }
+    }
+}
+
 impl TryFromProto<EntityProto> for Entity {
     fn try_from_proto(proto: EntityProto) -> Result<Self> {
         Ok(Self::new(
             proto.iid.into(),
             EntityType::from_proto(proto.entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?),
         ))
+    }
+}
+
+impl IntoProto<EntityProto> for Entity {
+    fn into_proto(self) -> EntityProto {
+        EntityProto {
+            iid: self.iid.into(),
+            entity_type: Some(self.type_.into_proto()),
+            inferred: false, // FIXME
+        }
     }
 }
 
@@ -232,6 +264,16 @@ impl TryFromProto<RelationProto> for Relation {
     }
 }
 
+impl IntoProto<RelationProto> for Relation {
+    fn into_proto(self) -> RelationProto {
+        RelationProto {
+            iid: self.iid.into(),
+            relation_type: Some(self.type_.into_proto()),
+            inferred: false, // FIXME
+        }
+    }
+}
+
 impl TryFromProto<AttributeProto> for Attribute {
     fn try_from_proto(proto: AttributeProto) -> Result<Self> {
         Ok(Self::new(
@@ -241,6 +283,17 @@ impl TryFromProto<AttributeProto> for Attribute {
             )?,
             Value::try_from_proto(proto.value.ok_or(ConnectionError::MissingResponseField("value"))?)?,
         ))
+    }
+}
+
+impl IntoProto<AttributeProto> for Attribute {
+    fn into_proto(self) -> AttributeProto {
+        AttributeProto {
+            iid: self.iid.into(),
+            attribute_type: Some(self.type_.into_proto()),
+            value: Some(self.value.into_proto()),
+            inferred: false, // FIXME
+        }
     }
 }
 
@@ -269,6 +322,23 @@ impl IntoProto<ValueProto> for Value {
                 Self::String(string) => ValueProtoInner::String(string),
                 Self::DateTime(date_time) => ValueProtoInner::DateTime(date_time.timestamp_millis()),
             }),
+        }
+    }
+}
+
+impl IntoProto<thing::get_has::req::Filter> for HasFilter {
+    fn into_proto(self) -> thing::get_has::req::Filter {
+        match self {
+            Self::AttributeTypes(attribute_types) => {
+                thing::get_has::req::Filter::AttributeTypes(thing::get_has::req::AttributeTypes {
+                    attribute_types: attribute_types.into_iter().map(AttributeType::into_proto).collect(),
+                })
+            }
+            Self::Annotations(annotations) => {
+                thing::get_has::req::Filter::AnnotationFilter(thing::get_has::req::AnnotationFilter {
+                    annotations: annotations.into_iter().map(Annotation::into_proto).collect(),
+                })
+            }
         }
     }
 }

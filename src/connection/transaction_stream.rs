@@ -24,15 +24,15 @@ use std::{fmt, iter};
 use futures::{stream, Stream, StreamExt};
 
 use super::{
-    message::{RoleTypeRequest, RoleTypeResponse},
+    message::{RoleTypeRequest, RoleTypeResponse, ThingRequest, ThingResponse},
     network::transmitter::TransactionTransmitter,
 };
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{Result, Transitivity, IID},
     concept::{
-        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, Value,
-        ValueType,
+        Attribute, AttributeType, Entity, EntityType, HasFilter, Relation, RelationType, RoleType, Thing, ThingType,
+        Value, ValueType,
     },
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
@@ -773,6 +773,130 @@ impl TransactionStream {
         }))
     }
 
+    pub(crate) async fn thing_delete(&self, thing: Thing) -> Result {
+        match self.thing_single(ThingRequest::ThingDelete { thing }).await? {
+            ThingResponse::ThingDelete {} => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn thing_get_has(
+        &self,
+        thing: Thing,
+        filter: HasFilter,
+    ) -> Result<impl Stream<Item = Result<Attribute>>> {
+        let stream = self.thing_stream(ThingRequest::ThingGetHas { thing, filter })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingResponse::ThingGetHas { attributes }) => stream_iter(attributes.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) async fn thing_set_has(&self, thing: Thing, attribute: Attribute) -> Result {
+        match self.thing_single(ThingRequest::ThingSetHas { thing, attribute }).await? {
+            ThingResponse::ThingSetHas {} => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn thing_unset_has(&self, thing: Thing, attribute: Attribute) -> Result {
+        match self.thing_single(ThingRequest::ThingUnsetHas { thing, attribute }).await? {
+            ThingResponse::ThingUnsetHas {} => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn thing_get_relations(
+        &self,
+        thing: Thing,
+        role_types: Vec<RoleType>,
+    ) -> Result<impl Stream<Item = Result<Relation>>> {
+        let stream = self.thing_stream(ThingRequest::ThingGetRelations { thing, role_types })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingResponse::ThingGetRelations { relations }) => stream_iter(relations.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) fn thing_get_playing(&self, thing: Thing) -> Result<impl Stream<Item = Result<RoleType>>> {
+        let stream = self.thing_stream(ThingRequest::ThingGetPlaying { thing })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingResponse::ThingGetPlaying { role_types }) => stream_iter(role_types.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) async fn relation_add_player(&self, relation: Relation, role_type: RoleType, player: Thing) -> Result {
+        match self.thing_single(ThingRequest::RelationAddPlayer { relation, role_type, player }).await? {
+            ThingResponse::RelationAddPlayer {} => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn relation_remove_player(
+        &self,
+        relation: Relation,
+        role_type: RoleType,
+        player: Thing,
+    ) -> Result {
+        match self.thing_single(ThingRequest::RelationRemovePlayer { relation, role_type, player }).await? {
+            ThingResponse::RelationAddPlayer {} => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn relation_get_players(
+        &self,
+        relation: Relation,
+        role_types: Vec<RoleType>,
+    ) -> Result<impl Stream<Item = Result<Thing>>> {
+        let stream = self.thing_stream(ThingRequest::RelationGetPlayers { relation, role_types })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingResponse::RelationGetPlayers { players }) => stream_iter(players.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) fn relation_get_players_by_role_type(
+        &self,
+        relation: Relation,
+    ) -> Result<impl Stream<Item = Result<(RoleType, Thing)>>> {
+        let stream = self.thing_stream(ThingRequest::RelationGetPlayersByRoleType { relation })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingResponse::RelationGetPlayersByRoleType { role_players: players }) => {
+                stream_iter(players.into_iter().map(Ok))
+            }
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) fn relation_get_relating(&self, relation: Relation) -> Result<impl Stream<Item = Result<RoleType>>> {
+        let stream = self.thing_stream(ThingRequest::RelationGetRelating { relation })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingResponse::RelationGetRelating { role_types }) => stream_iter(role_types.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
+    pub(crate) fn attribute_get_owners(
+        &self,
+        attribute: Attribute,
+        filter: Option<ThingType>,
+    ) -> Result<impl Stream<Item = Result<Thing>>> {
+        let stream = self.thing_stream(ThingRequest::AttributeGetOwners { attribute, filter })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(ThingResponse::AttributeGetOwners { owners }) => stream_iter(owners.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
     async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         self.transaction_transmitter.single(req).await
     }
@@ -801,6 +925,13 @@ impl TransactionStream {
     async fn role_type_single(&self, req: RoleTypeRequest) -> Result<RoleTypeResponse> {
         match self.single(TransactionRequest::RoleType(req)).await? {
             TransactionResponse::RoleType(res) => Ok(res),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    async fn thing_single(&self, req: ThingRequest) -> Result<ThingResponse> {
+        match self.single(TransactionRequest::Thing(req)).await? {
+            TransactionResponse::Thing(res) => Ok(res),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
@@ -836,6 +967,14 @@ impl TransactionStream {
     fn role_type_stream(&self, req: RoleTypeRequest) -> Result<impl Stream<Item = Result<RoleTypeResponse>>> {
         Ok(self.stream(TransactionRequest::RoleType(req))?.map(|response| match response {
             Ok(TransactionResponse::RoleType(res)) => Ok(res),
+            Ok(other) => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+            Err(err) => Err(err),
+        }))
+    }
+
+    fn thing_stream(&self, req: ThingRequest) -> Result<impl Stream<Item = Result<ThingResponse>>> {
+        Ok(self.stream(TransactionRequest::Thing(req))?.map(|response| match response {
+            Ok(TransactionResponse::Thing(res)) => Ok(res),
             Ok(other) => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
             Err(err) => Err(err),
         }))

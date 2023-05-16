@@ -19,11 +19,11 @@
  * under the License.
  */
 
-use async_trait::async_trait;
 use chrono::NaiveDateTime;
+use futures::Stream;
 
-use super::type_::{AttributeType, EntityType, RelationType};
-use crate::common::IID;
+use super::{AttributeType, EntityType, HasFilter, RelationType, RoleType, ThingType};
+use crate::{common::IID, Result, Transaction};
 
 #[derive(Clone, Debug)]
 pub enum Thing {
@@ -32,23 +32,14 @@ pub enum Thing {
     Attribute(Attribute),
 }
 
-#[async_trait]
-pub trait ThingAPI {
-    fn get_iid(&self) -> &IID;
-}
-
-macro_rules! default_impl {
-    { impl $trait:ident $body:tt for $($t:ident),* $(,)? } => {
-        $(impl $trait for $t $body)*
-    }
-}
-
-default_impl! {
-    impl ThingAPI {
-        fn get_iid(&self) -> &IID {
-            &self.iid
+impl Thing {
+    pub fn iid(&self) -> &IID {
+        match self {
+            Self::Entity(entity) => &entity.iid,
+            Self::Relation(relation) => &relation.iid,
+            Self::Attribute(attribute) => &attribute.iid,
         }
-    } for Entity, Relation, Attribute
+    }
 }
 
 // TODO: Storing the Type here is *extremely* inefficient; we could be effectively creating
@@ -63,6 +54,44 @@ impl Entity {
     pub fn new(iid: IID, type_: EntityType) -> Self {
         Self { iid, type_ }
     }
+
+    pub async fn delete(&self, transaction: Transaction<'_>, thing: Thing) -> Result {
+        transaction.concept().thing_delete(thing).await
+    }
+
+    pub fn get_has(
+        &self,
+        transaction: Transaction<'_>,
+        thing: Thing,
+        filter: HasFilter,
+    ) -> Result<impl Stream<Item = Result<Attribute>>> {
+        transaction.concept().thing_get_has(thing, filter)
+    }
+
+    pub async fn set_has(&self, transaction: Transaction<'_>, thing: Thing, attribute: Attribute) -> Result {
+        transaction.concept().thing_set_has(thing, attribute).await
+    }
+
+    pub async fn unset_has(&self, transaction: Transaction<'_>, thing: Thing, attribute: Attribute) -> Result {
+        transaction.concept().thing_unset_has(thing, attribute).await
+    }
+
+    pub fn get_relations(
+        &self,
+        transaction: Transaction<'_>,
+        thing: Thing,
+        role_types: Vec<RoleType>,
+    ) -> Result<impl Stream<Item = Result<Relation>>> {
+        transaction.concept().thing_get_relations(thing, role_types)
+    }
+
+    pub fn get_playing(
+        &self,
+        transaction: Transaction<'_>,
+        thing: Thing,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().thing_get_playing(thing)
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -74,6 +103,89 @@ pub struct Relation {
 impl Relation {
     pub fn new(iid: IID, type_: RelationType) -> Self {
         Self { iid, type_ }
+    }
+
+    pub async fn delete(&self, transaction: Transaction<'_>, thing: Thing) -> Result {
+        transaction.concept().thing_delete(thing).await
+    }
+
+    pub fn get_has(
+        &self,
+        transaction: Transaction<'_>,
+        thing: Thing,
+        filter: HasFilter,
+    ) -> Result<impl Stream<Item = Result<Attribute>>> {
+        transaction.concept().thing_get_has(thing, filter)
+    }
+
+    pub async fn set_has(&self, transaction: Transaction<'_>, thing: Thing, attribute: Attribute) -> Result {
+        transaction.concept().thing_set_has(thing, attribute).await
+    }
+
+    pub async fn unset_has(&self, transaction: Transaction<'_>, thing: Thing, attribute: Attribute) -> Result {
+        transaction.concept().thing_unset_has(thing, attribute).await
+    }
+
+    pub fn get_relations(
+        &self,
+        transaction: Transaction<'_>,
+        thing: Thing,
+        role_types: Vec<RoleType>,
+    ) -> Result<impl Stream<Item = Result<Relation>>> {
+        transaction.concept().thing_get_relations(thing, role_types)
+    }
+
+    pub fn get_playing(
+        &self,
+        transaction: Transaction<'_>,
+        thing: Thing,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().thing_get_playing(thing)
+    }
+
+    pub async fn add_player(
+        &self,
+        transaction: Transaction<'_>,
+        relation: Relation,
+        role_type: RoleType,
+        player: Thing,
+    ) -> Result {
+        transaction.concept().relation_add_player(relation, role_type, player).await
+    }
+
+    pub async fn remove_player(
+        &self,
+        transaction: Transaction<'_>,
+        relation: Relation,
+        role_type: RoleType,
+        player: Thing,
+    ) -> Result {
+        transaction.concept().relation_remove_player(relation, role_type, player).await
+    }
+
+    pub fn get_players(
+        &self,
+        transaction: Transaction<'_>,
+        relation: Relation,
+        role_types: Vec<RoleType>,
+    ) -> Result<impl Stream<Item = Result<Thing>>> {
+        transaction.concept().relation_get_players(relation, role_types)
+    }
+
+    pub fn get_players_by_role_type(
+        &self,
+        transaction: Transaction<'_>,
+        relation: Relation,
+    ) -> Result<impl Stream<Item = Result<(RoleType, Thing)>>> {
+        transaction.concept().relation_get_players_by_role_type(relation)
+    }
+
+    pub fn get_relating(
+        &self,
+        transaction: Transaction<'_>,
+        relation: Relation,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().relation_get_relating(relation)
     }
 }
 
@@ -87,6 +199,53 @@ pub struct Attribute {
 impl Attribute {
     pub fn new(iid: IID, type_: AttributeType, value: Value) -> Self {
         Self { iid, type_, value }
+    }
+
+    pub async fn delete(&self, transaction: Transaction<'_>, thing: Thing) -> Result {
+        transaction.concept().thing_delete(thing).await
+    }
+
+    pub fn get_has(
+        &self,
+        transaction: Transaction<'_>,
+        thing: Thing,
+        filter: HasFilter,
+    ) -> Result<impl Stream<Item = Result<Attribute>>> {
+        transaction.concept().thing_get_has(thing, filter)
+    }
+
+    pub async fn set_has(&self, transaction: Transaction<'_>, thing: Thing, attribute: Attribute) -> Result {
+        transaction.concept().thing_set_has(thing, attribute).await
+    }
+
+    pub async fn unset_has(&self, transaction: Transaction<'_>, thing: Thing, attribute: Attribute) -> Result {
+        transaction.concept().thing_unset_has(thing, attribute).await
+    }
+
+    pub fn get_relations(
+        &self,
+        transaction: Transaction<'_>,
+        thing: Thing,
+        role_types: Vec<RoleType>,
+    ) -> Result<impl Stream<Item = Result<Relation>>> {
+        transaction.concept().thing_get_relations(thing, role_types)
+    }
+
+    pub fn get_playing(
+        &self,
+        transaction: Transaction<'_>,
+        thing: Thing,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().thing_get_playing(thing)
+    }
+
+    pub fn get_owners(
+        &self,
+        transaction: Transaction<'_>,
+        attribute: Attribute,
+        filter: Option<ThingType>,
+    ) -> Result<impl Stream<Item = Result<Thing>>> {
+        transaction.concept().attribute_get_owners(attribute, filter)
     }
 }
 

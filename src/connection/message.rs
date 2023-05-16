@@ -29,8 +29,8 @@ use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity, IID},
     concept::{
-        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, Value,
-        ValueType,
+        Attribute, AttributeType, Entity, EntityType, HasFilter, Relation, RelationType, RoleType, Thing, ThingType,
+        Value, ValueType,
     },
     Annotation, Options, SchemaException, SessionType, TransactionType,
 };
@@ -106,6 +106,7 @@ pub(super) enum TransactionRequest {
     Concept(ConceptRequest),
     ThingType(ThingTypeRequest),
     RoleType(RoleTypeRequest),
+    Thing(ThingRequest),
     Stream { request_id: RequestID },
 }
 
@@ -118,6 +119,7 @@ pub(super) enum TransactionResponse {
     Concept(ConceptResponse),
     ThingType(ThingTypeResponse),
     RoleType(RoleTypeResponse),
+    Thing(ThingResponse),
 }
 
 #[derive(Debug)]
@@ -239,6 +241,7 @@ pub(super) enum ThingTypeRequest {
     ThingTypeGetSyntax {
         thing_type: ThingType,
     },
+
     EntityTypeCreate {
         entity_type: EntityType,
     },
@@ -260,6 +263,7 @@ pub(super) enum ThingTypeRequest {
         entity_type: EntityType,
         transitivity: Transitivity,
     },
+
     RelationTypeCreate {
         relation_type: RelationType,
     },
@@ -302,6 +306,7 @@ pub(super) enum ThingTypeRequest {
         relation_type: RelationType,
         role_label: String,
     },
+
     AttributeTypePut {
         attribute_type: AttributeType,
         value: Value,
@@ -359,12 +364,14 @@ pub(super) enum ThingTypeResponse {
     ThingTypeSetPlays,
     ThingTypeUnsetPlays,
     ThingTypeGetSyntax { syntax: String },
+
     EntityTypeCreate { entity: Entity },
     EntityTypeGetSupertype { supertype: EntityType },
     EntityTypeSetSupertype,
     EntityTypeGetSupertypes { supertypes: Vec<EntityType> },
     EntityTypeGetSubtypes { subtypes: Vec<EntityType> },
     EntityTypeGetInstances { entities: Vec<Entity> },
+
     RelationTypeCreate { relation: Relation },
     RelationTypeGetSupertype { supertype: RelationType },
     RelationTypeSetSupertype,
@@ -376,6 +383,7 @@ pub(super) enum ThingTypeResponse {
     RelationTypeGetRelatesOverridden { role_type: Option<RoleType> },
     RelationTypeSetRelates,
     RelationTypeUnsetRelates,
+
     AttributeTypePut { attribute: Attribute },
     AttributeTypeGet { attribute: Option<Attribute> },
     AttributeTypeGetSupertype { supertype: AttributeType },
@@ -412,4 +420,40 @@ pub(super) enum RoleTypeResponse {
     GetPlayerTypes { player_types: Vec<ThingType> },
     GetRelationInstances { relations: Vec<Relation> },
     GetPlayerInstances { players: Vec<Thing> },
+}
+
+#[derive(Debug)]
+pub(super) enum ThingRequest {
+    ThingDelete { thing: Thing },
+    ThingGetHas { thing: Thing, filter: HasFilter },
+    ThingSetHas { thing: Thing, attribute: Attribute },
+    ThingUnsetHas { thing: Thing, attribute: Attribute },
+    ThingGetRelations { thing: Thing, role_types: Vec<RoleType> },
+    ThingGetPlaying { thing: Thing },
+
+    RelationAddPlayer { relation: Relation, role_type: RoleType, player: Thing },
+    RelationRemovePlayer { relation: Relation, role_type: RoleType, player: Thing },
+    RelationGetPlayers { relation: Relation, role_types: Vec<RoleType> },
+    RelationGetPlayersByRoleType { relation: Relation },
+    RelationGetRelating { relation: Relation },
+
+    AttributeGetOwners { attribute: Attribute, filter: Option<ThingType> },
+}
+
+#[derive(Debug)]
+pub(super) enum ThingResponse {
+    ThingDelete,
+    ThingGetHas { attributes: Vec<Attribute> },
+    ThingSetHas,
+    ThingUnsetHas,
+    ThingGetRelations { relations: Vec<Relation> },
+    ThingGetPlaying { role_types: Vec<RoleType> },
+
+    RelationAddPlayer,
+    RelationRemovePlayer,
+    RelationGetPlayers { players: Vec<Thing> },
+    RelationGetPlayersByRoleType { role_players: Vec<(RoleType, Thing)> }, // TODO tuple => struct
+    RelationGetRelating { role_types: Vec<RoleType> },
+
+    AttributeGetOwners { owners: Vec<Thing> },
 }

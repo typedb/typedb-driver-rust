@@ -19,11 +19,14 @@
  * under the License.
  */
 
-mod type_;
-pub use type_::{AttributeType, EntityType, RelationType, RoleType, RootThingType, ScopedLabel, ThingType, ValueType};
-
 mod thing;
-pub use thing::{Attribute, Entity, Relation, Thing, Value};
+mod type_;
+
+pub use self::{
+    thing::{Attribute, Entity, Relation, Thing, Value},
+    type_::{AttributeType, EntityType, RelationType, RoleType, RootThingType, ScopedLabel, ThingType, ValueType},
+};
+use crate::Annotation;
 
 #[derive(Clone, Debug)]
 pub enum Concept {
@@ -37,4 +40,10 @@ pub enum Concept {
     Entity(Entity),
     Relation(Relation),
     Attribute(Attribute),
+}
+
+#[derive(Debug)]
+pub enum HasFilter {
+    AttributeTypes(Vec<AttributeType>),
+    Annotations(Vec<Annotation>),
 }

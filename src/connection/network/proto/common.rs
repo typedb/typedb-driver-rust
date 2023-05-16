@@ -81,8 +81,8 @@ impl IntoProto<i32> for Transitivity {
 impl IntoProto<AnnotationProto> for Annotation {
     fn into_proto(self) -> AnnotationProto {
         match self {
-            Self::Key => AnnotationProto { annotation: Some(annotation::Annotation::Key(true)) },
-            Self::Unique => AnnotationProto { annotation: Some(annotation::Annotation::Unique(true)) },
+            Self::Key => AnnotationProto { annotation: Some(annotation::Annotation::Key(annotation::Key {})) },
+            Self::Unique => AnnotationProto { annotation: Some(annotation::Annotation::Unique(annotation::Unique {})) },
         }
     }
 }
