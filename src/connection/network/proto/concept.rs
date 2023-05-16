@@ -25,12 +25,12 @@ use chrono::NaiveDateTime;
 use typedb_protocol::{
     attribute::{value::Value as ValueProtoInner, Value as ValueProto},
     attribute_type::ValueType as ValueTypeProto,
-    concept as concept_proto,
+    concept,
     numeric::Value as NumericValue,
-    thing as thing_proto, thing_type as thing_type_proto, Attribute as AttributeProto,
-    AttributeType as AttributeTypeProto, Concept as ConceptProto, ConceptMap as ConceptMapProto, Entity as EntityProto,
-    EntityType as EntityTypeProto, Numeric as NumericProto, Relation as RelationProto,
-    RelationType as RelationTypeProto, RoleType as RoleTypeProto, Thing as ThingProto, ThingType as ThingTypeProto,
+    thing, thing_type, Attribute as AttributeProto, AttributeType as AttributeTypeProto, Concept as ConceptProto,
+    ConceptMap as ConceptMapProto, Entity as EntityProto, EntityType as EntityTypeProto, Numeric as NumericProto,
+    Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto, Thing as ThingProto,
+    ThingType as ThingTypeProto,
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
@@ -67,31 +67,31 @@ impl TryFromProto<ConceptMapProto> for ConceptMap {
 
 impl TryFromProto<ConceptProto> for Concept {
     fn try_from_proto(proto: ConceptProto) -> Result<Self> {
-        let concept = proto.concept.ok_or(ConnectionError::MissingResponseField("concept"))?;
-        match concept {
-            concept_proto::Concept::EntityType(entity_type_proto) => {
+        match proto.concept {
+            Some(concept::Concept::EntityType(entity_type_proto)) => {
                 Ok(Self::EntityType(EntityType::from_proto(entity_type_proto)))
             }
-            concept_proto::Concept::RelationType(relation_type_proto) => {
+            Some(concept::Concept::RelationType(relation_type_proto)) => {
                 Ok(Self::RelationType(RelationType::from_proto(relation_type_proto)))
             }
-            concept_proto::Concept::AttributeType(attribute_type_proto) => {
+            Some(concept::Concept::AttributeType(attribute_type_proto)) => {
                 AttributeType::try_from_proto(attribute_type_proto).map(Self::AttributeType)
             }
 
-            concept_proto::Concept::RoleType(role_type_proto) => {
+            Some(concept::Concept::RoleType(role_type_proto)) => {
                 Ok(Self::RoleType(RoleType::from_proto(role_type_proto)))
             }
 
-            concept_proto::Concept::Entity(entity_proto) => Entity::try_from_proto(entity_proto).map(Self::Entity),
-            concept_proto::Concept::Relation(relation_proto) => {
+            Some(concept::Concept::Entity(entity_proto)) => Entity::try_from_proto(entity_proto).map(Self::Entity),
+            Some(concept::Concept::Relation(relation_proto)) => {
                 Relation::try_from_proto(relation_proto).map(Self::Relation)
             }
-            concept_proto::Concept::Attribute(attribute_proto) => {
+            Some(concept::Concept::Attribute(attribute_proto)) => {
                 Attribute::try_from_proto(attribute_proto).map(Self::Attribute)
             }
 
-            concept_proto::Concept::RootThingType(_root_thing_type_proto) => Ok(Self::RootThingType(RootThingType)),
+            Some(concept::Concept::RootThingType(_)) => Ok(Self::RootThingType(RootThingType)),
+            None => Err(ConnectionError::MissingResponseField("concept").into()),
         }
     }
 }
@@ -99,16 +99,16 @@ impl TryFromProto<ConceptProto> for Concept {
 impl TryFromProto<ThingTypeProto> for ThingType {
     fn try_from_proto(proto: ThingTypeProto) -> Result<Self> {
         match proto.r#type {
-            Some(thing_type_proto::Type::EntityType(entity_type_proto)) => {
+            Some(thing_type::Type::EntityType(entity_type_proto)) => {
                 Ok(Self::EntityType(EntityType::from_proto(entity_type_proto)))
             }
-            Some(thing_type_proto::Type::RelationType(relation_type_proto)) => {
+            Some(thing_type::Type::RelationType(relation_type_proto)) => {
                 Ok(Self::RelationType(RelationType::from_proto(relation_type_proto)))
             }
-            Some(thing_type_proto::Type::AttributeType(attribute_type_proto)) => {
+            Some(thing_type::Type::AttributeType(attribute_type_proto)) => {
                 AttributeType::try_from_proto(attribute_type_proto).map(Self::AttributeType)
             }
-            Some(thing_type_proto::Type::RootThingType(_)) => Ok(Self::RootThingType(RootThingType)),
+            Some(thing_type::Type::RootThingType(_)) => Ok(Self::RootThingType(RootThingType)),
             None => Err(ConnectionError::MissingResponseField("type").into()),
         }
     }
@@ -142,21 +142,16 @@ impl IntoProto<RelationTypeProto> for RelationType {
     }
 }
 
-impl TryFromProto<i32> for ValueTypeProto {
-    fn try_from_proto(proto: i32) -> Result<Self> {
-        Self::from_i32(proto).ok_or(InternalError::EnumOutOfBounds(proto, "ValueType").into())
-    }
-}
-
 impl TryFromProto<i32> for ValueType {
     fn try_from_proto(proto: i32) -> Result<Self> {
-        match ValueTypeProto::try_from_proto(proto)? {
-            ValueTypeProto::Object => Ok(Self::Object),
-            ValueTypeProto::Boolean => Ok(Self::Boolean),
-            ValueTypeProto::Long => Ok(Self::Long),
-            ValueTypeProto::Double => Ok(Self::Double),
-            ValueTypeProto::String => Ok(Self::String),
-            ValueTypeProto::Datetime => Ok(Self::DateTime),
+        match ValueTypeProto::from_i32(proto) {
+            Some(ValueTypeProto::Object) => Ok(Self::Object),
+            Some(ValueTypeProto::Boolean) => Ok(Self::Boolean),
+            Some(ValueTypeProto::Long) => Ok(Self::Long),
+            Some(ValueTypeProto::Double) => Ok(Self::Double),
+            Some(ValueTypeProto::String) => Ok(Self::String),
+            Some(ValueTypeProto::Datetime) => Ok(Self::DateTime),
+            None => Err(InternalError::EnumOutOfBounds(proto, "ValueType").into()),
         }
     }
 }
@@ -205,11 +200,11 @@ impl IntoProto<RoleTypeProto> for RoleType {
 impl TryFromProto<ThingProto> for Thing {
     fn try_from_proto(proto: ThingProto) -> Result<Self> {
         match proto.thing {
-            Some(thing_proto::Thing::Entity(entity_proto)) => Entity::try_from_proto(entity_proto).map(Self::Entity),
-            Some(thing_proto::Thing::Relation(relation_proto)) => {
+            Some(thing::Thing::Entity(entity_proto)) => Entity::try_from_proto(entity_proto).map(Self::Entity),
+            Some(thing::Thing::Relation(relation_proto)) => {
                 Relation::try_from_proto(relation_proto).map(Self::Relation)
             }
-            Some(thing_proto::Thing::Attribute(attribute_proto)) => {
+            Some(thing::Thing::Attribute(attribute_proto)) => {
                 Attribute::try_from_proto(attribute_proto).map(Self::Attribute)
             }
             None => Err(ConnectionError::MissingResponseField("thing").into()),
@@ -221,7 +216,7 @@ impl TryFromProto<EntityProto> for Entity {
     fn try_from_proto(proto: EntityProto) -> Result<Self> {
         Ok(Self::new(
             proto.iid.into(),
-            EntityType::from_proto(proto.entity_type.ok_or(ConnectionError::MissingResponseField("type"))?),
+            EntityType::from_proto(proto.entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?),
         ))
     }
 }
@@ -230,7 +225,9 @@ impl TryFromProto<RelationProto> for Relation {
     fn try_from_proto(proto: RelationProto) -> Result<Self> {
         Ok(Self::new(
             proto.iid.into(),
-            RelationType::from_proto(proto.relation_type.ok_or(ConnectionError::MissingResponseField("type"))?),
+            RelationType::from_proto(
+                proto.relation_type.ok_or(ConnectionError::MissingResponseField("relation_type"))?,
+            ),
         ))
     }
 }
@@ -239,7 +236,9 @@ impl TryFromProto<AttributeProto> for Attribute {
     fn try_from_proto(proto: AttributeProto) -> Result<Self> {
         Ok(Self::new(
             proto.iid.into(),
-            AttributeType::try_from_proto(proto.attribute_type.ok_or(ConnectionError::MissingResponseField("type"))?)?,
+            AttributeType::try_from_proto(
+                proto.attribute_type.ok_or(ConnectionError::MissingResponseField("attribute_type"))?,
+            )?,
             Value::try_from_proto(proto.value.ok_or(ConnectionError::MissingResponseField("value"))?)?,
         ))
     }
@@ -248,13 +247,13 @@ impl TryFromProto<AttributeProto> for Attribute {
 impl TryFromProto<ValueProto> for Value {
     fn try_from_proto(proto: ValueProto) -> Result<Self> {
         match proto.value {
-            Some(ValueProtoInner::Boolean(value)) => Ok(Self::Boolean(value)),
-            Some(ValueProtoInner::Long(value)) => Ok(Self::Long(value)),
-            Some(ValueProtoInner::Double(value)) => Ok(Self::Double(value)),
-            Some(ValueProtoInner::String(value)) => Ok(Self::String(value)),
-            Some(ValueProtoInner::DateTime(value)) => Ok(Self::DateTime(
-                NaiveDateTime::from_timestamp_opt(value / 1000, (value % 1000) as u32 * 1_000_000).unwrap(),
-            )),
+            Some(ValueProtoInner::Boolean(boolean)) => Ok(Self::Boolean(boolean)),
+            Some(ValueProtoInner::Long(long)) => Ok(Self::Long(long)),
+            Some(ValueProtoInner::Double(double)) => Ok(Self::Double(double)),
+            Some(ValueProtoInner::String(string)) => Ok(Self::String(string)),
+            Some(ValueProtoInner::DateTime(millis)) => {
+                Ok(Self::DateTime(NaiveDateTime::from_timestamp_millis(millis).unwrap()))
+            }
             None => Err(ConnectionError::MissingResponseField("value").into()),
         }
     }
@@ -264,11 +263,11 @@ impl IntoProto<ValueProto> for Value {
     fn into_proto(self) -> ValueProto {
         ValueProto {
             value: Some(match self {
-                Self::Boolean(value) => ValueProtoInner::Boolean(value),
-                Self::Long(value) => ValueProtoInner::Long(value),
-                Self::Double(value) => ValueProtoInner::Double(value),
-                Self::String(value) => ValueProtoInner::String(value),
-                Self::DateTime(value) => ValueProtoInner::DateTime(value.timestamp_millis()),
+                Self::Boolean(boolean) => ValueProtoInner::Boolean(boolean),
+                Self::Long(long) => ValueProtoInner::Long(long),
+                Self::Double(double) => ValueProtoInner::Double(double),
+                Self::String(string) => ValueProtoInner::String(string),
+                Self::DateTime(date_time) => ValueProtoInner::DateTime(date_time.timestamp_millis()),
             }),
         }
     }
