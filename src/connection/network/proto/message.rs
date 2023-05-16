@@ -24,17 +24,19 @@ use std::time::Duration;
 use itertools::Itertools;
 use typedb_protocol::{
     attribute_type, concept_manager, database, database_manager, entity_type, query_manager, r#type, relation_type,
-    server_manager, session, thing_type, transaction,
+    role_type, server_manager, session, thing_type, transaction,
 };
 
 use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     common::{info::DatabaseInfo, RequestID, Result},
-    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, ThingType, ValueType},
+    concept::{
+        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, ValueType,
+    },
     connection::message::{
-        ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, ThingTypeRequest,
-        ThingTypeResponse, TransactionRequest, TransactionResponse,
+        ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, RoleTypeRequest,
+        RoleTypeResponse, ThingTypeRequest, ThingTypeResponse, TransactionRequest, TransactionResponse,
     },
     error::{ConnectionError, InternalError},
     Annotation, SchemaException,
@@ -261,6 +263,7 @@ impl IntoProto<transaction::Req> for TransactionRequest {
             Self::Query(query_request) => transaction::req::Req::QueryManagerReq(query_request.into_proto()),
             Self::Concept(concept_request) => transaction::req::Req::ConceptManagerReq(concept_request.into_proto()),
             Self::ThingType(thing_type_request) => transaction::req::Req::TypeReq(thing_type_request.into_proto()),
+            Self::RoleType(role_type_request) => transaction::req::Req::TypeReq(role_type_request.into_proto()),
             Self::Stream { request_id: req_id } => {
                 request_id = Some(req_id);
                 transaction::req::Req::StreamReq(transaction::stream::Req {})
@@ -288,6 +291,9 @@ impl TryFromProto<transaction::Res> for TransactionResponse {
             Some(transaction::res::Res::TypeRes(r#type::Res { res: Some(r#type::res::Res::ThingTypeRes(res)) })) => {
                 Ok(Self::ThingType(ThingTypeResponse::try_from_proto(res)?))
             }
+            Some(transaction::res::Res::TypeRes(r#type::Res { res: Some(r#type::res::Res::RoleTypeRes(res)) })) => {
+                Ok(Self::RoleType(RoleTypeResponse::try_from_proto(res)?))
+            }
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
@@ -303,6 +309,9 @@ impl TryFromProto<transaction::ResPart> for TransactionResponse {
             Some(transaction::res_part::Res::TypeResPart(r#type::ResPart {
                 res: Some(r#type::res_part::Res::ThingTypeResPart(res)),
             })) => Ok(Self::ThingType(ThingTypeResponse::try_from_proto(res)?)),
+            Some(transaction::res_part::Res::TypeResPart(r#type::ResPart {
+                res: Some(r#type::res_part::Res::RoleTypeResPart(res)),
+            })) => Ok(Self::RoleType(RoleTypeResponse::try_from_proto(res)?)),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
@@ -841,6 +850,112 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
             })) => Ok(Self::AttributeTypeGetOwners {
                 thing_types: thing_types.into_iter().map(ThingType::try_from_proto).try_collect()?,
             }),
+            None => Err(ConnectionError::MissingResponseField("res").into()),
+        }
+    }
+}
+
+impl IntoProto<r#type::Req> for RoleTypeRequest {
+    fn into_proto(self) -> r#type::Req {
+        let (req, scoped_label) = match self {
+            Self::Delete { role_type } => {
+                (role_type::req::Req::RoleTypeDeleteReq(role_type::delete::Req {}), role_type.label)
+            }
+            Self::SetLabel { role_type, new_label } => (
+                role_type::req::Req::RoleTypeSetLabelReq(role_type::set_label::Req { label: new_label }),
+                role_type.label,
+            ),
+            Self::GetSupertype { role_type } => {
+                (role_type::req::Req::RoleTypeGetSupertypeReq(role_type::get_supertype::Req {}), role_type.label)
+            }
+            Self::GetSupertypes { role_type } => {
+                (role_type::req::Req::RoleTypeGetSupertypesReq(role_type::get_supertypes::Req {}), role_type.label)
+            }
+            Self::GetSubtypes { role_type, transitivity } => (
+                role_type::req::Req::RoleTypeGetSubtypesReq(role_type::get_subtypes::Req {
+                    transitivity: transitivity.into_proto(),
+                }),
+                role_type.label,
+            ),
+            Self::GetRelationTypes { role_type } => (
+                role_type::req::Req::RoleTypeGetRelationTypesReq(role_type::get_relation_types::Req {}),
+                role_type.label,
+            ),
+            Self::GetPlayerTypes { role_type, transitivity } => (
+                role_type::req::Req::RoleTypeGetPlayerTypesReq(role_type::get_player_types::Req {
+                    transitivity: transitivity.into_proto(),
+                }),
+                role_type.label,
+            ),
+            Self::GetRelationInstances { role_type, transitivity } => (
+                role_type::req::Req::RoleTypeGetRelationInstancesReq(role_type::get_relation_instances::Req {
+                    transitivity: transitivity.into_proto(),
+                }),
+                role_type.label,
+            ),
+            Self::GetPlayerInstances { role_type, transitivity } => (
+                role_type::req::Req::RoleTypeGetPlayerInstancesReq(role_type::get_player_instances::Req {
+                    transitivity: transitivity.into_proto(),
+                }),
+                role_type.label,
+            ),
+        };
+        r#type::Req {
+            req: Some(r#type::req::Req::RoleTypeReq(role_type::Req {
+                scope: scoped_label.scope,
+                label: scoped_label.name,
+                req: Some(req),
+            })),
+        }
+    }
+}
+
+impl TryFromProto<role_type::Res> for RoleTypeResponse {
+    fn try_from_proto(proto: role_type::Res) -> Result<Self> {
+        match proto.res {
+            Some(role_type::res::Res::RoleTypeDeleteRes(_)) => Ok(Self::Delete),
+            Some(role_type::res::Res::RoleTypeSetLabelRes(_)) => Ok(Self::SetLabel),
+            Some(role_type::res::Res::RoleTypeGetSupertypeRes(role_type::get_supertype::Res { role_type })) => {
+                Ok(Self::GetSupertype {
+                    supertype: RoleType::from_proto(
+                        role_type.ok_or(ConnectionError::MissingResponseField("role_type"))?,
+                    ),
+                })
+            }
+            None => Err(ConnectionError::MissingResponseField("res").into()),
+        }
+    }
+}
+
+impl TryFromProto<role_type::ResPart> for RoleTypeResponse {
+    fn try_from_proto(proto: role_type::ResPart) -> Result<Self> {
+        match proto.res {
+            Some(role_type::res_part::Res::RoleTypeGetSupertypesResPart(role_type::get_supertypes::ResPart {
+                role_types,
+            })) => Ok(Self::GetSupertypes { supertypes: role_types.into_iter().map(RoleType::from_proto).collect() }),
+            Some(role_type::res_part::Res::RoleTypeGetSubtypesResPart(role_type::get_subtypes::ResPart {
+                role_types,
+            })) => Ok(Self::GetSubtypes { subtypes: role_types.into_iter().map(RoleType::from_proto).collect() }),
+            Some(role_type::res_part::Res::RoleTypeGetRelationTypesResPart(
+                role_type::get_relation_types::ResPart { relation_types },
+            )) => Ok(Self::GetRelationTypes {
+                relation_types: relation_types.into_iter().map(RelationType::from_proto).collect(),
+            }),
+            Some(role_type::res_part::Res::RoleTypeGetPlayerTypesResPart(role_type::get_player_types::ResPart {
+                thing_types,
+            })) => Ok(Self::GetPlayerTypes {
+                player_types: thing_types.into_iter().map(ThingType::try_from_proto).try_collect()?,
+            }),
+            Some(role_type::res_part::Res::RoleTypeGetRelationInstancesResPart(
+                role_type::get_relation_instances::ResPart { relations },
+            )) => Ok(Self::GetRelationInstances {
+                relations: relations.into_iter().map(Relation::try_from_proto).try_collect()?,
+            }),
+            Some(role_type::res_part::Res::RoleTypeGetPlayerInstancesResPart(
+                role_type::get_player_instances::ResPart { things },
+            )) => {
+                Ok(Self::GetPlayerInstances { players: things.into_iter().map(Thing::try_from_proto).try_collect()? })
+            }
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }

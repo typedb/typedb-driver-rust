@@ -25,6 +25,13 @@ use chrono::NaiveDateTime;
 use super::type_::{AttributeType, EntityType, RelationType};
 use crate::common::IID;
 
+#[derive(Clone, Debug)]
+pub enum Thing {
+    Entity(Entity),
+    Relation(Relation),
+    Attribute(Attribute),
+}
+
 #[async_trait]
 pub trait ThingAPI {
     fn get_iid(&self) -> &IID;

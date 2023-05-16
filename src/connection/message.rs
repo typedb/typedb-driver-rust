@@ -29,7 +29,8 @@ use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity, IID},
     concept::{
-        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, ThingType, Value, ValueType,
+        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, Value,
+        ValueType,
     },
     Annotation, Options, SchemaException, SessionType, TransactionType,
 };
@@ -104,6 +105,7 @@ pub(super) enum TransactionRequest {
     Query(QueryRequest),
     Concept(ConceptRequest),
     ThingType(ThingTypeRequest),
+    RoleType(RoleTypeRequest),
     Stream { request_id: RequestID },
 }
 
@@ -115,6 +117,7 @@ pub(super) enum TransactionResponse {
     Query(QueryResponse),
     Concept(ConceptResponse),
     ThingType(ThingTypeResponse),
+    RoleType(RoleTypeResponse),
 }
 
 #[derive(Debug)]
@@ -383,4 +386,30 @@ pub(super) enum ThingTypeResponse {
     AttributeTypeGetRegex { regex: String },
     AttributeTypeSetRegex,
     AttributeTypeGetOwners { thing_types: Vec<ThingType> },
+}
+
+#[derive(Debug)]
+pub(super) enum RoleTypeRequest {
+    Delete { role_type: RoleType },
+    SetLabel { role_type: RoleType, new_label: String },
+    GetSupertype { role_type: RoleType },
+    GetSupertypes { role_type: RoleType },
+    GetSubtypes { role_type: RoleType, transitivity: Transitivity },
+    GetRelationTypes { role_type: RoleType },
+    GetPlayerTypes { role_type: RoleType, transitivity: Transitivity },
+    GetRelationInstances { role_type: RoleType, transitivity: Transitivity },
+    GetPlayerInstances { role_type: RoleType, transitivity: Transitivity },
+}
+
+#[derive(Debug)]
+pub(super) enum RoleTypeResponse {
+    Delete,
+    SetLabel,
+    GetSupertype { supertype: RoleType },
+    GetSupertypes { supertypes: Vec<RoleType> },
+    GetSubtypes { subtypes: Vec<RoleType> },
+    GetRelationTypes { relation_types: Vec<RelationType> },
+    GetPlayerTypes { player_types: Vec<ThingType> },
+    GetRelationInstances { relations: Vec<Relation> },
+    GetPlayerInstances { players: Vec<Thing> },
 }

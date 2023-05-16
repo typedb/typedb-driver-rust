@@ -27,10 +27,10 @@ use typedb_protocol::{
     attribute_type::ValueType as ValueTypeProto,
     concept as concept_proto,
     numeric::Value as NumericValue,
-    thing_type as thing_type_proto, Attribute as AttributeProto, AttributeType as AttributeTypeProto,
-    Concept as ConceptProto, ConceptMap as ConceptMapProto, Entity as EntityProto, EntityType as EntityTypeProto,
-    Numeric as NumericProto, Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto,
-    ThingType as ThingTypeProto,
+    thing as thing_proto, thing_type as thing_type_proto, Attribute as AttributeProto,
+    AttributeType as AttributeTypeProto, Concept as ConceptProto, ConceptMap as ConceptMapProto, Entity as EntityProto,
+    EntityType as EntityTypeProto, Numeric as NumericProto, Relation as RelationProto,
+    RelationType as RelationTypeProto, RoleType as RoleTypeProto, Thing as ThingProto, ThingType as ThingTypeProto,
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
@@ -38,7 +38,7 @@ use crate::{
     answer::{ConceptMap, Numeric},
     concept::{
         Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, RootThingType,
-        ScopedLabel, ThingType, Value, ValueType,
+        ScopedLabel, Thing, ThingType, Value, ValueType,
     },
     error::{ConnectionError, InternalError},
     Result,
@@ -199,6 +199,21 @@ impl IntoProto<RoleTypeProto> for RoleType {
     fn into_proto(self) -> RoleTypeProto {
         let RoleType { label, is_root, is_abstract } = self;
         RoleTypeProto { scope: label.scope, label: label.name, is_root, is_abstract }
+    }
+}
+
+impl TryFromProto<ThingProto> for Thing {
+    fn try_from_proto(proto: ThingProto) -> Result<Self> {
+        match proto.thing {
+            Some(thing_proto::Thing::Entity(entity_proto)) => Entity::try_from_proto(entity_proto).map(Self::Entity),
+            Some(thing_proto::Thing::Relation(relation_proto)) => {
+                Relation::try_from_proto(relation_proto).map(Self::Relation)
+            }
+            Some(thing_proto::Thing::Attribute(attribute_proto)) => {
+                Attribute::try_from_proto(attribute_proto).map(Self::Attribute)
+            }
+            None => Err(ConnectionError::MissingResponseField("thing").into()),
+        }
     }
 }
 

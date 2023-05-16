@@ -26,7 +26,8 @@ use futures::Stream;
 use crate::{
     common::{Transitivity, IID},
     concept::{
-        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, ThingType, Value, ValueType,
+        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, Value,
+        ValueType,
     },
     connection::TransactionStream,
     Annotation, Result, SchemaException,
@@ -340,5 +341,60 @@ impl ConceptManager {
         annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<ThingType>>> {
         self.transaction_stream.attribute_type_get_owners(attribute_type, transitivity, annotations)
+    }
+
+    pub(crate) async fn role_type_delete(&self, role_type: RoleType) -> Result {
+        self.transaction_stream.role_type_delete(role_type).await
+    }
+
+    pub(crate) async fn role_type_set_label(&self, role_type: RoleType, new_label: String) -> Result {
+        self.transaction_stream.role_type_set_label(role_type, new_label).await
+    }
+
+    pub(crate) async fn role_type_get_supertype(&self, role_type: RoleType) -> Result<RoleType> {
+        self.transaction_stream.role_type_get_supertype(role_type).await
+    }
+
+    pub(crate) fn role_type_get_supertypes(&self, role_type: RoleType) -> Result<impl Stream<Item = Result<RoleType>>> {
+        self.transaction_stream.role_type_get_supertypes(role_type)
+    }
+
+    pub(crate) fn role_type_get_subtypes(
+        &self,
+        role_type: RoleType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+        self.transaction_stream.role_type_get_subtypes(role_type, transitivity)
+    }
+
+    pub(crate) fn role_type_get_relation_types(
+        &self,
+        role_type: RoleType,
+    ) -> Result<impl Stream<Item = Result<RelationType>>> {
+        self.transaction_stream.role_type_get_relation_types(role_type)
+    }
+
+    pub(crate) fn role_type_get_player_types(
+        &self,
+        role_type: RoleType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<ThingType>>> {
+        self.transaction_stream.role_type_get_player_types(role_type, transitivity)
+    }
+
+    pub(crate) fn role_type_get_relation_instances(
+        &self,
+        role_type: RoleType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<Relation>>> {
+        self.transaction_stream.role_type_get_relation_instances(role_type, transitivity)
+    }
+
+    pub(crate) fn role_type_get_player_instances(
+        &self,
+        role_type: RoleType,
+        transitivity: Transitivity,
+    ) -> Result<impl Stream<Item = Result<Thing>>> {
+        self.transaction_stream.role_type_get_player_instances(role_type, transitivity)
     }
 }
