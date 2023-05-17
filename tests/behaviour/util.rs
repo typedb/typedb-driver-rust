@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{collections::HashMap, ops::Deref, str::FromStr};
+use std::{ops::Deref, str::FromStr};
 
 use cucumber::gherkin::Step;
 use typedb_client::{concept::ValueType, Annotation, TransactionType};
