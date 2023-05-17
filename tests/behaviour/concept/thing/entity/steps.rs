@@ -23,11 +23,16 @@ use cucumber::{given, then, when};
 use typedb_client::{concept::Thing, Result as TypeDBResult};
 
 use crate::{
-    behaviour::{concept::common::get_entity_type, Context},
+    behaviour::{
+        concept::common::{get_attribute_type, get_entity_type},
+        Context,
+    },
     generic_step_impl,
 };
+    use typedb_client::concept::Value;
 
 generic_step_impl! {
+// mod a { use super::*;
     #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance$")]
     async fn entity_type_create_new_instance(context: &mut Context, var: String, type_label: String) -> TypeDBResult {
         let tx = context.transaction();
@@ -43,11 +48,18 @@ generic_step_impl! {
     }
 
     #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance with key\((\S+)\): (\S+)$")]
-    async fn entity_type_create_new_instance(context: &mut Context, var: String, type_label: String) -> TypeDBResult {
+    async fn entity_type_create_new_instance_with_key(
+        context: &mut Context,
+        var: String,
+        type_label: String,
+        attribute_type_label: String,
+        attribute_value: String,
+    ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = get_entity_type(tx, type_label).await?.create(tx).await?;
+        let attribute = get_attribute_type(tx, attribute_type_label).await?.put(tx, Value::String(attribute_value)).await?;
+        entity.set_has(tx, attribute).await?;
         context.things.insert(var, Thing::Entity(entity));
         Ok(())
     }
-
 }
