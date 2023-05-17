@@ -25,9 +25,11 @@ pub mod session_tracker;
 mod typeql;
 mod util;
 
+use std::collections::HashMap;
+
 use cucumber::{StatsWriter, World};
 use futures::future::try_join_all;
-use typedb_client::{Connection, Database, DatabaseManager, Result as TypeDBResult, Transaction};
+use typedb_client::{concept::Thing, Connection, Database, DatabaseManager, Result as TypeDBResult, Transaction};
 
 use self::session_tracker::SessionTracker;
 
@@ -36,6 +38,7 @@ pub struct Context {
     pub connection: Connection,
     pub databases: DatabaseManager,
     pub session_trackers: Vec<SessionTracker>,
+    pub things: HashMap<String, Thing>,
 }
 
 impl Context {
@@ -83,7 +86,7 @@ impl Default for Context {
     fn default() -> Self {
         let connection = Connection::new_plaintext("0.0.0.0:1729").unwrap();
         let databases = DatabaseManager::new(connection.clone());
-        Self { connection, databases, session_trackers: Vec::new() }
+        Self { connection, databases, session_trackers: Vec::new(), things: HashMap::new() }
     }
 }
 

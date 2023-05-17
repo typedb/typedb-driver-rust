@@ -20,26 +20,34 @@
  */
 
 use cucumber::{given, then, when};
-use futures::TryFutureExt;
+use typedb_client::{concept::Thing, Result as TypeDBResult};
 
-use crate::{behaviour::Context, generic_step_impl};
+use crate::{
+    behaviour::{concept::common::get_entity_type, Context},
+    generic_step_impl,
+};
 
 generic_step_impl! {
     #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance$")]
-    async fn entity_type_create_new_instance(context: &mut Context, _var: String, type_label: String) {
+    async fn entity_type_create_new_instance(context: &mut Context, var: String, type_label: String) -> TypeDBResult {
         let tx = context.transaction();
-        assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
-            assert!(entity_type.is_some());
-            entity_type.unwrap().create(tx).await
-        }).await.is_ok());
+        let entity = get_entity_type(tx, type_label).await?.create(tx).await?;
+        context.things.insert(var, Thing::Entity(entity));
+        Ok(())
     }
 
     #[step(regex = r"^entity\( ?(\S+) ?\) create new instance; throws exception$")]
     async fn entity_type_create_new_instance_throws(context: &mut Context, type_label: String) {
-        let tx = context.transaction();
-        assert!(tx.concept().get_entity_type(type_label).and_then(|entity_type| async move {
-            assert!(entity_type.is_some());
-            entity_type.unwrap().create(tx).await
-        }).await.is_err());
+        // FIXME ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v
+        assert!(entity_type_create_new_instance(context, "".to_owned(), type_label).await.is_err());
     }
+
+    #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance with key\((\S+)\): (\S+)$")]
+    async fn entity_type_create_new_instance(context: &mut Context, var: String, type_label: String) -> TypeDBResult {
+        let tx = context.transaction();
+        let entity = get_entity_type(tx, type_label).await?.create(tx).await?;
+        context.things.insert(var, Thing::Entity(entity));
+        Ok(())
+    }
+
 }
