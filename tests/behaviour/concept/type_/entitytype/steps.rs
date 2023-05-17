@@ -21,32 +21,16 @@
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
-use typedb_client::{
-    concept::{AttributeType, EntityType},
-    Annotation, Result as TypeDBResult, Transaction, Transitivity,
-};
+use typedb_client::{concept::EntityType, Annotation, Result as TypeDBResult, Transitivity};
 
 use crate::{
     behaviour::{
+        concept::common::{get_attribute_type, get_entity_type},
         util::{iter_table, AnnotationsParse},
         Context,
     },
     generic_step_impl,
 };
-
-async fn get_entity_type(tx: &Transaction<'_>, type_label: String) -> TypeDBResult<EntityType> {
-    tx.concept().get_entity_type(type_label).await.map(|entity_type| {
-        assert!(entity_type.is_some());
-        entity_type.unwrap()
-    })
-}
-
-async fn get_attribute_type(tx: &Transaction<'_>, type_label: String) -> TypeDBResult<AttributeType> {
-    tx.concept().get_attribute_type(type_label).await.map(|attribute_type| {
-        assert!(attribute_type.is_some());
-        attribute_type.unwrap()
-    })
-}
 
 async fn entity_type_get_owns_attribute_types(
     context: &mut Context,
