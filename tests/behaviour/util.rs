@@ -21,7 +21,7 @@
 
 use std::{ops::Deref, str::FromStr};
 
-use cucumber::gherkin::Step;
+use cucumber::{gherkin::Step, Parameter};
 use typedb_client::{concept::ValueType, Annotation, TransactionType};
 
 pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
@@ -73,7 +73,8 @@ impl FromStr for TransactionTypeParse {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Parameter)]
+#[param(name = "annotations", regex = r"\s*(?:key|unique)(?:,\s*(?:key|unique)\s*)*\s*")]
 pub struct AnnotationsParse(Vec<Annotation>);
 
 impl Deref for AnnotationsParse {
@@ -96,7 +97,8 @@ impl FromStr for AnnotationsParse {
     fn from_str(annotations: &str) -> Result<Self, Self::Err> {
         Ok(Self(
             annotations
-                .split(';')
+                .trim()
+                .split(',')
                 .map(|annotation| match annotation.trim() {
                     "key" => Annotation::Key,
                     "unique" => Annotation::Unique,

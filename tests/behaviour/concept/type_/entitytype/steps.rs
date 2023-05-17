@@ -60,26 +60,26 @@ generic_step_impl! {
         assert!(delete_entity_type(context, type_label).await.is_err());
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) is null: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) is null: {word}")]
     async fn entity_type_is_null(context: &mut Context, type_label: String, is_null: bool) -> TypeDBResult {
         let res = context.transaction().concept().get_entity_type(type_label).await?;
         assert_eq!(res.is_none(), is_null, "{res:?}");
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) set label: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) set label: {word}")]
     async fn entity_type_set_label(context: &mut Context, type_label: String, new_label: String) -> TypeDBResult {
         let tx = context.transaction();
         get_entity_type(tx, type_label).await?.set_label(tx, new_label).await
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get label: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) get label: {word}")]
     async fn entity_type_get_label(context: &mut Context, type_label: String, get_label: String) -> TypeDBResult {
         assert_eq!(get_entity_type(context.transaction(), type_label).await?.label, get_label);
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) set abstract: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) set abstract: {word}")]
     async fn entity_type_set_abstract(context: &mut Context, type_label: String, is_abstract: bool) -> TypeDBResult {
         let tx = context.transaction();
         let mut entity_type = get_entity_type(tx, type_label).await?;
@@ -90,37 +90,37 @@ generic_step_impl! {
         }
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) set abstract: (\S+); throws exception$")]
+    #[step(expr = r"entity\(( ){word}( )\) set abstract: {word}; throws exception")]
     async fn entity_type_set_abstract_throws(context: &mut Context, type_label: String, is_abstract: bool) {
         assert!(entity_type_set_abstract(context, type_label, is_abstract).await.is_err());
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) is abstract: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) is abstract: {word}")]
     async fn entity_type_is_abstract(context: &mut Context, type_label: String, is_abstract: bool) -> TypeDBResult {
         assert_eq!(get_entity_type(context.transaction(), type_label).await?.is_abstract, is_abstract);
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) set supertype: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) set supertype: {word}")]
     async fn entity_set_supertype(context: &mut Context, type_label: String, supertype_label: String) -> TypeDBResult {
         let tx = context.transaction();
         let supertype = get_entity_type(tx, supertype_label).await?;
         get_entity_type(tx, type_label).await?.set_supertype(tx, supertype).await
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) set supertype: (\S+); throws exception$")]
+    #[step(expr = r"entity\(( ){word}( )\) set supertype: {word}; throws exception")]
     async fn entity_set_supertype_throws(context: &mut Context, type_label: String, supertype_label: String) {
         assert!(entity_set_supertype(context, type_label, supertype_label).await.is_err())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get supertype: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) get supertype: {word}")]
     async fn entity_get_supertype(context: &mut Context, type_label: String, supertype: String) -> TypeDBResult {
         let tx = context.transaction();
         assert_eq!(get_entity_type(tx, type_label).await?.get_supertype(tx).await?.label, supertype);
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get supertypes contain:")]
+    #[step(expr = r"entity\(( ){word}( )\) get supertypes contain:")]
     async fn entity_get_supertypes_contain(context: &mut Context, step: &Step, type_label: String) -> TypeDBResult {
         let tx = context.transaction();
         let actuals = get_entity_type(tx, type_label)
@@ -135,7 +135,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get supertypes do not contain:")]
+    #[step(expr = r"entity\(( ){word}( )\) get supertypes do not contain:")]
     async fn entity_get_supertypes_do_not_contain(
         context: &mut Context,
         step: &Step,
@@ -154,7 +154,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get subtypes contain:")]
+    #[step(expr = r"entity\(( ){word}( )\) get subtypes contain:")]
     async fn entity_get_subtypes_contain(context: &mut Context, step: &Step, type_label: String) -> TypeDBResult {
         let tx = context.transaction();
         let actuals = get_entity_type(tx, type_label)
@@ -169,7 +169,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get subtypes do not contain:")]
+    #[step(expr = r"entity\(( ){word}( )\) get subtypes do not contain:")]
     async fn entity_get_subtypes_do_not_contain(
         context: &mut Context,
         step: &Step,
@@ -188,7 +188,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) set owns attribute type: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) set owns attribute type: {word}")]
     async fn entity_type_set_owns_attribute_type(
         context: &mut Context,
         type_label: String,
@@ -201,7 +201,7 @@ generic_step_impl! {
         entity_type.set_owns(tx, attribute_type, None, &[]).await
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) set owns attribute type: (\S+), with annotations: ([^;]*)$")]
+    #[step(expr = r"entity\(( ){word}( )\) set owns attribute type: {word}, with annotations: {annotations}")]
     async fn entity_type_set_owns_attribute_type_with_annotations(
         context: &mut Context,
         type_label: String,
@@ -214,7 +214,7 @@ generic_step_impl! {
         entity_type.set_owns(tx, attribute_type, None, &annotations).await
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) set owns attribute type: (\S+); throws exception$")]
+    #[step(expr = r"entity\(( ){word}( )\) set owns attribute type: {word}; throws exception")]
     async fn entity_type_set_owns_attribute_type_throws(
         context: &mut Context,
         type_label: String,
@@ -224,7 +224,7 @@ generic_step_impl! {
     }
 
     #[step(
-        regex = r"^entity\( ?(\S+) ?\) set owns attribute type: (\S+), with annotations: ([^;]*); throws exception$"
+        expr = r"entity\(( ){word}( )\) set owns attribute type: {word}, with annotations: {annotations}; throws exception"
     )]
     async fn entity_type_set_owns_attribute_type_with_annotations_throws(
         context: &mut Context,
@@ -242,7 +242,7 @@ generic_step_impl! {
         .is_err());
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) unset owns attribute type: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) unset owns attribute type: {word}")]
     async fn entity_type_unset_owns_attribute_type(
         context: &mut Context,
         type_label: String,
@@ -255,7 +255,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get owns attribute types contain:$")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns attribute types contain:")]
     async fn entity_type_get_owns_attribute_types_contain(
         context: &mut Context,
         step: &Step,
@@ -268,7 +268,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get owns types with annotations: (\S+); contain:$")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns types with annotations: {annotations}; contain:")]
     async fn entity_type_get_owns_attribute_types_with_annotations_contain(
         context: &mut Context,
         step: &Step,
@@ -283,7 +283,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get owns attribute types do not contain:$")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns attribute types do not contain:")]
     async fn entity_type_get_owns_attribute_types_do_not_contain(
         context: &mut Context,
         step: &Step,
@@ -296,7 +296,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get owns types with annotations: (\S+); do not contain:$")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns types with annotations: {annotations}; do not contain:")]
     async fn entity_type_get_owns_attribute_types_with_annotations_do_not_contain(
         context: &mut Context,
         step: &Step,
@@ -311,7 +311,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get owns explicit attribute types contain:$")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns explicit attribute types contain:")]
     async fn entity_type_get_owns_explicit_attribute_types_contain(
         context: &mut Context,
         step: &Step,
@@ -324,7 +324,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get owns explicit attribute types do not contain:$")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns explicit attribute types do not contain:")]
     async fn entity_type_get_owns_explicit_attribute_types_do_not_contain(
         context: &mut Context,
         step: &Step,
@@ -337,7 +337,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get owns explicit types with annotations: (\S+); contain:$")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns explicit types with annotations: {annotations}; contain:")]
     async fn entity_type_get_owns_explicit_attribute_types_with_annotations_contain(
         context: &mut Context,
         step: &Step,
@@ -352,7 +352,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get owns explicit types with annotations: (\S+); do not contain:$")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns explicit types with annotations: {annotations}; do not contain:")]
     async fn entity_type_get_owns_explicit_attribute_types_with_annotations_do_not_contain(
         context: &mut Context,
         step: &Step,
@@ -382,7 +382,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) get owns overridden attribute\( ?(\S+) ?\) get label: (\S+)$")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns overridden attribute\(( ){word}( )\) get label: {word}")]
     async fn entity_type_get_owns_overridden_attribute_type_label(
         context: &mut Context,
         type_label: String,
