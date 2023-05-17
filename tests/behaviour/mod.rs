@@ -83,13 +83,13 @@ impl Default for Context {
 
 #[macro_export]
 macro_rules! generic_step_impl {
-    {$($(#[step($pattern:expr)])+ $async:ident fn $fn_name:ident $args:tt $body:tt)+} => {
+    {$($(#[step($pattern:expr)])+ $async:ident fn $fn_name:ident $args:tt $(-> $res:ty)? $body:block)+} => {
         $($(
         #[given($pattern)]
         #[when($pattern)]
         #[then($pattern)]
         )*
-        $async fn $fn_name $args $body
+        $async fn $fn_name $args $(-> $res)? $body
         )*
     };
 }
