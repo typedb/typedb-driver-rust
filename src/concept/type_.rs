@@ -345,7 +345,7 @@ impl RelationType {
 
     pub fn get_relates(
         &self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<RoleType>>> {
         transaction.concept().relation_type_get_relates(self.clone(), transitivity)
@@ -353,7 +353,7 @@ impl RelationType {
 
     pub async fn get_relates_for_role_label(
         &self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         role_label: String,
     ) -> Result<Option<RoleType>> {
         transaction.concept().relation_type_get_relates_for_role_label(self.clone(), role_label).await
@@ -361,7 +361,7 @@ impl RelationType {
 
     pub async fn get_relates_overridden(
         &self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         overridden_role_label: String,
     ) -> Result<Option<RoleType>> {
         transaction.concept().relation_type_get_relates_overridden(self.clone(), overridden_role_label).await
@@ -369,14 +369,14 @@ impl RelationType {
 
     pub async fn set_relates(
         &mut self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         role_label: String,
         overridden_role_label: Option<String>,
     ) -> Result {
         transaction.concept().relation_type_set_relates(self.clone(), role_label, overridden_role_label).await
     }
 
-    pub async fn unset_relates(&mut self, transaction: Transaction<'_>, role_label: String) -> Result {
+    pub async fn unset_relates(&mut self, transaction: &Transaction<'_>, role_label: String) -> Result {
         transaction.concept().relation_type_unset_relates(self.clone(), role_label).await
     }
 }
@@ -574,21 +574,21 @@ impl RoleType {
         Self { label, is_root, is_abstract }
     }
 
-    pub async fn delete(&self, transaction: Transaction<'_>, role_type: RoleType) -> Result {
+    pub async fn delete(&self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
         transaction.concept().role_type_delete(role_type).await
     }
 
-    pub async fn set_label(&self, transaction: Transaction<'_>, role_type: RoleType, new_label: String) -> Result {
+    pub async fn set_label(&self, transaction: &Transaction<'_>, role_type: RoleType, new_label: String) -> Result {
         transaction.concept().role_type_set_label(role_type, new_label).await
     }
 
-    pub async fn get_supertype(&self, transaction: Transaction<'_>, role_type: RoleType) -> Result<RoleType> {
+    pub async fn get_supertype(&self, transaction: &Transaction<'_>, role_type: RoleType) -> Result<RoleType> {
         transaction.concept().role_type_get_supertype(role_type).await
     }
 
     pub fn get_supertypes(
         &self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         role_type: RoleType,
     ) -> Result<impl Stream<Item = Result<RoleType>>> {
         transaction.concept().role_type_get_supertypes(role_type)
@@ -596,7 +596,7 @@ impl RoleType {
 
     pub fn get_subtypes(
         &self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         role_type: RoleType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<RoleType>>> {
@@ -605,7 +605,7 @@ impl RoleType {
 
     pub fn get_relation_types(
         &self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         role_type: RoleType,
     ) -> Result<impl Stream<Item = Result<RelationType>>> {
         transaction.concept().role_type_get_relation_types(role_type)
@@ -613,7 +613,7 @@ impl RoleType {
 
     pub fn get_player_types(
         &self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         role_type: RoleType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<ThingType>>> {
@@ -622,7 +622,7 @@ impl RoleType {
 
     pub fn get_relation_instances(
         &self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         role_type: RoleType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<Relation>>> {
@@ -631,7 +631,7 @@ impl RoleType {
 
     pub fn get_player_instances(
         &self,
-        transaction: Transaction<'_>,
+        transaction: &Transaction<'_>,
         role_type: RoleType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<Thing>>> {
