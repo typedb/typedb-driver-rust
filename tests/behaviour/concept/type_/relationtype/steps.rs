@@ -23,7 +23,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{
     concept::{RelationType, ScopedLabel},
-    Annotation, Result as TypeDBResult, Transitivity,
+    Result as TypeDBResult, Transitivity,
 };
 
 use crate::{
@@ -38,27 +38,6 @@ use crate::{
     },
     generic_step_impl,
 };
-
-async fn relation_type_get_owns_attribute_types(
-    context: &mut Context,
-    type_label: LabelParse,
-    transitivity: Transitivity,
-    annotations: Vec<Annotation>,
-) -> TypeDBResult<Vec<String>> {
-    let tx = context.transaction();
-    let relation_type = get_relation_type(tx, type_label.into()).await?;
-    relation_type.get_owns(tx, None, transitivity, annotations)?.map_ok(|at| at.label).try_collect().await
-}
-
-async fn relation_type_get_playing_roles(
-    context: &mut Context,
-    type_label: LabelParse,
-    transitivity: Transitivity,
-) -> TypeDBResult<Vec<ScopedLabel>> {
-    let tx = context.transaction();
-    let relation_type = get_relation_type(tx, type_label.into()).await?;
-    relation_type.get_plays(tx, transitivity)?.map_ok(|at| at.label).try_collect().await
-}
 
 generic_step_impl! {
     #[step(expr = "put relation type: {label}")]
@@ -172,7 +151,7 @@ generic_step_impl! {
         let actuals = get_relation_type(tx, type_label.into())
             .await?
             .get_supertypes(tx)?
-            .map_ok(|et| et.label)
+            .map_ok(|rt| rt.label)
             .try_collect::<Vec<_>>()
             .await?;
         for supertype in iter_table(step) {
@@ -192,7 +171,7 @@ generic_step_impl! {
         let actuals = get_relation_type(tx, type_label.into())
             .await?
             .get_subtypes(tx)?
-            .map_ok(|et| et.label)
+            .map_ok(|rt| rt.label)
             .try_collect::<Vec<_>>()
             .await?;
         for subtype in iter_table(step) {
@@ -204,13 +183,11 @@ generic_step_impl! {
     #[step(expr = r"relation\(( ){label}( )\) set owns attribute type: {label}{override_label}{annotations}")]
     async fn relation_type_set_owns_attribute_type(
         context: &mut Context,
-        step: &Step,
         type_label: LabelParse,
         attribute_type_label: LabelParse,
         overridden_attribute_type_label: OverrideLabelParse,
         annotations: AnnotationsParse,
     ) -> TypeDBResult {
-        dbg!(step);
         let tx = context.transaction();
         let mut relation_type = get_relation_type(tx, type_label.into()).await?;
         let attribute_type = get_attribute_type(tx, attribute_type_label.into()).await?;
@@ -227,7 +204,6 @@ generic_step_impl! {
     )]
     async fn relation_type_set_owns_attribute_type_throws(
         context: &mut Context,
-        step: &Step,
         type_label: LabelParse,
         attribute_type_label: LabelParse,
         overridden_attribute_type_label: OverrideLabelParse,
@@ -235,7 +211,6 @@ generic_step_impl! {
     ) {
         assert!(relation_type_set_owns_attribute_type(
             context,
-            step,
             type_label,
             attribute_type_label,
             overridden_attribute_type_label,
@@ -278,9 +253,13 @@ generic_step_impl! {
         annotations: AnnotationsParse,
         containment: ContainmentParse,
     ) -> TypeDBResult {
-        let actuals =
-            relation_type_get_owns_attribute_types(context, type_label, transitivity.into(), annotations.into())
-                .await?;
+        let tx = context.transaction();
+        let relation_type = get_relation_type(tx, type_label.into()).await?;
+        let actuals: Vec<String> = relation_type
+            .get_owns(tx, None, transitivity.into(), annotations.into())?
+            .map_ok(|at| at.label)
+            .try_collect()
+            .await?;
         for attribute in iter_table(step) {
             containment.assert(&actuals, attribute);
         }
@@ -383,7 +362,10 @@ generic_step_impl! {
         transitivity: TransitivityParse,
         containment: ContainmentParse,
     ) -> TypeDBResult {
-        let actuals = relation_type_get_playing_roles(context, type_label, transitivity.into()).await?;
+        let tx = context.transaction();
+        let relation_type = get_relation_type(tx, type_label.into()).await?;
+        let actuals: Vec<ScopedLabel> =
+            relation_type.get_plays(tx, transitivity.into())?.map_ok(|rt| rt.label).try_collect().await?;
         for role_label in iter_table(step) {
             let role_label: ScopedLabel = role_label.parse::<ScopedLabelParse>().unwrap().into();
             containment.assert(&actuals, &role_label);

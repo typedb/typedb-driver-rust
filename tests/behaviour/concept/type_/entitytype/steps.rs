@@ -23,7 +23,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{
     concept::{EntityType, ScopedLabel},
-    Annotation, Result as TypeDBResult, Transitivity,
+    Result as TypeDBResult,
 };
 
 use crate::{
@@ -38,27 +38,6 @@ use crate::{
     },
     generic_step_impl,
 };
-
-async fn entity_type_get_owns_attribute_types(
-    context: &mut Context,
-    type_label: LabelParse,
-    transitivity: Transitivity,
-    annotations: Vec<Annotation>,
-) -> TypeDBResult<Vec<String>> {
-    let tx = context.transaction();
-    let entity_type = get_entity_type(tx, type_label.into()).await?;
-    entity_type.get_owns(tx, None, transitivity, annotations)?.map_ok(|at| at.label).try_collect().await
-}
-
-async fn entity_type_get_playing_roles(
-    context: &mut Context,
-    type_label: LabelParse,
-    transitivity: Transitivity,
-) -> TypeDBResult<Vec<ScopedLabel>> {
-    let tx = context.transaction();
-    let entity_type = get_entity_type(tx, type_label.into()).await?;
-    entity_type.get_plays(tx, transitivity)?.map_ok(|at| at.label).try_collect().await
-}
 
 generic_step_impl! {
     #[step(expr = "put entity type: {label}")]
@@ -200,13 +179,11 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) set owns attribute type: {label}{override_label}{annotations}")]
     async fn entity_type_set_owns_attribute_type(
         context: &mut Context,
-        step: &Step,
         type_label: LabelParse,
         attribute_type_label: LabelParse,
         overridden_attribute_type_label: OverrideLabelParse,
         annotations: AnnotationsParse,
     ) -> TypeDBResult {
-        dbg!(step);
         let tx = context.transaction();
         let mut entity_type = get_entity_type(tx, type_label.into()).await?;
         let attribute_type = get_attribute_type(tx, attribute_type_label.into()).await?;
@@ -218,10 +195,11 @@ generic_step_impl! {
         entity_type.set_owns(tx, attribute_type, overridden_attribute_type, annotations.into()).await
     }
 
-    #[step(expr = r"entity\(( ){label}( )\) set owns attribute type: {label}{override_label}{annotations}; throws exception")]
+    #[step(
+        expr = r"entity\(( ){label}( )\) set owns attribute type: {label}{override_label}{annotations}; throws exception"
+    )]
     async fn entity_type_set_owns_attribute_type_throws(
         context: &mut Context,
-        step: &Step,
         type_label: LabelParse,
         attribute_type_label: LabelParse,
         overridden_attribute_type_label: OverrideLabelParse,
@@ -229,7 +207,6 @@ generic_step_impl! {
     ) {
         assert!(entity_type_set_owns_attribute_type(
             context,
-            step,
             type_label,
             attribute_type_label,
             overridden_attribute_type_label,
@@ -270,8 +247,13 @@ generic_step_impl! {
         annotations: AnnotationsParse,
         containment: ContainmentParse,
     ) -> TypeDBResult {
-        let actuals =
-            entity_type_get_owns_attribute_types(context, type_label, transitivity.into(), annotations.into()).await?;
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label.into()).await?;
+        let actuals: Vec<String> = entity_type
+            .get_owns(tx, None, transitivity.into(), annotations.into())?
+            .map_ok(|at| at.label)
+            .try_collect()
+            .await?;
         for attribute in iter_table(step) {
             containment.assert(&actuals, attribute);
         }
@@ -374,7 +356,10 @@ generic_step_impl! {
         transitivity: TransitivityParse,
         containment: ContainmentParse,
     ) -> TypeDBResult {
-        let actuals = entity_type_get_playing_roles(context, type_label, transitivity.into()).await?;
+        let tx = context.transaction();
+        let entity_type = get_entity_type(tx, type_label.into()).await?;
+        let actuals: Vec<ScopedLabel> =
+            entity_type.get_plays(tx, transitivity.into())?.map_ok(|rt| rt.label).try_collect().await?;
         for role_label in iter_table(step) {
             let role_label: ScopedLabel = role_label.parse::<ScopedLabelParse>().unwrap().into();
             containment.assert(&actuals, &role_label);
