@@ -372,4 +372,48 @@ generic_step_impl! {
         }
         Ok(())
     }
+
+    #[step(expr = r"relation\(( ){label}( )) set relates role: {label}{override_label}")]
+    async fn relation_set_relates(
+        context: &mut Context,
+        type_label: LabelParse,
+        role_name: LabelParse,
+        overridden_role_name: OverrideLabelParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let mut relation_type = get_relation_type(tx, type_label.into()).await?;
+        relation_type.set_relates(tx, role_name.into(), overridden_role_name.into()).await
+    }
+
+    #[step(expr = r"relation\(( ){label}( )) set relates role: {label}{override_label}; throws exception")]
+    async fn relation_set_relates_throws(
+        context: &mut Context,
+        type_label: LabelParse,
+        role_name: LabelParse,
+        overridden_role_name: OverrideLabelParse,
+    ) {
+        assert!(relation_set_relates(context, type_label, role_name, overridden_role_name).await.is_err());
+    }
+
+    #[step(expr = r"relation\(( ){label}( )) get role\(( ){label}( )) get players {maybe_contain}:")]
+    async fn relation_get_role_get_players(
+        context: &mut Context,
+        step: &Step,
+        type_label: LabelParse,
+        role_name: LabelParse,
+        containment: ContainmentParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let relation_type = get_relation_type(tx, type_label.into()).await?;
+        let role_type = relation_type.get_relates_for_role_label(tx, role_name.into()).await?.unwrap();
+        let actuals: Vec<String> = role_type
+            .get_player_types(tx, Transitivity::Transitive)?
+            .map_ok(|t| t.label().to_owned())
+            .try_collect()
+            .await?;
+        for player_type in iter_table(step) {
+            containment.assert(&actuals, player_type);
+        }
+        Ok(())
+    }
 }
