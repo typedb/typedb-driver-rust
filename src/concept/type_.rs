@@ -574,68 +574,59 @@ impl RoleType {
         Self { label, is_root, is_abstract }
     }
 
-    pub async fn delete(&self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
-        transaction.concept().role_type_delete(role_type).await
+    pub async fn delete(&self, transaction: &Transaction<'_>) -> Result {
+        transaction.concept().role_type_delete(self.clone()).await
     }
 
-    pub async fn set_label(&self, transaction: &Transaction<'_>, role_type: RoleType, new_label: String) -> Result {
-        transaction.concept().role_type_set_label(role_type, new_label).await
+    pub async fn set_label(&self, transaction: &Transaction<'_>, new_label: String) -> Result {
+        transaction.concept().role_type_set_label(self.clone(), new_label).await
     }
 
-    pub async fn get_supertype(&self, transaction: &Transaction<'_>, role_type: RoleType) -> Result<RoleType> {
-        transaction.concept().role_type_get_supertype(role_type).await
+    pub async fn get_supertype(&self, transaction: &Transaction<'_>) -> Result<RoleType> {
+        transaction.concept().role_type_get_supertype(self.clone()).await
     }
 
-    pub fn get_supertypes(
-        &self,
-        transaction: &Transaction<'_>,
-        role_type: RoleType,
-    ) -> Result<impl Stream<Item = Result<RoleType>>> {
-        transaction.concept().role_type_get_supertypes(role_type)
+    pub fn get_supertypes(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().role_type_get_supertypes(self.clone())
     }
 
     pub fn get_subtypes(
         &self,
         transaction: &Transaction<'_>,
-        role_type: RoleType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<RoleType>>> {
-        transaction.concept().role_type_get_subtypes(role_type, transitivity)
+        transaction.concept().role_type_get_subtypes(self.clone(), transitivity)
     }
 
     pub fn get_relation_types(
         &self,
         transaction: &Transaction<'_>,
-        role_type: RoleType,
     ) -> Result<impl Stream<Item = Result<RelationType>>> {
-        transaction.concept().role_type_get_relation_types(role_type)
+        transaction.concept().role_type_get_relation_types(self.clone())
     }
 
     pub fn get_player_types(
         &self,
         transaction: &Transaction<'_>,
-        role_type: RoleType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<ThingType>>> {
-        transaction.concept().role_type_get_player_types(role_type, transitivity)
+        transaction.concept().role_type_get_player_types(self.clone(), transitivity)
     }
 
     pub fn get_relation_instances(
         &self,
         transaction: &Transaction<'_>,
-        role_type: RoleType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<Relation>>> {
-        transaction.concept().role_type_get_relation_instances(role_type, transitivity)
+        transaction.concept().role_type_get_relation_instances(self.clone(), transitivity)
     }
 
     pub fn get_player_instances(
         &self,
         transaction: &Transaction<'_>,
-        role_type: RoleType,
         transitivity: Transitivity,
     ) -> Result<impl Stream<Item = Result<Thing>>> {
-        transaction.concept().role_type_get_player_instances(role_type, transitivity)
+        transaction.concept().role_type_get_player_instances(self.clone(), transitivity)
     }
 }
 
