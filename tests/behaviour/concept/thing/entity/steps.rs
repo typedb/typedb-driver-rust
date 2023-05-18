@@ -20,7 +20,10 @@
  */
 
 use cucumber::{given, then, when};
-use typedb_client::{concept::Thing, Result as TypeDBResult};
+use typedb_client::{
+    concept::{Thing, Value},
+    Result as TypeDBResult,
+};
 
 use crate::{
     behaviour::{
@@ -29,7 +32,6 @@ use crate::{
     },
     generic_step_impl,
 };
-    use typedb_client::concept::Value;
 
 generic_step_impl! {
 // mod a { use super::*;

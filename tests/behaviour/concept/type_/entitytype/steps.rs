@@ -21,12 +21,15 @@
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
-use typedb_client::{concept::EntityType, Annotation, Result as TypeDBResult, Transitivity};
+use typedb_client::{
+    concept::{EntityType, ScopedLabel},
+    Annotation, Result as TypeDBResult, Transitivity,
+};
 
 use crate::{
     behaviour::{
-        concept::common::{get_attribute_type, get_entity_type},
-        util::{iter_table, AnnotationsParse},
+        concept::common::{get_attribute_type, get_entity_type, get_relation_type},
+        util::{iter_table, AnnotationsParse, ScopedLabelParse},
         Context,
     },
     generic_step_impl,
@@ -41,6 +44,16 @@ async fn entity_type_get_owns_attribute_types(
     let tx = context.transaction();
     let entity_type = get_entity_type(tx, type_label).await?;
     entity_type.get_owns(tx, None, transitivity, annotations)?.map_ok(|at| at.label).try_collect().await
+}
+
+async fn entity_type_get_playing_roles(
+    context: &mut Context,
+    type_label: String,
+    transitivity: Transitivity,
+) -> TypeDBResult<Vec<ScopedLabel>> {
+    let tx = context.transaction();
+    let entity_type = get_entity_type(tx, type_label).await?;
+    entity_type.get_plays(tx, transitivity)?.map_ok(|at| at.label).try_collect().await
 }
 
 generic_step_impl! {
@@ -201,6 +214,15 @@ generic_step_impl! {
         entity_type.set_owns(tx, attribute_type, None, &[]).await
     }
 
+    #[step(expr = r"entity\(( ){word}( )\) set owns attribute type: {word}; throws exception")]
+    async fn entity_type_set_owns_attribute_type_throws(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+    ) {
+        assert!(entity_type_set_owns_attribute_type(context, type_label, attribute_type_label).await.is_err());
+    }
+
     #[step(expr = r"entity\(( ){word}( )\) set owns attribute type: {word}, with annotations: {annotations}")]
     async fn entity_type_set_owns_attribute_type_with_annotations(
         context: &mut Context,
@@ -212,15 +234,6 @@ generic_step_impl! {
         let mut entity_type = get_entity_type(tx, type_label).await?;
         let attribute_type = get_attribute_type(tx, attribute_type_label).await?;
         entity_type.set_owns(tx, attribute_type, None, &annotations).await
-    }
-
-    #[step(expr = r"entity\(( ){word}( )\) set owns attribute type: {word}; throws exception")]
-    async fn entity_type_set_owns_attribute_type_throws(
-        context: &mut Context,
-        type_label: String,
-        attribute_type_label: String,
-    ) {
-        assert!(entity_type_set_owns_attribute_type(context, type_label, attribute_type_label).await.is_err());
     }
 
     #[step(
@@ -242,6 +255,74 @@ generic_step_impl! {
         .is_err());
     }
 
+    #[step(expr = r"entity\(( ){word}( )\) set owns attribute type: {word} as {word}")]
+    async fn entity_type_set_owns_attribute_type_overridden(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+        overridden_attribute_type_label: String,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await?;
+        let attribute_type = get_attribute_type(tx, attribute_type_label).await?;
+        let overridden_attribute_type = get_attribute_type(tx, overridden_attribute_type_label).await?;
+        // FIXME barf ~~~~~~~~~~~~~~~~~~~~~~~~~~~v~~~~~v
+        entity_type.set_owns(tx, attribute_type, Some(overridden_attribute_type), &[]).await
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) set owns attribute type: {word} as {word}; throws exception")]
+    async fn entity_type_set_owns_attribute_type_overridden_throws(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+        overridden_attribute_type_label: String,
+    ) {
+        assert!(entity_type_set_owns_attribute_type_overridden(
+            context,
+            type_label,
+            attribute_type_label,
+            overridden_attribute_type_label
+        )
+        .await
+        .is_err());
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) set owns attribute type: {word} as {word}, with annotations: {annotations}")]
+    async fn entity_type_set_owns_attribute_type_overridden_with_annotations(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+        overridden_attribute_type_label: String,
+        annotations: AnnotationsParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await?;
+        let attribute_type = get_attribute_type(tx, attribute_type_label).await?;
+        let overridden_attribute_type = get_attribute_type(tx, overridden_attribute_type_label).await?;
+        entity_type.set_owns(tx, attribute_type, Some(overridden_attribute_type), &annotations).await
+    }
+
+    #[step(
+        expr = r"entity\(( ){word}( )\) set owns attribute type: {word} as {word}, with annotations: {annotations}; throws exception"
+    )]
+    async fn entity_type_set_owns_attribute_type_overridden_with_annotations_throws(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+        overridden_attribute_type_label: String,
+        annotations: AnnotationsParse,
+    ) {
+        assert!(entity_type_set_owns_attribute_type_overridden_with_annotations(
+            context,
+            type_label,
+            attribute_type_label,
+            overridden_attribute_type_label,
+            annotations
+        )
+        .await
+        .is_err());
+    }
+
     #[step(expr = r"entity\(( ){word}( )\) unset owns attribute type: {word}")]
     async fn entity_type_unset_owns_attribute_type(
         context: &mut Context,
@@ -253,6 +334,15 @@ generic_step_impl! {
         let attribute_type = get_attribute_type(tx, attribute_type_label).await?;
         assert!(entity_type.unset_owns(tx, attribute_type).await.is_ok());
         Ok(())
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) unset owns attribute type: {word}; throws exception")]
+    async fn entity_type_unset_owns_attribute_type_throws(
+        context: &mut Context,
+        type_label: String,
+        attribute_type_label: String,
+    ) {
+        assert!(entity_type_unset_owns_attribute_type(context, type_label, attribute_type_label).await.is_err());
     }
 
     #[step(expr = r"entity\(( ){word}( )\) get owns attribute types contain:")]
@@ -268,6 +358,19 @@ generic_step_impl! {
         Ok(())
     }
 
+    #[step(expr = r"entity\(( ){word}( )\) get owns attribute types do not contain:")]
+    async fn entity_type_get_owns_attribute_types_do_not_contain(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+    ) -> TypeDBResult {
+        let actuals = entity_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, &[]).await?;
+        for attribute in iter_table(step) {
+            assert!(actuals.iter().all(|actual| actual != attribute));
+        }
+        Ok(())
+    }
+
     #[step(expr = r"entity\(( ){word}( )\) get owns types with annotations: {annotations}; contain:")]
     async fn entity_type_get_owns_attribute_types_with_annotations_contain(
         context: &mut Context,
@@ -279,19 +382,6 @@ generic_step_impl! {
             entity_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, &annotations).await?;
         for attribute in iter_table(step) {
             assert!(actuals.iter().any(|actual| actual == attribute), "{attribute} not in {actuals:?}");
-        }
-        Ok(())
-    }
-
-    #[step(expr = r"entity\(( ){word}( )\) get owns attribute types do not contain:")]
-    async fn entity_type_get_owns_attribute_types_do_not_contain(
-        context: &mut Context,
-        step: &Step,
-        type_label: String,
-    ) -> TypeDBResult {
-        let actuals = entity_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, &[]).await?;
-        for attribute in iter_table(step) {
-            assert!(actuals.iter().all(|actual| actual != attribute));
         }
         Ok(())
     }
@@ -367,7 +457,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"entity\(( )?{word}( )\) get owns overridden attribute\(( ){word}( )\) is null: {word}")]
+    #[step(expr = r"entity\(( ){word}( )\) get owns overridden attribute\(( ){word}( )\) is null: {word}")]
     async fn entity_type_get_owns_overridden_attribute_type(
         context: &mut Context,
         type_label: String,
@@ -394,6 +484,146 @@ generic_step_impl! {
         let attribute_type = get_attribute_type(tx, attribute_type_label).await?;
         let res = entity_type.get_owns_overridden(tx, attribute_type).await?;
         assert_eq!(res.map(|at| at.label), Some(overridden_label));
+        Ok(())
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) set plays role: {scoped_label}")]
+    async fn entity_type_set_plays_role(
+        context: &mut Context,
+        type_label: String,
+        role_label: ScopedLabelParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await?;
+        let role = get_relation_type(tx, role_label.scope)
+            .await?
+            .get_relates_for_role_label(tx, role_label.name)
+            .await?
+            .unwrap();
+        entity_type.set_plays(tx, role, None).await
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) set plays role: {scoped_label}; throws exception")]
+    async fn entity_type_set_plays_role_throws(
+        context: &mut Context,
+        type_label: String,
+        role_label: ScopedLabelParse,
+    ) {
+        assert!(entity_type_set_plays_role(context, type_label, role_label).await.is_err());
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) set plays role: {scoped_label} as {scoped_label}")]
+    async fn entity_type_set_plays_role_overridden(
+        context: &mut Context,
+        type_label: String,
+        role_label: ScopedLabelParse,
+        overridden_role_label: ScopedLabelParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await?;
+        let role = get_relation_type(tx, role_label.scope)
+            .await?
+            .get_relates_for_role_label(tx, role_label.name)
+            .await?
+            .unwrap();
+        let overridden_role = get_relation_type(tx, overridden_role_label.scope)
+            .await?
+            .get_relates_for_role_label(tx, overridden_role_label.name)
+            .await?
+            .unwrap();
+        entity_type.set_plays(tx, role, Some(overridden_role)).await
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) set plays role: {scoped_label} as {scoped_label}; throws exception")]
+    async fn entity_type_set_plays_role_overridden_throws(
+        context: &mut Context,
+        type_label: String,
+        role_label: ScopedLabelParse,
+        overridden_role_label: ScopedLabelParse,
+    ) {
+        assert!(entity_type_set_plays_role_overridden(context, type_label, role_label, overridden_role_label)
+            .await
+            .is_err());
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) unset plays role: {scoped_label}")]
+    async fn entity_type_unset_plays_role(
+        context: &mut Context,
+        type_label: String,
+        role_label: ScopedLabelParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let mut entity_type = get_entity_type(tx, type_label).await?;
+        let role = get_relation_type(tx, role_label.scope)
+            .await?
+            .get_relates_for_role_label(tx, role_label.name)
+            .await?
+            .unwrap();
+        entity_type.unset_plays(tx, role).await
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) unset plays role: {scoped_label}; throws exception")]
+    async fn entity_type_unset_plays_role_throws(
+        context: &mut Context,
+        type_label: String,
+        role_label: ScopedLabelParse,
+    ) {
+        assert!(entity_type_unset_plays_role(context, type_label, role_label).await.is_err());
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) get playing roles contain:")]
+    async fn entity_type_get_playing_roles_contain(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+    ) -> TypeDBResult {
+        let actuals = entity_type_get_playing_roles(context, type_label, Transitivity::Transitive).await?;
+        for role_label in iter_table(step) {
+            let role_label: ScopedLabel = role_label.parse::<ScopedLabelParse>().unwrap().into();
+            assert!(actuals.iter().any(|actual| *actual == role_label));
+        }
+        Ok(())
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) get playing roles do not contain:")]
+    async fn entity_type_get_playing_roles_do_not_contain(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+    ) -> TypeDBResult {
+        let actuals = entity_type_get_playing_roles(context, type_label, Transitivity::Transitive).await?;
+        for role_label in iter_table(step) {
+            let role_label: ScopedLabel = role_label.parse::<ScopedLabelParse>().unwrap().into();
+            assert!(actuals.iter().all(|actual| *actual != role_label));
+        }
+        Ok(())
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) get playing roles explicit contain:")]
+    async fn entity_type_get_playing_roles_explicit_contain(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+    ) -> TypeDBResult {
+        let actuals = entity_type_get_playing_roles(context, type_label, Transitivity::Explicit).await?;
+        for role_label in iter_table(step) {
+            let role_label: ScopedLabel = role_label.parse::<ScopedLabelParse>().unwrap().into();
+            assert!(actuals.iter().any(|actual| *actual == role_label));
+        }
+        Ok(())
+    }
+
+    #[step(expr = r"entity\(( ){word}( )\) get playing roles explicit do not contain:")]
+    async fn entity_type_get_playing_roles_explicit_do_not_contain(
+        context: &mut Context,
+        step: &Step,
+        type_label: String,
+    ) -> TypeDBResult {
+        let actuals = entity_type_get_playing_roles(context, type_label, Transitivity::Explicit).await?;
+        for role_label in iter_table(step) {
+            let role_label: ScopedLabel = role_label.parse::<ScopedLabelParse>().unwrap().into();
+            assert!(actuals.iter().all(|actual| *actual != role_label));
+        }
         Ok(())
     }
 }

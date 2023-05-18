@@ -19,10 +19,13 @@
  * under the License.
  */
 
-use std::{ops::Deref, str::FromStr};
+use std::{convert::Infallible, ops::Deref, str::FromStr};
 
 use cucumber::{gherkin::Step, Parameter};
-use typedb_client::{concept::ValueType, Annotation, TransactionType};
+use typedb_client::{
+    concept::{ScopedLabel, ValueType},
+    Annotation, TransactionType,
+};
 
 pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
     step.table().unwrap().rows.iter().flatten().map(String::as_str)
@@ -38,7 +41,7 @@ impl Into<ValueType> for ValueTypeParse {
 }
 
 impl FromStr for ValueTypeParse {
-    type Err = ();
+    type Err = Infallible;
 
     fn from_str(type_: &str) -> Result<Self, Self::Err> {
         Ok(match type_ {
@@ -62,7 +65,7 @@ impl Into<TransactionType> for TransactionTypeParse {
 }
 
 impl FromStr for TransactionTypeParse {
-    type Err = ();
+    type Err = Infallible;
 
     fn from_str(type_: &str) -> Result<Self, Self::Err> {
         Ok(match type_ {
@@ -74,10 +77,34 @@ impl FromStr for TransactionTypeParse {
 }
 
 #[derive(Clone, Debug, Parameter)]
-#[param(name = "annotations", regex = r"\s*(?:key|unique)(?:,\s*(?:key|unique)\s*)*\s*")]
+#[param(name = "scoped_label", regex = r"\S+:\S+")]
+pub struct ScopedLabelParse {
+    pub scope: String,
+    pub name: String,
+}
+
+impl Into<ScopedLabel> for ScopedLabelParse {
+    fn into(self) -> ScopedLabel {
+        let ScopedLabelParse { scope, name } = self;
+        ScopedLabel { scope, name }
+    }
+}
+
+impl FromStr for ScopedLabelParse {
+    type Err = Infallible;
+
+    fn from_str(label: &str) -> Result<Self, Self::Err> {
+        let Some((scope, name)) = label.split_once(':') else { unreachable!() };
+        Ok(Self { scope: scope.to_owned(), name: name.to_owned() })
+    }
+}
+
+#[derive(Clone, Debug, Parameter)]
+#[param(name = "annotations", regex = r"\s*(?:[\w-]+)(?:,\s*(?:[\w-]+)\s*)*\s*")]
 pub struct AnnotationsParse(Vec<Annotation>);
 
 impl Deref for AnnotationsParse {
+    // FIXME remove
     type Target = Vec<Annotation>;
 
     fn deref(&self) -> &Vec<Annotation> {
@@ -92,7 +119,7 @@ impl Into<Vec<Annotation>> for AnnotationsParse {
 }
 
 impl FromStr for AnnotationsParse {
-    type Err = ();
+    type Err = Infallible;
 
     fn from_str(annotations: &str) -> Result<Self, Self::Err> {
         Ok(Self(
@@ -102,7 +129,7 @@ impl FromStr for AnnotationsParse {
                 .map(|annotation| match annotation.trim() {
                     "key" => Annotation::Key,
                     "unique" => Annotation::Unique,
-                    _ => unreachable!(),
+                    _ => unreachable!("Unrecognized annotation: {annotation:?}"),
                 })
                 .collect(),
         ))

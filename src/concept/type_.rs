@@ -639,7 +639,7 @@ impl RoleType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ScopedLabel {
     pub scope: String,
     pub name: String,
