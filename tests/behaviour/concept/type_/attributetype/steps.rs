@@ -26,7 +26,8 @@ use typedb_client::{concept::ScopedLabel, Annotation, Result as TypeDBResult, Tr
 use crate::{
     behaviour::{
         concept::common::{get_attribute_type, get_relation_type},
-        util::{iter_table, AnnotationsParse, ScopedLabelParse, ValueTypeParse},
+        parameter::{AnnotationsParse, ScopedLabelParse, ValueTypeParse},
+        util::iter_table,
         Context,
     },
     generic_step_impl,

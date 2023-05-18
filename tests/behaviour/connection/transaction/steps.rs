@@ -23,7 +23,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use typedb_client::TransactionType;
 
 use crate::{
-    behaviour::{util, util::TransactionTypeParse, Context},
+    behaviour::{parameter::TransactionTypeParse, util::iter_table, Context},
     generic_step_impl,
 };
 
@@ -41,7 +41,7 @@ generic_step_impl! {
 
     #[step(expr = "(for each )session(,) open transaction(s) of type:")]
     async fn for_each_session_open_transactions_of_type(context: &mut Context, step: &Step) {
-        for type_ in util::iter_table(step) {
+        for type_ in iter_table(step) {
             let transaction_type = type_.parse::<TransactionTypeParse>().unwrap().into();
             for session_tracker in &mut context.session_trackers {
                 session_tracker.open_transaction(transaction_type).await.unwrap();
@@ -61,7 +61,7 @@ generic_step_impl! {
 
     #[step(expr = "(for each )session(,) open transaction(s) of type; throws exception")]
     async fn for_each_session_open_transactions_of_type_throws_exception_table(context: &mut Context, step: &Step) {
-        for type_ in util::iter_table(step) {
+        for type_ in iter_table(step) {
             let transaction_type = type_.parse::<TransactionTypeParse>().unwrap().into();
             for session_tracker in &mut context.session_trackers {
                 assert!(session_tracker.open_transaction(transaction_type).await.is_err());
@@ -142,7 +142,7 @@ generic_step_impl! {
     #[step(expr = "for each session, transactions in parallel have type:")]
     async fn for_each_session_transactions_have_types(context: &mut Context, step: &Step) {
         let types: Vec<TransactionType> =
-            util::iter_table(step).map(|s| s.parse::<TransactionTypeParse>().unwrap().into()).collect();
+            iter_table(step).map(|s| s.parse::<TransactionTypeParse>().unwrap().into()).collect();
         for session_tracker in &context.session_trackers {
             assert_eq!(types.len(), session_tracker.transactions().len());
             for (type_, transaction) in types.iter().zip(session_tracker.transactions()) {
@@ -157,7 +157,7 @@ generic_step_impl! {
 
     #[step(expr = "for each session, open transaction(s) in parallel of type:")]
     async fn for_each_session_open_transactions_in_parallel_of_type(context: &mut Context, step: &Step) {
-        for type_ in util::iter_table(step) {
+        for type_ in iter_table(step) {
             let transaction_type = type_.parse::<TransactionTypeParse>().unwrap().into();
             for session_tracker in &mut context.session_trackers {
                 // FIXME parallel

@@ -21,7 +21,8 @@
 
 mod concept;
 mod connection;
-pub mod session_tracker;
+mod parameter;
+mod session_tracker;
 mod typeql;
 mod util;
 

@@ -29,7 +29,8 @@ use typedb_client::{
 use crate::{
     behaviour::{
         concept::common::{get_attribute_type, get_relation_type},
-        util::{iter_table, AnnotationsParse, ScopedLabelParse},
+        parameter::{AnnotationsParse, ScopedLabelParse},
+        util::iter_table,
         Context,
     },
     generic_step_impl,
