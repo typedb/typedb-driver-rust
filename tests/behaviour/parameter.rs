@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{convert::Infallible, ops::Deref, str::FromStr};
+use std::{convert::Infallible, str::FromStr};
 
 use cucumber::Parameter;
 use typedb_client::{
@@ -98,15 +98,6 @@ impl FromStr for ScopedLabelParse {
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "annotations", regex = r"\s*(?:[\w-]+)(?:,\s*(?:[\w-]+)\s*)*\s*")]
 pub struct AnnotationsParse(Vec<Annotation>);
-
-impl Deref for AnnotationsParse {
-    // FIXME remove
-    type Target = Vec<Annotation>;
-
-    fn deref(&self) -> &Vec<Annotation> {
-        &self.0
-    }
-}
 
 impl Into<Vec<Annotation>> for AnnotationsParse {
     fn into(self) -> Vec<Annotation> {

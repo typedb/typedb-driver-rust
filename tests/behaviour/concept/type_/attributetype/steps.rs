@@ -37,7 +37,7 @@ async fn attribute_type_get_owns_attribute_types(
     context: &mut Context,
     type_label: String,
     transitivity: Transitivity,
-    annotations: &[Annotation],
+    annotations: Vec<Annotation>,
 ) -> TypeDBResult<Vec<String>> {
     let tx = context.transaction();
     let attribute_type = get_attribute_type(tx, type_label).await?;
@@ -209,7 +209,7 @@ generic_step_impl! {
         let mut attribute_type = get_attribute_type(tx, type_label).await?;
         let owned_attribute_type = get_attribute_type(tx, owned_attribute_type_label).await?;
         // FIXME barf ~~~~~~~~~~~~~~~~~~~~~~~~~~~v~~~~~v
-        attribute_type.set_owns(tx, owned_attribute_type, None, &[]).await
+        attribute_type.set_owns(tx, owned_attribute_type, None, vec![]).await
     }
 
     #[step(expr = r"attribute\(( ){word}( )\) set owns attribute type: {word}; throws exception")]
@@ -231,7 +231,7 @@ generic_step_impl! {
         let tx = context.transaction();
         let mut attribute_type = get_attribute_type(tx, type_label).await?;
         let owned_attribute_type = get_attribute_type(tx, owned_attribute_type_label).await?;
-        attribute_type.set_owns(tx, owned_attribute_type, None, &annotations).await
+        attribute_type.set_owns(tx, owned_attribute_type, None, annotations.into()).await
     }
 
     #[step(
@@ -265,7 +265,7 @@ generic_step_impl! {
         let owned_attribute_type = get_attribute_type(tx, owned_attribute_type_label).await?;
         let overridden_attribute_type = get_attribute_type(tx, overridden_attribute_type_label).await?;
         // FIXME barf ~~~~~~~~~~~~~~~~~~~~~~~~~~~v~~~~~v
-        attribute_type.set_owns(tx, owned_attribute_type, Some(overridden_attribute_type), &[]).await
+        attribute_type.set_owns(tx, owned_attribute_type, Some(overridden_attribute_type), vec![]).await
     }
 
     #[step(expr = r"attribute\(( ){word}( )\) set owns attribute type: {word} as {word}; throws exception")]
@@ -297,7 +297,7 @@ generic_step_impl! {
         let mut attribute_type = get_attribute_type(tx, type_label).await?;
         let owned_attribute_type = get_attribute_type(tx, owned_attribute_type_label).await?;
         let overridden_attribute_type = get_attribute_type(tx, overridden_attribute_type_label).await?;
-        attribute_type.set_owns(tx, owned_attribute_type, Some(overridden_attribute_type), &annotations).await
+        attribute_type.set_owns(tx, owned_attribute_type, Some(overridden_attribute_type), annotations.into()).await
     }
 
     #[step(
@@ -349,7 +349,7 @@ generic_step_impl! {
         step: &Step,
         type_label: String,
     ) -> TypeDBResult {
-        let actuals = attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, &[]).await?;
+        let actuals = attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, vec![]).await?;
         for attribute in iter_table(step) {
             assert!(actuals.iter().any(|actual| actual == attribute));
         }
@@ -362,7 +362,7 @@ generic_step_impl! {
         step: &Step,
         type_label: String,
     ) -> TypeDBResult {
-        let actuals = attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, &[]).await?;
+        let actuals = attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, vec![]).await?;
         for attribute in iter_table(step) {
             assert!(actuals.iter().all(|actual| actual != attribute));
         }
@@ -377,7 +377,7 @@ generic_step_impl! {
         annotations: AnnotationsParse,
     ) -> TypeDBResult {
         let actuals =
-            attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, &annotations).await?;
+            attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, annotations.into()).await?;
         for attribute in iter_table(step) {
             assert!(actuals.iter().any(|actual| actual == attribute), "{attribute} not in {actuals:?}");
         }
@@ -392,7 +392,7 @@ generic_step_impl! {
         annotations: AnnotationsParse,
     ) -> TypeDBResult {
         let actuals =
-            attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, &annotations).await?;
+            attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Transitive, annotations.into()).await?;
         for attribute in iter_table(step) {
             assert!(actuals.iter().all(|actual| actual != attribute));
         }
@@ -405,7 +405,7 @@ generic_step_impl! {
         step: &Step,
         type_label: String,
     ) -> TypeDBResult {
-        let actuals = attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Explicit, &[]).await?;
+        let actuals = attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Explicit, vec![]).await?;
         for attribute in iter_table(step) {
             assert!(actuals.iter().any(|actual| actual == attribute), "{attribute} not in {actuals:?}");
         }
@@ -418,7 +418,7 @@ generic_step_impl! {
         step: &Step,
         type_label: String,
     ) -> TypeDBResult {
-        let actuals = attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Explicit, &[]).await?;
+        let actuals = attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Explicit, vec![]).await?;
         for attribute in iter_table(step) {
             assert!(actuals.iter().all(|actual| actual != attribute));
         }
@@ -433,7 +433,7 @@ generic_step_impl! {
         annotations: AnnotationsParse,
     ) -> TypeDBResult {
         let actuals =
-            attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Explicit, &annotations).await?;
+            attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Explicit, annotations.into()).await?;
         for attribute in iter_table(step) {
             assert!(actuals.iter().any(|actual| actual == attribute), "{attribute} not in {actuals:?}");
         }
@@ -448,7 +448,7 @@ generic_step_impl! {
         annotations: AnnotationsParse,
     ) -> TypeDBResult {
         let actuals =
-            attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Explicit, &annotations).await?;
+            attribute_type_get_owns_attribute_types(context, type_label, Transitivity::Explicit, annotations.into()).await?;
         for attribute in iter_table(step) {
             assert!(actuals.iter().all(|actual| actual != attribute));
         }
