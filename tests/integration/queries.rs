@@ -352,7 +352,7 @@ test_for_each_arg! {
                         }
                     }
                     Err(err) => {
-                        panic!("An error occurred fetching answers of a Match query: {}", err)
+                        panic!("An error occurred fetching answers of a Match query: {err}")
                     }
                 }
                 idx = idx + 1;
@@ -361,7 +361,7 @@ test_for_each_arg! {
                     start_time = Instant::now();
                 }
             }
-            println!("sum is {}", sum);
+            println!("sum is {sum}");
         }
 
         Ok(())
