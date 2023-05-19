@@ -110,7 +110,7 @@ generic_step_impl! {
     }
 
     #[step(expr = r"entity\(( ){label}( )\) set supertype: {label}")]
-    async fn entity_set_supertype(
+    async fn entity_type_set_supertype(
         context: &mut Context,
         type_label: LabelParse,
         supertype_label: LabelParse,
@@ -121,12 +121,16 @@ generic_step_impl! {
     }
 
     #[step(expr = r"entity\(( ){label}( )\) set supertype: {label}; throws exception")]
-    async fn entity_set_supertype_throws(context: &mut Context, type_label: LabelParse, supertype_label: LabelParse) {
-        assert!(entity_set_supertype(context, type_label, supertype_label).await.is_err())
+    async fn entity_type_set_supertype_throws(
+        context: &mut Context,
+        type_label: LabelParse,
+        supertype_label: LabelParse,
+    ) {
+        assert!(entity_type_set_supertype(context, type_label, supertype_label).await.is_err())
     }
 
     #[step(expr = r"entity\(( ){label}( )\) get supertype: {label}")]
-    async fn entity_get_supertype(
+    async fn entity_type_get_supertype(
         context: &mut Context,
         type_label: LabelParse,
         supertype: LabelParse,
@@ -137,19 +141,15 @@ generic_step_impl! {
     }
 
     #[step(expr = r"entity\(( ){label}( )\) get supertypes {maybe_contain}:")]
-    async fn entity_get_supertypes(
+    async fn entity_type_get_supertypes(
         context: &mut Context,
         step: &Step,
         type_label: LabelParse,
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let actuals = get_entity_type(tx, type_label.into())
-            .await?
-            .get_supertypes(tx)?
-            .map_ok(|et| et.label)
-            .try_collect::<Vec<_>>()
-            .await?;
+        let entity_type = get_entity_type(tx, type_label.into()).await?;
+        let actuals = entity_type.get_supertypes(tx)?.map_ok(|et| et.label).try_collect::<Vec<_>>().await?;
         for supertype in iter_table(step) {
             containment.assert(&actuals, supertype);
         }
@@ -157,19 +157,15 @@ generic_step_impl! {
     }
 
     #[step(expr = r"entity\(( ){label}( )\) get subtypes {maybe_contain}:")]
-    async fn entity_get_subtypes(
+    async fn entity_type_get_subtypes(
         context: &mut Context,
         step: &Step,
         type_label: LabelParse,
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let actuals = get_entity_type(tx, type_label.into())
-            .await?
-            .get_subtypes(tx)?
-            .map_ok(|et| et.label)
-            .try_collect::<Vec<_>>()
-            .await?;
+        let entity_type = get_entity_type(tx, type_label.into()).await?;
+        let actuals = entity_type.get_subtypes(tx)?.map_ok(|et| et.label).try_collect::<Vec<_>>().await?;
         for subtype in iter_table(step) {
             containment.assert(&actuals, subtype);
         }

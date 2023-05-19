@@ -221,7 +221,7 @@ impl FromStr for OverrideScopedLabelParse {
 }
 
 #[derive(Clone, Debug, Parameter)]
-#[param(name = "annotations", regex = r",? with annotations: ([\w-]+(?:, (?:[\w-]+))*)|()")]
+#[param(name = "annotations", regex = r", with annotations: ([\w-]+(?:, (?:[\w-]+))*)|()")]
 pub struct AnnotationsParse(Vec<Annotation>);
 
 impl From<AnnotationsParse> for Vec<Annotation> {

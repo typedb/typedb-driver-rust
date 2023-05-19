@@ -111,7 +111,7 @@ generic_step_impl! {
     }
 
     #[step(expr = r"attribute\(( ){label}( )\) set supertype: {label}")]
-    async fn attribute_set_supertype(
+    async fn attribute_type_set_supertype(
         context: &mut Context,
         type_label: LabelParse,
         supertype_label: LabelParse,
@@ -122,16 +122,16 @@ generic_step_impl! {
     }
 
     #[step(expr = r"attribute\(( ){label}( )\) set supertype: {label}; throws exception")]
-    async fn attribute_set_supertype_throws(
+    async fn attribute_type_set_supertype_throws(
         context: &mut Context,
         type_label: LabelParse,
         supertype_label: LabelParse,
     ) {
-        assert!(attribute_set_supertype(context, type_label, supertype_label).await.is_err())
+        assert!(attribute_type_set_supertype(context, type_label, supertype_label).await.is_err())
     }
 
     #[step(expr = r"attribute\(( ){label}( )\) get supertype: {label}")]
-    async fn attribute_get_supertype(
+    async fn attribute_type_get_supertype(
         context: &mut Context,
         type_label: LabelParse,
         supertype: LabelParse,
@@ -142,19 +142,15 @@ generic_step_impl! {
     }
 
     #[step(expr = r"attribute\(( ){label}( )\) get supertypes {maybe_contain}:")]
-    async fn attribute_get_supertypes(
+    async fn attribute_type_get_supertypes(
         context: &mut Context,
         step: &Step,
         type_label: LabelParse,
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let actuals = get_attribute_type(tx, type_label.into())
-            .await?
-            .get_supertypes(tx)?
-            .map_ok(|at| at.label)
-            .try_collect::<Vec<_>>()
-            .await?;
+        let attribute_type = get_attribute_type(tx, type_label.into()).await?;
+        let actuals: Vec<String> = attribute_type.get_supertypes(tx)?.map_ok(|at| at.label).try_collect().await?;
         for supertype in iter_table(step) {
             containment.assert(&actuals, supertype);
         }
@@ -162,19 +158,15 @@ generic_step_impl! {
     }
 
     #[step(expr = r"attribute\(( ){label}( )\) get subtypes {maybe_contain}:")]
-    async fn attribute_get_subtypes(
+    async fn attribute_type_get_subtypes(
         context: &mut Context,
         step: &Step,
         type_label: LabelParse,
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let actuals = get_attribute_type(tx, type_label.into())
-            .await?
-            .get_subtypes(tx)?
-            .map_ok(|at| at.label)
-            .try_collect::<Vec<_>>()
-            .await?;
+        let attribute_type = get_attribute_type(tx, type_label.into()).await?;
+        let actuals = attribute_type.get_subtypes(tx)?.map_ok(|at| at.label).try_collect::<Vec<_>>().await?;
         for subtype in iter_table(step) {
             containment.assert(&actuals, subtype);
         }
@@ -192,6 +184,7 @@ generic_step_impl! {
         let tx = context.transaction();
         let mut attribute_type = get_attribute_type(tx, type_label.into()).await?;
         let owned_attribute_type = get_attribute_type(tx, owned_attribute_type_label.into()).await?;
+        // FIXME cleanup
         let overridden_attribute_type = if let Some(label) = overridden_attribute_type_label.name {
             Some(get_attribute_type(tx, label).await?)
         } else {
@@ -308,11 +301,8 @@ generic_step_impl! {
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut attribute_type = get_attribute_type(tx, type_label.into()).await?;
-        let role = get_relation_type(tx, role_label.scope)
-            .await?
-            .get_relates_for_role_label(tx, role_label.name)
-            .await?
-            .unwrap();
+        let relation_type = get_relation_type(tx, role_label.scope).await?;
+        let role = relation_type.get_relates_for_role_label(tx, role_label.name).await?.unwrap();
         let overridden_role =
             if let OverrideScopedLabelParse { scope: Some(scope), name: Some(name) } = overridden_role_label {
                 Some(get_relation_type(tx, scope).await?.get_relates_for_role_label(tx, name).await?.unwrap())
@@ -342,11 +332,8 @@ generic_step_impl! {
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut attribute_type = get_attribute_type(tx, type_label.into()).await?;
-        let role = get_relation_type(tx, role_label.scope)
-            .await?
-            .get_relates_for_role_label(tx, role_label.name)
-            .await?
-            .unwrap();
+        let relation_type = get_relation_type(tx, role_label.scope).await?;
+        let role = relation_type.get_relates_for_role_label(tx, role_label.name).await?.unwrap();
         attribute_type.unset_plays(tx, role).await
     }
 
@@ -375,6 +362,134 @@ generic_step_impl! {
             let role_label: ScopedLabel = role_label.parse::<ScopedLabelParse>().unwrap().into();
             containment.assert(&actuals, &role_label);
         }
+        Ok(())
+    }
+
+    #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) get subtypes {maybe_contain}:")]
+    async fn attribute_type_get_subtypes_as_value_type(
+        context: &mut Context,
+        step: &Step,
+        type_label: LabelParse,
+        value_type: ValueTypeParse,
+        containment: ContainmentParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let attribute_type = get_attribute_type(tx, type_label.into()).await?;
+        let actuals: Vec<String> = attribute_type
+            .get_subtypes_with_value_type(tx, value_type.into())?
+            .map_ok(|at| at.label)
+            .try_collect()
+            .await?;
+        for subtype in iter_table(step) {
+            containment.assert(&actuals, subtype);
+        }
+        Ok(())
+    }
+
+    #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) set regex: {}")]
+    async fn attribute_type_set_regex(
+        context: &mut Context,
+        type_label: LabelParse,
+        value_type: ValueTypeParse,
+        regex: String,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let attribute_type = get_attribute_type(tx, type_label.into()).await?;
+        assert_eq!(attribute_type.value_type, value_type.into());
+        attribute_type.set_regex(tx, regex).await
+    }
+
+    #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) set regex: {}; throws exception")]
+    async fn attribute_type_set_regex_throws(
+        context: &mut Context,
+        type_label: LabelParse,
+        value_type: ValueTypeParse,
+        regex: String,
+    ) {
+        assert!(attribute_type_set_regex(context, type_label, value_type, regex).await.is_err())
+    }
+
+    #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) unset regex")]
+    async fn attribute_type_unset_regex(
+        context: &mut Context,
+        type_label: LabelParse,
+        value_type: ValueTypeParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let attribute_type = get_attribute_type(tx, type_label.into()).await?;
+        assert_eq!(attribute_type.value_type, value_type.into());
+        attribute_type.unset_regex(tx).await
+    }
+
+    #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) get regex: {}")]
+    async fn attribute_type_get_regex(
+        context: &mut Context,
+        type_label: LabelParse,
+        value_type: ValueTypeParse,
+        regex: String,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let attribute_type = get_attribute_type(tx, type_label.into()).await?;
+        assert_eq!(attribute_type.value_type, value_type.into());
+        assert_eq!(attribute_type.get_regex(tx).await?, regex);
+        Ok(())
+    }
+
+    #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) does not have any regex")]
+    async fn attribute_type_no_regex(
+        context: &mut Context,
+        type_label: LabelParse,
+        value_type: ValueTypeParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let attribute_type = get_attribute_type(tx, type_label.into()).await?;
+        assert_eq!(attribute_type.value_type, value_type.into());
+        assert!(attribute_type.get_regex(tx).await?.is_empty());
+        Ok(())
+    }
+
+    #[step(expr = r"attribute\(( ){label}( )) get owners{maybe_explicit}{annotations}(;) {maybe_contain}:")]
+    async fn attribute_type_get_owners(
+        context: &mut Context,
+        step: &Step,
+        type_label: LabelParse,
+        transitivity: TransitivityParse,
+        annotations: AnnotationsParse,
+        containment: ContainmentParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let attribute_type = get_attribute_type(tx, type_label.into()).await?;
+        let actuals: Vec<String> = attribute_type
+            .get_owners(tx, transitivity.into(), annotations.into())?
+            .map_ok(|t| t.label().to_owned())
+            .try_collect()
+            .await?;
+        for owner in iter_table(step) {
+            containment.assert(&actuals, owner);
+        }
+        Ok(())
+    }
+
+    #[step(expr = r"attribute\(( ){label}( )) get supertype value type: {value_type}")]
+    async fn attribute_type_get_supertype_value_type(
+        context: &mut Context,
+        type_label: LabelParse,
+        value_type: ValueTypeParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let supertype = get_attribute_type(tx, type_label.into()).await?.get_supertype(tx).await?;
+        assert_eq!(supertype.value_type, value_type.into());
+        Ok(())
+    }
+
+    #[step(expr = r"attribute\(( ){label}( )) get value type: {value_type}")]
+    async fn attribute_type_get_value_type(
+        context: &mut Context,
+        type_label: LabelParse,
+        value_type: ValueTypeParse,
+    ) -> TypeDBResult {
+        let attribute_type = get_attribute_type(context.transaction(), type_label.into()).await?;
+        assert_eq!(attribute_type.value_type, value_type.into());
         Ok(())
     }
 }

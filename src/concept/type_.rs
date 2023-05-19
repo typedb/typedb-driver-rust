@@ -526,6 +526,14 @@ impl AttributeType {
         transaction.concept().attribute_type_get_subtypes(self.clone(), Transitivity::Transitive, Some(self.value_type))
     }
 
+    pub fn get_subtypes_with_value_type(
+        &self,
+        transaction: &Transaction<'_>,
+        value_type: ValueType,
+    ) -> Result<impl Stream<Item = Result<Self>>> {
+        transaction.concept().attribute_type_get_subtypes(self.clone(), Transitivity::Transitive, Some(value_type))
+    }
+
     pub fn get_instances(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<Attribute>>> {
         transaction.concept().attribute_type_get_instances(
             self.clone(),
@@ -542,6 +550,10 @@ impl AttributeType {
         transaction.concept().attribute_type_set_regex(self.clone(), regex).await
     }
 
+    pub async fn unset_regex(&self, transaction: &Transaction<'_>) -> Result {
+        self.set_regex(transaction, String::new()).await
+    }
+
     pub fn get_owners(
         &self,
         transaction: &Transaction<'_>,
@@ -552,7 +564,7 @@ impl AttributeType {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ValueType {
     Object,
     Boolean,
