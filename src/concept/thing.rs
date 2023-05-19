@@ -55,6 +55,10 @@ impl Entity {
         Self { iid, type_ }
     }
 
+    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_entity(self.iid.clone()).await.map(|res| res.is_none())
+    }
+
     pub async fn delete(&self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().thing_delete(Thing::Entity(self.clone())).await
     }
@@ -97,6 +101,10 @@ pub struct Relation {
 impl Relation {
     pub fn new(iid: IID, type_: RelationType) -> Self {
         Self { iid, type_ }
+    }
+
+    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_relation(self.iid.clone()).await.map(|res| res.is_none())
     }
 
     pub async fn delete(&self, transaction: &Transaction<'_>) -> Result {
@@ -187,6 +195,10 @@ pub struct Attribute {
 impl Attribute {
     pub fn new(iid: IID, type_: AttributeType, value: Value) -> Self {
         Self { iid, type_, value }
+    }
+
+    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_attribute(self.iid.clone()).await.map(|res| res.is_none())
     }
 
     pub async fn delete(&self, transaction: &Transaction<'_>) -> Result {
