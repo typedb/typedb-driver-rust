@@ -28,25 +28,25 @@ use typedb_client::{
 use crate::{
     behaviour::{
         concept::common::{get_attribute_type, get_entity_type},
+        parameter::LabelParse,
         Context,
     },
     generic_step_impl,
 };
 
 generic_step_impl! {
-// mod a { use super::*;
     #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance$")]
     async fn entity_type_create_new_instance(context: &mut Context, var: String, type_label: String) -> TypeDBResult {
         let tx = context.transaction();
         let entity = get_entity_type(tx, type_label).await?.create(tx).await?;
-        context.things.insert(var, Thing::Entity(entity));
+        context.things.insert(var, Some(Thing::Entity(entity)));
         Ok(())
     }
 
-    #[step(regex = r"^entity\( ?(\S+) ?\) create new instance; throws exception$")]
-    async fn entity_type_create_new_instance_throws(context: &mut Context, type_label: String) {
+    #[step(expr = r"entity\(( ){label}( )\) create new instance; throws exception")]
+    async fn entity_type_create_new_instance_throws(context: &mut Context, type_label: LabelParse) {
         // FIXME ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v
-        assert!(entity_type_create_new_instance(context, "".to_owned(), type_label).await.is_err());
+        assert!(entity_type_create_new_instance(context, "".to_owned(), type_label.name).await.is_err());
     }
 
     #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance with key\((\S+)\): (\S+)$")]
@@ -59,9 +59,10 @@ generic_step_impl! {
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = get_entity_type(tx, type_label).await?.create(tx).await?;
-        let attribute = get_attribute_type(tx, attribute_type_label).await?.put(tx, Value::String(attribute_value)).await?;
+        let attribute =
+            get_attribute_type(tx, attribute_type_label).await?.put(tx, Value::String(attribute_value)).await?;
         entity.set_has(tx, attribute).await?;
-        context.things.insert(var, Thing::Entity(entity));
+        context.things.insert(var, Some(Thing::Entity(entity)));
         Ok(())
     }
 }

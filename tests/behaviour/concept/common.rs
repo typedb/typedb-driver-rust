@@ -20,9 +20,11 @@
  */
 
 use typedb_client::{
-    concept::{AttributeType, EntityType, RelationType},
+    concept::{Attribute, AttributeType, EntityType, RelationType, Thing},
     Result as TypeDBResult, Transaction,
 };
+
+use crate::behaviour::Context;
 
 pub(super) async fn get_entity_type(tx: &Transaction<'_>, type_label: String) -> TypeDBResult<EntityType> {
     tx.concept().get_entity_type(type_label).await.map(|entity_type| {
@@ -43,4 +45,12 @@ pub(super) async fn get_attribute_type(tx: &Transaction<'_>, type_label: String)
         assert!(attribute_type.is_some());
         attribute_type.unwrap()
     })
+}
+
+pub(super) fn get_attribute(context: &Context, var_name: String) -> &Attribute {
+    assert!(context.things.contains_key(&var_name));
+    let thing = context.things.get(&var_name).unwrap();
+    assert!(matches!(thing, Some(Thing::Attribute(_))));
+    let Some(Thing::Attribute(attribute)) = thing else { unreachable!() };
+    attribute
 }

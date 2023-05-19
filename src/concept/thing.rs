@@ -185,7 +185,7 @@ impl Relation {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Attribute {
     pub iid: IID,
     pub type_: AttributeType,
@@ -243,7 +243,7 @@ impl Attribute {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Boolean(bool),
     Long(i64),

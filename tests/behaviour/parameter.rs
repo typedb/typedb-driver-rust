@@ -21,9 +21,10 @@
 
 use std::{borrow::Borrow, convert::Infallible, fmt, str::FromStr};
 
+use chrono::NaiveDateTime;
 use cucumber::Parameter;
 use typedb_client::{
-    concept::{ScopedLabel, ValueType},
+    concept::{ScopedLabel, Value, ValueType},
     Annotation, TransactionType, Transitivity,
 };
 
@@ -50,6 +51,33 @@ impl FromStr for ContainmentParse {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(s == "contain"))
+    }
+}
+
+#[derive(Clone, Debug, Parameter)]
+#[param(name = "value", regex = r".+")]
+pub struct ValueParse(String);
+
+impl ValueParse {
+    pub fn into_value(self, value_type: ValueType) -> Value {
+        match value_type {
+            ValueType::Boolean => Value::Boolean(self.0.parse().unwrap()),
+            ValueType::Double => Value::Double(self.0.parse().unwrap()),
+            ValueType::Long => Value::Long(self.0.parse().unwrap()),
+            ValueType::String => Value::String(self.0),
+            ValueType::DateTime => {
+                Value::DateTime(NaiveDateTime::parse_from_str(&self.0, "%Y-%m-%d %H:%M:%S").unwrap())
+            }
+            ValueType::Object => unreachable!(),
+        }
+    }
+}
+
+impl FromStr for ValueParse {
+    type Err = Infallible;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Ok(Self(value.to_owned()))
     }
 }
 
@@ -118,6 +146,27 @@ impl FromStr for TransactionTypeParse {
             "read" => Self(TransactionType::Read),
             _ => unreachable!("`{type_}` is not a valid transaction type"),
         })
+    }
+}
+
+#[derive(Clone, Debug, Parameter)]
+#[param(name = "var", regex = r"\$([\w_-]+)")]
+pub struct VarParse {
+    pub name: String,
+}
+
+impl From<VarParse> for String {
+    fn from(val: VarParse) -> Self {
+        let VarParse { name } = val;
+        name
+    }
+}
+
+impl FromStr for VarParse {
+    type Err = Infallible;
+
+    fn from_str(name: &str) -> Result<Self, Self::Err> {
+        Ok(Self { name: name.to_owned() })
     }
 }
 

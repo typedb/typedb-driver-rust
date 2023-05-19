@@ -39,7 +39,7 @@ pub struct Context {
     pub connection: Connection,
     pub databases: DatabaseManager,
     pub session_trackers: Vec<SessionTracker>,
-    pub things: HashMap<String, Thing>,
+    pub things: HashMap<String, Option<Thing>>,
 }
 
 impl Context {

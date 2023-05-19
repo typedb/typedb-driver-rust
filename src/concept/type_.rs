@@ -381,7 +381,7 @@ impl RelationType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AttributeType {
     pub label: String,
     pub is_root: bool,
