@@ -80,7 +80,7 @@ generic_step_impl! {
         let actuals: Vec<Attribute> = attribute_type.get_instances(tx)?.try_collect().await?;
         let attribute = get_attribute(context, var.name);
         containment.assert(&actuals, attribute);
-		Ok(())
+        Ok(())
     }
 
     // #[step(expr = "attribute {var} get owners {maybe_contain}: {var}")]

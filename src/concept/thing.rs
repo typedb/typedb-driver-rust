@@ -139,49 +139,31 @@ impl Relation {
         transaction.concept().thing_get_playing(Thing::Relation(self.clone()))
     }
 
-    pub async fn add_player(
-        &self,
-        transaction: &Transaction<'_>,
-        relation: Relation,
-        role_type: RoleType,
-        player: Thing,
-    ) -> Result {
-        transaction.concept().relation_add_player(relation, role_type, player).await
+    pub async fn add_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
+        transaction.concept().relation_add_player(self.clone(), role_type, player).await
     }
 
-    pub async fn remove_player(
-        &self,
-        transaction: &Transaction<'_>,
-        relation: Relation,
-        role_type: RoleType,
-        player: Thing,
-    ) -> Result {
-        transaction.concept().relation_remove_player(relation, role_type, player).await
+    pub async fn remove_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
+        transaction.concept().relation_remove_player(self.clone(), role_type, player).await
     }
 
     pub fn get_players(
         &self,
         transaction: &Transaction<'_>,
-        relation: Relation,
         role_types: Vec<RoleType>,
     ) -> Result<impl Stream<Item = Result<Thing>>> {
-        transaction.concept().relation_get_players(relation, role_types)
+        transaction.concept().relation_get_players(self.clone(), role_types)
     }
 
     pub fn get_players_by_role_type(
         &self,
         transaction: &Transaction<'_>,
-        relation: Relation,
     ) -> Result<impl Stream<Item = Result<(RoleType, Thing)>>> {
-        transaction.concept().relation_get_players_by_role_type(relation)
+        transaction.concept().relation_get_players_by_role_type(self.clone())
     }
 
-    pub fn get_relating(
-        &self,
-        transaction: &Transaction<'_>,
-        relation: Relation,
-    ) -> Result<impl Stream<Item = Result<RoleType>>> {
-        transaction.concept().relation_get_relating(relation)
+    pub fn get_relating(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<RoleType>>> {
+        transaction.concept().relation_get_relating(self.clone())
     }
 }
 
@@ -236,10 +218,9 @@ impl Attribute {
     pub fn get_owners(
         &self,
         transaction: &Transaction<'_>,
-        attribute: Attribute,
         filter: Option<ThingType>,
     ) -> Result<impl Stream<Item = Result<Thing>>> {
-        transaction.concept().attribute_get_owners(attribute, filter)
+        transaction.concept().attribute_get_owners(self.clone(), filter)
     }
 }
 

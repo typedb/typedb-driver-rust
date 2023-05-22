@@ -28,7 +28,7 @@ use typedb_client::{
 use crate::{
     behaviour::{
         concept::common::{get_attribute_type, get_entity_type},
-        parameter::LabelParse,
+        parameter::{LabelParse, ValueParse, VarParse},
         Context,
     },
     generic_step_impl,
@@ -49,20 +49,20 @@ generic_step_impl! {
         assert!(entity_type_create_new_instance(context, "".to_owned(), type_label.name).await.is_err());
     }
 
-    #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance with key\((\S+)\): (\S+)$")]
+    #[step(expr = r"{var} = entity\(( ){label}( )\) create new instance with key\({label}\): {value}")]
     async fn entity_type_create_new_instance_with_key(
         context: &mut Context,
-        var: String,
-        type_label: String,
-        attribute_type_label: String,
-        attribute_value: String,
+        var: VarParse,
+        type_label: LabelParse,
+        attribute_type_label: LabelParse,
+        value: ValueParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = get_entity_type(tx, type_label).await?.create(tx).await?;
-        let attribute =
-            get_attribute_type(tx, attribute_type_label).await?.put(tx, Value::String(attribute_value)).await?;
+        let entity = get_entity_type(tx, type_label.name).await?.create(tx).await?;
+        let attribute_type = get_attribute_type(tx, attribute_type_label.name).await?;
+        let attribute = attribute_type.put(tx, value.into_value(attribute_type.value_type)).await?;
         entity.set_has(tx, attribute).await?;
-        context.things.insert(var, Some(Thing::Entity(entity)));
+        context.things.insert(var.name, Some(Thing::Entity(entity)));
         Ok(())
     }
 }

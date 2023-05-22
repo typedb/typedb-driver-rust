@@ -843,7 +843,7 @@ impl TransactionStream {
         player: Thing,
     ) -> Result {
         match self.thing_single(ThingRequest::RelationRemovePlayer { relation, role_type, player }).await? {
-            ThingResponse::RelationAddPlayer {} => Ok(()),
+            ThingResponse::RelationRemovePlayer {} => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
