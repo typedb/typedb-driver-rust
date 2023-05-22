@@ -209,7 +209,7 @@ generic_step_impl! {
         let entity = get_entity(context, var.name);
         let actuals: Vec<Relation> = entity.get_relations(tx, vec![])?.try_collect().await?;
         let expected = get_relation(context, relation_var.name);
-        containment.assert(&actuals, &expected);
+        containment.assert(&actuals, expected);
         Ok(())
     }
 
@@ -227,7 +227,7 @@ generic_step_impl! {
         let role_type = relation_type.get_relates_for_role_label(tx, role_label.name).await?.unwrap();
         let actuals: Vec<Relation> = entity.get_relations(tx, vec![role_type])?.try_collect().await?;
         let expected = get_relation(context, relation_var.name);
-        containment.assert(&actuals, &expected);
+        containment.assert(&actuals, expected);
         Ok(())
     }
 }

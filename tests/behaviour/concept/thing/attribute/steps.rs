@@ -52,22 +52,6 @@ generic_step_impl! {
         get_attribute(context, var.name).delete(context.transaction()).await
     }
 
-    // #[step(expr = "attribute {var} set has: {var}")]
-
-    // #[step(expr = "attribute {var} set has: {var}; throws exception")]
-
-    // #[step(expr = "attribute {var} unset has: {var}")]
-
-    // #[step(expr = "attribute {var} get keys {maybe_contain}: {var}")]
-
-    // #[step(expr = "attribute {var} get attributes {maybe_contain}: {var}")]
-
-    // #[step(expr = r"attribute {var} get attributes\(( ){label}( )\){maybe_value_type} {maybe_contain}: {var}")]
-
-    // #[step(expr = r"attribute {var} get relations\(( ){scoped_label}( )\) {maybe_contain}: {var}")]
-
-    // #[step(expr = "attribute {var} get relations {maybe_contain}: {var}")]
-
     #[step(expr = r"attribute\(( ){label}( )\) get instances {maybe_contain}: {var}")]
     async fn attribute_get_instances_contain(
         context: &mut Context,
