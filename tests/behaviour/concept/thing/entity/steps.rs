@@ -28,9 +28,6 @@ use typedb_client::{
 
 use crate::{
     behaviour::{
-        concept::common::{
-            get_attribute, get_attribute_type, get_entity, get_entity_type, get_relation, get_relation_type,
-        },
         parameter::{AsValueTypeParse, ContainmentParse, LabelParse, ScopedLabelParse, ValueParse, VarParse},
         Context,
     },
@@ -40,24 +37,25 @@ use crate::{
 generic_step_impl! {
     #[step(expr = "entity {var} is deleted: {word}")]
     async fn entity_is_deleted(context: &mut Context, var: VarParse, is_deleted: bool) -> TypeDBResult {
-        assert_eq!(get_entity(context, var.name).is_deleted(context.transaction()).await?, is_deleted);
+        assert_eq!(context.get_entity(var.name).is_deleted(context.transaction()).await?, is_deleted);
         Ok(())
     }
 
     #[step(expr = "entity {var} has type: {label}")]
     async fn entity_has_type(context: &mut Context, var: VarParse, type_label: LabelParse) {
-        assert_eq!(get_entity(context, var.name).type_.label, type_label.name);
+        assert_eq!(context.get_entity(var.name).type_.label, type_label.name);
     }
 
     #[step(expr = "delete entity: {var}")]
     async fn delete_entity(context: &mut Context, var: VarParse) -> TypeDBResult {
-        get_entity(context, var.name).delete(context.transaction()).await
+        context.get_entity(var.name).delete(context.transaction()).await
     }
 
     #[step(expr = "entity {var} set has: {var}")]
     async fn entity_set_has(context: &mut Context, var: VarParse, attribute_var: VarParse) -> TypeDBResult {
-        get_entity(context, var.name)
-            .set_has(context.transaction(), get_attribute(context, attribute_var.name).clone())
+        context
+            .get_entity(var.name)
+            .set_has(context.transaction(), context.get_attribute(attribute_var.name).clone())
             .await
     }
 
@@ -68,8 +66,9 @@ generic_step_impl! {
 
     #[step(expr = "entity {var} unset has: {var}")]
     async fn entity_unset_has(context: &mut Context, var: VarParse, attribute_var: VarParse) -> TypeDBResult {
-        get_entity(context, var.name)
-            .unset_has(context.transaction(), get_attribute(context, attribute_var.name).clone())
+        context
+            .get_entity(var.name)
+            .unset_has(context.transaction(), context.get_attribute(attribute_var.name).clone())
             .await
     }
 
@@ -81,10 +80,10 @@ generic_step_impl! {
         attribute_var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = get_entity(context, var.name);
+        let entity = context.get_entity(var.name);
         let actuals: Vec<Attribute> =
             entity.get_has(tx, HasFilter::Annotations(vec![Annotation::Key]))?.try_collect().await?;
-        let attribute = get_attribute(context, attribute_var.name);
+        let attribute = context.get_attribute(attribute_var.name);
         containment.assert(&actuals, attribute);
         Ok(())
     }
@@ -97,9 +96,9 @@ generic_step_impl! {
         attribute_var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = get_entity(context, var.name);
+        let entity = context.get_entity(var.name);
         let actuals: Vec<Attribute> = entity.get_has(tx, HasFilter::None)?.try_collect().await?;
-        let attribute = get_attribute(context, attribute_var.name);
+        let attribute = context.get_attribute(attribute_var.name);
         containment.assert(&actuals, attribute);
         Ok(())
     }
@@ -114,14 +113,14 @@ generic_step_impl! {
         attribute_var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = get_entity(context, var.name);
-        let attribute_type = get_attribute_type(tx, type_label.name).await?;
+        let entity = context.get_entity(var.name);
+        let attribute_type = context.get_attribute_type(type_label.name).await?;
         if let Some(value_type) = value_type.0 {
             assert_eq!(attribute_type.value_type, value_type);
         }
         let actuals: Vec<Attribute> =
             entity.get_has(tx, HasFilter::AttributeTypes(vec![attribute_type]))?.try_collect().await?;
-        let attribute = get_attribute(context, attribute_var.name);
+        let attribute = context.get_attribute(attribute_var.name);
         containment.assert(&actuals, attribute);
         Ok(())
     }
@@ -129,7 +128,7 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) get instances is empty")]
     async fn entity_type_get_instances_is_empty(context: &mut Context, type_label: LabelParse) -> TypeDBResult {
         let tx = context.transaction();
-        let entity_type = get_entity_type(tx, type_label.into()).await?;
+        let entity_type = context.get_entity_type(type_label.into()).await?;
         assert!(entity_type.get_instances(tx)?.next().await.is_none());
         Ok(())
     }
@@ -142,9 +141,9 @@ generic_step_impl! {
         var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity_type = get_entity_type(tx, type_label.into()).await?;
+        let entity_type = context.get_entity_type(type_label.into()).await?;
         let actuals: Vec<Entity> = entity_type.get_instances(tx)?.try_collect().await?;
-        let entity = get_entity(context, var.name);
+        let entity = context.get_entity(var.name);
         containment.assert(&actuals, entity);
         Ok(())
     }
@@ -152,8 +151,8 @@ generic_step_impl! {
     #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance$")]
     async fn entity_type_create_new_instance(context: &mut Context, var: String, type_label: String) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = get_entity_type(tx, type_label).await?.create(tx).await?;
-        context.things.insert(var, Some(Thing::Entity(entity)));
+        let entity = context.get_entity_type(type_label).await?.create(tx).await?;
+        context.insert_entity(var, Some(entity));
         Ok(())
     }
 
@@ -172,11 +171,11 @@ generic_step_impl! {
         value: ValueParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = get_entity_type(tx, type_label.name).await?.create(tx).await?;
-        let attribute_type = get_attribute_type(tx, attribute_type_label.name).await?;
+        let entity = context.get_entity_type(type_label.name).await?.create(tx).await?;
+        let attribute_type = context.get_attribute_type(attribute_type_label.name).await?;
         let attribute = attribute_type.put(tx, value.into_value(attribute_type.value_type)).await?;
         entity.set_has(tx, attribute).await?;
-        context.things.insert(var.name, Some(Thing::Entity(entity)));
+        context.insert_entity(var.name, Some(entity));
         Ok(())
     }
 
@@ -189,12 +188,12 @@ generic_step_impl! {
         value: ValueParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let attribute_type = get_attribute_type(tx, attribute_type_label.name).await?;
+        let attribute_type = context.get_attribute_type(attribute_type_label.name).await?;
         let attribute = attribute_type.get(tx, value.into_value(attribute_type.value_type)).await?.unwrap();
-        let entity_type = get_entity_type(tx, type_label.name).await?;
-        let entities: Vec<_> =
+        let entity_type = context.get_entity_type(type_label.name).await?;
+        let entities: Vec<Thing> =
             attribute.get_owners(tx, Some(ThingType::EntityType(entity_type)))?.try_collect().await?;
-        context.things.insert(var.name, entities.into_iter().next());
+        context.insert_thing(var.name, entities.into_iter().next());
         Ok(())
     }
 
@@ -206,9 +205,9 @@ generic_step_impl! {
         relation_var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = get_entity(context, var.name);
+        let entity = context.get_entity(var.name);
         let actuals: Vec<Relation> = entity.get_relations(tx, vec![])?.try_collect().await?;
-        let expected = get_relation(context, relation_var.name);
+        let expected = context.get_relation(relation_var.name);
         containment.assert(&actuals, expected);
         Ok(())
     }
@@ -222,11 +221,11 @@ generic_step_impl! {
         relation_var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = get_entity(context, var.name);
-        let relation_type = get_relation_type(tx, role_label.scope).await?;
+        let entity = context.get_entity(var.name);
+        let relation_type = context.get_relation_type(role_label.scope).await?;
         let role_type = relation_type.get_relates_for_role_label(tx, role_label.name).await?.unwrap();
         let actuals: Vec<Relation> = entity.get_relations(tx, vec![role_type])?.try_collect().await?;
-        let expected = get_relation(context, relation_var.name);
+        let expected = context.get_relation(relation_var.name);
         containment.assert(&actuals, expected);
         Ok(())
     }

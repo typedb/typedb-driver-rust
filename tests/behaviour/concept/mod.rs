@@ -19,6 +19,5 @@
  * under the License.
  */
 
-mod common;
 mod thing;
 mod type_;
