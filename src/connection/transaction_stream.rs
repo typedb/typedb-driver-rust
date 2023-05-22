@@ -233,13 +233,13 @@ impl TransactionStream {
         thing_type: ThingType,
         value_type: Option<ValueType>,
         transitivity: Transitivity,
-        annotation_filter: Vec<Annotation>,
+        annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
         let stream = self.thing_type_stream(ThingTypeRequest::ThingTypeGetOwns {
             thing_type,
             value_type,
             transitivity,
-            annotation_filter,
+            annotations,
         })?;
         Ok(stream.flat_map(|result| match result {
             Ok(ThingTypeResponse::ThingTypeGetOwns { attribute_types }) => {
@@ -357,7 +357,7 @@ impl TransactionStream {
 
     pub(crate) async fn entity_type_get_supertype(&self, entity_type: EntityType) -> Result<EntityType> {
         match self.thing_type_single(ThingTypeRequest::EntityTypeGetSupertype { entity_type }).await? {
-            ThingTypeResponse::EntityTypeGetSupertype { supertype: entity_type } => Ok(entity_type),
+            ThingTypeResponse::EntityTypeGetSupertype { entity_type } => Ok(entity_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
@@ -375,7 +375,7 @@ impl TransactionStream {
     ) -> Result<impl Stream<Item = Result<EntityType>>> {
         let stream = self.thing_type_stream(ThingTypeRequest::EntityTypeGetSupertypes { entity_type })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(ThingTypeResponse::EntityTypeGetSupertypes { supertypes: entity_types }) => {
+            Ok(ThingTypeResponse::EntityTypeGetSupertypes { entity_types }) => {
                 stream_iter(entity_types.into_iter().map(Ok))
             }
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
@@ -390,7 +390,7 @@ impl TransactionStream {
     ) -> Result<impl Stream<Item = Result<EntityType>>> {
         let stream = self.thing_type_stream(ThingTypeRequest::EntityTypeGetSubtypes { entity_type, transitivity })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(ThingTypeResponse::EntityTypeGetSubtypes { subtypes: entity_types }) => {
+            Ok(ThingTypeResponse::EntityTypeGetSubtypes { entity_types }) => {
                 stream_iter(entity_types.into_iter().map(Ok))
             }
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
@@ -420,7 +420,7 @@ impl TransactionStream {
 
     pub(crate) async fn relation_type_get_supertype(&self, relation_type: RelationType) -> Result<RelationType> {
         match self.thing_type_single(ThingTypeRequest::RelationTypeGetSupertype { relation_type }).await? {
-            ThingTypeResponse::RelationTypeGetSupertype { supertype: relation_type } => Ok(relation_type),
+            ThingTypeResponse::RelationTypeGetSupertype { relation_type } => Ok(relation_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
@@ -442,7 +442,7 @@ impl TransactionStream {
     ) -> Result<impl Stream<Item = Result<RelationType>>> {
         let stream = self.thing_type_stream(ThingTypeRequest::RelationTypeGetSupertypes { relation_type })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(ThingTypeResponse::RelationTypeGetSupertypes { supertypes: relation_types }) => {
+            Ok(ThingTypeResponse::RelationTypeGetSupertypes { relation_types }) => {
                 stream_iter(relation_types.into_iter().map(Ok))
             }
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
@@ -458,7 +458,7 @@ impl TransactionStream {
         let stream =
             self.thing_type_stream(ThingTypeRequest::RelationTypeGetSubtypes { relation_type, transitivity })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(ThingTypeResponse::RelationTypeGetSubtypes { subtypes: relation_types }) => {
+            Ok(ThingTypeResponse::RelationTypeGetSubtypes { relation_types }) => {
                 stream_iter(relation_types.into_iter().map(Ok))
             }
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
@@ -571,7 +571,7 @@ impl TransactionStream {
 
     pub(crate) async fn attribute_type_get_supertype(&self, attribute_type: AttributeType) -> Result<AttributeType> {
         match self.thing_type_single(ThingTypeRequest::AttributeTypeGetSupertype { attribute_type }).await? {
-            ThingTypeResponse::AttributeTypeGetSupertype { supertype: attribute_type } => Ok(attribute_type),
+            ThingTypeResponse::AttributeTypeGetSupertype { attribute_type } => Ok(attribute_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
@@ -593,7 +593,7 @@ impl TransactionStream {
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
         let stream = self.thing_type_stream(ThingTypeRequest::AttributeTypeGetSupertypes { attribute_type })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(ThingTypeResponse::AttributeTypeGetSupertypes { supertypes: attribute_types }) => {
+            Ok(ThingTypeResponse::AttributeTypeGetSupertypes { attribute_types }) => {
                 stream_iter(attribute_types.into_iter().map(Ok))
             }
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
@@ -613,7 +613,7 @@ impl TransactionStream {
             value_type,
         })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(ThingTypeResponse::AttributeTypeGetSubtypes { subtypes: attribute_types }) => {
+            Ok(ThingTypeResponse::AttributeTypeGetSubtypes { attribute_types }) => {
                 stream_iter(attribute_types.into_iter().map(Ok))
             }
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
@@ -691,7 +691,7 @@ impl TransactionStream {
 
     pub(crate) async fn role_type_get_supertype(&self, role_type: RoleType) -> Result<RoleType> {
         match self.role_type_single(RoleTypeRequest::GetSupertype { role_type }).await? {
-            RoleTypeResponse::GetSupertype { supertype: role_type } => Ok(role_type),
+            RoleTypeResponse::GetSupertype { role_type } => Ok(role_type),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
@@ -699,9 +699,7 @@ impl TransactionStream {
     pub(crate) fn role_type_get_supertypes(&self, role_type: RoleType) -> Result<impl Stream<Item = Result<RoleType>>> {
         let stream = self.role_type_stream(RoleTypeRequest::GetSupertypes { role_type })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(RoleTypeResponse::GetSupertypes { supertypes: role_types }) => {
-                stream_iter(role_types.into_iter().map(Ok))
-            }
+            Ok(RoleTypeResponse::GetSupertypes { role_types }) => stream_iter(role_types.into_iter().map(Ok)),
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
         }))
@@ -714,7 +712,7 @@ impl TransactionStream {
     ) -> Result<impl Stream<Item = Result<RoleType>>> {
         let stream = self.role_type_stream(RoleTypeRequest::GetSubtypes { role_type, transitivity })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(RoleTypeResponse::GetSubtypes { subtypes: role_types }) => stream_iter(role_types.into_iter().map(Ok)),
+            Ok(RoleTypeResponse::GetSubtypes { role_types }) => stream_iter(role_types.into_iter().map(Ok)),
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
         }))
@@ -741,7 +739,7 @@ impl TransactionStream {
     ) -> Result<impl Stream<Item = Result<ThingType>>> {
         let stream = self.role_type_stream(RoleTypeRequest::GetPlayerTypes { role_type, transitivity })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(RoleTypeResponse::GetPlayerTypes { player_types }) => stream_iter(player_types.into_iter().map(Ok)),
+            Ok(RoleTypeResponse::GetPlayerTypes { thing_types }) => stream_iter(thing_types.into_iter().map(Ok)),
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
         }))
@@ -767,7 +765,7 @@ impl TransactionStream {
     ) -> Result<impl Stream<Item = Result<Thing>>> {
         let stream = self.role_type_stream(RoleTypeRequest::GetPlayerInstances { role_type, transitivity })?;
         Ok(stream.flat_map(|result| match result {
-            Ok(RoleTypeResponse::GetPlayerInstances { players }) => stream_iter(players.into_iter().map(Ok)),
+            Ok(RoleTypeResponse::GetPlayerInstances { things }) => stream_iter(things.into_iter().map(Ok)),
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
             Err(err) => stream_once(Err(err)),
         }))

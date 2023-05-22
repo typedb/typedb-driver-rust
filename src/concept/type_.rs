@@ -93,13 +93,13 @@ impl EntityType {
         transaction: &Transaction<'_>,
         value_type: Option<ValueType>,
         transitivity: Transitivity,
-        annotation_filter: Vec<Annotation>,
+        annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
         transaction.concept().thing_type_get_owns(
             ThingType::EntityType(self.clone()),
             value_type,
             transitivity,
-            annotation_filter,
+            annotations,
         )
     }
 
@@ -237,13 +237,13 @@ impl RelationType {
         transaction: &Transaction<'_>,
         value_type: Option<ValueType>,
         transitivity: Transitivity,
-        annotation_filter: Vec<Annotation>,
+        annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
         transaction.concept().thing_type_get_owns(
             ThingType::RelationType(self.clone()),
             value_type,
             transitivity,
-            annotation_filter,
+            annotations,
         )
     }
 
@@ -419,13 +419,13 @@ impl AttributeType {
         transaction: &Transaction<'_>,
         value_type: Option<ValueType>,
         transitivity: Transitivity,
-        annotation_filter: Vec<Annotation>,
+        annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
         transaction.concept().thing_type_get_owns(
             ThingType::AttributeType(self.clone()),
             value_type,
             transitivity,
-            annotation_filter,
+            annotations,
         )
     }
 

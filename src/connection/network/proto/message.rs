@@ -500,11 +500,11 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
                 thing_type::req::Req::ThingTypeUnsetAbstractReq(thing_type::unset_abstract::Req {}),
                 thing_type.label().to_owned(),
             ),
-            Self::ThingTypeGetOwns { thing_type, value_type, transitivity, annotation_filter } => (
+            Self::ThingTypeGetOwns { thing_type, value_type, transitivity, annotations } => (
                 thing_type::req::Req::ThingTypeGetOwnsReq(thing_type::get_owns::Req {
                     filter: value_type.map(IntoProto::into_proto),
                     transitivity: transitivity.into_proto(),
-                    annotations: annotation_filter.into_iter().map(Annotation::into_proto).collect(),
+                    annotations: annotations.into_iter().map(Annotation::into_proto).collect(),
                 }),
                 thing_type.label().to_owned(),
             ),
@@ -730,7 +730,7 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
             }
             Some(thing_type::res::Res::EntityTypeGetSupertypeRes(entity_type::get_supertype::Res { entity_type })) => {
                 Ok(Self::EntityTypeGetSupertype {
-                    supertype: EntityType::from_proto(
+                    entity_type: EntityType::from_proto(
                         entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?,
                     ),
                 })
@@ -746,7 +746,7 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
             Some(thing_type::res::Res::RelationTypeGetSupertypeRes(relation_type::get_supertype::Res {
                 relation_type,
             })) => Ok(Self::RelationTypeGetSupertype {
-                supertype: RelationType::from_proto(
+                relation_type: RelationType::from_proto(
                     relation_type.ok_or(ConnectionError::MissingResponseField("relation_type"))?,
                 ),
             }),
@@ -772,7 +772,7 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
             Some(thing_type::res::Res::AttributeTypeGetSupertypeRes(attribute_type::get_supertype::Res {
                 attribute_type,
             })) => Ok(Self::AttributeTypeGetSupertype {
-                supertype: AttributeType::try_from_proto(
+                attribute_type: AttributeType::try_from_proto(
                     attribute_type.ok_or(ConnectionError::MissingResponseField("attribute_type"))?,
                 )?,
             }),
@@ -802,12 +802,12 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
             Some(thing_type::res_part::Res::EntityTypeGetSupertypesResPart(entity_type::get_supertypes::ResPart {
                 entity_types,
             })) => Ok(Self::EntityTypeGetSupertypes {
-                supertypes: entity_types.into_iter().map(EntityType::from_proto).collect(),
+                entity_types: entity_types.into_iter().map(EntityType::from_proto).collect(),
             }),
             Some(thing_type::res_part::Res::EntityTypeGetSubtypesResPart(entity_type::get_subtypes::ResPart {
                 entity_types,
             })) => Ok(Self::EntityTypeGetSubtypes {
-                subtypes: entity_types.into_iter().map(EntityType::from_proto).collect(),
+                entity_types: entity_types.into_iter().map(EntityType::from_proto).collect(),
             }),
             Some(thing_type::res_part::Res::EntityTypeGetInstancesResPart(entity_type::get_instances::ResPart {
                 entities,
@@ -817,12 +817,12 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
             Some(thing_type::res_part::Res::RelationTypeGetSupertypesResPart(
                 relation_type::get_supertypes::ResPart { relation_types },
             )) => Ok(Self::RelationTypeGetSupertypes {
-                supertypes: relation_types.into_iter().map(RelationType::from_proto).collect(),
+                relation_types: relation_types.into_iter().map(RelationType::from_proto).collect(),
             }),
             Some(thing_type::res_part::Res::RelationTypeGetSubtypesResPart(relation_type::get_subtypes::ResPart {
                 relation_types,
             })) => Ok(Self::RelationTypeGetSubtypes {
-                subtypes: relation_types.into_iter().map(RelationType::from_proto).collect(),
+                relation_types: relation_types.into_iter().map(RelationType::from_proto).collect(),
             }),
             Some(thing_type::res_part::Res::RelationTypeGetInstancesResPart(
                 relation_type::get_instances::ResPart { relations },
@@ -837,12 +837,12 @@ impl TryFromProto<thing_type::ResPart> for ThingTypeResponse {
             Some(thing_type::res_part::Res::AttributeTypeGetSupertypesResPart(
                 attribute_type::get_supertypes::ResPart { attribute_types },
             )) => Ok(Self::AttributeTypeGetSupertypes {
-                supertypes: attribute_types.into_iter().map(AttributeType::try_from_proto).try_collect()?,
+                attribute_types: attribute_types.into_iter().map(AttributeType::try_from_proto).try_collect()?,
             }),
             Some(thing_type::res_part::Res::AttributeTypeGetSubtypesResPart(
                 attribute_type::get_subtypes::ResPart { attribute_types },
             )) => Ok(Self::AttributeTypeGetSubtypes {
-                subtypes: attribute_types.into_iter().map(AttributeType::try_from_proto).try_collect()?,
+                attribute_types: attribute_types.into_iter().map(AttributeType::try_from_proto).try_collect()?,
             }),
             Some(thing_type::res_part::Res::AttributeTypeGetInstancesResPart(
                 attribute_type::get_instances::ResPart { attributes },
@@ -921,7 +921,7 @@ impl TryFromProto<role_type::Res> for RoleTypeResponse {
             Some(role_type::res::Res::RoleTypeSetLabelRes(_)) => Ok(Self::SetLabel),
             Some(role_type::res::Res::RoleTypeGetSupertypeRes(role_type::get_supertype::Res { role_type })) => {
                 Ok(Self::GetSupertype {
-                    supertype: RoleType::from_proto(
+                    role_type: RoleType::from_proto(
                         role_type.ok_or(ConnectionError::MissingResponseField("role_type"))?,
                     ),
                 })
@@ -936,10 +936,10 @@ impl TryFromProto<role_type::ResPart> for RoleTypeResponse {
         match proto.res {
             Some(role_type::res_part::Res::RoleTypeGetSupertypesResPart(role_type::get_supertypes::ResPart {
                 role_types,
-            })) => Ok(Self::GetSupertypes { supertypes: role_types.into_iter().map(RoleType::from_proto).collect() }),
+            })) => Ok(Self::GetSupertypes { role_types: role_types.into_iter().map(RoleType::from_proto).collect() }),
             Some(role_type::res_part::Res::RoleTypeGetSubtypesResPart(role_type::get_subtypes::ResPart {
                 role_types,
-            })) => Ok(Self::GetSubtypes { subtypes: role_types.into_iter().map(RoleType::from_proto).collect() }),
+            })) => Ok(Self::GetSubtypes { role_types: role_types.into_iter().map(RoleType::from_proto).collect() }),
             Some(role_type::res_part::Res::RoleTypeGetRelationTypesResPart(
                 role_type::get_relation_types::ResPart { relation_types },
             )) => Ok(Self::GetRelationTypes {
@@ -948,7 +948,7 @@ impl TryFromProto<role_type::ResPart> for RoleTypeResponse {
             Some(role_type::res_part::Res::RoleTypeGetPlayerTypesResPart(role_type::get_player_types::ResPart {
                 thing_types,
             })) => Ok(Self::GetPlayerTypes {
-                player_types: thing_types.into_iter().map(ThingType::try_from_proto).try_collect()?,
+                thing_types: thing_types.into_iter().map(ThingType::try_from_proto).try_collect()?,
             }),
             Some(role_type::res_part::Res::RoleTypeGetRelationInstancesResPart(
                 role_type::get_relation_instances::ResPart { relations },
@@ -957,9 +957,7 @@ impl TryFromProto<role_type::ResPart> for RoleTypeResponse {
             }),
             Some(role_type::res_part::Res::RoleTypeGetPlayerInstancesResPart(
                 role_type::get_player_instances::ResPart { things },
-            )) => {
-                Ok(Self::GetPlayerInstances { players: things.into_iter().map(Thing::try_from_proto).try_collect()? })
-            }
+            )) => Ok(Self::GetPlayerInstances { things: things.into_iter().map(Thing::try_from_proto).try_collect()? }),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }

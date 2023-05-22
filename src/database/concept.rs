@@ -104,9 +104,9 @@ impl ConceptManager {
         thing_type: ThingType,
         value_type: Option<ValueType>,
         transitivity: Transitivity,
-        annotation_filter: Vec<Annotation>,
+        annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<AttributeType>>> {
-        self.transaction_stream.thing_type_get_owns(thing_type, value_type, transitivity, annotation_filter)
+        self.transaction_stream.thing_type_get_owns(thing_type, value_type, transitivity, annotations)
     }
 
     pub(crate) async fn thing_type_get_owns_overridden(
