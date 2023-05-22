@@ -98,7 +98,7 @@ generic_step_impl! {
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = get_entity(context, var.name);
-        let actuals: Vec<Attribute> = entity.get_has(tx, HasFilter::Annotations(vec![]))?.try_collect().await?;
+        let actuals: Vec<Attribute> = entity.get_has(tx, HasFilter::None)?.try_collect().await?;
         let attribute = get_attribute(context, attribute_var.name);
         containment.assert(&actuals, attribute);
         Ok(())

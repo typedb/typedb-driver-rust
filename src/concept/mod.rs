@@ -46,4 +46,5 @@ pub enum Concept {
 pub enum HasFilter {
     AttributeTypes(Vec<AttributeType>),
     Annotations(Vec<Annotation>),
+    None,
 }

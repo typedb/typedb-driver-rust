@@ -339,6 +339,9 @@ impl IntoProto<thing::get_has::req::Filter> for HasFilter {
                     annotations: annotations.into_iter().map(Annotation::into_proto).collect(),
                 })
             }
+            Self::None => thing::get_has::req::Filter::AnnotationFilter(thing::get_has::req::AnnotationFilter {
+                annotations: vec![],
+            }),
         }
     }
 }

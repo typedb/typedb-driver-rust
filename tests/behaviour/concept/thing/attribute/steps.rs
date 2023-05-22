@@ -70,14 +70,14 @@ generic_step_impl! {
     #[step(expr = "attribute {var} get owners {maybe_contain}: {var}")]
     async fn attribute_get_owners_contain(
         context: &mut Context,
-		var: VarParse,
+        var: VarParse,
         containment: ContainmentParse,
         owner_var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute = get_attribute(context, var.name);
         let actuals: Vec<Thing> = attribute.get_owners(tx, None)?.try_collect().await?;
-		let expected = get_thing(context, owner_var.name);
+        let expected = get_thing(context, owner_var.name);
         containment.assert(&actuals, expected);
         Ok(())
     }
