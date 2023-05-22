@@ -27,6 +27,7 @@ use typedb_client::{
 };
 
 use crate::{
+    assert_err,
     behaviour::{
         parameter::{
             AnnotationsParse, ContainmentParse, LabelParse, OverrideLabelParse, OverrideScopedLabelParse,
@@ -52,7 +53,7 @@ generic_step_impl! {
 
     #[step(expr = "delete entity type: {label}; throws exception")]
     async fn delete_entity_type_throws(context: &mut Context, type_label: LabelParse) {
-        assert!(delete_entity_type(context, type_label).await.is_err());
+        assert_err!(delete_entity_type(context, type_label).await);
     }
 
     #[step(expr = r"entity\(( ){label}( )\) is null: {word}")]
@@ -99,7 +100,7 @@ generic_step_impl! {
 
     #[step(expr = r"entity\(( ){label}( )\) set abstract: {word}; throws exception")]
     async fn entity_type_set_abstract_throws(context: &mut Context, type_label: LabelParse, is_abstract: bool) {
-        assert!(entity_type_set_abstract(context, type_label, is_abstract).await.is_err());
+        assert_err!(entity_type_set_abstract(context, type_label, is_abstract).await);
     }
 
     #[step(expr = r"entity\(( ){label}( )\) is abstract: {word}")]
@@ -125,7 +126,7 @@ generic_step_impl! {
         type_label: LabelParse,
         supertype_label: LabelParse,
     ) {
-        assert!(entity_type_set_supertype(context, type_label, supertype_label).await.is_err())
+        assert_err!(entity_type_set_supertype(context, type_label, supertype_label).await)
     }
 
     #[step(expr = r"entity\(( ){label}( )\) get supertype: {label}")]
@@ -200,15 +201,16 @@ generic_step_impl! {
         overridden_attribute_type_label: OverrideLabelParse,
         annotations: AnnotationsParse,
     ) {
-        assert!(entity_type_set_owns_attribute_type(
-            context,
-            type_label,
-            attribute_type_label,
-            overridden_attribute_type_label,
-            annotations
-        )
-        .await
-        .is_err());
+        assert_err!(
+            entity_type_set_owns_attribute_type(
+                context,
+                type_label,
+                attribute_type_label,
+                overridden_attribute_type_label,
+                annotations
+            )
+            .await
+        );
     }
 
     #[step(expr = r"entity\(( ){label}( )\) unset owns attribute type: {label}")]
@@ -229,7 +231,7 @@ generic_step_impl! {
         type_label: LabelParse,
         attribute_type_label: LabelParse,
     ) {
-        assert!(entity_type_unset_owns_attribute_type(context, type_label, attribute_type_label).await.is_err());
+        assert_err!(entity_type_unset_owns_attribute_type(context, type_label, attribute_type_label).await);
     }
 
     #[step(expr = r"entity\(( ){label}( )\) get owns{maybe_explicit} attribute types{annotations}(;) {maybe_contain}:")]
@@ -293,7 +295,8 @@ generic_step_impl! {
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut entity_type = context.get_entity_type(type_label.into()).await?;
-        let role = context.get_relation_type(role_label.scope)
+        let role = context
+            .get_relation_type(role_label.scope)
             .await?
             .get_relates_for_role_label(tx, role_label.name)
             .await?
@@ -314,7 +317,7 @@ generic_step_impl! {
         role_label: ScopedLabelParse,
         overridden_role_label: OverrideScopedLabelParse,
     ) {
-        assert!(entity_type_set_plays_role(context, type_label, role_label, overridden_role_label).await.is_err());
+        assert_err!(entity_type_set_plays_role(context, type_label, role_label, overridden_role_label).await);
     }
 
     #[step(expr = r"entity\(( ){label}( )\) unset plays role: {scoped_label}")]
@@ -325,7 +328,8 @@ generic_step_impl! {
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut entity_type = context.get_entity_type(type_label.into()).await?;
-        let role = context.get_relation_type(role_label.scope)
+        let role = context
+            .get_relation_type(role_label.scope)
             .await?
             .get_relates_for_role_label(tx, role_label.name)
             .await?
@@ -339,7 +343,7 @@ generic_step_impl! {
         type_label: LabelParse,
         role_label: ScopedLabelParse,
     ) {
-        assert!(entity_type_unset_plays_role(context, type_label, role_label).await.is_err());
+        assert_err!(entity_type_unset_plays_role(context, type_label, role_label).await);
     }
 
     #[step(expr = r"entity\(( ){label}( )\) get playing roles{maybe_explicit} {maybe_contain}:")]

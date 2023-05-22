@@ -27,6 +27,7 @@ use typedb_client::{
 };
 
 use crate::{
+    assert_err,
     behaviour::{
         parameter::{ContainmentParse, LabelParse, RoleParse, ValueParse, VarParse},
         Context,
@@ -85,7 +86,7 @@ generic_step_impl! {
     #[step(expr = r"relation\(( ){label}( )\) create new instance; throws exception")]
     async fn relation_type_create_new_instance_throws(context: &mut Context, type_label: LabelParse) {
         // FIXME ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v
-        assert!(relation_type_create_new_instance(context, "".to_owned(), type_label.name).await.is_err());
+        assert_err!(relation_type_create_new_instance(context, "".to_owned(), type_label.name).await);
     }
 
     #[step(expr = r"{var} = relation\(( ){label}( )\) create new instance with key\({label}\): {value}")]
@@ -115,9 +116,9 @@ generic_step_impl! {
         attribute_type_label: LabelParse,
         value: ValueParse,
     ) {
-        assert!(relation_type_create_new_instance_with_key(context, var, type_label, attribute_type_label, value)
-            .await
-            .is_err());
+        assert_err!(
+            relation_type_create_new_instance_with_key(context, var, type_label, attribute_type_label, value).await
+        );
     }
 
     #[step(expr = r"{var} = relation\(( ){label}( )\) get instance with key\({label}\): {value}")]
@@ -159,7 +160,7 @@ generic_step_impl! {
         role_name: LabelParse,
         player_var: VarParse,
     ) {
-        assert!(relation_add_player_for_role(context, var, role_name, player_var,).await.is_err());
+        assert_err!(relation_add_player_for_role(context, var, role_name, player_var,).await);
     }
 
     #[step(expr = r"relation {var} remove player for role\(( ){label}( )\): {var}")]

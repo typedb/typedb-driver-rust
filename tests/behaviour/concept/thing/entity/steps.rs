@@ -27,6 +27,7 @@ use typedb_client::{
 };
 
 use crate::{
+    assert_err,
     behaviour::{
         parameter::{AsValueTypeParse, ContainmentParse, LabelParse, ScopedLabelParse, ValueParse, VarParse},
         Context,
@@ -61,7 +62,7 @@ generic_step_impl! {
 
     #[step(expr = "entity {var} set has: {var}; throws exception")]
     async fn entity_set_has_throws(context: &mut Context, var: VarParse, attribute_var: VarParse) {
-        assert!(entity_set_has(context, var, attribute_var).await.is_err())
+        assert_err!(entity_set_has(context, var, attribute_var).await)
     }
 
     #[step(expr = "entity {var} unset has: {var}")]
@@ -159,7 +160,7 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) create new instance; throws exception")]
     async fn entity_type_create_new_instance_throws(context: &mut Context, type_label: LabelParse) {
         // FIXME ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v
-        assert!(entity_type_create_new_instance(context, "".to_owned(), type_label.name).await.is_err());
+        assert_err!(entity_type_create_new_instance(context, "".to_owned(), type_label.name).await);
     }
 
     #[step(expr = r"{var} = entity\(( ){label}( )\) create new instance with key\({label}\): {value}")]

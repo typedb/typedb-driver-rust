@@ -27,6 +27,7 @@ use typedb_client::{
 };
 
 use crate::{
+    assert_err,
     behaviour::{
         parameter::{
             AnnotationsParse, ContainmentParse, LabelParse, OverrideLabelParse, OverrideScopedLabelParse,
@@ -52,7 +53,7 @@ generic_step_impl! {
 
     #[step(expr = "delete relation type: {label}; throws exception")]
     async fn delete_relation_type_throws(context: &mut Context, type_label: LabelParse) {
-        assert!(delete_relation_type(context, type_label).await.is_err());
+        assert_err!(delete_relation_type(context, type_label).await);
     }
 
     #[step(expr = r"relation\(( ){label}( )\) is null: {word}")]
@@ -99,7 +100,7 @@ generic_step_impl! {
 
     #[step(expr = r"relation\(( ){label}( )\) set abstract: {word}; throws exception")]
     async fn relation_type_set_abstract_throws(context: &mut Context, type_label: LabelParse, is_abstract: bool) {
-        assert!(relation_type_set_abstract(context, type_label, is_abstract).await.is_err());
+        assert_err!(relation_type_set_abstract(context, type_label, is_abstract).await);
     }
 
     #[step(expr = r"relation\(( ){label}( )\) is abstract: {word}")]
@@ -129,7 +130,7 @@ generic_step_impl! {
         type_label: LabelParse,
         supertype_label: LabelParse,
     ) {
-        assert!(relation_type_set_supertype(context, type_label, supertype_label).await.is_err())
+        assert_err!(relation_type_set_supertype(context, type_label, supertype_label).await)
     }
 
     #[step(expr = r"relation\(( ){label}( )\) get supertype: {label}")]
@@ -204,15 +205,16 @@ generic_step_impl! {
         overridden_attribute_type_label: OverrideLabelParse,
         annotations: AnnotationsParse,
     ) {
-        assert!(relation_type_set_owns_attribute_type(
-            context,
-            type_label,
-            attribute_type_label,
-            overridden_attribute_type_label,
-            annotations
-        )
-        .await
-        .is_err());
+        assert_err!(
+            relation_type_set_owns_attribute_type(
+                context,
+                type_label,
+                attribute_type_label,
+                overridden_attribute_type_label,
+                annotations
+            )
+            .await
+        );
     }
 
     #[step(expr = r"relation\(( ){label}( )\) unset owns attribute type: {label}")]
@@ -224,8 +226,7 @@ generic_step_impl! {
         let tx = context.transaction();
         let mut relation_type = context.get_relation_type(type_label.into()).await?;
         let attribute_type = context.get_attribute_type(attribute_type_label.into()).await?;
-        assert!(relation_type.unset_owns(tx, attribute_type).await.is_ok());
-        Ok(())
+        relation_type.unset_owns(tx, attribute_type).await
     }
 
     #[step(expr = r"relation\(( ){label}( )\) unset owns attribute type: {label}; throws exception")]
@@ -234,7 +235,7 @@ generic_step_impl! {
         type_label: LabelParse,
         attribute_type_label: LabelParse,
     ) {
-        assert!(relation_type_unset_owns_attribute_type(context, type_label, attribute_type_label).await.is_err());
+        assert_err!(relation_type_unset_owns_attribute_type(context, type_label, attribute_type_label).await);
     }
 
     #[step(
@@ -319,7 +320,7 @@ generic_step_impl! {
         role_label: ScopedLabelParse,
         overridden_role_label: OverrideScopedLabelParse,
     ) {
-        assert!(relation_type_set_plays_role(context, type_label, role_label, overridden_role_label).await.is_err());
+        assert_err!(relation_type_set_plays_role(context, type_label, role_label, overridden_role_label).await);
     }
 
     #[step(expr = r"relation\(( ){label}( )\) unset plays role: {scoped_label}")]
@@ -341,7 +342,7 @@ generic_step_impl! {
         type_label: LabelParse,
         role_label: ScopedLabelParse,
     ) {
-        assert!(relation_type_unset_plays_role(context, type_label, role_label).await.is_err());
+        assert_err!(relation_type_unset_plays_role(context, type_label, role_label).await);
     }
 
     #[step(expr = r"relation\(( ){label}( )\) get playing roles{maybe_explicit} {maybe_contain}:")]
@@ -384,7 +385,7 @@ generic_step_impl! {
         role_name: LabelParse,
         overridden_role_name: OverrideLabelParse,
     ) {
-        assert!(relation_type_set_relates(context, type_label, role_name, overridden_role_name).await.is_err());
+        assert_err!(relation_type_set_relates(context, type_label, role_name, overridden_role_name).await);
     }
 
     #[step(expr = r"relation\(( ){label}( )) unset related role: {label}")]
@@ -400,7 +401,7 @@ generic_step_impl! {
 
     #[step(expr = r"relation\(( ){label}( )) unset related role: {label}; throws exception")]
     async fn relation_type_unset_related_throws(context: &mut Context, type_label: LabelParse, role_name: LabelParse) {
-        assert!(relation_type_unset_related(context, type_label, role_name).await.is_err());
+        assert_err!(relation_type_unset_related(context, type_label, role_name).await);
     }
 
     #[step(expr = r"relation\(( ){label}( )) get role\(( ){label}( )) is null: {word}")]

@@ -27,6 +27,7 @@ use typedb_client::{
 };
 
 use crate::{
+    assert_err,
     behaviour::{
         parameter::{ContainmentParse, LabelParse, ValueParse, ValueTypeParse, VarParse},
         Context,
@@ -109,9 +110,9 @@ generic_step_impl! {
         value_type: ValueTypeParse,
         value: ValueParse,
     ) {
-        assert!(attribute_put_value(context, VarParse { name: "".to_owned() }, type_label, value_type, value)
-            .await
-            .is_err());
+        assert_err!(
+            attribute_put_value(context, VarParse { name: "".to_owned() }, type_label, value_type, value).await
+        );
     }
 
     #[step(expr = r"{var} = attribute\(( ){label}( )\) as\(( ){value_type}( )\) get: {value}")]
