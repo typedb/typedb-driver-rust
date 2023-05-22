@@ -20,7 +20,7 @@
  */
 
 use typedb_client::{
-    concept::{Attribute, AttributeType, EntityType, Relation, RelationType, Thing},
+    concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Thing},
     Result as TypeDBResult, Transaction,
 };
 
@@ -50,6 +50,13 @@ pub(super) async fn get_attribute_type(tx: &Transaction<'_>, type_label: String)
 pub(super) fn get_thing(context: &Context, var_name: String) -> &Thing {
     assert!(context.things.contains_key(&var_name));
     context.things.get(&var_name).unwrap().as_ref().unwrap()
+}
+
+pub(super) fn get_entity(context: &Context, var_name: String) -> &Entity {
+    let thing = get_thing(context, var_name);
+    assert!(matches!(thing, Thing::Entity(_)));
+    let Thing::Entity(entity) = thing else { unreachable!() };
+    entity
 }
 
 pub(super) fn get_relation(context: &Context, var_name: String) -> &Relation {

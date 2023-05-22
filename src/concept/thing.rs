@@ -25,7 +25,7 @@ use futures::Stream;
 use super::{AttributeType, EntityType, HasFilter, RelationType, RoleType, ThingType};
 use crate::{common::IID, Result, Transaction};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Thing {
     Entity(Entity),
     Relation(Relation),
@@ -44,7 +44,7 @@ impl Thing {
 
 // TODO: Storing the Type here is *extremely* inefficient; we could be effectively creating
 //       1 million copies of the same data when matching concepts of homogeneous types
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Entity {
     pub iid: IID,
     pub type_: EntityType,
@@ -92,7 +92,7 @@ impl Entity {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Relation {
     pub iid: IID,
     pub type_: RelationType,

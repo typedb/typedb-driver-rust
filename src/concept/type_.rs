@@ -26,7 +26,7 @@ use futures::Stream;
 use super::{Attribute, Entity, Relation, Thing, Value};
 use crate::{common::Transitivity, Annotation, Result, Transaction};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ThingType {
     RootThingType(RootThingType),
     EntityType(EntityType),
@@ -45,7 +45,7 @@ impl ThingType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RootThingType;
 
 impl RootThingType {
@@ -56,7 +56,7 @@ impl RootThingType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EntityType {
     pub label: String,
     pub is_root: bool,
@@ -200,7 +200,7 @@ impl EntityType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RelationType {
     pub label: String,
     pub is_root: bool,
@@ -574,7 +574,7 @@ pub enum ValueType {
     DateTime,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RoleType {
     pub label: ScopedLabel,
     pub is_root: bool,

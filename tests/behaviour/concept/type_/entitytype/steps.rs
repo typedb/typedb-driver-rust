@@ -221,8 +221,7 @@ generic_step_impl! {
         let tx = context.transaction();
         let mut entity_type = get_entity_type(tx, type_label.into()).await?;
         let attribute_type = get_attribute_type(tx, attribute_type_label.into()).await?;
-        assert!(entity_type.unset_owns(tx, attribute_type).await.is_ok());
-        Ok(())
+        entity_type.unset_owns(tx, attribute_type).await
     }
 
     #[step(expr = r"entity\(( ){label}( )\) unset owns attribute type: {label}; throws exception")]

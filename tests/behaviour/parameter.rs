@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{borrow::Borrow, convert::Infallible, fmt, str::FromStr};
+use std::{borrow::Borrow, convert::Infallible, fmt, ops::Not, str::FromStr};
 
 use chrono::NaiveDateTime;
 use cucumber::Parameter;
@@ -33,15 +33,15 @@ use typedb_client::{
 pub struct ContainmentParse(bool);
 
 impl ContainmentParse {
-    pub fn assert<T, U>(&self, actuals: &[T], item: &U)
+    pub fn assert<T, U>(&self, actuals: &[T], item: U)
     where
-        T: Borrow<U> + fmt::Debug,
-        U: PartialEq + fmt::Debug + ?Sized,
+        T: Contains<U> + fmt::Debug,
+        U: PartialEq + fmt::Debug,
     {
         if self.0 {
-            assert!(actuals.iter().any(|actual| actual.borrow() == item), "{item:?} not found in {actuals:?}")
+            assert!(actuals.iter().any(|actual| actual.test(&item)), "{item:?} not found in {actuals:?}")
         } else {
-            assert!(actuals.iter().all(|actual| actual.borrow() != item), "{item:?} found in {actuals:?}")
+            assert!(actuals.iter().all(|actual| !actual.test(&item)), "{item:?} found in {actuals:?}")
         }
     }
 }
@@ -51,6 +51,27 @@ impl FromStr for ContainmentParse {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(s == "contain"))
+    }
+}
+
+// FIXME meaningful names
+pub trait Contains<U: ?Sized> {
+    fn test(&self, item: &U) -> bool;
+}
+
+impl<T: Borrow<U>, U: PartialEq + ?Sized> Contains<&U> for T {
+    fn test(&self, item: &&U) -> bool {
+        self.borrow() == *item
+    }
+}
+
+impl<'a, T1, T2, U1, U2> Contains<(&'a U1, &'a U2)> for (T1, T2)
+where
+    T1: Contains<&'a U1>,
+    T2: Contains<&'a U2>,
+{
+    fn test(&self, (first, second): &(&'a U1, &'a U2)) -> bool {
+        self.0.test(first) && self.1.test(second)
     }
 }
 
@@ -107,6 +128,18 @@ impl FromStr for ValueTypeParse {
 }
 
 #[derive(Clone, Copy, Debug, Parameter)]
+#[param(name = "maybe_value_type", regex = r" as\((boolean|long|double|string|datetime)\)|()")]
+pub struct AsValueTypeParse(pub Option<ValueType>);
+
+impl FromStr for AsValueTypeParse {
+    type Err = Infallible;
+
+    fn from_str(type_: &str) -> Result<Self, Self::Err> {
+        Ok(Self(type_.is_empty().not().then(|| type_.parse::<ValueTypeParse>().unwrap().0)))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Parameter)]
 #[param(name = "maybe_explicit", regex = r" explicit|")]
 pub struct TransitivityParse(Transitivity);
 
@@ -150,7 +183,7 @@ impl FromStr for TransactionTypeParse {
 }
 
 #[derive(Clone, Debug, Parameter)]
-#[param(name = "var", regex = r"\$([\w_-]+)")]
+#[param(name = "var", regex = r"(\$[\w_-]+)")]
 pub struct VarParse {
     pub name: String,
 }
@@ -283,20 +316,32 @@ impl FromStr for AnnotationsParse {
     type Err = Infallible;
 
     fn from_str(annotations: &str) -> Result<Self, Self::Err> {
-        if annotations.is_empty() {
-            Ok(Self(vec![]))
-        } else {
-            Ok(Self(
-                annotations
-                    .trim()
-                    .split(',')
-                    .map(|annotation| match annotation.trim() {
-                        "key" => Annotation::Key,
-                        "unique" => Annotation::Unique,
-                        _ => unreachable!("Unrecognized annotation: {annotation:?}"),
-                    })
-                    .collect(),
-            ))
-        }
+        Ok(Self(
+            annotations
+                .trim()
+                .split(',')
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+                .map(|annotation| match annotation {
+                    "key" => Annotation::Key,
+                    "unique" => Annotation::Unique,
+                    _ => unreachable!("Unrecognized annotation: {annotation:?}"),
+                })
+                .collect(),
+        ))
+    }
+}
+
+#[derive(Clone, Debug, Parameter)]
+#[param(name = "maybe_role", regex = r" for role\(\s*(\S+)\s*\)|()")]
+pub struct RoleParse {
+    pub role: Option<String>,
+}
+
+impl FromStr for RoleParse {
+    type Err = Infallible;
+
+    fn from_str(role: &str) -> Result<Self, Self::Err> {
+        Ok(Self { role: role.is_empty().not().then(|| role.to_owned()) })
     }
 }

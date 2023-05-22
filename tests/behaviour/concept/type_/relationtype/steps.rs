@@ -500,7 +500,7 @@ generic_step_impl! {
         let actuals: Vec<ScopedLabel> =
             relation_type.get_relates(tx, transitivity.into())?.map_ok(|rt| rt.label).try_collect().await?;
         for role_label in iter_table(step) {
-            let role_label: ScopedLabel = if role_label.contains(":") {
+            let role_label: ScopedLabel = if role_label.contains(':') {
                 role_label.parse::<ScopedLabelParse>().unwrap().into()
             } else {
                 ScopedLabel { scope: relation_type.label.clone(), name: role_label.to_owned() }

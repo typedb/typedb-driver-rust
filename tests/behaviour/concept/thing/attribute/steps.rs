@@ -22,13 +22,13 @@
 use cucumber::{given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{
-    concept::{Attribute, Thing, Value},
+    concept::{Attribute, Thing},
     Result as TypeDBResult,
 };
 
 use crate::{
     behaviour::{
-        concept::common::{get_attribute, get_attribute_type},
+        concept::common::{get_attribute, get_attribute_type, get_thing},
         parameter::{ContainmentParse, LabelParse, ValueParse, ValueTypeParse, VarParse},
         Context,
     },
@@ -83,7 +83,20 @@ generic_step_impl! {
         Ok(())
     }
 
-    // #[step(expr = "attribute {var} get owners {maybe_contain}: {var}")]
+    #[step(expr = "attribute {var} get owners {maybe_contain}: {var}")]
+    async fn attribute_get_owners_contain(
+        context: &mut Context,
+		var: VarParse,
+        containment: ContainmentParse,
+        owner_var: VarParse,
+    ) -> TypeDBResult {
+        let tx = context.transaction();
+        let attribute = get_attribute(context, var.name);
+        let actuals: Vec<Thing> = attribute.get_owners(tx, None)?.try_collect().await?;
+		let expected = get_thing(context, owner_var.name);
+        containment.assert(&actuals, expected);
+        Ok(())
+    }
 
     #[step(expr = "attribute {var} has value type: {value_type}")]
     async fn attribute_has_value_type(context: &mut Context, var: VarParse, value_type: ValueTypeParse) {
