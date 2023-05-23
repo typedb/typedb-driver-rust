@@ -300,5 +300,30 @@ generic_step_impl! {
         );
     }
 
+    #[step(expr = "aggregate answer is not a number")]
+    async fn aggregate_answer_is_nan(context: &mut Context) {
+        assert!(matches!(context.numeric_answer, Numeric::NaN));
+    }
+
+    #[step(expr = "typeql match aggregate; throws exception")]
+    async fn typeql_match_aggregate_throws(context: &mut Context, step: &Step) {
+        let parsed = parse_query(step.docstring().unwrap());
+        if parsed.is_ok() {
+            let res = context.transaction().query().match_aggregate(&parsed.unwrap().to_string()).await;
+            assert!(res.is_err());
+        }
+    }
+
+    // #[step(expr = "get answers of typeql match group")]
+    // async fn get_answers_typeql_match_group(context: &mut Context, step: &Step) {
+    //     let parsed = parse_query(step.docstring().unwrap());
+    //     assert!(parsed.is_ok());
+    //     let stream = context.transaction().query().match_(&parsed.unwrap().to_string());
+    //     assert!(stream.is_ok());
+    //     let res = stream.unwrap().try_collect::<Vec<_>>().await;
+    //     assert!(res.is_ok());
+    //     context.answer = res.unwrap();
+    // }
+
 
 }
