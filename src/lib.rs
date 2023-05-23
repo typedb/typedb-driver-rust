@@ -21,7 +21,7 @@
 
 #![deny(unused_must_use)]
 
-mod answer;
+pub mod answer;
 mod common;
 pub mod concept;
 mod connection;

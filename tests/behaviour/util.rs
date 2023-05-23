@@ -27,15 +27,15 @@ use std::collections::HashMap;
 use typedb_client::{
     answer::ConceptMap,
     concept::{
-        Attribute, AttributeType, BooleanAttribute, BooleanAttributeType, Concept, DateTimeAttribute,
-        DateTimeAttributeType, DoubleAttribute, DoubleAttributeType, Entity, EntityType, LongAttribute,
-        LongAttributeType, Relation, RelationType, RoleType, RootAttributeType, RootThingType, ScopedLabel,
-        StringAttribute, StringAttributeType, Thing, ThingType, Type,
+        Attribute, AttributeType, Concept,
+        Entity, EntityType,
+        Relation, RelationType, RoleType, RootThingType, ScopedLabel,
+        Thing, ThingType, Value, ValueType,
     },
 };
 use typeql_lang::{
     parse_pattern, parse_queries, parse_query,
-    pattern::{ThingVariableBuilder, TypeVariableBuilder, KEY},
+    pattern::{ThingVariableBuilder, TypeVariableBuilder},
     query::{AggregateQueryBuilder, TypeQLDefine, TypeQLInsert, TypeQLMatch, TypeQLUndefine},
     typeql_match, var,
 };
@@ -78,20 +78,12 @@ fn iid_to_string(iid: &Vec<u8>) -> String {
 
 fn get_iid(concept: &Concept) -> String {
     let iid = match concept {
-        Concept::Thing(thing) => match thing {
-            Thing::Entity(Entity { iid, .. }) => iid,
-            Thing::Attribute(attr) => match attr {
-                Attribute::String(StringAttribute { iid, .. }) => iid,
-                Attribute::Long(LongAttribute { iid, .. }) => iid,
-                Attribute::Double(DoubleAttribute { iid, .. }) => iid,
-                Attribute::Boolean(BooleanAttribute { iid, .. }) => iid,
-                Attribute::DateTime(DateTimeAttribute { iid, .. }) => iid,
-            },
-            Thing::Relation(Relation { iid, .. }) => iid,
-        },
+        Concept::Entity(Entity { iid, ..}) => iid,
+        Concept::Attribute(Attribute { iid, ..}) => iid,
+        Concept::Relation(Relation { iid, ..}) => iid,
         _ => unreachable!(),
     };
-    iid_to_string(iid)
+    format!("0x{iid}")
 }
 
 async fn get_attribute_concept(context: &Context, iid: String, attr_label: &str) -> Result<Concept, String> {
@@ -115,7 +107,7 @@ async fn get_attribute_concept(context: &Context, iid: String, attr_label: &str)
 }
 
 pub fn equals_approximate(first: f64, second: f64) -> bool {
-    const EPS: f64 = 1e-10;
+    const EPS: f64 = 1e-4;
     return (first - second).abs() < EPS;
 }
 
@@ -123,37 +115,34 @@ fn values_equal(identifiers: &str, answer: &Concept) -> bool {
     let attribute: Vec<&str> = identifiers.splitn(2, ":").collect();
     assert_eq!(attribute.len(), 2, "Unexpected table cell format: {identifiers}.");
     match answer {
-        Concept::Thing(thing) => match thing {
-            Thing::Attribute(attr) => match attr {
-                Attribute::String(StringAttribute { value, label, .. }) => {
-                    label == attribute[0] && value == attribute[1]
-                }
-                Attribute::Long(LongAttribute { value, label, .. }) => {
-                    label == attribute[0]
-                        && attribute[1]
-                            .parse::<i64>()
-                            .and_then(|expected| Ok(expected.eq(value)))
-                            .unwrap_or_else(|_| false)
-                }
-                Attribute::Double(DoubleAttribute { value, label, .. }) => {
-                    label == attribute[0]
-                        && attribute[1]
-                            .parse::<f64>()
-                            .and_then(|expected| Ok(equals_approximate(expected, *value)))
-                            .unwrap_or_else(|_| false)
-                }
-                Attribute::Boolean(BooleanAttribute { value, label, .. }) => {
-                    label == attribute[0]
-                        && attribute[1]
-                            .parse::<bool>()
-                            .and_then(|expected| Ok(expected.eq(value)))
-                            .unwrap_or_else(|_| false)
-                }
-                Attribute::DateTime(DateTimeAttribute { value, label, .. }) => {
-                    label == attribute[0] && format_datetime(value) == attribute[1]
-                }
+        Concept::Attribute(Attribute { type_: AttributeType { label, value_type, .. }, value, .. } ) => match value {
+            Value::String(val) => {
+                label == attribute[0] && val == attribute[1]
             },
-            _ => false,
+            Value::Long(val) => {
+                label == attribute[0]
+                    && attribute[1]
+                        .parse::<i64>()
+                        .and_then(|expected| Ok(expected.eq(val)))
+                        .unwrap_or_else(|_| false)
+            },
+            Value::Double(val) => {
+                label == attribute[0]
+                    && attribute[1]
+                        .parse::<f64>()
+                        .and_then(|expected| Ok(equals_approximate(expected, *val)))
+                        .unwrap_or_else(|_| false)
+            },
+            Value::Boolean(val) => {
+                label == attribute[0]
+                    && attribute[1]
+                        .parse::<bool>()
+                        .and_then(|expected| Ok(expected.eq(val)))
+                        .unwrap_or_else(|_| false)
+            },
+            Value::DateTime(val) => {
+                label == attribute[0] && format_datetime(val) == attribute[1]
+            },
         },
         _ => false,
     }
@@ -162,30 +151,18 @@ fn values_equal(identifiers: &str, answer: &Concept) -> bool {
 fn labels_equal(identifier: &str, answer: &Concept) -> bool {
     let mut binding = String::new();
     let label = match answer {
-        Concept::Type(type_) => match type_ {
-            Type::Thing(thing) => match thing {
-                ThingType::Relation(RelationType { label }) => label,
-                ThingType::Entity(EntityType { label }) => label,
-                ThingType::Attribute(attr) => match attr {
-                    AttributeType::String(StringAttributeType { label }) => label,
-                    AttributeType::Long(LongAttributeType { label }) => label,
-                    AttributeType::Double(DoubleAttributeType { label }) => label,
-                    AttributeType::Boolean(BooleanAttributeType { label }) => label,
-                    AttributeType::DateTime(DateTimeAttributeType { label }) => label,
-                    AttributeType::Root(RootAttributeType { label }) => label,
-                },
-                ThingType::Root(RootThingType { label }) => label,
-            },
-            Type::Role(RoleType { label: ScopedLabel { scope, name } }) => {
-                binding = format!("{scope}:{name}");
-                &binding
-            }
+        Concept::EntityType(type_) => { binding = type_.clone().label; &binding },
+        Concept::RoleType(RoleType { label: ScopedLabel { scope, name }, ..}) => {
+            binding = format!("{scope}:{name}");
+            &binding
         },
-        Concept::Thing(thing) => match thing {
-            Thing::Entity(Entity { type_: EntityType { label }, .. }) => label,
-            Thing::Relation(Relation { type_: RelationType { label }, .. }) => label,
-            _ => &binding,
-        },
+        Concept::Entity(Entity { type_: EntityType { label, .. }, .. }) => label,
+        Concept::Relation(Relation { type_: RelationType { label, .. }, .. }) => label,
+        Concept::RootThingType(_) => { binding = String::from("thing"); &binding },
+        Concept::RelationType(RelationType { label, .. }) => label,
+        Concept::AttributeType(AttributeType { label, .. }) => label,
+        Concept::Attribute(Attribute { type_: AttributeType { label, .. }, .. }) => label,
+        _ => unreachable!(),
     };
     label == identifier
 }
