@@ -146,7 +146,12 @@ impl Relation {
         transaction.concept().relation_add_role_player(self.clone(), role_type, player).await
     }
 
-    pub async fn remove_role_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
+    pub async fn remove_role_player(
+        &self,
+        transaction: &Transaction<'_>,
+        role_type: RoleType,
+        player: Thing,
+    ) -> Result {
         transaction.concept().relation_remove_role_player(self.clone(), role_type, player).await
     }
 
