@@ -37,11 +37,11 @@ use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     concept::{
-        Attribute, AttributeType, Concept, Entity, EntityType, HasFilter, Relation, RelationType, RoleType,
-        RootThingType, ScopedLabel, Thing, ThingType, Value, ValueType,
+        Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, RootThingType,
+        ScopedLabel, Thing, ThingType, Value, ValueType,
     },
     error::{ConnectionError, InternalError},
-    Annotation, Result,
+    Result,
 };
 
 impl TryFromProto<NumericProto> for Numeric {
@@ -90,7 +90,7 @@ impl TryFromProto<ConceptProto> for Concept {
                 Attribute::try_from_proto(attribute_proto).map(Self::Attribute)
             }
 
-            Some(concept::Concept::RootThingType(_)) => Ok(Self::RootThingType(RootThingType)),
+            Some(concept::Concept::ThingTypeRoot(_)) => Ok(Self::RootThingType(RootThingType)),
             None => Err(ConnectionError::MissingResponseField("concept").into()),
         }
     }
@@ -108,7 +108,7 @@ impl TryFromProto<ThingTypeProto> for ThingType {
             Some(thing_type::Type::AttributeType(attribute_type_proto)) => {
                 AttributeType::try_from_proto(attribute_type_proto).map(Self::AttributeType)
             }
-            Some(thing_type::Type::RootThingType(_)) => Ok(Self::RootThingType(RootThingType)),
+            Some(thing_type::Type::ThingTypeRoot(_)) => Ok(Self::RootThingType(RootThingType)),
             None => Err(ConnectionError::MissingResponseField("type").into()),
         }
     }
@@ -120,7 +120,7 @@ impl IntoProto<ThingTypeProto> for ThingType {
             Self::EntityType(entity_type) => thing_type::Type::EntityType(entity_type.into_proto()),
             Self::RelationType(relation_type) => thing_type::Type::RelationType(relation_type.into_proto()),
             Self::AttributeType(attribute_type) => thing_type::Type::AttributeType(attribute_type.into_proto()),
-            Self::RootThingType(_) => thing_type::Type::RootThingType(thing_type::Root {}),
+            Self::RootThingType(_) => thing_type::Type::ThingTypeRoot(thing_type::Root {}),
         };
         ThingTypeProto { r#type: Some(thing_type_inner_proto) }
     }
@@ -321,26 +321,6 @@ impl IntoProto<ValueProto> for Value {
                 Self::Double(double) => ValueProtoInner::Double(double),
                 Self::String(string) => ValueProtoInner::String(string),
                 Self::DateTime(date_time) => ValueProtoInner::DateTime(date_time.timestamp_millis()),
-            }),
-        }
-    }
-}
-
-impl IntoProto<thing::get_has::req::Filter> for HasFilter {
-    fn into_proto(self) -> thing::get_has::req::Filter {
-        match self {
-            Self::AttributeTypes(attribute_types) => {
-                thing::get_has::req::Filter::AttributeTypes(thing::get_has::req::AttributeTypes {
-                    attribute_types: attribute_types.into_iter().map(AttributeType::into_proto).collect(),
-                })
-            }
-            Self::Annotations(annotations) => {
-                thing::get_has::req::Filter::AnnotationFilter(thing::get_has::req::AnnotationFilter {
-                    annotations: annotations.into_iter().map(Annotation::into_proto).collect(),
-                })
-            }
-            Self::None => thing::get_has::req::Filter::AnnotationFilter(thing::get_has::req::AnnotationFilter {
-                annotations: vec![],
             }),
         }
     }

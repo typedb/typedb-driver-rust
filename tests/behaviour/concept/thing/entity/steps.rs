@@ -22,7 +22,7 @@
 use cucumber::{given, then, when};
 use futures::{StreamExt, TryStreamExt};
 use typedb_client::{
-    concept::{Attribute, Entity, HasFilter, Relation, Thing, ThingType},
+    concept::{Attribute, Entity, Relation, Thing, ThingType},
     Annotation, Result as TypeDBResult,
 };
 
@@ -82,8 +82,7 @@ generic_step_impl! {
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = context.get_entity(var.name);
-        let actuals: Vec<Attribute> =
-            entity.get_has(tx, HasFilter::Annotations(vec![Annotation::Key]))?.try_collect().await?;
+        let actuals: Vec<Attribute> = entity.get_has(tx, vec![], vec![Annotation::Key])?.try_collect().await?;
         let attribute = context.get_attribute(attribute_var.name);
         containment.assert(&actuals, attribute);
         Ok(())
@@ -98,7 +97,7 @@ generic_step_impl! {
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = context.get_entity(var.name);
-        let actuals: Vec<Attribute> = entity.get_has(tx, HasFilter::None)?.try_collect().await?;
+        let actuals: Vec<Attribute> = entity.get_has(tx, vec![], vec![])?.try_collect().await?;
         let attribute = context.get_attribute(attribute_var.name);
         containment.assert(&actuals, attribute);
         Ok(())
@@ -119,8 +118,7 @@ generic_step_impl! {
         if let Some(value_type) = value_type.0 {
             assert_eq!(attribute_type.value_type, value_type);
         }
-        let actuals: Vec<Attribute> =
-            entity.get_has(tx, HasFilter::AttributeTypes(vec![attribute_type]))?.try_collect().await?;
+        let actuals: Vec<Attribute> = entity.get_has(tx, vec![attribute_type], vec![])?.try_collect().await?;
         let attribute = context.get_attribute(attribute_var.name);
         containment.assert(&actuals, attribute);
         Ok(())

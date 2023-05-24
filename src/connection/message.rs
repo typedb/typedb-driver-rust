@@ -29,8 +29,8 @@ use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity, IID},
     concept::{
-        Attribute, AttributeType, Entity, EntityType, HasFilter, Relation, RelationType, RoleType, Thing, ThingType,
-        Value, ValueType,
+        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, Value,
+        ValueType,
     },
     Annotation, Options, SchemaException, SessionType, TransactionType,
 };
@@ -425,19 +425,19 @@ pub(super) enum RoleTypeResponse {
 #[derive(Debug)]
 pub(super) enum ThingRequest {
     ThingDelete { thing: Thing },
-    ThingGetHas { thing: Thing, filter: HasFilter },
+    ThingGetHas { thing: Thing, attribute_types: Vec<AttributeType>, annotations: Vec<Annotation> },
     ThingSetHas { thing: Thing, attribute: Attribute },
     ThingUnsetHas { thing: Thing, attribute: Attribute },
     ThingGetRelations { thing: Thing, role_types: Vec<RoleType> },
     ThingGetPlaying { thing: Thing },
 
-    RelationAddPlayer { relation: Relation, role_type: RoleType, player: Thing },
-    RelationRemovePlayer { relation: Relation, role_type: RoleType, player: Thing },
-    RelationGetPlayers { relation: Relation, role_types: Vec<RoleType> },
-    RelationGetPlayersByRoleType { relation: Relation },
+    RelationAddRolePlayer { relation: Relation, role_type: RoleType, player: Thing },
+    RelationRemoveRolePlayer { relation: Relation, role_type: RoleType, player: Thing },
+    RelationGetPlayersByRoleType { relation: Relation, role_types: Vec<RoleType> },
+    RelationGetRolePlayers { relation: Relation },
     RelationGetRelating { relation: Relation },
 
-    AttributeGetOwners { attribute: Attribute, filter: Option<ThingType> },
+    AttributeGetOwners { attribute: Attribute, thing_type: Option<ThingType> },
 }
 
 #[derive(Debug)]
@@ -449,10 +449,10 @@ pub(super) enum ThingResponse {
     ThingGetRelations { relations: Vec<Relation> },
     ThingGetPlaying { role_types: Vec<RoleType> },
 
-    RelationAddPlayer,
-    RelationRemovePlayer,
-    RelationGetPlayers { players: Vec<Thing> },
-    RelationGetPlayersByRoleType { role_players: Vec<(RoleType, Thing)> }, // TODO tuple => struct
+    RelationAddRolePlayer,
+    RelationRemoveRolePlayer,
+    RelationGetPlayersByRoleType { things: Vec<Thing> },
+    RelationGetRolePlayers { role_players: Vec<(RoleType, Thing)> }, // TODO tuple => struct
     RelationGetRelating { role_types: Vec<RoleType> },
 
     AttributeGetOwners { owners: Vec<Thing> },

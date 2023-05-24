@@ -21,8 +21,9 @@
 
 use chrono::NaiveDateTime;
 use futures::Stream;
+use typeql_lang::pattern::Annotation;
 
-use super::{AttributeType, EntityType, HasFilter, RelationType, RoleType, ThingType};
+use super::{AttributeType, EntityType, RelationType, RoleType, ThingType};
 use crate::{common::IID, Result, Transaction};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -66,9 +67,10 @@ impl Entity {
     pub fn get_has(
         &self,
         transaction: &Transaction<'_>,
-        filter: HasFilter,
+        attribute_types: Vec<AttributeType>,
+        annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<Attribute>>> {
-        transaction.concept().thing_get_has(Thing::Entity(self.clone()), filter)
+        transaction.concept().thing_get_has(Thing::Entity(self.clone()), attribute_types, annotations)
     }
 
     pub async fn set_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
@@ -114,9 +116,10 @@ impl Relation {
     pub fn get_has(
         &self,
         transaction: &Transaction<'_>,
-        filter: HasFilter,
+        attribute_types: Vec<AttributeType>,
+        annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<Attribute>>> {
-        transaction.concept().thing_get_has(Thing::Relation(self.clone()), filter)
+        transaction.concept().thing_get_has(Thing::Relation(self.clone()), attribute_types, annotations)
     }
 
     pub async fn set_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
@@ -139,27 +142,27 @@ impl Relation {
         transaction.concept().thing_get_playing(Thing::Relation(self.clone()))
     }
 
-    pub async fn add_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
-        transaction.concept().relation_add_player(self.clone(), role_type, player).await
+    pub async fn add_role_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
+        transaction.concept().relation_add_role_player(self.clone(), role_type, player).await
     }
 
-    pub async fn remove_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
-        transaction.concept().relation_remove_player(self.clone(), role_type, player).await
-    }
-
-    pub fn get_players(
-        &self,
-        transaction: &Transaction<'_>,
-        role_types: Vec<RoleType>,
-    ) -> Result<impl Stream<Item = Result<Thing>>> {
-        transaction.concept().relation_get_players(self.clone(), role_types)
+    pub async fn remove_role_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
+        transaction.concept().relation_remove_role_player(self.clone(), role_type, player).await
     }
 
     pub fn get_players_by_role_type(
         &self,
         transaction: &Transaction<'_>,
+        role_types: Vec<RoleType>,
+    ) -> Result<impl Stream<Item = Result<Thing>>> {
+        transaction.concept().relation_get_players_by_role_type(self.clone(), role_types)
+    }
+
+    pub fn get_role_players(
+        &self,
+        transaction: &Transaction<'_>,
     ) -> Result<impl Stream<Item = Result<(RoleType, Thing)>>> {
-        transaction.concept().relation_get_players_by_role_type(self.clone())
+        transaction.concept().relation_get_role_players(self.clone())
     }
 
     pub fn get_relating(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<RoleType>>> {
@@ -190,9 +193,10 @@ impl Attribute {
     pub fn get_has(
         &self,
         transaction: &Transaction<'_>,
-        filter: HasFilter,
+        attribute_types: Vec<AttributeType>,
+        annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<Attribute>>> {
-        transaction.concept().thing_get_has(Thing::Attribute(self.clone()), filter)
+        transaction.concept().thing_get_has(Thing::Attribute(self.clone()), attribute_types, annotations)
     }
 
     pub async fn set_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
@@ -218,9 +222,9 @@ impl Attribute {
     pub fn get_owners(
         &self,
         transaction: &Transaction<'_>,
-        filter: Option<ThingType>,
+        thing_type: Option<ThingType>,
     ) -> Result<impl Stream<Item = Result<Thing>>> {
-        transaction.concept().attribute_get_owners(self.clone(), filter)
+        transaction.concept().attribute_get_owners(self.clone(), thing_type)
     }
 }
 

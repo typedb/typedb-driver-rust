@@ -150,7 +150,7 @@ generic_step_impl! {
         let relation = context.get_relation(var.name);
         let role_type = relation.type_.get_relates_for_role_label(tx, role_name.name).await?.unwrap();
         let player = context.get_thing(player_var.name);
-        relation.add_player(tx, role_type, player.clone()).await
+        relation.add_role_player(tx, role_type, player.clone()).await
     }
 
     #[step(expr = r"relation {var} add player for role\(( ){label}( )\): {var}; throws exception")]
@@ -174,7 +174,7 @@ generic_step_impl! {
         let relation = context.get_relation(var.name);
         let role_type = relation.type_.get_relates_for_role_label(tx, role_name.name).await?.unwrap();
         let player = context.get_thing(player_var.name);
-        relation.remove_player(tx, role_type, player.clone()).await
+        relation.remove_role_player(tx, role_type, player.clone()).await
     }
 
     #[step(expr = r"relation {var} get players{maybe_role} {maybe_contain}: {var}")]
@@ -194,7 +194,7 @@ generic_step_impl! {
                 .map(|role| async { relation.type_.get_relates_for_role_label(tx, role).await.transpose().unwrap() }),
         )
         .await?;
-        let actuals: Vec<Thing> = relation.get_players(tx, roles)?.try_collect().await?;
+        let actuals: Vec<Thing> = relation.get_players_by_role_type(tx, roles)?.try_collect().await?;
         containment.assert(&actuals, player);
         Ok(())
     }
@@ -209,7 +209,7 @@ generic_step_impl! {
         let tx = context.transaction();
         let relation = context.get_relation(var.name);
         let actuals: Vec<(String, Thing)> = relation
-            .get_players_by_role_type(tx)?
+            .get_role_players(tx)?
             .map_ok(|(role, player)| (role.label.name, player))
             .try_collect()
             .await?;

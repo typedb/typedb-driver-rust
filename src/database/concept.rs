@@ -26,8 +26,8 @@ use futures::Stream;
 use crate::{
     common::{Transitivity, IID},
     concept::{
-        Attribute, AttributeType, Entity, EntityType, HasFilter, Relation, RelationType, RoleType, Thing, ThingType,
-        Value, ValueType,
+        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, Value,
+        ValueType,
     },
     connection::TransactionStream,
     Annotation, Result, SchemaException,
@@ -405,9 +405,10 @@ impl ConceptManager {
     pub(crate) fn thing_get_has(
         &self,
         thing: Thing,
-        filter: HasFilter,
+        attribute_types: Vec<AttributeType>,
+        annotations: Vec<Annotation>,
     ) -> Result<impl Stream<Item = Result<Attribute>>> {
-        self.transaction_stream.thing_get_has(thing, filter)
+        self.transaction_stream.thing_get_has(thing, attribute_types, annotations)
     }
 
     pub(crate) async fn thing_set_has(&self, thing: Thing, attribute: Attribute) -> Result {
@@ -430,32 +431,37 @@ impl ConceptManager {
         self.transaction_stream.thing_get_playing(thing)
     }
 
-    pub(crate) async fn relation_add_player(&self, relation: Relation, role_type: RoleType, player: Thing) -> Result {
-        self.transaction_stream.relation_add_player(relation, role_type, player).await
-    }
-
-    pub(crate) async fn relation_remove_player(
+    pub(crate) async fn relation_add_role_player(
         &self,
         relation: Relation,
         role_type: RoleType,
         player: Thing,
     ) -> Result {
-        self.transaction_stream.relation_remove_player(relation, role_type, player).await
+        self.transaction_stream.relation_add_role_player(relation, role_type, player).await
     }
 
-    pub(crate) fn relation_get_players(
+    pub(crate) async fn relation_remove_role_player(
         &self,
         relation: Relation,
-        role_types: Vec<RoleType>,
-    ) -> Result<impl Stream<Item = Result<Thing>>> {
-        self.transaction_stream.relation_get_players(relation, role_types)
+        role_type: RoleType,
+        player: Thing,
+    ) -> Result {
+        self.transaction_stream.relation_remove_role_player(relation, role_type, player).await
     }
 
     pub(crate) fn relation_get_players_by_role_type(
         &self,
         relation: Relation,
+        role_types: Vec<RoleType>,
+    ) -> Result<impl Stream<Item = Result<Thing>>> {
+        self.transaction_stream.relation_get_players_by_role_type(relation, role_types)
+    }
+
+    pub(crate) fn relation_get_role_players(
+        &self,
+        relation: Relation,
     ) -> Result<impl Stream<Item = Result<(RoleType, Thing)>>> {
-        self.transaction_stream.relation_get_players_by_role_type(relation)
+        self.transaction_stream.relation_get_role_players(relation)
     }
 
     pub(crate) fn relation_get_relating(&self, relation: Relation) -> Result<impl Stream<Item = Result<RoleType>>> {
@@ -465,8 +471,8 @@ impl ConceptManager {
     pub(crate) fn attribute_get_owners(
         &self,
         attribute: Attribute,
-        filter: Option<ThingType>,
+        thing_type: Option<ThingType>,
     ) -> Result<impl Stream<Item = Result<Thing>>> {
-        self.transaction_stream.attribute_get_owners(attribute, filter)
+        self.transaction_stream.attribute_get_owners(attribute, thing_type)
     }
 }

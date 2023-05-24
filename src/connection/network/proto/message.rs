@@ -502,7 +502,7 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
             ),
             Self::ThingTypeGetOwns { thing_type, value_type, transitivity, annotations } => (
                 thing_type::req::Req::ThingTypeGetOwnsReq(thing_type::get_owns::Req {
-                    filter: value_type.map(IntoProto::into_proto),
+                    value_type: value_type.map(IntoProto::into_proto),
                     transitivity: transitivity.into_proto(),
                     annotations: annotations.into_iter().map(Annotation::into_proto).collect(),
                 }),
@@ -530,7 +530,7 @@ impl IntoProto<r#type::Req> for ThingTypeRequest {
             ),
             Self::ThingTypeGetPlays { thing_type, transitivity } => (
                 thing_type::req::Req::ThingTypeGetPlaysReq(thing_type::get_plays::Req {
-                    transitivity: Some(transitivity.into_proto()),
+                    transitivity: transitivity.into_proto(),
                 }),
                 thing_type.label().to_owned(),
             ),
@@ -969,8 +969,11 @@ impl IntoProto<thing::Req> for ThingRequest {
             Self::ThingDelete { thing } => {
                 (thing::req::Req::ThingDeleteReq(thing::delete::Req {}), thing.iid().to_owned())
             }
-            Self::ThingGetHas { thing, filter } => (
-                thing::req::Req::ThingGetHasReq(thing::get_has::Req { filter: Some(filter.into_proto()) }),
+            Self::ThingGetHas { thing, attribute_types, annotations } => (
+                thing::req::Req::ThingGetHasReq(thing::get_has::Req {
+                    attribute_types: attribute_types.into_iter().map(AttributeType::into_proto).collect(),
+                    annotations: annotations.into_iter().map(Annotation::into_proto).collect(),
+                }),
                 thing.iid().to_owned(),
             ),
             Self::ThingSetHas { thing, attribute } => (
@@ -990,36 +993,39 @@ impl IntoProto<thing::Req> for ThingRequest {
             Self::ThingGetPlaying { thing } => {
                 (thing::req::Req::ThingGetPlayingReq(thing::get_playing::Req {}), thing.iid().to_owned())
             }
-            Self::RelationAddPlayer { relation, role_type, player } => (
-                thing::req::Req::RelationAddPlayerReq(relation::add_player::Req {
-                    role_type: Some(role_type.into_proto()),
-                    player: Some(player.into_proto()),
+            Self::RelationAddRolePlayer { relation, role_type, player } => (
+                thing::req::Req::RelationAddRolePlayerReq(relation::add_role_player::Req {
+                    role_player: Some(relation::RolePlayer {
+                        role_type: Some(role_type.into_proto()),
+                        player: Some(player.into_proto()),
+                    }),
                 }),
                 relation.iid,
             ),
-            Self::RelationRemovePlayer { relation, role_type, player } => (
-                thing::req::Req::RelationRemovePlayerReq(relation::remove_player::Req {
-                    role_type: Some(role_type.into_proto()),
-                    player: Some(player.into_proto()),
+            Self::RelationRemoveRolePlayer { relation, role_type, player } => (
+                thing::req::Req::RelationRemoveRolePlayerReq(relation::remove_role_player::Req {
+                    role_player: Some(relation::RolePlayer {
+                        role_type: Some(role_type.into_proto()),
+                        player: Some(player.into_proto()),
+                    }),
                 }),
                 relation.iid,
             ),
-            Self::RelationGetPlayers { relation, role_types } => (
-                thing::req::Req::RelationGetPlayersReq(relation::get_players::Req {
+            Self::RelationGetPlayersByRoleType { relation, role_types } => (
+                thing::req::Req::RelationGetPlayersByRoleTypeReq(relation::get_players_by_role_type::Req {
                     role_types: role_types.into_iter().map(RoleType::into_proto).collect(),
                 }),
                 relation.iid,
             ),
-            Self::RelationGetPlayersByRoleType { relation } => (
-                thing::req::Req::RelationGetPlayersByRoleTypeReq(relation::get_players_by_role_type::Req {}),
-                relation.iid,
-            ),
+            Self::RelationGetRolePlayers { relation } => {
+                (thing::req::Req::RelationGetRolePlayersReq(relation::get_role_players::Req {}), relation.iid)
+            }
             Self::RelationGetRelating { relation } => {
                 (thing::req::Req::RelationGetRelatingReq(relation::get_relating::Req {}), relation.iid)
             }
-            Self::AttributeGetOwners { attribute, filter } => (
+            Self::AttributeGetOwners { attribute, thing_type } => (
                 thing::req::Req::AttributeGetOwnersReq(attribute::get_owners::Req {
-                    filter: filter.map(ThingType::into_proto),
+                    thing_type: thing_type.map(ThingType::into_proto),
                 }),
                 attribute.iid,
             ),
@@ -1034,8 +1040,8 @@ impl TryFromProto<thing::Res> for ThingResponse {
             Some(thing::res::Res::ThingDeleteRes(_)) => Ok(Self::ThingDelete),
             Some(thing::res::Res::ThingSetHasRes(_)) => Ok(Self::ThingSetHas),
             Some(thing::res::Res::ThingUnsetHasRes(_)) => Ok(Self::ThingUnsetHas),
-            Some(thing::res::Res::RelationAddPlayerRes(_)) => Ok(Self::RelationAddPlayer),
-            Some(thing::res::Res::RelationRemovePlayerRes(_)) => Ok(Self::RelationRemovePlayer),
+            Some(thing::res::Res::RelationAddRolePlayerRes(_)) => Ok(Self::RelationAddRolePlayer),
+            Some(thing::res::Res::RelationRemoveRolePlayerRes(_)) => Ok(Self::RelationRemoveRolePlayer),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
@@ -1057,15 +1063,17 @@ impl TryFromProto<thing::ResPart> for ThingResponse {
             Some(thing::res_part::Res::ThingGetPlayingResPart(thing::get_playing::ResPart { role_types })) => {
                 Ok(Self::ThingGetPlaying { role_types: role_types.into_iter().map(RoleType::from_proto).collect() })
             }
-            Some(thing::res_part::Res::RelationGetPlayersResPart(relation::get_players::ResPart { things })) => {
-                Ok(Self::RelationGetPlayers { players: things.into_iter().map(Thing::try_from_proto).try_collect()? })
-            }
             Some(thing::res_part::Res::RelationGetPlayersByRoleTypeResPart(
-                relation::get_players_by_role_type::ResPart { role_types_with_players },
+                relation::get_players_by_role_type::ResPart { things },
             )) => Ok(Self::RelationGetPlayersByRoleType {
-                role_players: role_types_with_players
+                things: things.into_iter().map(Thing::try_from_proto).try_collect()?,
+            }),
+            Some(thing::res_part::Res::RelationGetRolePlayersResPart(relation::get_role_players::ResPart {
+                role_players,
+            })) => Ok(Self::RelationGetRolePlayers {
+                role_players: role_players
                     .into_iter()
-                    .map(|relation::get_players_by_role_type::RoleTypeWithPlayer { role_type, player }| -> Result<_> {
+                    .map(|relation::RolePlayer { role_type, player }| -> Result<_> {
                         let role_type = role_type.ok_or(ConnectionError::MissingResponseField("role_type"))?;
                         let player = player.ok_or(ConnectionError::MissingResponseField("player"))?;
                         Ok((RoleType::from_proto(role_type), Thing::try_from_proto(player)?))
