@@ -27,6 +27,7 @@ use typedb_protocol::{
     attribute_type::ValueType as ValueTypeProto,
     concept,
     numeric::Value as NumericValue,
+    r#type::{annotation, Annotation as AnnotationProto, Transitivity as TransitivityProto},
     thing, thing_type, Attribute as AttributeProto, AttributeType as AttributeTypeProto, Concept as ConceptProto,
     ConceptMap as ConceptMapProto, Entity as EntityProto, EntityType as EntityTypeProto, Numeric as NumericProto,
     Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto, Thing as ThingProto,
@@ -37,12 +38,30 @@ use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
     answer::{ConceptMap, Numeric},
     concept::{
-        Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, RootThingType,
-        ScopedLabel, Thing, ThingType, Value, ValueType,
+        Annotation, Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType,
+        RootThingType, ScopedLabel, Thing, ThingType, Transitivity, Value, ValueType,
     },
     error::{ConnectionError, InternalError},
     Result,
 };
+
+impl IntoProto<i32> for Transitivity {
+    fn into_proto(self) -> i32 {
+        match self {
+            Self::Explicit => TransitivityProto::Explicit.into(),
+            Self::Transitive => TransitivityProto::Transitive.into(),
+        }
+    }
+}
+
+impl IntoProto<AnnotationProto> for Annotation {
+    fn into_proto(self) -> AnnotationProto {
+        match self {
+            Self::Key => AnnotationProto { annotation: Some(annotation::Annotation::Key(annotation::Key {})) },
+            Self::Unique => AnnotationProto { annotation: Some(annotation::Annotation::Unique(annotation::Unique {})) },
+        }
+    }
+}
 
 impl TryFromProto<NumericProto> for Numeric {
     fn try_from_proto(proto: NumericProto) -> Result<Self> {

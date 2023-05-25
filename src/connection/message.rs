@@ -27,12 +27,12 @@ use typedb_protocol::transaction;
 
 use crate::{
     answer::{ConceptMap, Numeric},
-    common::{address::Address, info::DatabaseInfo, RequestID, SessionID, Transitivity, IID},
+    common::{address::Address, info::DatabaseInfo, RequestID, SessionID, IID},
     concept::{
-        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, Value,
-        ValueType,
+        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
+        Transitivity, Value, ValueType,
     },
-    Annotation, Options, SchemaException, SessionType, TransactionType,
+    Options, SchemaException, SessionType, TransactionType,
 };
 
 #[derive(Debug)]

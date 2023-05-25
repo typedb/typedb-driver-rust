@@ -22,9 +22,11 @@
 use std::fmt;
 
 use futures::Stream;
+//TODO cleanup
+pub use typeql_lang::pattern::Annotation;
 
-use super::{Attribute, Entity, Relation, Thing, Value};
-use crate::{common::Transitivity, Annotation, Result, Transaction};
+use super::{Attribute, Entity, Relation, Thing, Transitivity, Value};
+use crate::{Result, Transaction};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ThingType {

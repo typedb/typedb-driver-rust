@@ -19,13 +19,10 @@
  * under the License.
  */
 
-use typedb_protocol::{
-    r#type::{annotation, Annotation as AnnotationProto, Transitivity as TransitivityProto},
-    session, transaction, Exception, Options as OptionsProto,
-};
+use typedb_protocol::{session, transaction, Exception, Options as OptionsProto};
 
 use super::{FromProto, IntoProto};
-use crate::{Annotation, Options, SchemaException, SessionType, TransactionType, Transitivity};
+use crate::{Options, SchemaException, SessionType, TransactionType};
 
 impl FromProto<Exception> for SchemaException {
     fn from_proto(proto: Exception) -> Self {
@@ -65,24 +62,6 @@ impl IntoProto<OptionsProto> for Options {
             transaction_timeout_millis: self.transaction_timeout.map(|val| val.as_millis() as i32),
             schema_lock_acquire_timeout_millis: self.schema_lock_acquire_timeout.map(|val| val.as_millis() as i32),
             read_any_replica: self.read_any_replica,
-        }
-    }
-}
-
-impl IntoProto<i32> for Transitivity {
-    fn into_proto(self) -> i32 {
-        match self {
-            Self::Explicit => TransitivityProto::Explicit.into(),
-            Self::Transitive => TransitivityProto::Transitive.into(),
-        }
-    }
-}
-
-impl IntoProto<AnnotationProto> for Annotation {
-    fn into_proto(self) -> AnnotationProto {
-        match self {
-            Self::Key => AnnotationProto { annotation: Some(annotation::Annotation::Key(annotation::Key {})) },
-            Self::Unique => AnnotationProto { annotation: Some(annotation::Annotation::Unique(annotation::Unique {})) },
         }
     }
 }

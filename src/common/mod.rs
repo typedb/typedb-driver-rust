@@ -47,15 +47,6 @@ pub enum TransactionType {
     Write = 1,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum Transitivity {
-    Explicit,
-    Transitive,
-}
-
-//TODO cleanup
-pub use typeql_lang::pattern::Annotation;
-
 // TODO move
 #[derive(Clone, Debug)]
 pub struct SchemaException {

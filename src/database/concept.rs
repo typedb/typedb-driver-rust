@@ -24,13 +24,13 @@ use std::sync::Arc;
 use futures::Stream;
 
 use crate::{
-    common::{Transitivity, IID},
+    common::IID,
     concept::{
-        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, Value,
-        ValueType,
+        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
+        Transitivity, Value, ValueType,
     },
     connection::TransactionStream,
-    Annotation, Result, SchemaException,
+    Result, SchemaException,
 };
 
 #[derive(Debug)]

@@ -24,7 +24,9 @@ mod type_;
 
 pub use self::{
     thing::{Attribute, Entity, Relation, Thing, Value},
-    type_::{AttributeType, EntityType, RelationType, RoleType, RootThingType, ScopedLabel, ThingType, ValueType},
+    type_::{
+        Annotation, AttributeType, EntityType, RelationType, RoleType, RootThingType, ScopedLabel, ThingType, ValueType,
+    },
 };
 
 #[derive(Clone, Debug)]
@@ -40,4 +42,10 @@ pub enum Concept {
     Entity(Entity),
     Relation(Relation),
     Attribute(Attribute),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Transitivity {
+    Explicit,
+    Transitive,
 }

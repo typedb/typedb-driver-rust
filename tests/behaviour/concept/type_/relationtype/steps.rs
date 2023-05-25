@@ -22,8 +22,8 @@
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{
-    concept::{RelationType, ScopedLabel},
-    Result as TypeDBResult, Transitivity,
+    concept::{RelationType, ScopedLabel, Transitivity},
+    Result as TypeDBResult,
 };
 
 use crate::{

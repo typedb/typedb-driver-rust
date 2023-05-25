@@ -22,8 +22,8 @@
 use cucumber::{given, then, when};
 use futures::{StreamExt, TryStreamExt};
 use typedb_client::{
-    concept::{Attribute, Entity, Relation, Thing, ThingType},
-    Annotation, Result as TypeDBResult,
+    concept::{Annotation, Attribute, Entity, Relation, Thing, ThingType},
+    Result as TypeDBResult,
 };
 
 use crate::{

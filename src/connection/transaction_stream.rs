@@ -29,17 +29,17 @@ use super::{
 };
 use crate::{
     answer::{ConceptMap, Numeric},
-    common::{Result, Transitivity, IID},
+    common::{Result, IID},
     concept::{
-        Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType, Value,
-        ValueType,
+        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
+        Transitivity, Value, ValueType,
     },
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
         TransactionRequest, TransactionResponse,
     },
     error::InternalError,
-    Annotation, Options, SchemaException, TransactionType,
+    Options, SchemaException, TransactionType,
 };
 
 pub(crate) struct TransactionStream {

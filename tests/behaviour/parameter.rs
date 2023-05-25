@@ -24,8 +24,8 @@ use std::{borrow::Borrow, convert::Infallible, fmt, ops::Not, str::FromStr};
 use chrono::NaiveDateTime;
 use cucumber::Parameter;
 use typedb_client::{
-    concept::{ScopedLabel, Value, ValueType},
-    Annotation, TransactionType, Transitivity,
+    concept::{Annotation, ScopedLabel, Transitivity, Value, ValueType},
+    TransactionType,
 };
 
 #[derive(Debug, Parameter)]
