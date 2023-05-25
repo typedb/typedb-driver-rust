@@ -115,7 +115,7 @@ generic_step_impl! {
         let tx = context.transaction();
         let entity = context.get_entity(var.name);
         let attribute_type = context.get_attribute_type(type_label.name).await?;
-        if let Some(value_type) = value_type.0 {
+        if let Some(value_type) = value_type.value_type {
             assert_eq!(attribute_type.value_type, value_type);
         }
         let actuals: Vec<Attribute> = entity.get_has(tx, vec![attribute_type], vec![])?.try_collect().await?;
@@ -127,7 +127,7 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) get instances is empty")]
     async fn entity_type_get_instances_is_empty(context: &mut Context, type_label: LabelParse) -> TypeDBResult {
         let tx = context.transaction();
-        let entity_type = context.get_entity_type(type_label.into()).await?;
+        let entity_type = context.get_entity_type(type_label.name).await?;
         assert!(entity_type.get_instances(tx)?.next().await.is_none());
         Ok(())
     }
@@ -140,7 +140,7 @@ generic_step_impl! {
         var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity_type = context.get_entity_type(type_label.into()).await?;
+        let entity_type = context.get_entity_type(type_label.name).await?;
         let actuals: Vec<Entity> = entity_type.get_instances(tx)?.try_collect().await?;
         let entity = context.get_entity(var.name);
         containment.assert(&actuals, entity);
@@ -220,9 +220,10 @@ generic_step_impl! {
         relation_var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = context.get_entity(var.name);
+        let role_label = role_label.label;
         let relation_type = context.get_relation_type(role_label.scope).await?;
         let role_type = relation_type.get_relates_for_role_label(tx, role_label.name).await?.unwrap();
+        let entity = context.get_entity(var.name);
         let actuals: Vec<Relation> = entity.get_relations(tx, vec![role_type])?.try_collect().await?;
         let expected = context.get_relation(relation_var.name);
         containment.assert(&actuals, expected);

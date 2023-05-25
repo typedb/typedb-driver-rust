@@ -103,12 +103,8 @@ impl FromStr for ValueParse {
 
 #[derive(Clone, Copy, Debug, Parameter)]
 #[param(name = "value_type", regex = r"boolean|long|double|string|datetime")]
-pub struct ValueTypeParse(ValueType);
-
-impl From<ValueTypeParse> for ValueType {
-    fn from(val: ValueTypeParse) -> Self {
-        val.0
-    }
+pub struct ValueTypeParse {
+    pub value_type: ValueType,
 }
 
 impl FromStr for ValueTypeParse {
@@ -116,11 +112,11 @@ impl FromStr for ValueTypeParse {
 
     fn from_str(type_: &str) -> Result<Self, Self::Err> {
         Ok(match type_ {
-            "boolean" => Self(ValueType::Boolean),
-            "long" => Self(ValueType::Long),
-            "double" => Self(ValueType::Double),
-            "string" => Self(ValueType::String),
-            "datetime" => Self(ValueType::DateTime),
+            "boolean" => Self { value_type: ValueType::Boolean },
+            "long" => Self { value_type: ValueType::Long },
+            "double" => Self { value_type: ValueType::Double },
+            "string" => Self { value_type: ValueType::String },
+            "datetime" => Self { value_type: ValueType::DateTime },
             _ => unreachable!("`{type_}` is not a valid value type"),
         })
     }
@@ -128,24 +124,22 @@ impl FromStr for ValueTypeParse {
 
 #[derive(Clone, Copy, Debug, Parameter)]
 #[param(name = "maybe_value_type", regex = r" as\((boolean|long|double|string|datetime)\)|()")]
-pub struct AsValueTypeParse(pub Option<ValueType>);
+pub struct AsValueTypeParse {
+    pub value_type: Option<ValueType>,
+}
 
 impl FromStr for AsValueTypeParse {
     type Err = Infallible;
 
     fn from_str(type_: &str) -> Result<Self, Self::Err> {
-        Ok(Self(type_.is_empty().not().then(|| type_.parse::<ValueTypeParse>().unwrap().0)))
+        Ok(Self { value_type: type_.is_empty().not().then(|| type_.parse::<ValueTypeParse>().unwrap().value_type) })
     }
 }
 
 #[derive(Clone, Copy, Debug, Parameter)]
 #[param(name = "maybe_explicit", regex = r" explicit|")]
-pub struct TransitivityParse(Transitivity);
-
-impl From<TransitivityParse> for Transitivity {
-    fn from(val: TransitivityParse) -> Self {
-        val.0
-    }
+pub struct TransitivityParse {
+    pub transitivity: Transitivity,
 }
 
 impl FromStr for TransitivityParse {
@@ -153,20 +147,17 @@ impl FromStr for TransitivityParse {
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         Ok(match text {
-            "" => Self(Transitivity::Transitive),
-            " explicit" => Self(Transitivity::Explicit),
-            _ => unreachable!("Unrecognized transitivity modifier: {text:?}"),
+            "" => Self { transitivity: Transitivity::Transitive },
+            " explicit" => Self { transitivity: Transitivity::Explicit },
+            _ => unreachable!(),
         })
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct TransactionTypeParse(TransactionType);
-
-impl From<TransactionTypeParse> for TransactionType {
-    fn from(val: TransactionTypeParse) -> Self {
-        val.0
-    }
+#[derive(Clone, Copy, Debug, Parameter)]
+#[param(name = "transaction_type", regex = r"write|read")]
+pub struct TransactionTypeParse {
+    pub transaction_type: TransactionType,
 }
 
 impl FromStr for TransactionTypeParse {
@@ -174,8 +165,8 @@ impl FromStr for TransactionTypeParse {
 
     fn from_str(type_: &str) -> Result<Self, Self::Err> {
         Ok(match type_ {
-            "write" => Self(TransactionType::Write),
-            "read" => Self(TransactionType::Read),
+            "write" => Self { transaction_type: TransactionType::Write },
+            "read" => Self { transaction_type: TransactionType::Read },
             _ => unreachable!("`{type_}` is not a valid transaction type"),
         })
     }
@@ -185,13 +176,6 @@ impl FromStr for TransactionTypeParse {
 #[param(name = "var", regex = r"(\$[\w_-]+)")]
 pub struct VarParse {
     pub name: String,
-}
-
-impl From<VarParse> for String {
-    fn from(val: VarParse) -> Self {
-        let VarParse { name } = val;
-        name
-    }
 }
 
 impl FromStr for VarParse {
@@ -208,13 +192,6 @@ pub struct LabelParse {
     pub name: String,
 }
 
-impl From<LabelParse> for String {
-    fn from(val: LabelParse) -> Self {
-        let LabelParse { name } = val;
-        name
-    }
-}
-
 impl FromStr for LabelParse {
     type Err = Infallible;
 
@@ -227,13 +204,6 @@ impl FromStr for LabelParse {
 #[param(name = "override_label", regex = r" as ([\w-]+)|()")]
 pub struct OverrideLabelParse {
     pub name: Option<String>,
-}
-
-impl From<OverrideLabelParse> for Option<String> {
-    fn from(val: OverrideLabelParse) -> Self {
-        let OverrideLabelParse { name } = val;
-        name
-    }
 }
 
 impl FromStr for OverrideLabelParse {
@@ -251,15 +221,7 @@ impl FromStr for OverrideLabelParse {
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "scoped_label", regex = r"\S+:\S+")]
 pub struct ScopedLabelParse {
-    pub scope: String,
-    pub name: String,
-}
-
-impl From<ScopedLabelParse> for ScopedLabel {
-    fn from(val: ScopedLabelParse) -> Self {
-        let ScopedLabelParse { scope, name } = val;
-        ScopedLabel { scope, name }
-    }
+    pub label: ScopedLabel,
 }
 
 impl FromStr for ScopedLabelParse {
@@ -267,26 +229,14 @@ impl FromStr for ScopedLabelParse {
 
     fn from_str(label: &str) -> Result<Self, Self::Err> {
         let Some((scope, name)) = label.split_once(':') else { unreachable!() };
-        Ok(Self { scope: scope.to_owned(), name: name.to_owned() })
+        Ok(Self { label: ScopedLabel { scope: scope.to_owned(), name: name.to_owned() } })
     }
 }
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "override_scoped_label", regex = r" as (\S+:\S+)|()")]
 pub struct OverrideScopedLabelParse {
-    pub scope: Option<String>,
-    pub name: Option<String>,
-}
-
-impl From<OverrideScopedLabelParse> for Option<ScopedLabel> {
-    fn from(val: OverrideScopedLabelParse) -> Self {
-        let OverrideScopedLabelParse { scope, name } = val;
-        if let (Some(scope), Some(name)) = (scope, name) {
-            Some(ScopedLabel { scope, name })
-        } else {
-            None
-        }
-    }
+    pub label: Option<ScopedLabel>,
 }
 
 impl FromStr for OverrideScopedLabelParse {
@@ -294,29 +244,25 @@ impl FromStr for OverrideScopedLabelParse {
 
     fn from_str(label: &str) -> Result<Self, Self::Err> {
         if let Some((scope, name)) = label.split_once(':') {
-            Ok(Self { scope: Some(scope.to_owned()), name: Some(name.to_owned()) })
+            Ok(Self { label: Some(ScopedLabel { scope: scope.to_owned(), name: name.to_owned() }) })
         } else {
-            Ok(Self { scope: None, name: None })
+            Ok(Self { label: None })
         }
     }
 }
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "annotations", regex = r", with annotations: ([\w-]+(?:, (?:[\w-]+))*)|()")]
-pub struct AnnotationsParse(Vec<Annotation>);
-
-impl From<AnnotationsParse> for Vec<Annotation> {
-    fn from(val: AnnotationsParse) -> Self {
-        val.0
-    }
+pub struct AnnotationsParse {
+    pub annotations: Vec<Annotation>,
 }
 
 impl FromStr for AnnotationsParse {
     type Err = Infallible;
 
     fn from_str(annotations: &str) -> Result<Self, Self::Err> {
-        Ok(Self(
-            annotations
+        Ok(Self {
+            annotations: annotations
                 .trim()
                 .split(',')
                 .map(str::trim)
@@ -327,7 +273,7 @@ impl FromStr for AnnotationsParse {
                     _ => unreachable!("Unrecognized annotation: {annotation:?}"),
                 })
                 .collect(),
-        ))
+        })
     }
 }
 

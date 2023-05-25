@@ -42,13 +42,13 @@ use crate::{
 generic_step_impl! {
     #[step(expr = "put relation type: {label}")]
     async fn put_relation_type(context: &mut Context, type_label: LabelParse) -> TypeDBResult<RelationType> {
-        context.transaction().concept().put_relation_type(type_label.into()).await
+        context.transaction().concept().put_relation_type(type_label.name).await
     }
 
     #[step(expr = "delete relation type: {label}")]
     async fn delete_relation_type(context: &mut Context, type_label: LabelParse) -> TypeDBResult {
         let tx = context.transaction();
-        context.get_relation_type(type_label.into()).await?.delete(tx).await
+        context.get_relation_type(type_label.name).await?.delete(tx).await
     }
 
     #[step(expr = "delete relation type: {label}; throws exception")]
@@ -58,7 +58,7 @@ generic_step_impl! {
 
     #[step(expr = r"relation\(( ){label}( )\) is null: {word}")]
     async fn relation_type_is_null(context: &mut Context, type_label: LabelParse, is_null: bool) -> TypeDBResult {
-        let res = context.transaction().concept().get_relation_type(type_label.into()).await?;
+        let res = context.transaction().concept().get_relation_type(type_label.name).await?;
         assert_eq!(res.is_none(), is_null, "{res:?}");
         Ok(())
     }
@@ -70,7 +70,7 @@ generic_step_impl! {
         new_label: LabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        context.get_relation_type(type_label.into()).await?.set_label(tx, new_label.into()).await
+        context.get_relation_type(type_label.name).await?.set_label(tx, new_label.name).await
     }
 
     #[step(expr = r"relation\(( ){label}( )\) get label: {label}")]
@@ -79,7 +79,7 @@ generic_step_impl! {
         type_label: LabelParse,
         get_label: LabelParse,
     ) -> TypeDBResult {
-        assert_eq!(context.get_relation_type(type_label.into()).await?.label, get_label.name);
+        assert_eq!(context.get_relation_type(type_label.name).await?.label, get_label.name);
         Ok(())
     }
 
@@ -90,7 +90,7 @@ generic_step_impl! {
         is_abstract: bool,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let mut relation_type = context.get_relation_type(type_label.into()).await?;
+        let mut relation_type = context.get_relation_type(type_label.name).await?;
         if is_abstract {
             relation_type.set_abstract(tx).await
         } else {
@@ -109,7 +109,7 @@ generic_step_impl! {
         type_label: LabelParse,
         is_abstract: bool,
     ) -> TypeDBResult {
-        assert_eq!(context.get_relation_type(type_label.into()).await?.is_abstract, is_abstract);
+        assert_eq!(context.get_relation_type(type_label.name).await?.is_abstract, is_abstract);
         Ok(())
     }
 
@@ -120,8 +120,8 @@ generic_step_impl! {
         supertype_label: LabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let supertype = context.get_relation_type(supertype_label.into()).await?;
-        context.get_relation_type(type_label.into()).await?.set_supertype(tx, supertype).await
+        let supertype = context.get_relation_type(supertype_label.name).await?;
+        context.get_relation_type(type_label.name).await?.set_supertype(tx, supertype).await
     }
 
     #[step(expr = r"relation\(( ){label}( )\) set supertype: {label}; throws exception")]
@@ -140,7 +140,7 @@ generic_step_impl! {
         supertype: LabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        assert_eq!(context.get_relation_type(type_label.into()).await?.get_supertype(tx).await?.label, supertype.name);
+        assert_eq!(context.get_relation_type(type_label.name).await?.get_supertype(tx).await?.label, supertype.name);
         Ok(())
     }
 
@@ -152,7 +152,7 @@ generic_step_impl! {
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
         let actuals = relation_type.get_supertypes(tx)?.map_ok(|rt| rt.label).try_collect::<Vec<_>>().await?;
         for supertype in iter_table(step) {
             containment.assert(&actuals, supertype);
@@ -168,7 +168,7 @@ generic_step_impl! {
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
         let actuals: Vec<String> = relation_type.get_subtypes(tx)?.map_ok(|rt| rt.label).try_collect().await?;
         for subtype in iter_table(step) {
             containment.assert(&actuals, subtype);
@@ -185,14 +185,14 @@ generic_step_impl! {
         annotations: AnnotationsParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let mut relation_type = context.get_relation_type(type_label.into()).await?;
-        let attribute_type = context.get_attribute_type(attribute_type_label.into()).await?;
+        let mut relation_type = context.get_relation_type(type_label.name).await?;
+        let attribute_type = context.get_attribute_type(attribute_type_label.name).await?;
         let overridden_attribute_type = if let Some(label) = overridden_attribute_type_label.name {
             Some(context.get_attribute_type(label).await?)
         } else {
             None
         };
-        relation_type.set_owns(tx, attribute_type, overridden_attribute_type, annotations.into()).await
+        relation_type.set_owns(tx, attribute_type, overridden_attribute_type, annotations.annotations).await
     }
 
     #[step(
@@ -224,8 +224,8 @@ generic_step_impl! {
         attribute_type_label: LabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let mut relation_type = context.get_relation_type(type_label.into()).await?;
-        let attribute_type = context.get_attribute_type(attribute_type_label.into()).await?;
+        let mut relation_type = context.get_relation_type(type_label.name).await?;
+        let attribute_type = context.get_attribute_type(attribute_type_label.name).await?;
         relation_type.unset_owns(tx, attribute_type).await
     }
 
@@ -250,9 +250,9 @@ generic_step_impl! {
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
         let actuals: Vec<String> = relation_type
-            .get_owns(tx, None, transitivity.into(), annotations.into())?
+            .get_owns(tx, None, transitivity.transitivity, annotations.annotations)?
             .map_ok(|at| at.label)
             .try_collect()
             .await?;
@@ -270,8 +270,8 @@ generic_step_impl! {
         is_null: bool,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        let attribute_type = context.get_attribute_type(attribute_type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        let attribute_type = context.get_attribute_type(attribute_type_label.name).await?;
         let res = relation_type.get_owns_overridden(tx, attribute_type).await?;
         assert_eq!(res.is_none(), is_null);
         Ok(())
@@ -285,10 +285,10 @@ generic_step_impl! {
         overridden_label: LabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        let attribute_type = context.get_attribute_type(attribute_type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        let attribute_type = context.get_attribute_type(attribute_type_label.name).await?;
         let res = relation_type.get_owns_overridden(tx, attribute_type).await?;
-        assert_eq!(res.map(|at| at.label), Some(overridden_label.into()));
+        assert_eq!(res.map(|at| at.label), Some(overridden_label.name));
         Ok(())
     }
 
@@ -300,16 +300,15 @@ generic_step_impl! {
         overridden_role_label: OverrideScopedLabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
+        let role_label = role_label.label;
         let relation_type = context.get_relation_type(role_label.scope).await?;
         let role = relation_type.get_relates_for_role_label(tx, role_label.name).await?.unwrap();
-        // FIXME
-        let overridden_role =
-            if let OverrideScopedLabelParse { scope: Some(scope), name: Some(name) } = overridden_role_label {
-                Some(context.get_relation_type(scope).await?.get_relates_for_role_label(tx, name).await?.unwrap())
-            } else {
-                None
-            };
-        let mut relation_type = context.get_relation_type(type_label.into()).await?;
+        let overridden_role = if let Some(ScopedLabel { scope, name }) = overridden_role_label.label {
+            Some(context.get_relation_type(scope).await?.get_relates_for_role_label(tx, name).await?.unwrap())
+        } else {
+            None
+        };
+        let mut relation_type = context.get_relation_type(type_label.name).await?;
         relation_type.set_plays(tx, role, overridden_role).await
     }
 
@@ -330,9 +329,10 @@ generic_step_impl! {
         role_label: ScopedLabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
+        let role_label = role_label.label;
         let relation_type = context.get_relation_type(role_label.scope).await?;
         let role = relation_type.get_relates_for_role_label(tx, role_label.name).await?.unwrap();
-        let mut relation_type = context.get_relation_type(type_label.into()).await?;
+        let mut relation_type = context.get_relation_type(type_label.name).await?;
         relation_type.unset_plays(tx, role).await
     }
 
@@ -354,11 +354,11 @@ generic_step_impl! {
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
         let actuals: Vec<ScopedLabel> =
-            relation_type.get_plays(tx, transitivity.into())?.map_ok(|rt| rt.label).try_collect().await?;
+            relation_type.get_plays(tx, transitivity.transitivity)?.map_ok(|rt| rt.label).try_collect().await?;
         for role_label in iter_table(step) {
-            let role_label: ScopedLabel = role_label.parse::<ScopedLabelParse>().unwrap().into();
+            let role_label = role_label.parse::<ScopedLabelParse>().unwrap().label;
             containment.assert(&actuals, &role_label);
         }
         Ok(())
@@ -374,8 +374,8 @@ generic_step_impl! {
         overridden_role_name: OverrideLabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let mut relation_type = context.get_relation_type(type_label.into()).await?;
-        relation_type.set_relates(tx, role_name.into(), overridden_role_name.into()).await
+        let mut relation_type = context.get_relation_type(type_label.name).await?;
+        relation_type.set_relates(tx, role_name.name, overridden_role_name.name).await
     }
 
     #[step(expr = r"relation\(( ){label}( )) set relates role: {label}{override_label}; throws exception")]
@@ -395,8 +395,8 @@ generic_step_impl! {
         role_name: LabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let mut relation_type = context.get_relation_type(type_label.into()).await?;
-        relation_type.unset_relates(tx, role_name.into()).await
+        let mut relation_type = context.get_relation_type(type_label.name).await?;
+        relation_type.unset_relates(tx, role_name.name).await
     }
 
     #[step(expr = r"relation\(( ){label}( )) unset related role: {label}; throws exception")]
@@ -412,8 +412,8 @@ generic_step_impl! {
         is_null: bool,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        assert_eq!(relation_type.get_relates_for_role_label(tx, role_name.into()).await?.is_none(), is_null);
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        assert_eq!(relation_type.get_relates_for_role_label(tx, role_name.name).await?.is_none(), is_null);
         Ok(())
     }
 
@@ -425,8 +425,8 @@ generic_step_impl! {
         is_null: bool,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        assert_eq!(relation_type.get_relates_overridden(tx, role_name.into()).await?.is_none(), is_null);
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        assert_eq!(relation_type.get_relates_overridden(tx, role_name.name).await?.is_none(), is_null);
         Ok(())
     }
 
@@ -438,8 +438,8 @@ generic_step_impl! {
         new_name: LabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        let role_type = relation_type.get_relates_for_role_label(tx, role_name.into()).await?.unwrap();
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        let role_type = relation_type.get_relates_for_role_label(tx, role_name.name).await?.unwrap();
         role_type.set_label(tx, new_name.name).await
     }
 
@@ -451,8 +451,8 @@ generic_step_impl! {
         expected_name: LabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        let role_type = relation_type.get_relates_for_role_label(tx, role_name.into()).await?.unwrap();
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        let role_type = relation_type.get_relates_for_role_label(tx, role_name.name).await?.unwrap();
         assert_eq!(role_type.label.name, expected_name.name);
         Ok(())
     }
@@ -465,8 +465,8 @@ generic_step_impl! {
         expected_name: LabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        let role_type = relation_type.get_relates_overridden(tx, role_name.into()).await?.unwrap();
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        let role_type = relation_type.get_relates_overridden(tx, role_name.name).await?.unwrap();
         assert_eq!(role_type.label.name, expected_name.name);
         Ok(())
     }
@@ -479,7 +479,7 @@ generic_step_impl! {
         is_abstract: bool,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
         assert_eq!(
             relation_type.get_relates_for_role_label(tx, role_name.name).await?.unwrap().is_abstract,
             is_abstract
@@ -496,12 +496,12 @@ generic_step_impl! {
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
         let actuals: Vec<ScopedLabel> =
-            relation_type.get_relates(tx, transitivity.into())?.map_ok(|rt| rt.label).try_collect().await?;
+            relation_type.get_relates(tx, transitivity.transitivity)?.map_ok(|rt| rt.label).try_collect().await?;
         for role_label in iter_table(step) {
             let role_label: ScopedLabel = if role_label.contains(':') {
-                role_label.parse::<ScopedLabelParse>().unwrap().into()
+                role_label.parse::<ScopedLabelParse>().unwrap().label
             } else {
                 ScopedLabel { scope: relation_type.label.clone(), name: role_label.to_owned() }
             };
@@ -518,9 +518,9 @@ generic_step_impl! {
         supertype: ScopedLabelParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        let role_type = relation_type.get_relates_for_role_label(tx, role_name.into()).await?.unwrap();
-        assert_eq!(role_type.get_supertype(tx).await?.label, ScopedLabel::from(supertype));
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        let role_type = relation_type.get_relates_for_role_label(tx, role_name.name).await?.unwrap();
+        assert_eq!(role_type.get_supertype(tx).await?.label, supertype.label);
         Ok(())
     }
 
@@ -533,11 +533,11 @@ generic_step_impl! {
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        let role_type = relation_type.get_relates_for_role_label(tx, role_name.into()).await?.unwrap();
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        let role_type = relation_type.get_relates_for_role_label(tx, role_name.name).await?.unwrap();
         let actuals: Vec<ScopedLabel> = role_type.get_supertypes(tx)?.map_ok(|rt| rt.label).try_collect().await?;
         for supertype in iter_table(step) {
-            let supertype: ScopedLabel = supertype.parse::<ScopedLabelParse>().unwrap().into();
+            let supertype = supertype.parse::<ScopedLabelParse>().unwrap().label;
             containment.assert(&actuals, &supertype);
         }
         Ok(())
@@ -552,8 +552,8 @@ generic_step_impl! {
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        let role_type = relation_type.get_relates_for_role_label(tx, role_name.into()).await?.unwrap();
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        let role_type = relation_type.get_relates_for_role_label(tx, role_name.name).await?.unwrap();
         let actuals: Vec<String> = role_type
             .get_player_types(tx, Transitivity::Transitive)?
             .map_ok(|t| t.label().to_owned())
@@ -574,12 +574,12 @@ generic_step_impl! {
         containment: ContainmentParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
-        let role_type = relation_type.get_relates_for_role_label(tx, role_name.into()).await?.unwrap();
+        let relation_type = context.get_relation_type(type_label.name).await?;
+        let role_type = relation_type.get_relates_for_role_label(tx, role_name.name).await?.unwrap();
         let actuals: Vec<ScopedLabel> =
             role_type.get_subtypes(tx, Transitivity::Transitive)?.map_ok(|rt| rt.label).try_collect().await?;
         for subtype in iter_table(step) {
-            let subtype: ScopedLabel = subtype.parse::<ScopedLabelParse>().unwrap().into();
+            let subtype = subtype.parse::<ScopedLabelParse>().unwrap().label;
             containment.assert(&actuals, &subtype);
         }
         Ok(())

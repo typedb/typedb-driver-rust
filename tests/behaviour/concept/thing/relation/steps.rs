@@ -55,7 +55,7 @@ generic_step_impl! {
     #[step(expr = r"relation\(( ){label}( )\) get instances is empty")]
     async fn relation_type_get_instances_is_empty(context: &mut Context, type_label: LabelParse) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
         assert!(relation_type.get_instances(tx)?.next().await.is_none());
         Ok(())
     }
@@ -68,7 +68,7 @@ generic_step_impl! {
         var: VarParse,
     ) -> TypeDBResult {
         let tx = context.transaction();
-        let relation_type = context.get_relation_type(type_label.into()).await?;
+        let relation_type = context.get_relation_type(type_label.name).await?;
         let actuals: Vec<Relation> = relation_type.get_instances(tx)?.try_collect().await?;
         let relation = context.get_relation(var.name);
         containment.assert(&actuals, relation);
