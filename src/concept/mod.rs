@@ -30,6 +30,7 @@ pub use self::{
 #[derive(Clone, Debug)]
 pub enum Concept {
     RoleType(RoleType),
+
     RootThingType(RootThingType),
 
     EntityType(EntityType),
