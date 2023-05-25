@@ -47,7 +47,6 @@ pub enum TransactionType {
     Write = 1,
 }
 
-// TODO move
 #[derive(Clone, Debug)]
 pub struct SchemaException {
     pub code: String,
