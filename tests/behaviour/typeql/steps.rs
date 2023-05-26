@@ -22,8 +22,8 @@
 use cucumber::{gherkin::Step, given, then, when};
 use futures::{TryFutureExt, TryStreamExt};
 use std::collections::HashMap;
-use typeql_lang::parse_query;
 use typedb_client::answer::Numeric;
+use typeql_lang::parse_query;
 use util::{apply_query_template, equals_approximate, iter_map_table, match_answer_concept_map};
 
 use crate::behaviour::util;

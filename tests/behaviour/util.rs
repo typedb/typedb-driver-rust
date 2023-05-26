@@ -27,11 +27,10 @@ use std::collections::HashMap;
 use typedb_client::{
     answer::ConceptMap,
     concept::{
-        Attribute, AttributeType, Concept,
-        Entity, EntityType,
-        Relation, RelationType, RoleType, RootThingType, ScopedLabel,
-        Thing, ThingType, Value, ValueType,
+        Attribute, AttributeType, Concept, Entity, EntityType, HasFilter, Relation, RelationType, RoleType, RootThingType,
+        ScopedLabel, Thing, ThingType, Value, ValueType,
     },
+    Annotation, Session, SessionType, TransactionType,
 };
 use typeql_lang::{
     parse_pattern, parse_queries, parse_query,
@@ -68,42 +67,14 @@ fn format_datetime(datetime: &NaiveDateTime) -> String {
     }
 }
 
-fn iid_to_string(iid: &Vec<u8>) -> String {
-    let mut s = String::from("0x");
-    for byte in iid {
-        s += format!("{:02x}", byte).as_str();
-    }
-    s
-}
-
 fn get_iid(concept: &Concept) -> String {
     let iid = match concept {
-        Concept::Entity(Entity { iid, ..}) => iid,
-        Concept::Attribute(Attribute { iid, ..}) => iid,
-        Concept::Relation(Relation { iid, ..}) => iid,
+        Concept::Entity(Entity { iid, .. }) => iid,
+        Concept::Attribute(Attribute { iid, .. }) => iid,
+        Concept::Relation(Relation { iid, .. }) => iid,
         _ => unreachable!(),
     };
     format!("0x{iid}")
-}
-
-async fn get_attribute_concept(context: &Context, iid: String, attr_label: &str) -> Result<Concept, String> {
-    let query = typeql_match!(var("x").iid(iid).has((attr_label, var("val"))),).get(["val"]).to_string();
-
-    let stream = context.transaction().query().match_(&query);
-    match stream {
-        Ok(_) => {
-            let res = stream.unwrap().try_collect::<Vec<_>>().await;
-            match res {
-                Ok(_) => Ok(res.unwrap()[0].map["val"].clone()),
-                Err(error) => Err(error.to_string()),
-            }
-        }
-        Err(error) => Err(error.to_string()),
-    }
-
-    // context.transaction().query().match_(&query)
-    //     .map_err(|error| error.to_string()).unwrap().try_collect::<Vec<_>>().await
-    //     .map_err(|error| error.to_string()).map(|res| res[0].map["val"].clone())
 }
 
 pub fn equals_approximate(first: f64, second: f64) -> bool {
@@ -111,39 +82,31 @@ pub fn equals_approximate(first: f64, second: f64) -> bool {
     return (first - second).abs() < EPS;
 }
 
+fn value_equals_str(value: &Value, expected: &str) -> bool {
+    match value {
+        Value::String(val) => val == expected,
+        Value::Long(val) => {
+            expected.parse::<i64>().and_then(|expected| Ok(expected.eq(val))).unwrap_or_else(|_| false)
+        }
+        Value::Double(val) => {
+            expected
+                .parse::<f64>()
+                .and_then(|expected| Ok(equals_approximate(expected, *val)))
+                .unwrap_or_else(|_| false)
+        }
+        Value::Boolean(val) => {
+            expected.parse::<bool>().and_then(|expected| Ok(expected.eq(val))).unwrap_or_else(|_| false)
+        }
+        Value::DateTime(val) => format_datetime(val) == expected,
+    }
+}
+
 fn values_equal(identifiers: &str, answer: &Concept) -> bool {
     let attribute: Vec<&str> = identifiers.splitn(2, ":").collect();
     assert_eq!(attribute.len(), 2, "Unexpected table cell format: {identifiers}.");
     match answer {
-        Concept::Attribute(Attribute { type_: AttributeType { label, value_type, .. }, value, .. } ) => match value {
-            Value::String(val) => {
-                label == attribute[0] && val == attribute[1]
-            },
-            Value::Long(val) => {
-                label == attribute[0]
-                    && attribute[1]
-                        .parse::<i64>()
-                        .and_then(|expected| Ok(expected.eq(val)))
-                        .unwrap_or_else(|_| false)
-            },
-            Value::Double(val) => {
-                label == attribute[0]
-                    && attribute[1]
-                        .parse::<f64>()
-                        .and_then(|expected| Ok(equals_approximate(expected, *val)))
-                        .unwrap_or_else(|_| false)
-            },
-            Value::Boolean(val) => {
-                label == attribute[0]
-                    && attribute[1]
-                        .parse::<bool>()
-                        .and_then(|expected| Ok(expected.eq(val)))
-                        .unwrap_or_else(|_| false)
-            },
-            Value::DateTime(val) => {
-                label == attribute[0] && format_datetime(val) == attribute[1]
-            },
-        },
+        Concept::Attribute(Attribute { type_: AttributeType { label, value_type, .. }, value, .. })
+            => value_equals_str(value, attribute[1]),
         _ => false,
     }
 }
@@ -151,14 +114,20 @@ fn values_equal(identifiers: &str, answer: &Concept) -> bool {
 fn labels_equal(identifier: &str, answer: &Concept) -> bool {
     let mut binding = String::new();
     let label = match answer {
-        Concept::EntityType(type_) => { binding = type_.clone().label; &binding },
-        Concept::RoleType(RoleType { label: ScopedLabel { scope, name }, ..}) => {
+        Concept::EntityType(type_) => {
+            binding = type_.clone().label;
+            &binding
+        }
+        Concept::RoleType(RoleType { label: ScopedLabel { scope, name }, .. }) => {
             binding = format!("{scope}:{name}");
             &binding
-        },
+        }
         Concept::Entity(Entity { type_: EntityType { label, .. }, .. }) => label,
         Concept::Relation(Relation { type_: RelationType { label, .. }, .. }) => label,
-        Concept::RootThingType(_) => { binding = String::from("thing"); &binding },
+        Concept::RootThingType(_) => {
+            binding = String::from("thing");
+            &binding
+        }
         Concept::RelationType(RelationType { label, .. }) => label,
         Concept::AttributeType(AttributeType { label, .. }) => label,
         Concept::Attribute(Attribute { type_: AttributeType { label, .. }, .. }) => label,
@@ -170,11 +139,91 @@ fn labels_equal(identifier: &str, answer: &Concept) -> bool {
 async fn key_values_equal(context: &Context, identifiers: &str, answer: &Concept) -> bool {
     let attribute: Vec<&str> = identifiers.splitn(2, ":").collect();
     assert_eq!(attribute.len(), 2, "Unexpected table cell format: {identifiers}.");
-    let attribute_concept = get_attribute_concept(context, get_iid(answer), attribute[0]).await;
-    match attribute_concept {
-        Ok(_) => values_equal(identifiers, &attribute_concept.unwrap()),
-        _ => false,
+
+    // let stream = match answer {
+    //     Concept::Entity(entity) => entity.get_has(context.transaction(), filter),
+    //     Concept::Attribute(attr) => attr.get_has(context.transaction(), filter),
+    //     Concept::Relation(rel) => rel.get_has(context.transaction(), filter),
+    //     _ => unreachable!()
+    // };
+
+    let filter = HasFilter::Annotations(Vec::from([Annotation::Key]));
+    if let Concept::Entity(entity) = answer {
+        let stream = entity.get_has(context.transaction(), filter);
+        match stream {
+            Ok(_) => {
+                let res = stream.unwrap().try_collect::<Vec<_>>().await;
+                match res {
+                    Ok(_) => {
+                        let binding = res.unwrap();
+                        let filtered: Vec<_> = binding.iter()
+                            .filter(|attr| attr.type_.label == attribute[0]).collect();
+                        if !filtered.is_empty() {
+                            value_equals_str(&filtered.first().unwrap().value, attribute[1])
+                        }
+                        else {
+                            false
+                        }
+                    },
+                    Err(_) => false
+                }
+            },
+            Err(_) => false
+        }
+    } else if let Concept::Attribute(attr) = answer {
+        let stream = attr.get_has(context.transaction(), filter);
+        match stream {
+            Ok(_) => {
+                let res = stream.unwrap().try_collect::<Vec<_>>().await;
+                match res {
+                    Ok(_) => {
+                        let binding = res.unwrap();
+                        let filtered: Vec<_> = binding.iter()
+                            .filter(|attr| attr.type_.label == attribute[0]).collect();
+                        if !filtered.is_empty() {
+                            value_equals_str(&filtered.first().unwrap().value, attribute[1])
+                        }
+                        else {
+                            false
+                        }
+                    },
+                    Err(_) => false
+                }
+            },
+            Err(_) => false
+        }
+    } else if let Concept::Relation(rel) = answer {
+        let stream = rel.get_has(context.transaction(), filter);
+        match stream {
+            Ok(_) => {
+                let res = stream.unwrap().try_collect::<Vec<_>>().await;
+                match res {
+                    Ok(_) => {
+                        let binding = res.unwrap();
+                        let filtered: Vec<_> = binding.iter()
+                            .filter(|attr| attr.type_.label == attribute[0]).collect();
+                        if !filtered.is_empty() {
+                            value_equals_str(&filtered.first().unwrap().value, attribute[1])
+                        }
+                        else {
+                            false
+                        }
+                    },
+                    Err(_) => false
+                }
+            },
+            Err(_) => false
+        }
+    } else {
+        false
     }
+
+    // let attribute_concept = get_attribute_concept(context, get_iid(answer), attribute[0]).await;
+    // match attribute_concept {
+    //     Ok(_) => values_equal(identifiers, &attribute_concept.unwrap()),
+    //     _ => false,
+    // }
+
 }
 
 pub async fn match_answer_concept(context: &Context, answer_identifier: &String, answer: &Concept) -> bool {
