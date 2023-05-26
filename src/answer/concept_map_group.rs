@@ -35,4 +35,3 @@ impl Clone for ConceptMapGroup {
         Self { owner, concept_maps }
     }
 }
-
