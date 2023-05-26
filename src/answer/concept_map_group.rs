@@ -19,8 +19,20 @@
  * under the License.
  */
 
-mod concept_map;
-mod concept_map_group;
-mod numeric;
+use crate::answer::ConceptMap;
+use crate::concept::Concept;
 
-pub use self::{concept_map::ConceptMap, numeric::Numeric};
+#[derive(Debug)]
+pub struct ConceptMapGroup {
+    pub owner: Concept,
+    pub concept_maps: Vec<ConceptMap>,
+}
+
+impl Clone for ConceptMapGroup {
+    fn clone(&self) -> Self {
+        let owner = self.owner.clone();
+        let concept_maps = self.concept_maps.clone();
+        Self { owner, concept_maps }
+    }
+}
+
