@@ -32,12 +32,6 @@ use typedb_client::{
     },
     Annotation,
 };
-use typeql_lang::{
-    parse_pattern, parse_queries, parse_query,
-    pattern::{ThingVariableBuilder, TypeVariableBuilder},
-    query::{AggregateQueryBuilder, TypeQLDefine, TypeQLInsert, TypeQLMatch, TypeQLUndefine},
-    typeql_match, var,
-};
 
 use crate::behaviour::Context;
 
@@ -81,24 +75,38 @@ async fn key_values_equal(context: &Context, identifiers: &str, answer: &Concept
 
     let filter = HasFilter::Annotations(Vec::from([Annotation::Key]));
     let res = match answer {
-        Concept::Entity(entity) => async { entity.get_has(context.transaction(), filter) }
-            .and_then(|stream| async { stream.try_collect::<Vec<_>>().await }).await,
-        Concept::Attribute(attr) => async { attr.get_has(context.transaction(), filter) }
-            .and_then(|stream| async { stream.try_collect::<Vec<_>>().await }).await,
-        Concept::Relation(rel) => async { rel.get_has(context.transaction(), filter) }
-            .and_then(|stream| async { stream.try_collect::<Vec<_>>().await }).await,
-        _ => unreachable!()
+        Concept::Entity(entity) => {
+            async { entity.get_has(context.transaction(), filter) }
+                .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
+                .await
+        }
+        Concept::Attribute(attr) => {
+            async { attr.get_has(context.transaction(), filter) }
+                .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
+                .await
+        }
+        Concept::Relation(rel) => {
+            async { rel.get_has(context.transaction(), filter) }
+                .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
+                .await
+        }
+        _ => unreachable!(),
     };
     match res {
         Ok(_) => {
-            let equals = res.unwrap().into_iter().filter(|attr| attr.type_.label == attribute[0]).collect::<Vec<_>>()
-                .first().and_then(|attr| Some(value_equals_str(&attr.value, attribute[1])));
+            let equals = res
+                .unwrap()
+                .into_iter()
+                .filter(|attr| attr.type_.label == attribute[0])
+                .collect::<Vec<_>>()
+                .first()
+                .and_then(|attr| Some(value_equals_str(&attr.value, attribute[1])));
             match equals {
                 Some(val) => val,
-                None => false
+                None => false,
             }
-        },
-        Err(_) => false
+        }
+        Err(_) => false,
     }
 }
 
@@ -130,8 +138,7 @@ fn values_equal(identifiers: &str, answer: &Concept) -> bool {
     let attribute: Vec<&str> = identifiers.splitn(2, ":").collect();
     assert_eq!(attribute.len(), 2, "Unexpected table cell format: {identifiers}.");
     match answer {
-        Concept::Attribute(Attribute { value, .. })
-        => value_equals_str(value, attribute[1]),
+        Concept::Attribute(Attribute { value, .. }) => value_equals_str(value, attribute[1]),
         _ => false,
     }
 }
@@ -139,15 +146,11 @@ fn values_equal(identifiers: &str, answer: &Concept) -> bool {
 fn value_equals_str(value: &Value, expected: &str) -> bool {
     match value {
         Value::String(val) => val == expected,
-        Value::Long(val) => {
-            expected.parse::<i64>().and_then(|expected| Ok(expected.eq(val))).unwrap_or_else(|_| false)
-        }
-        Value::Double(val) => {
-            expected
-                .parse::<f64>()
-                .and_then(|expected| Ok(equals_approximate(expected, *val)))
-                .unwrap_or_else(|_| false)
-        }
+        Value::Long(val) => expected.parse::<i64>().and_then(|expected| Ok(expected.eq(val))).unwrap_or_else(|_| false),
+        Value::Double(val) => expected
+            .parse::<f64>()
+            .and_then(|expected| Ok(equals_approximate(expected, *val)))
+            .unwrap_or_else(|_| false),
         Value::Boolean(val) => {
             expected.parse::<bool>().and_then(|expected| Ok(expected.eq(val))).unwrap_or_else(|_| false)
         }
@@ -192,4 +195,3 @@ fn format_datetime(datetime: &NaiveDateTime) -> String {
 //         formatted
 //     }
 // }
-
