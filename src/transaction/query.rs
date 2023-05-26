@@ -24,7 +24,7 @@ use std::sync::Arc;
 use futures::Stream;
 
 use crate::{
-    answer::{ConceptMap, Numeric},
+    answer::{ConceptMap, ConceptMapGroup, Numeric},
     common::Result,
     connection::TransactionStream,
     Options,
@@ -95,4 +95,13 @@ impl QueryManager {
     pub async fn match_aggregate_with_options(&self, query: &str, options: Options) -> Result<Numeric> {
         self.transaction_stream.match_aggregate(query.to_string(), options).await
     }
+    
+    pub fn match_group(&self, query: &str) -> Result<impl Stream<Item = Result<ConceptMapGroup>>> {
+        self.match_group_with_options(query, Options::new())
+    }
+
+    pub fn match_group_with_options(&self, query: &str, options: Options) -> Result<impl Stream<Item = Result<ConceptMapGroup>>> {
+        self.transaction_stream.match_group(query.to_string(), options)
+    }
+
 }

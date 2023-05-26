@@ -29,14 +29,14 @@ use typedb_protocol::{
     numeric::Value as NumericValue,
     r#type::{annotation, Annotation as AnnotationProto, Transitivity as TransitivityProto},
     thing, thing_type, Attribute as AttributeProto, AttributeType as AttributeTypeProto, Concept as ConceptProto,
-    ConceptMap as ConceptMapProto, Entity as EntityProto, EntityType as EntityTypeProto, Numeric as NumericProto,
+    ConceptMap as ConceptMapProto, ConceptMapGroup as ConceptMapGroupProto, Entity as EntityProto, EntityType as EntityTypeProto, Numeric as NumericProto,
     Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto, Thing as ThingProto,
     ThingType as ThingTypeProto,
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
-    answer::{ConceptMap, Numeric},
+    answer::{ConceptMap, ConceptMapGroup, Numeric},
     concept::{
         Annotation, Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType,
         RootThingType, ScopedLabel, Thing, ThingType, Transitivity, Value, ValueType,
@@ -71,6 +71,21 @@ impl TryFromProto<NumericProto> for Numeric {
             Some(NumericValue::Nan(_)) => Ok(Self::NaN),
             None => Err(ConnectionError::MissingResponseField("value").into()),
         }
+    }
+}
+
+impl TryFromProto<ConceptMapGroupProto> for ConceptMapGroup {
+    fn try_from_proto(proto: ConceptMapGroupProto) -> Result<Self> {
+        let owner = match proto.owner {
+            Some(proto_owner) => Concept::try_from_proto(proto_owner)?,
+            None => return Err(ConnectionError::MissingResponseField("owner").into()),
+        };
+        let mut concept_maps = Vec::with_capacity(proto.concept_maps.len());
+        for cm in proto.concept_maps {
+            concept_maps.push(ConceptMap::try_from_proto(cm)?);
+        }
+
+        Ok(Self { owner, concept_maps })
     }
 }
 

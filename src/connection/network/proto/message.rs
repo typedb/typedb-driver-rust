@@ -42,6 +42,7 @@ use crate::{
     },
     error::{ConnectionError, InternalError},
 };
+use crate::answer::ConceptMapGroup;
 
 impl TryIntoProto<server_manager::all::Req> for Request {
     fn try_into_proto(self) -> Result<server_manager::all::Req> {
@@ -380,6 +381,9 @@ impl TryFromProto<query_manager::ResPart> for QueryResponse {
             }
             Some(query_manager::res_part::Res::UpdateResPart(res)) => {
                 Ok(Self::Update { answers: res.answers.into_iter().map(ConceptMap::try_from_proto).try_collect()? })
+            }
+            Some(query_manager::res_part::Res::MatchGroupResPart(res)) => {
+                Ok(Self::MatchGroup { answers: res.answers.into_iter().map(ConceptMapGroup::try_from_proto).try_collect()? })
             }
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
