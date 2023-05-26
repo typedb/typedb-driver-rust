@@ -54,8 +54,8 @@ impl SessionTracker {
 
     pub async fn open_transaction(&mut self, transaction_type: TransactionType) -> typedb_client::Result {
         let options = match transaction_type {
-                TransactionType::Write => Options::new(),
-                TransactionType::Read => Options::new().infer(true),
+            TransactionType::Write => Options::new(),
+            TransactionType::Read => Options::new().infer(true),
         };
         unsafe {
             // SAFETY: the transactions tracked by the SessionTracker instance borrow SessionTracker::session.
