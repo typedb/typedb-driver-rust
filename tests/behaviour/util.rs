@@ -79,90 +79,27 @@ async fn key_values_equal(context: &Context, identifiers: &str, answer: &Concept
     let attribute: Vec<&str> = identifiers.splitn(2, ":").collect();
     assert_eq!(attribute.len(), 2, "Unexpected table cell format: {identifiers}.");
 
-    // let stream = match answer {
-    //     Concept::Entity(entity) => entity.get_has(context.transaction(), filter),
-    //     Concept::Attribute(attr) => attr.get_has(context.transaction(), filter),
-    //     Concept::Relation(rel) => rel.get_has(context.transaction(), filter),
-    //     _ => unreachable!()
-    // };
-
     let filter = HasFilter::Annotations(Vec::from([Annotation::Key]));
-    if let Concept::Entity(entity) = answer {
-        let stream = entity.get_has(context.transaction(), filter);
-        match stream {
-            Ok(_) => {
-                let res = stream.unwrap().try_collect::<Vec<_>>().await;
-                match res {
-                    Ok(_) => {
-                        let binding = res.unwrap();
-                        let filtered: Vec<_> = binding.iter()
-                            .filter(|attr| attr.type_.label == attribute[0]).collect();
-                        if !filtered.is_empty() {
-                            value_equals_str(&filtered.first().unwrap().value, attribute[1])
-                        }
-                        else {
-                            false
-                        }
-                    },
-                    Err(_) => false
-                }
-            },
-            Err(_) => false
-        }
-    } else if let Concept::Attribute(attr) = answer {
-        let stream = attr.get_has(context.transaction(), filter);
-        match stream {
-            Ok(_) => {
-                let res = stream.unwrap().try_collect::<Vec<_>>().await;
-                match res {
-                    Ok(_) => {
-                        let binding = res.unwrap();
-                        let filtered: Vec<_> = binding.iter()
-                            .filter(|attr| attr.type_.label == attribute[0]).collect();
-                        if !filtered.is_empty() {
-                            value_equals_str(&filtered.first().unwrap().value, attribute[1])
-                        }
-                        else {
-                            false
-                        }
-                    },
-                    Err(_) => false
-                }
-            },
-            Err(_) => false
-        }
-    } else if let Concept::Relation(rel) = answer {
-        let stream = rel.get_has(context.transaction(), filter);
-        match stream {
-            Ok(_) => {
-                let res = stream.unwrap().try_collect::<Vec<_>>().await;
-                match res {
-                    Ok(_) => {
-                        let binding = res.unwrap();
-                        let filtered: Vec<_> = binding.iter()
-                            .filter(|attr| attr.type_.label == attribute[0]).collect();
-                        if !filtered.is_empty() {
-                            value_equals_str(&filtered.first().unwrap().value, attribute[1])
-                        }
-                        else {
-                            false
-                        }
-                    },
-                    Err(_) => false
-                }
-            },
-            Err(_) => false
-        }
-    } else {
-        false
+    let res = match answer {
+        Concept::Entity(entity) => async { entity.get_has(context.transaction(), filter) }
+            .and_then(|stream| async { stream.try_collect::<Vec<_>>().await }).await,
+        Concept::Attribute(attr) => async { attr.get_has(context.transaction(), filter) }
+            .and_then(|stream| async { stream.try_collect::<Vec<_>>().await }).await,
+        Concept::Relation(rel) => async { rel.get_has(context.transaction(), filter) }
+            .and_then(|stream| async { stream.try_collect::<Vec<_>>().await }).await,
+        _ => unreachable!()
+    };
+    match res {
+        Ok(_) => {
+            let equals = res.unwrap().into_iter().filter(|attr| attr.type_.label == attribute[0]).collect::<Vec<_>>()
+                .first().and_then(|attr| Some(value_equals_str(&attr.value, attribute[1])));
+            match equals {
+                Some(val) => val,
+                None => false
+            }
+        },
+        Err(_) => false
     }
-
-    // let attribute_concept = get_attribute_concept(context, get_iid(answer), attribute[0]).await;
-    // match attribute_concept {
-    //     Ok(_) => values_equal(identifiers, &attribute_concept.unwrap()),
-    //     _ => false,
-    // }
-
 }
 
 fn labels_equal(identifier: &str, answer: &Concept) -> bool {
@@ -185,7 +122,6 @@ fn labels_equal(identifier: &str, answer: &Concept) -> bool {
         Concept::RelationType(RelationType { label, .. }) => label,
         Concept::AttributeType(AttributeType { label, .. }) => label,
         Concept::Attribute(Attribute { type_: AttributeType { label, .. }, .. }) => label,
-        _ => unreachable!(),
     };
     label == identifier
 }
@@ -194,7 +130,7 @@ fn values_equal(identifiers: &str, answer: &Concept) -> bool {
     let attribute: Vec<&str> = identifiers.splitn(2, ":").collect();
     assert_eq!(attribute.len(), 2, "Unexpected table cell format: {identifiers}.");
     match answer {
-        Concept::Attribute(Attribute { type_: AttributeType { label, value_type, .. }, value, .. })
+        Concept::Attribute(Attribute { value, .. })
         => value_equals_str(value, attribute[1]),
         _ => false,
     }
