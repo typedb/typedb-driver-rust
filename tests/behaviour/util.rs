@@ -27,9 +27,8 @@ use std::collections::HashMap;
 use typedb_client::{
     answer::ConceptMap,
     concept::{
-        Attribute, AttributeType, Concept, Entity, EntityType, HasFilter, Relation, RelationType, RoleType, Value,
+        Annotation, Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, Value,
     },
-    Annotation,
 };
 
 use crate::behaviour::Context;
@@ -72,20 +71,19 @@ async fn key_values_equal(context: &Context, expected_label_and_value: &str, ans
     let identifiers: Vec<&str> = expected_label_and_value.splitn(2, ":").collect();
     assert_eq!(identifiers.len(), 2, "Unexpected table cell format: {expected_label_and_value}.");
 
-    let filter = HasFilter::Annotations(Vec::from([Annotation::Key]));
     let res = match answer {
         Concept::Entity(entity) => {
-            async { entity.get_has(context.transaction(), filter) }
+            async { entity.get_has(context.transaction(), vec![], vec![Annotation::Key]) }
                 .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
                 .await
         }
         Concept::Attribute(attr) => {
-            async { attr.get_has(context.transaction(), filter) }
+            async { attr.get_has(context.transaction(), vec![], vec![Annotation::Key]) }
                 .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
                 .await
         }
         Concept::Relation(rel) => {
-            async { rel.get_has(context.transaction(), filter) }
+            async { rel.get_has(context.transaction(), vec![], vec![Annotation::Key]) }
                 .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
                 .await
         }
