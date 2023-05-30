@@ -199,7 +199,6 @@ generic_step_impl! {
                 }
             }
         }
-        let actual_answers = context.answer.len();
         assert_eq!(
             matched_rows, actual_answers,
             "An identifier entry (row) should match 1-to-1 to an answer, but there are only {matched_rows} \
@@ -217,16 +216,15 @@ generic_step_impl! {
                     let res = matched.unwrap().try_collect::<Vec<_>>().await;
                     assert!(res.is_err());
                 }
-            },
+            }
             // NOTE: We manually close transaction here, because we want to align with all non-rust and non-java clients,
             // where parsing happens at server-side which closes transaction if they fail
             Err(_) => {
                 for session_tracker in &mut context.session_trackers {
                     session_tracker.transactions_mut().clear();
                 }
-            },
+            }
         }
-
     }
 
     #[step(expr = "each answer satisfies")]
@@ -243,7 +241,7 @@ generic_step_impl! {
         }
     }
 
-   #[step(expr = "templated typeql match; throws exception")]
+    #[step(expr = "templated typeql match; throws exception")]
     async fn templated_typeql_match_throws(context: &mut Context, step: &Step) {
         for answer in &context.answer {
             let query = apply_query_template(step.docstring().unwrap(), answer);
@@ -268,11 +266,13 @@ generic_step_impl! {
             "The number of identifier entries (rows) should match the number of answers, \
             but found {expected_answers} identifier entries and {actual_answers} answers."
         );
-        for i in 0 .. expected_answers {
+        for i in 0..expected_answers {
             let ans_row = &context.answer.get(i).unwrap();
             let table_row = &step_table.get(i).unwrap();
-            assert!(match_answer_concept_map(context, table_row, ans_row).await,
-                "The answer at index {i} does not match the identifier entry (row) at index {i}.");
+            assert!(
+                match_answer_concept_map(context, table_row, ans_row).await,
+                "The answer at index {i} does not match the identifier entry (row) at index {i}."
+            );
         }
     }
 
@@ -322,6 +322,4 @@ generic_step_impl! {
     //     assert!(res.is_ok());
     //     context.answer = res.unwrap();
     // }
-
-
 }

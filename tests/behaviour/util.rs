@@ -27,8 +27,7 @@ use std::collections::HashMap;
 use typedb_client::{
     answer::ConceptMap,
     concept::{
-        Attribute, AttributeType, Concept, Entity, EntityType, HasFilter, Relation, RelationType, RoleType,
-        ScopedLabel, Thing, ThingType, Value, ValueType,
+        Attribute, AttributeType, Concept, Entity, EntityType, HasFilter, Relation, RelationType, RoleType, Value,
     },
     Annotation,
 };
@@ -69,9 +68,9 @@ pub async fn match_answer_concept(context: &Context, answer_identifier: &String,
     }
 }
 
-async fn key_values_equal(context: &Context, identifiers: &str, answer: &Concept) -> bool {
-    let attribute: Vec<&str> = identifiers.splitn(2, ":").collect();
-    assert_eq!(attribute.len(), 2, "Unexpected table cell format: {identifiers}.");
+async fn key_values_equal(context: &Context, expected_label_and_value: &str, answer: &Concept) -> bool {
+    let identifiers: Vec<&str> = expected_label_and_value.splitn(2, ":").collect();
+    assert_eq!(identifiers.len(), 2, "Unexpected table cell format: {expected_label_and_value}.");
 
     let filter = HasFilter::Annotations(Vec::from([Annotation::Key]));
     let res = match answer {
@@ -90,17 +89,17 @@ async fn key_values_equal(context: &Context, identifiers: &str, answer: &Concept
                 .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
                 .await
         }
-        _ => unreachable!(),
+        _ => unreachable!("Unexpected Concept type: {answer:?}"),
     };
     match res {
         Ok(_) => {
             let equals = res
                 .unwrap()
                 .into_iter()
-                .filter(|attr| attr.type_.label == attribute[0])
+                .filter(|attr| attr.type_.label == identifiers[0])
                 .collect::<Vec<_>>()
                 .first()
-                .and_then(|attr| Some(value_equals_str(&attr.value, attribute[1])));
+                .and_then(|attr| Some(value_equals_str(&attr.value, identifiers[1])));
             match equals {
                 Some(val) => val,
                 None => false,
@@ -110,32 +109,32 @@ async fn key_values_equal(context: &Context, identifiers: &str, answer: &Concept
     }
 }
 
-fn labels_equal(identifier: &str, answer: &Concept) -> bool {
+fn labels_equal(expected_label: &str, answer: &Concept) -> bool {
     let mut binding = String::new();
     let label = match answer {
         Concept::EntityType(type_) => &type_.label,
         Concept::RoleType(RoleType { label, .. }) => {
             binding = format!("{label}");
             &binding
-        },
+        }
         Concept::Entity(Entity { type_: EntityType { label, .. }, .. }) => label,
         Concept::Relation(Relation { type_: RelationType { label, .. }, .. }) => label,
         Concept::RootThingType(_) => {
             binding = String::from("thing");
             &binding
-        },
+        }
         Concept::RelationType(RelationType { label, .. }) => label,
         Concept::AttributeType(AttributeType { label, .. }) => label,
         Concept::Attribute(Attribute { type_: AttributeType { label, .. }, .. }) => label,
     };
-    label == identifier
+    label == expected_label
 }
 
-fn values_equal(identifiers: &str, answer: &Concept) -> bool {
-    let attribute: Vec<&str> = identifiers.splitn(2, ":").collect();
-    assert_eq!(attribute.len(), 2, "Unexpected table cell format: {identifiers}.");
+fn values_equal(expected_label_and_value: &str, answer: &Concept) -> bool {
+    let identifiers: Vec<&str> = expected_label_and_value.splitn(2, ":").collect();
+    assert_eq!(identifiers.len(), 2, "Unexpected table cell format: {expected_label_and_value}.");
     match answer {
-        Concept::Attribute(Attribute { value, .. }) => value_equals_str(value, attribute[1]),
+        Concept::Attribute(Attribute { value, .. }) => value_equals_str(value, identifiers[1]),
         _ => false,
     }
 }
@@ -160,7 +159,7 @@ fn get_iid(concept: &Concept) -> String {
         Concept::Entity(Entity { iid, .. }) => iid,
         Concept::Attribute(Attribute { iid, .. }) => iid,
         Concept::Relation(Relation { iid, .. }) => iid,
-        _ => unreachable!(),
+        _ => unreachable!("Unexpected Concept type: {concept:?}"),
     };
     format!("0x{iid}")
 }
@@ -183,12 +182,3 @@ fn format_datetime(datetime: &NaiveDateTime) -> String {
         format!("{0}", datetime)
     }
 }
-
-// fn format_double(double: &f64) -> String {
-//     let formatted = format!("{:.12}", double).trim_end_matches('0').to_string();
-//     if formatted.ends_with('.') {
-//         formatted + "0"
-//     } else {
-//         formatted
-//     }
-// }
