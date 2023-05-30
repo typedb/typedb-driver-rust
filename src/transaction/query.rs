@@ -29,6 +29,7 @@ use crate::{
     connection::TransactionStream,
     Options,
 };
+use crate::answer::NumericGroup;
 
 #[derive(Debug)]
 pub struct QueryManager {
@@ -102,6 +103,14 @@ impl QueryManager {
 
     pub fn match_group_with_options(&self, query: &str, options: Options) -> Result<impl Stream<Item = Result<ConceptMapGroup>>> {
         self.transaction_stream.match_group(query.to_string(), options)
+    }
+
+    pub fn match_group_aggregate(&self, query: &str) -> Result<impl Stream<Item = Result<NumericGroup>>> {
+        self.match_group_aggregate_with_options(query, Options::new())
+    }
+
+    pub fn match_group_aggregate_with_options(&self, query: &str, options: Options) -> Result<impl Stream<Item = Result<NumericGroup>>> {
+        self.transaction_stream.match_group_aggregate(query.to_string(), options)
     }
 
 }

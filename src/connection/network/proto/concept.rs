@@ -29,14 +29,15 @@ use typedb_protocol::{
     numeric::Value as NumericValue,
     r#type::{annotation, Annotation as AnnotationProto, Transitivity as TransitivityProto},
     thing, thing_type, Attribute as AttributeProto, AttributeType as AttributeTypeProto, Concept as ConceptProto,
-    ConceptMap as ConceptMapProto, ConceptMapGroup as ConceptMapGroupProto, Entity as EntityProto, EntityType as EntityTypeProto, Numeric as NumericProto,
+    ConceptMap as ConceptMapProto, ConceptMapGroup as ConceptMapGroupProto, Entity as EntityProto,
+    EntityType as EntityTypeProto, Numeric as NumericProto, NumericGroup as NumericGroupProto,
     Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto, Thing as ThingProto,
     ThingType as ThingTypeProto,
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
-    answer::{ConceptMap, ConceptMapGroup, Numeric},
+    answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     concept::{
         Annotation, Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType,
         RootThingType, ScopedLabel, Thing, ThingType, Transitivity, Value, ValueType,
@@ -60,6 +61,20 @@ impl IntoProto<AnnotationProto> for Annotation {
             Self::Key => AnnotationProto { annotation: Some(annotation::Annotation::Key(annotation::Key {})) },
             Self::Unique => AnnotationProto { annotation: Some(annotation::Annotation::Unique(annotation::Unique {})) },
         }
+    }
+}
+
+impl TryFromProto<NumericGroupProto> for NumericGroup {
+    fn try_from_proto(proto: NumericGroupProto) -> Result<Self> {
+        let owner = match proto.owner {
+            Some(proto_owner) => Concept::try_from_proto(proto_owner)?,
+            None => return Err(ConnectionError::MissingResponseField("owner").into()),
+        };
+        let numeric = match proto.number {
+            Some(proto_number) => Numeric::try_from_proto(proto_number)?,
+            None => return Err(ConnectionError::MissingResponseField("value").into()),
+        };
+        Ok(Self { owner, numeric })
     }
 }
 

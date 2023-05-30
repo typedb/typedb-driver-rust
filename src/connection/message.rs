@@ -26,7 +26,7 @@ use tonic::Streaming;
 use typedb_protocol::transaction;
 
 use crate::{
-    answer::{ConceptMap, ConceptMapGroup, Numeric},
+    answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, IID},
     concept::{
         Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, SchemaException,
@@ -154,8 +154,8 @@ pub(super) enum QueryResponse {
 
     Explain {}, // TODO: explanations
 
-    MatchGroup { answers: Vec<ConceptMapGroup> },          // TODO: ConceptMapGroup
-    MatchGroupAggregate {}, // TODO: NumericGroup
+    MatchGroup { answers: Vec<ConceptMapGroup> },
+    MatchGroupAggregate { answers: Vec<NumericGroup> },
 }
 
 #[derive(Debug)]
