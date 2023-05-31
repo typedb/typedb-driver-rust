@@ -51,6 +51,9 @@ pub struct Context {
 }
 
 impl Context {
+    const GROUP_COLUMN_NAME: &'static str = "owner";
+    const VALUE_COLUMN_NAME: &'static str = "value";
+
     async fn test(glob: &'static str) -> bool {
         let default_panic = std::panic::take_hook();
         std::panic::set_hook(Box::new(move |info| {
