@@ -19,11 +19,12 @@
  * under the License.
  */
 
+use std::collections::HashMap;
+
 use chrono::{NaiveDateTime, NaiveTime};
 use cucumber::gherkin::Step;
 use futures::{TryFutureExt, TryStreamExt};
 use regex::{Captures, Regex};
-use std::collections::HashMap;
 use typedb_client::{
     answer::ConceptMap,
     concept::{

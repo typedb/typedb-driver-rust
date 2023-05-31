@@ -25,8 +25,11 @@ use typedb_client::answer::Numeric;
 use typeql_lang::parse_query;
 use util::{apply_query_template, equals_approximate, iter_map_table, match_answer_concept_map};
 
-use crate::behaviour::util;
-use crate::{behaviour::Context, generic_step_impl};
+use crate::{
+    behaviour::{util, Context},
+    generic_step_impl
+};
+use crate::{};
 
 generic_step_impl! {
     #[step(expr = "typeql define")]
