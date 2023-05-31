@@ -128,7 +128,11 @@ impl TransactionStream {
         }
     }
 
-    pub(crate) fn match_group(&self, query: String, options: Options) -> Result<impl Stream<Item = Result<ConceptMapGroup>>> {
+    pub(crate) fn match_group(
+        &self,
+        query: String,
+        options: Options,
+    ) -> Result<impl Stream<Item = Result<ConceptMapGroup>>> {
         let stream = self.query_stream(QueryRequest::MatchGroup { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::MatchGroup { answers }) => stream_iter(answers.into_iter().map(Ok)),
@@ -137,7 +141,11 @@ impl TransactionStream {
         }))
     }
 
-    pub(crate) fn match_group_aggregate(&self, query: String, options: Options) -> Result<impl Stream<Item = Result<NumericGroup>>> {
+    pub(crate) fn match_group_aggregate(
+        &self,
+        query: String,
+        options: Options,
+    ) -> Result<impl Stream<Item = Result<NumericGroup>>> {
         let stream = self.query_stream(QueryRequest::MatchGroupAggregate { query, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::MatchGroupAggregate { answers }) => stream_iter(answers.into_iter().map(Ok)),
