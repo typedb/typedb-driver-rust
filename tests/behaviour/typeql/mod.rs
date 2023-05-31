@@ -19,7 +19,7 @@
  * under the License.
  */
 
-// mod get;
+mod get;
 mod define;
 mod delete;
 mod insert;

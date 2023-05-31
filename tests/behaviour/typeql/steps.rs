@@ -237,4 +237,57 @@ generic_step_impl! {
         assert!(context.numeric_answer.is_some(), "There is no stored answer from the previous query.");
         assert!(matches!(context.numeric_answer.as_ref().unwrap(), Numeric::NaN));
     }
+
+    #[step(expr = "typeql match aggregate; throws exception")]
+    async fn typeql_match_aggregate_throws(context: &mut Context, step: &Step) {
+        let parsed = parse_query(step.docstring().unwrap());
+        if parsed.is_ok() {
+            let res = context.transaction().query().match_aggregate(&parsed.unwrap().to_string()).await;
+            assert!(res.is_err());
+        }
+    }
+
+    #[step(expr = "get answers of typeql match group")]
+    async fn get_answers_typeql_match_group(context: &mut Context, step: &Step) {
+        let parsed = parse_query(step.docstring().unwrap());
+        assert!(parsed.is_ok());
+        let matched = context.transaction().query().match_group(&parsed.unwrap().to_string());
+        assert!(matched.is_ok());
+        let res = matched.unwrap().try_collect::<Vec<_>>().await;
+        assert!(res.is_ok());
+        context.answer_group = res.unwrap();
+    }
+
+    #[step(expr = "typeql match group; throws exception")]
+    async fn typeql_match_group_throws(context: &mut Context, step: &Step) {
+        let parsed = parse_query(step.docstring().unwrap());
+        match parsed {
+            Ok(_) => {
+                let matched = context.transaction().query().match_group(&parsed.unwrap().to_string());
+                if matched.is_ok() {
+                    let res = matched.unwrap().try_collect::<Vec<_>>().await;
+                    assert!(res.is_err(), "{res:?}");
+                }
+            }
+            // NOTE: We manually close transaction here, because we want to align with all non-rust and non-java clients,
+            // where parsing happens at server-side which closes transaction if they fail
+            Err(_) => {
+                for session_tracker in &mut context.session_trackers {
+                    session_tracker.transactions_mut().clear();
+                }
+            }
+        }
+    }
+
+    #[step(expr = "get answers of typeql match group aggregate")]
+    async fn get_answers_typeql_match_group_aggregate(context: &mut Context, step: &Step) {
+        let parsed = parse_query(step.docstring().unwrap());
+        assert!(parsed.is_ok());
+        let matched = context.transaction().query().match_group_aggregate(&parsed.unwrap().to_string());
+        assert!(matched.is_ok());
+        let res = matched.unwrap().try_collect::<Vec<_>>().await;
+        assert!(res.is_ok());
+        context.numeric_answer_group = res.unwrap();
+    }
+
 }
