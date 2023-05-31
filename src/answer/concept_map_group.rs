@@ -19,8 +19,7 @@
  * under the License.
  */
 
-use crate::answer::ConceptMap;
-use crate::concept::Concept;
+use crate::{answer::ConceptMap, concept::Concept};
 
 #[derive(Clone, Debug)]
 pub struct ConceptMapGroup {

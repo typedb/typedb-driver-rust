@@ -28,9 +28,8 @@ use typedb_protocol::{
 };
 
 use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
-use crate::answer::{ConceptMapGroup, NumericGroup};
 use crate::{
-    answer::{ConceptMap, Numeric},
+    answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::{info::DatabaseInfo, RequestID, Result},
     concept::{
         Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, SchemaException,
