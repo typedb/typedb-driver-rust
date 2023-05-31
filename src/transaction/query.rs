@@ -23,7 +23,6 @@ use std::sync::Arc;
 
 use futures::Stream;
 
-use crate::answer::NumericGroup;
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::Result,
