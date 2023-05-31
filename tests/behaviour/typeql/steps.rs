@@ -19,6 +19,7 @@
  * under the License.
  */
 
+use std::collections::HashMap;
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
@@ -279,6 +280,39 @@ generic_step_impl! {
         }
     }
 
+    #[step(expr = "answer groups are")]
+    async fn answer_groups_are(context: &mut Context, step: &Step) {
+        let GROUP_COLUMN_NAME = String::from("owner");
+        let step_table = iter_map_table(step).collect::<Vec<_>>();
+        let expected_answers = step_table.len();
+        let actual_answers: usize = context.answer_group.clone().into_iter().map(|group| group.concept_maps.len()).sum();
+        assert_eq!(
+            actual_answers, expected_answers,
+            "The number of identifier entries (rows) should match the number of answer groups, \
+            but found {expected_answers} identifier entries and {actual_answers} answer groups."
+        );
+        let mut matched_rows = 0;
+        for group in &context.answer_group {
+            for ans_row in &group.concept_maps {
+                for table_row in &step_table {
+                    if match_answer_concept(context, table_row.get(&GROUP_COLUMN_NAME).unwrap(), &group.owner).await {
+                        let mut table_row_wo_owner = table_row.clone();
+                        table_row_wo_owner.remove(&GROUP_COLUMN_NAME);
+                        if match_answer_concept_map(context, &table_row_wo_owner, &ans_row).await {
+                            matched_rows += 1;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(
+            matched_rows, expected_answers,
+            "An identifier entry (row) should match 1-to-1 to an answer, but there are only {matched_rows} \
+            matched entries of given {actual_answers}."
+        );
+    }
+
     #[step(expr = "get answers of typeql match group aggregate")]
     async fn get_answers_typeql_match_group_aggregate(context: &mut Context, step: &Step) {
         let parsed = parse_query(step.docstring().unwrap());
@@ -288,6 +322,42 @@ generic_step_impl! {
         let res = matched.unwrap().try_collect::<Vec<_>>().await;
         assert!(res.is_ok());
         context.numeric_answer_group = res.unwrap();
+    }
+
+    #[step(expr = "group aggregate values are")]
+    async fn group_aggregate_values_are(context: &mut Context, step: &Step) {
+        let GROUP_COLUMN_NAME = String::from("owner");
+        let VALUE_COLUMN_NAME = String::from("value");
+        let step_table = iter_map_table(step).collect::<Vec<_>>();
+        let expected_answers = step_table.len();
+        let actual_answers = context.numeric_answer_group.len();
+        assert_eq!(
+            actual_answers, expected_answers,
+            "The number of identifier entries (rows) should match the number of answer groups, \
+            but found {expected_answers} identifier entries and {actual_answers} answer groups."
+        );
+        let mut matched_rows = 0;
+        for group in &context.numeric_answer_group {
+            for table_row in &step_table {
+                if match_answer_concept(context, table_row.get(&GROUP_COLUMN_NAME).unwrap(), &group.owner).await {
+                    let answer: f64 = match group.numeric {
+                        Numeric::Long(value) => value as f64,
+                        Numeric::Double(value) => value,
+                        Numeric::NaN => panic!("Last answer in NaN while expected answer is not."),
+                    };
+                    let expected_value: f64 = table_row.get(&VALUE_COLUMN_NAME).unwrap().parse().unwrap();
+                    if equals_approximate(answer, expected_value) {
+                        matched_rows += 1;
+                        break;
+                    }
+                }
+            }
+        }
+        assert_eq!(
+            matched_rows, expected_answers,
+            "An identifier entry (row) should match 1-to-1 to an answer, but there are only {matched_rows} \
+            matched entries of given {actual_answers}."
+        );
     }
 
 }
