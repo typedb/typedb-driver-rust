@@ -27,9 +27,8 @@ use util::{apply_query_template, equals_approximate, iter_map_table, match_answe
 
 use crate::{
     behaviour::{util, Context},
-    generic_step_impl
+    generic_step_impl,
 };
-use crate::{};
 
 generic_step_impl! {
     #[step(expr = "typeql define")]
