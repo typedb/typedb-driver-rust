@@ -356,4 +356,12 @@ generic_step_impl! {
             matched entries of given {actual_answers}."
         );
     }
+
+    #[step(expr = "rules contain: {word}")]
+    async fn rules_contain(context: &mut Context, rule_label: String) {
+        let res = context.transaction().logic().get_rule(rule_label).await;
+        assert!(res.is_ok(), "{res:?}")
+        // assert (tx().logic().getRules().anyMatch(rule -> rule.getLabel().equals(ruleLabel)));
+    }
+
 }

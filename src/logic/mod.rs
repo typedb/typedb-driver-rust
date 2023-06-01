@@ -19,12 +19,7 @@
  * under the License.
  */
 
-mod define;
-mod delete;
-mod get;
-mod insert;
-mod match_;
-mod rule_validation;
-mod steps;
-mod undefine;
-mod update;
+mod logic;
+mod rule;
+
+pub use self::{logic::LogicManager, rule::Rule};

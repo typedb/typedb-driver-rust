@@ -19,12 +19,17 @@
  * under the License.
  */
 
-mod define;
-mod delete;
-mod get;
-mod insert;
-mod match_;
-mod rule_validation;
-mod steps;
-mod undefine;
-mod update;
+use typeql_lang::pattern::{Conjunction, ThingVariable};
+
+#[derive(Debug)]
+pub struct Rule {
+    pub label: String,
+    pub when: Conjunction,
+    pub then: ThingVariable,
+}
+
+impl Rule {
+    pub(crate) fn new(label: String, when: Conjunction, then: ThingVariable) -> Self {
+        Self { label, when, then }
+    }
+}

@@ -24,6 +24,7 @@ use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 use tonic::Streaming;
 use typedb_protocol::transaction;
+use typeql_lang::pattern::{Conjunction, Variable};
 
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
@@ -33,6 +34,7 @@ use crate::{
         Thing, ThingType, Transitivity, Value, ValueType,
     },
     Options, SessionType, TransactionType,
+    Rule, SchemaException,
 };
 
 #[derive(Debug)]
@@ -108,6 +110,7 @@ pub(super) enum TransactionRequest {
     RoleType(RoleTypeRequest),
     Thing(ThingRequest),
     Stream { request_id: RequestID },
+    Logic(LogicRequest),
 }
 
 #[derive(Debug)]
@@ -120,6 +123,7 @@ pub(super) enum TransactionResponse {
     ThingType(ThingTypeResponse),
     RoleType(RoleTypeResponse),
     Thing(ThingResponse),
+    Logic(LogicResponse),
 }
 
 #[derive(Debug)]
@@ -456,4 +460,18 @@ pub(super) enum ThingResponse {
     RelationGetRelating { role_types: Vec<RoleType> },
 
     AttributeGetOwners { owners: Vec<Thing> },
+}
+
+#[derive(Debug)]
+pub(super) enum LogicRequest {
+    PutRule { label: String, when: Conjunction, then: Variable },
+    GetRule { label: String },
+    GetRules,
+}
+
+#[derive(Debug)]
+pub(super) enum LogicResponse {
+    PutRule { rule: Rule },
+    GetRule { rule: Rule },
+    GetRules { rules: Vec<Rule> },
 }

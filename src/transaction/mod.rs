@@ -28,6 +28,7 @@ use self::{concept::ConceptManager, query::QueryManager};
 use crate::{
     common::{Result, TransactionType},
     connection::TransactionStream,
+    LogicManager,
     Options,
 };
 
@@ -37,9 +38,11 @@ pub struct Transaction<'a> {
 
     query: QueryManager,
     concept: ConceptManager,
+    logic: LogicManager,
     transaction_stream: Arc<TransactionStream>,
 
     _lifetime_guard: PhantomData<&'a ()>,
+
 }
 
 impl Transaction<'_> {
@@ -50,6 +53,7 @@ impl Transaction<'_> {
             options: transaction_stream.options().clone(),
             query: QueryManager::new(transaction_stream.clone()),
             concept: ConceptManager::new(transaction_stream.clone()),
+            logic: LogicManager::new(transaction_stream.clone()),
             transaction_stream,
             _lifetime_guard: PhantomData::default(),
         }
@@ -77,6 +81,10 @@ impl Transaction<'_> {
 
     pub async fn rollback(&self) -> Result {
         self.transaction_stream.rollback().await
+    }
+
+    pub fn logic(&self) -> &LogicManager {
+        &self.logic
     }
 }
 

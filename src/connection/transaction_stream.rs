@@ -22,6 +22,7 @@
 use std::{fmt, iter};
 
 use futures::{stream, Stream, StreamExt};
+use typeql_lang::pattern::{Conjunction, Variable};
 
 use super::{
     message::{RoleTypeRequest, RoleTypeResponse, ThingRequest, ThingResponse},
@@ -39,8 +40,9 @@ use crate::{
         TransactionRequest, TransactionResponse,
     },
     error::InternalError,
-    Options, TransactionType,
+    Options, Rule, SchemaException, TransactionType,
 };
+use crate::connection::message::{LogicRequest, LogicResponse};
 
 pub(crate) struct TransactionStream {
     type_: TransactionType,
@@ -929,6 +931,29 @@ impl TransactionStream {
         }))
     }
 
+    pub(crate) async fn put_rule(&self, label: String, when: Conjunction, then: Variable) -> Result<Rule> {
+        match self.logic_single(LogicRequest::PutRule { label, when, then } ).await? {
+            LogicResponse::PutRule { rule } => Ok(rule),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn get_rule(&self, label: String) -> Result<Rule> {
+        match self.logic_single(LogicRequest::GetRule { label }).await? {
+            LogicResponse::GetRule { rule } => Ok(rule),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn get_rules(&self) -> Result<impl Stream<Item = Result<Rule>>> {
+        let stream = self.logic_stream(LogicRequest::GetRules)?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(LogicResponse::GetRules { rules }) => stream_iter(rules.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
+    }
+
     async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         self.transaction_transmitter.single(req).await
     }
@@ -964,6 +989,13 @@ impl TransactionStream {
     async fn thing_single(&self, req: ThingRequest) -> Result<ThingResponse> {
         match self.single(TransactionRequest::Thing(req)).await? {
             TransactionResponse::Thing(res) => Ok(res),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    async fn logic_single(&self, req: LogicRequest) -> Result<LogicResponse> {
+        match self.single(TransactionRequest::Logic(req)).await? {
+            TransactionResponse::Logic(res) => Ok(res),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
@@ -1011,6 +1043,15 @@ impl TransactionStream {
             Err(err) => Err(err),
         }))
     }
+
+    fn logic_stream(&self, req: LogicRequest) -> Result<impl Stream<Item = Result<LogicResponse>>> {
+        Ok(self.stream(TransactionRequest::Logic(req))?.map(|response| match response {
+            Ok(TransactionResponse::Logic(res)) => Ok(res),
+            Ok(other) => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+            Err(err) => Err(err),
+        }))
+    }
+
 }
 
 impl fmt::Debug for TransactionStream {

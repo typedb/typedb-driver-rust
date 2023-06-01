@@ -27,10 +27,11 @@ pub mod concept;
 mod connection;
 mod database;
 pub mod transaction;
+mod logic;
 
 pub use self::{
     common::{error, Credential, Error, Options, Result, SessionType, TransactionType},
     connection::Connection,
-    database::{Database, DatabaseManager, Session},
-    transaction::Transaction,
+    database::{Database, DatabaseManager, Session, Transaction},
+    logic::{LogicManager, Rule},
 };
