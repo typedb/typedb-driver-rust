@@ -946,7 +946,7 @@ impl TransactionStream {
     }
 
     pub(crate) fn get_rules(&self) -> Result<impl Stream<Item = Result<Rule>>> {
-        let stream = self.logic_stream(LogicRequest::GetRules)?;
+        let stream = self.logic_stream(LogicRequest::GetRules {})?;
         Ok(stream.flat_map(|result| match result {
             Ok(LogicResponse::GetRules { rules }) => stream_iter(rules.into_iter().map(Ok)),
             Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),

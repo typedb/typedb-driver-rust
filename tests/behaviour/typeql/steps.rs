@@ -20,7 +20,7 @@
  */
 
 use cucumber::{gherkin::Step, given, then, when};
-use futures::TryStreamExt;
+use futures::{StreamExt, TryFutureExt, TryStreamExt};
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
 use typeql_lang::parse_query;
 use util::{
@@ -32,6 +32,7 @@ use crate::{
     behaviour::{util, Context},
     generic_step_impl,
 };
+use crate::behaviour::parameter::Comparable;
 
 generic_step_impl! {
     #[step(expr = "typeql define")]
@@ -361,7 +362,12 @@ generic_step_impl! {
     async fn rules_contain(context: &mut Context, rule_label: String) {
         let res = context.transaction().logic().get_rule(rule_label).await;
         assert!(res.is_ok(), "{res:?}")
-        // assert (tx().logic().getRules().anyMatch(rule -> rule.getLabel().equals(ruleLabel)));
+        // let stream = context.transaction().logic().get_rules();
+        // assert!(stream.is_ok(), "{:?}", stream.err());
+        // let res = stream.unwrap().try_collect::<Vec<_>>().await;
+        // assert!(res.is_ok(), "{:?}", res.err());
+        // let filtered: Vec<_> = res.unwrap().into_iter().filter(|rule| rule.label == rule_label).collect();
+        // assert!(filtered.len() > 0);
     }
 
 }

@@ -43,7 +43,7 @@ impl LogicManager {
         self.transaction_stream.get_rule(label).await
     }
 
-    pub async fn get_rules(&self) -> Result<impl Stream<Item = Result<Rule>>> {
+    pub fn get_rules(&self) -> Result<impl Stream<Item = Result<Rule>>> {
         self.transaction_stream.get_rules()
     }
 }
