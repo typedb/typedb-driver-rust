@@ -361,13 +361,19 @@ generic_step_impl! {
     #[step(expr = "rules contain: {word}")]
     async fn rules_contain(context: &mut Context, rule_label: String) {
         let res = context.transaction().logic().get_rule(rule_label).await;
-        assert!(res.is_ok(), "{res:?}")
+        assert!(res.is_ok(), "{res:?}");
         // let stream = context.transaction().logic().get_rules();
         // assert!(stream.is_ok(), "{:?}", stream.err());
         // let res = stream.unwrap().try_collect::<Vec<_>>().await;
         // assert!(res.is_ok(), "{:?}", res.err());
         // let filtered: Vec<_> = res.unwrap().into_iter().filter(|rule| rule.label == rule_label).collect();
         // assert!(filtered.len() > 0);
+    }
+
+    #[step(expr = "rules do not contain: {word}")]
+    async fn rules_do_not_contain(context: &mut Context, rule_label: String) {
+        let res = context.transaction().logic().get_rule(rule_label).await;
+        assert!(res.is_err(), "{res:?}");
     }
 
 }
