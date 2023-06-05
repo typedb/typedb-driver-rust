@@ -40,6 +40,7 @@ use crate::{
     error::{ConnectionError, InternalError},
     Rule, SchemaException,
 };
+use crate::logic::Explanation;
 
 impl TryIntoProto<server_manager::all::Req> for Request {
     fn try_into_proto(self) -> Result<server_manager::all::Req> {
@@ -316,6 +317,7 @@ impl TryFromProto<transaction::ResPart> for TransactionResponse {
                 res: Some(r#type::res_part::Res::RoleTypeResPart(res)),
             })) => Ok(Self::RoleType(RoleTypeResponse::try_from_proto(res)?)),
             Some(transaction::res_part::Res::ThingResPart(res)) => Ok(Self::Thing(ThingResponse::try_from_proto(res)?)),
+            Some(transaction::res_part::Res::LogicManagerResPart(res)) => Ok(Self::Logic(LogicResponse::try_from_proto(res)?)),
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
@@ -357,7 +359,9 @@ impl IntoProto<query_manager::Req> for QueryRequest {
                 options,
             ),
 
-            _ => todo!(),
+            Self::Explain { explainable_id, options } => {
+                (query_manager::req::Req::ExplainReq(query_manager::explain::Req { explainable_id }), options)
+            }
         };
         query_manager::Req { req: Some(req), options: Some(options.into_proto()) }
     }
@@ -395,7 +399,9 @@ impl TryFromProto<query_manager::ResPart> for QueryResponse {
             Some(query_manager::res_part::Res::MatchGroupAggregateResPart(res)) => Ok(Self::MatchGroupAggregate {
                 answers: res.answers.into_iter().map(NumericGroup::try_from_proto).try_collect()?,
             }),
-            Some(_) => todo!(),
+            Some(query_manager::res_part::Res::ExplainResPart(res)) => {
+                Ok(Self::Explain { answers: res.explanations.into_iter().map(Explanation::try_from_proto).try_collect()? })
+            }
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }

@@ -24,7 +24,7 @@ use futures::{StreamExt, TryFutureExt, TryStreamExt};
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
 use typeql_lang::parse_query;
 use util::{
-    equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_templated_answer,
+    equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_answer_rule, match_templated_answer,
 };
 
 use crate::{
@@ -362,12 +362,6 @@ generic_step_impl! {
     async fn rules_contain(context: &mut Context, rule_label: String) {
         let res = context.transaction().logic().get_rule(rule_label).await;
         assert!(res.is_ok(), "{res:?}");
-        // let stream = context.transaction().logic().get_rules();
-        // assert!(stream.is_ok(), "{:?}", stream.err());
-        // let res = stream.unwrap().try_collect::<Vec<_>>().await;
-        // assert!(res.is_ok(), "{:?}", res.err());
-        // let filtered: Vec<_> = res.unwrap().into_iter().filter(|rule| rule.label == rule_label).collect();
-        // assert!(filtered.len() > 0);
     }
 
     #[step(expr = "rules do not contain: {word}")]
@@ -376,9 +370,35 @@ generic_step_impl! {
         assert!(res.is_err(), "{res:?}");
     }
 
+    #[step(expr = "rules are")]
+    async fn rules_are(context: &mut Context, step: &Step) {
+        let stream = context.transaction().logic().get_rules();
+        assert!(stream.is_ok(), "{:?}", stream.err());
+        let res = stream.unwrap().try_collect::<Vec<_>>().await;
+        assert!(res.is_ok(), "{:?}", res.err());
+        let answers = res.unwrap();
+        let step_table = iter_map_table(step).collect::<Vec<_>>();
+        let expected_answers = step_table.len();
+        let actual_answers = answers.len();
+        assert_eq!(
+            actual_answers, expected_answers,
+            "The number of identifier entries (rows) should match the number of answers, \
+            but found {expected_answers} identifier entries and {actual_answers} answers."
+        );
+        let mut matched_rows = 0;
+        for ans_row in &answers {
+            for table_row in &step_table {
+                if match_answer_rule(table_row, ans_row).await {
+                    matched_rows += 1;
+                    break;
+                }
+            }
+        }
+        assert_eq!(
+            matched_rows, actual_answers,
+            "An identifier entry (row) should match 1-to-1 to an answer, but there are only {matched_rows} \
+            matched entries of given {actual_answers}."
+        );
+    }
+
 }
-
-/*
-"answers contain explanation tree"
-
- */

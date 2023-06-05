@@ -33,8 +33,10 @@ use typedb_client::{
     concept::{Annotation, Attribute, Concept, Entity, Relation, Value},
     transaction::concept::api::ThingAPI,
     Result as TypeDBResult,
+    Rule,
 };
-use typeql_lang::parse_query;
+use typeql_lang::{parse_pattern, parse_query, parse_rule};
+use typeql_lang::pattern::{ThingVariable, Variable};
 
 use crate::behaviour::Context;
 
@@ -173,4 +175,21 @@ fn get_iid(concept: &Concept) -> String {
         _ => unreachable!("Unexpected Concept type: {concept:?}"),
     };
     iid.to_string()
+}
+
+pub async fn match_answer_rule(
+    answer_identifiers: &HashMap<&String, &String>,
+    answer: &Rule,
+) -> bool {
+    let when_clause = answer_identifiers.get(&String::from("when")).unwrap().trim_end_matches(";").to_string();
+    let when = parse_pattern(when_clause.as_str()).unwrap().into_conjunction();
+    let then_clause = answer_identifiers.get(&String::from("then")).unwrap().trim_end_matches(['}', ';', ' ']).trim_start_matches("{").to_string();
+    let then_var = parse_pattern(then_clause.as_str()).unwrap().into_variable();
+    if let Variable::Thing(then) = then_var {
+        answer_identifiers.get(&String::from("label")).unwrap().to_string() == answer.label
+            && when == answer.when
+            && then == answer.then
+    } else {
+        false
+    }
 }
