@@ -19,30 +19,25 @@
  * under the License.
  */
 
-use std::sync::Arc;
-use futures::Stream;
-use typeql_lang::pattern::{Conjunction, Variable};
-use crate::{common::Result, connection::TransactionStream, Rule};
+use std::collections::HashMap;
+use crate::Rule;
+use crate::answer::ConceptMap;
 
-#[derive(Clone, Debug)]
-pub struct LogicManager {
-    transaction_stream: Arc<TransactionStream>,
+#[derive(Debug)]
+pub struct Explanation {
+    pub rule: Rule,
+    pub conclusion: ConceptMap,
+    pub condition: ConceptMap,
+    pub variable_mapping: HashMap<String, Vec<String>>,
 }
 
-impl LogicManager {
-    pub(crate) fn new(transaction_stream: Arc<TransactionStream>) -> Self {
-        Self { transaction_stream }
-    }
-
-    pub async fn put_rule(&self, label: String, when: Conjunction, then: Variable) -> Result<Rule> {
-        self.transaction_stream.put_rule(label, when, then).await
-    }
-
-    pub async fn get_rule(&self, label: String) -> Result<Rule> {
-        self.transaction_stream.get_rule(label).await
-    }
-
-    pub fn get_rules(&self) -> Result<impl Stream<Item = Result<Rule>>> {
-        self.transaction_stream.get_rules()
-    }
-}
+// impl Explanation {
+//     pub(crate) fn new(
+//         rule: Rule,
+//         conclusion: ConceptMap,
+//         condition: ConceptMap,
+//         variable_mapping: HashMap<String, Vec<String>>,
+//     ) -> Self {
+//         Self { rule, conclusion, condition, variable_mapping }
+//     }
+// }

@@ -26,7 +26,7 @@ use typeql_lang::{parse_pattern, parse_variable};
 use typeql_lang::pattern::{Pattern, Variable};
 use crate::{common::Result, Error, error::InternalError, Rule};
 use crate::error::ConnectionError;
-use super::{FromProto, IntoProto, TryFromProto};
+use super::{IntoProto, TryFromProto};
 
 impl TryFromProto<RuleProto> for Rule {
     fn try_from_proto(proto: RuleProto) -> Result<Self> {

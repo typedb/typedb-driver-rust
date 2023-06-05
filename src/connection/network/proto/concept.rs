@@ -25,27 +25,28 @@ use chrono::NaiveDateTime;
 use itertools::Itertools;
 use typedb_protocol::{
     attribute::{value::Value as ValueProtoInner, Value as ValueProto},
-    attribute_type::ValueType as ValueTypeProto,
-    concept,
-    numeric::Value as NumericValue,
+    attribute_type::ValueType as ValueTypeProto, concept, numeric::Value as NumericValue,
     r#type::{annotation, Annotation as AnnotationProto, Transitivity as TransitivityProto},
-    thing, thing_type, Attribute as AttributeProto, AttributeType as AttributeTypeProto, Concept as ConceptProto,
-    ConceptMap as ConceptMapProto, ConceptMapGroup as ConceptMapGroupProto, Entity as EntityProto,
-    EntityType as EntityTypeProto, Numeric as NumericProto, NumericGroup as NumericGroupProto,
-    Relation as RelationProto, RelationType as RelationTypeProto, RoleType as RoleTypeProto, Thing as ThingProto,
-    ThingType as ThingTypeProto,
+    thing, thing_type, Attribute as AttributeProto, AttributeType as AttributeTypeProto,
+    Concept as ConceptProto, ConceptMap as ConceptMapProto, ConceptMapGroup as ConceptMapGroupProto,
+    Entity as EntityProto, EntityType as EntityTypeProto, Explainable as ExplainableProto, Explainables as ExplainablesProto,
+    Explanation as ExplanationProto,
+    Numeric as NumericProto, NumericGroup as NumericGroupProto, Relation as RelationProto, RelationType as RelationTypeProto,
+    RoleType as RoleTypeProto, Thing as ThingProto, ThingType as ThingTypeProto,
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
 use crate::{
-    answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
+    answer::{ConceptMap, ConceptMapGroup, Explainable, Explainables, Numeric, NumericGroup},
     concept::{
         Annotation, Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType,
         RootThingType, ScopedLabel, Thing, ThingType, Transitivity, Value, ValueType,
     },
     error::{ConnectionError, InternalError},
     Result,
+    Rule,
 };
+use crate::logic::Explanation;
 
 impl IntoProto<i32> for Transitivity {
     fn into_proto(self) -> i32 {
@@ -101,7 +102,7 @@ impl TryFromProto<ConceptMapProto> for ConceptMap {
         for (k, v) in proto.map {
             map.insert(k, Concept::try_from_proto(v)?);
         }
-        Ok(Self { map })
+        Ok(Self { map, explainables: proto.explainables.map(Explainables::from_proto) })
     }
 }
 
@@ -369,3 +370,50 @@ impl IntoProto<ValueProto> for Value {
         }
     }
 }
+
+impl FromProto<ExplainablesProto> for Explainables {
+    fn from_proto(proto: ExplainablesProto) -> Self {
+        let mut relations = HashMap::with_capacity(proto.relations.len());
+        for (k, v) in proto.relations {
+            relations.insert(k, Explainable::from_proto(v));
+        }
+        let mut attributes = HashMap::with_capacity(proto.attributes.len());
+        for (k, v) in proto.attributes {
+            attributes.insert(k, Explainable::from_proto(v));
+        }
+        let mut ownerships = HashMap::new();
+        for (k1, owned) in proto.ownerships {
+            for (k2, v) in owned.owned {
+                ownerships.insert((k1.clone(), k2), Explainable::from_proto(v));
+            }
+        }
+
+        Self::new( relations, attributes, ownerships)
+    }
+}
+
+impl FromProto<ExplainableProto> for Explainable {
+    fn from_proto(proto: ExplainableProto) -> Self {
+        let ExplainableProto { conjunction, id } = proto;
+        Self::new(conjunction, id)
+    }
+}
+
+impl TryFromProto<ExplanationProto> for Explanation {
+    fn try_from_proto(proto: ExplanationProto) -> Result<Self> {
+        let ExplanationProto { rule, conclusion, condition, var_mapping } = proto;
+        let mut variable_mapping = HashMap::with_capacity(var_mapping.len());
+        for (k, v) in var_mapping {
+            variable_mapping.insert(k, v.vars.clone());
+        }
+
+        Ok(Self {
+            rule: Rule::try_from_proto(rule.ok_or(ConnectionError::MissingResponseField("rule"))?)?,
+            conclusion: ConceptMap::try_from_proto(conclusion.ok_or(ConnectionError::MissingResponseField("conclusion"))?)?,
+            condition: ConceptMap::try_from_proto(condition.ok_or(ConnectionError::MissingResponseField("condition"))?)?,
+            variable_mapping,
+        })
+    }
+}
+
+

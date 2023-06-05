@@ -43,6 +43,7 @@ use crate::{
     Options, Rule, SchemaException, TransactionType,
 };
 use crate::connection::message::{LogicRequest, LogicResponse};
+use crate::logic::Explanation;
 
 pub(crate) struct TransactionStream {
     type_: TransactionType,
@@ -998,6 +999,15 @@ impl TransactionStream {
             TransactionResponse::Logic(res) => Ok(res),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
+    }
+
+    pub(crate) fn explain(&self, explainable_id: i64, options: Options) -> Result<impl Stream<Item = Result<Explanation>>> {
+        let stream = self.query_stream(QueryRequest::Explain { explainable_id, options })?;
+        Ok(stream.flat_map(|result| match result {
+            Ok(QueryResponse::Explain { answers }) => stream_iter(answers.into_iter().map(Ok)),
+            Ok(other) => stream_once(Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into())),
+            Err(err) => stream_once(Err(err)),
+        }))
     }
 
     fn stream(&self, req: TransactionRequest) -> Result<impl Stream<Item = Result<TransactionResponse>>> {

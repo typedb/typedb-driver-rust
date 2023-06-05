@@ -36,6 +36,7 @@ use crate::{
     Options, SessionType, TransactionType,
     Rule, SchemaException,
 };
+use crate::logic::Explanation;
 
 #[derive(Debug)]
 pub(super) enum Request {
@@ -156,7 +157,7 @@ pub(super) enum QueryResponse {
 
     MatchAggregate { answer: Numeric },
 
-    Explain {}, // TODO: explanations
+    Explain { answers: Vec<Explanation> },
 
     MatchGroup { answers: Vec<ConceptMapGroup> },
     MatchGroupAggregate { answers: Vec<NumericGroup> },

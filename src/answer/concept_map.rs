@@ -29,6 +29,20 @@ use crate::concept::Concept;
 #[derive(Debug)]
 pub struct ConceptMap {
     pub map: HashMap<String, Concept>,
+    pub explainables: Option<Explainables>,
+}
+
+#[derive(Debug)]
+pub struct Explainables {
+    pub relations: HashMap<String, Explainable>,
+    pub attributes: HashMap<String, Explainable>,
+    pub ownerships: HashMap<(String, String), Explainable>,
+}
+
+#[derive(Clone, Debug)]
+pub struct Explainable {
+    pub conjunction: String,
+    pub id: i64,
 }
 
 impl ConceptMap {
@@ -51,7 +65,7 @@ impl Clone for ConceptMap {
         for (k, v) in &self.map {
             map.insert(k.clone(), v.clone());
         }
-        Self { map }
+        Self { map, explainables: self.explainables.clone() }
     }
 }
 
@@ -75,5 +89,40 @@ impl IntoIterator for ConceptMap {
 
     fn into_iter(self) -> Self::IntoIter {
         self.map.into_iter()
+    }
+}
+
+impl Explainables {
+    pub(crate) fn new(
+        relations: HashMap<String, Explainable>,
+        attributes:HashMap<String, Explainable>,
+        ownerships: HashMap<(String, String), Explainable>,
+    ) -> Self {
+        Self { relations, attributes, ownerships }
+    }
+}
+
+impl Explainable {
+    pub(crate) fn new(conjunction: String, id: i64) -> Self {
+        Self { conjunction, id }
+    }
+}
+
+impl Clone for Explainables {
+    fn clone(&self) -> Self {
+        let mut relations = HashMap::with_capacity(self.relations.len());
+        for (k, v) in &self.relations {
+            relations.insert(k.clone(), v.clone());
+        }
+        let mut attributes = HashMap::with_capacity(self.attributes.len());
+        for (k, v) in &self.attributes {
+            attributes.insert(k.clone(), v.clone());
+        }
+        let mut ownerships = HashMap::with_capacity(self.ownerships.len());
+        for (k, v) in &self.ownerships {
+            ownerships.insert(k.clone(), v.clone());
+        }
+
+        Self { relations, attributes, ownerships }
     }
 }
