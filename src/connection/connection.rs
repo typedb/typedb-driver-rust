@@ -49,6 +49,7 @@ use crate::{
     error::InternalError,
     Credential, Options,
 };
+use crate::user::User;
 
 #[derive(Clone)]
 pub struct Connection {
@@ -300,6 +301,13 @@ impl ServerConnection {
                 let transmitter = TransactionTransmitter::new(&self.background_runtime, request_sink, response_source);
                 Ok(TransactionStream::new(transaction_type, options, transmitter))
             }
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn get_user(&self, username: String) -> Result<Option<User>> {
+        match self.request_async(Request::UserGet { username }).await? {
+            Response::UserGet { user } => Ok(user),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
