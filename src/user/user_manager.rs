@@ -21,22 +21,20 @@
 
 use std::future::Future;
 
-use super::{database::ServerDatabase, Database};
 use crate::{
-    common::{error::ConnectionError, Result},
+    common::Result,
     connection::ServerConnection,
     Connection,
 };
 
 #[derive(Clone, Debug)]
 pub struct UserManager {
-    connection: Connection,
+    // client: Client,
 }
 
 impl UserManager {
-    pub fn new(connection: Connection) -> Self {
-        Self { connection }
+    pub fn new() -> Self {
+        Self {  }
     }
-
 
 }

@@ -43,6 +43,7 @@ use crate::{
     error::{ConnectionError, InternalError},
     logic::{Explanation, Rule},
 };
+use crate::user::User;
 
 impl TryIntoProto<server_manager::all::Req> for Request {
     fn try_into_proto(self) -> Result<server_manager::all::Req> {
@@ -160,6 +161,15 @@ impl TryIntoProto<transaction::Client> for Request {
     fn try_into_proto(self) -> Result<transaction::Client> {
         match self {
             Self::Transaction(transaction_req) => Ok(transaction::Client { reqs: vec![transaction_req.into_proto()] }),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
+        }
+    }
+}
+
+impl TryIntoProto<user_manager::get::Req> for Request {
+    fn try_into_proto(self) -> Result<user_manager::get::Req> {
+        match self {
+            Self::UserGet { username } => Ok(user_manager::get::Req { username }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
@@ -332,6 +342,12 @@ impl TryFromProto<transaction::ResPart> for TransactionResponse {
             Some(transaction::res_part::Res::StreamResPart(_)) => unreachable!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
+    }
+}
+
+impl FromProto<user_manager::get::Res> for Response {
+    fn from_proto(proto: user_manager::get::Res) -> Self {
+        Self::UserGet { user: proto.user.and_then(|u| Some(User::from_proto(u))) }
     }
 }
 
@@ -1200,3 +1216,4 @@ impl TryFromProto<logic_manager::ResPart> for LogicResponse {
         })
     }
 }
+

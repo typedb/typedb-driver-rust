@@ -27,7 +27,7 @@ use tokio::sync::mpsc::{unbounded_channel as unbounded_async, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
-    database, database_manager, server_manager, session, transaction, type_db_client::TypeDbClient as GRPC, user,
+    database, database_manager, server_manager, session, transaction, type_db_client::TypeDbClient as GRPC, user, user_manager
 };
 
 use super::channel::{CallCredentials, GRPCChannel};
@@ -164,6 +164,13 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
             })
         })
         .await
+    }
+
+    pub(super) async fn user_get(
+        &mut self,
+        req: user_manager::get::Req,
+    ) -> Result<user_manager::get::Res> {
+        self.single(|this| Box::pin(this.grpc.users_get(req.clone()))).await
     }
 
     async fn single<F, R>(&mut self, call: F) -> Result<R>

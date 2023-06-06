@@ -19,8 +19,10 @@
  * under the License.
  */
 
+use std::path::PathBuf;
+
 use cucumber::{gherkin::Step, given, then, when};
-use typedb_client::{Options, TransactionType};
+use typedb_client::{Connection, Credential, Options, TransactionType};
 
 use crate::{
     behaviour::{Context},
@@ -34,14 +36,14 @@ generic_step_impl! {
         Connection::new_encrypted(
             &["localhost:11729", "localhost:21729", "localhost:31729"],
             Credential::with_tls(
-                login,
-                password,
+                &login.as_str(),
+                &password.as_str(),
                 Some(&PathBuf::from(
                     std::env::var("ROOT_CA")
                         .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
                 )),
-            )?,
-        )
+            ).unwrap(),
+        ).unwrap();
     }
 
     #[step(expr = "users delete: {word}")]

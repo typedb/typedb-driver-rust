@@ -156,6 +156,11 @@ impl RPCTransmitter {
                 let (request_sink, response_source) = rpc.transaction(transaction_request.into_proto()).await?;
                 Ok(Response::TransactionOpen { request_sink, response_source })
             }
+
+            Request::UserGet { .. } => {
+                rpc.user_get(request.try_into_proto()?).await.map(Response::from_proto)
+            }
+            _ => todo!(),
         }
     }
 }
