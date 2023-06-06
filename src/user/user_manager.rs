@@ -19,8 +19,24 @@
  * under the License.
  */
 
-pub(crate) mod database;
-pub(crate) mod session;
-pub(crate) mod steps;
-pub(crate) mod transaction;
-mod user;
+use std::future::Future;
+
+use super::{database::ServerDatabase, Database};
+use crate::{
+    common::{error::ConnectionError, Result},
+    connection::ServerConnection,
+    Connection,
+};
+
+#[derive(Clone, Debug)]
+pub struct UserManager {
+    connection: Connection,
+}
+
+impl UserManager {
+    pub fn new(connection: Connection) -> Self {
+        Self { connection }
+    }
+
+
+}

@@ -52,6 +52,7 @@ rust_test(
         "@vaticle_typedb_behaviour//connection:database.feature",
         "@vaticle_typedb_behaviour//connection:session.feature",
         "@vaticle_typedb_behaviour//connection:transaction.feature",
+        "@vaticle_typedb_behaviour//connection:user.feature",
         "@vaticle_typedb_behaviour//typeql/language:define.feature",
         "@vaticle_typedb_behaviour//typeql/language:undefine.feature",
         "@vaticle_typedb_behaviour//typeql/language:insert.feature",

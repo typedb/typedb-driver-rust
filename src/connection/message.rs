@@ -489,3 +489,7 @@ pub(super) enum LogicResponse {
     GetRule { rule: Rule },
     GetRules { rules: Vec<Rule> },
 }
+
+pub(super) enum UserRequest {
+    UserDelete { thing: Thing },
+}

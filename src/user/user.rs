@@ -19,8 +19,19 @@
  * under the License.
  */
 
-pub(crate) mod database;
-pub(crate) mod session;
-pub(crate) mod steps;
-pub(crate) mod transaction;
-mod user;
+#[derive(Clone, Debug)]
+pub struct User {
+    pub username: String,
+    pub password_expiry_seconds: Option<i64>,
+}
+
+impl User {
+    pub fn new(username: String, password_expiry_seconds: Option<i64>) -> Self {
+        Self { username, password_expiry_seconds }
+    }
+
+    pub fn password_update(password_old: String, password_new: String) {
+
+    }
+
+}

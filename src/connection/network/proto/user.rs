@@ -19,8 +19,16 @@
  * under the License.
  */
 
-pub(crate) mod database;
-pub(crate) mod session;
-pub(crate) mod steps;
-pub(crate) mod transaction;
-mod user;
+use typedb_protocol::{User as UserProto};
+
+use super::FromProto;
+use crate::user::User;
+
+impl FromProto<UserProto> for User {
+    fn from_proto(proto: UserProto) -> Self {
+        Self {
+            username: proto.username,
+            password_expiry_seconds: proto.password_expiry_seconds,
+        }
+    }
+}
