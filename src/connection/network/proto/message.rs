@@ -166,10 +166,55 @@ impl TryIntoProto<transaction::Client> for Request {
     }
 }
 
+impl TryIntoProto<user_manager::all::Req> for Request {
+    fn try_into_proto(self) -> Result<user_manager::all::Req> {
+        match self {
+            Self::UsersAll => Ok(user_manager::all::Req {}),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
+        }
+    }
+}
+
+impl TryIntoProto<user_manager::contains::Req> for Request {
+    fn try_into_proto(self) -> Result<user_manager::contains::Req> {
+        match self {
+            Self::UsersContain { username } => Ok(user_manager::contains::Req { username }),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
+        }
+    }
+}
+
+impl TryIntoProto<user_manager::create::Req> for Request {
+    fn try_into_proto(self) -> Result<user_manager::create::Req> {
+        match self {
+            Self::UserCreate { username, password } => Ok(user_manager::create::Req { username, password }),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
+        }
+    }
+}
+
+impl TryIntoProto<user_manager::delete::Req> for Request {
+    fn try_into_proto(self) -> Result<user_manager::delete::Req> {
+        match self {
+            Self::UserDelete { username} => Ok(user_manager::delete::Req { username }),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
+        }
+    }
+}
+
 impl TryIntoProto<user_manager::get::Req> for Request {
     fn try_into_proto(self) -> Result<user_manager::get::Req> {
         match self {
             Self::UserGet { username } => Ok(user_manager::get::Req { username }),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
+        }
+    }
+}
+
+impl TryIntoProto<user_manager::password_set::Req> for Request {
+    fn try_into_proto(self) -> Result<user_manager::password_set::Req> {
+        match self {
+            Self::UserPasswordSet { username, password } => Ok(user_manager::password_set::Req { username, password }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
@@ -1174,6 +1219,7 @@ impl IntoProto<logic_manager::Req> for LogicRequest {
         logic_manager::Req { req: Some(req) }
     }
 }
+
 impl IntoProto<user_manager::Req> for UserRequest {
     fn into_proto(self) -> logic_manager::Req {
         let req = match self {
@@ -1216,4 +1262,3 @@ impl TryFromProto<logic_manager::ResPart> for LogicResponse {
         })
     }
 }
-
