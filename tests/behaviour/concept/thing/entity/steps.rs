@@ -30,7 +30,7 @@ use typedb_client::{
 use crate::{
     assert_err,
     behaviour::{
-        parameter::{AsValueTypeParse, ContainmentParse, LabelParse, ScopedLabelParse, ValueParse, VarParse},
+        parameter::{AsValueTypeParam, ContainmentParam, LabelParam, ScopedLabelParam, ValueParam, VarParam},
         Context,
     },
     generic_step_impl,
@@ -38,23 +38,23 @@ use crate::{
 
 generic_step_impl! {
     #[step(expr = "entity {var} is deleted: {word}")]
-    async fn entity_is_deleted(context: &mut Context, var: VarParse, is_deleted: bool) -> TypeDBResult {
+    async fn entity_is_deleted(context: &mut Context, var: VarParam, is_deleted: bool) -> TypeDBResult {
         assert_eq!(context.get_entity(var.name).is_deleted(context.transaction()).await?, is_deleted);
         Ok(())
     }
 
     #[step(expr = "entity {var} has type: {label}")]
-    async fn entity_has_type(context: &mut Context, var: VarParse, type_label: LabelParse) {
+    async fn entity_has_type(context: &mut Context, var: VarParam, type_label: LabelParam) {
         assert_eq!(context.get_entity(var.name).type_.label, type_label.name);
     }
 
     #[step(expr = "delete entity: {var}")]
-    async fn delete_entity(context: &mut Context, var: VarParse) -> TypeDBResult {
+    async fn delete_entity(context: &mut Context, var: VarParam) -> TypeDBResult {
         context.get_entity(var.name).delete(context.transaction()).await
     }
 
     #[step(expr = "entity {var} set has: {var}")]
-    async fn entity_set_has(context: &mut Context, var: VarParse, attribute_var: VarParse) -> TypeDBResult {
+    async fn entity_set_has(context: &mut Context, var: VarParam, attribute_var: VarParam) -> TypeDBResult {
         context
             .get_entity(var.name)
             .set_has(context.transaction(), context.get_attribute(attribute_var.name).clone())
@@ -62,12 +62,12 @@ generic_step_impl! {
     }
 
     #[step(expr = "entity {var} set has: {var}; throws exception")]
-    async fn entity_set_has_throws(context: &mut Context, var: VarParse, attribute_var: VarParse) {
+    async fn entity_set_has_throws(context: &mut Context, var: VarParam, attribute_var: VarParam) {
         assert_err!(entity_set_has(context, var, attribute_var).await)
     }
 
     #[step(expr = "entity {var} unset has: {var}")]
-    async fn entity_unset_has(context: &mut Context, var: VarParse, attribute_var: VarParse) -> TypeDBResult {
+    async fn entity_unset_has(context: &mut Context, var: VarParam, attribute_var: VarParam) -> TypeDBResult {
         context
             .get_entity(var.name)
             .unset_has(context.transaction(), context.get_attribute(attribute_var.name).clone())
@@ -77,9 +77,9 @@ generic_step_impl! {
     #[step(expr = "entity {var} get keys {maybe_contain}: {var}")]
     async fn entity_get_keys_contain(
         context: &mut Context,
-        var: VarParse,
-        containment: ContainmentParse,
-        attribute_var: VarParse,
+        var: VarParam,
+        containment: ContainmentParam,
+        attribute_var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = context.get_entity(var.name);
@@ -92,9 +92,9 @@ generic_step_impl! {
     #[step(expr = "entity {var} get attributes {maybe_contain}: {var}")]
     async fn entity_get_attributes_contain(
         context: &mut Context,
-        var: VarParse,
-        containment: ContainmentParse,
-        attribute_var: VarParse,
+        var: VarParam,
+        containment: ContainmentParam,
+        attribute_var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = context.get_entity(var.name);
@@ -107,11 +107,11 @@ generic_step_impl! {
     #[step(expr = r"entity {var} get attributes\(( ){label}( )\){maybe_value_type} {maybe_contain}: {var}")]
     async fn entity_get_attributes_of_type_contain(
         context: &mut Context,
-        var: VarParse,
-        type_label: LabelParse,
-        value_type: AsValueTypeParse,
-        containment: ContainmentParse,
-        attribute_var: VarParse,
+        var: VarParam,
+        type_label: LabelParam,
+        value_type: AsValueTypeParam,
+        containment: ContainmentParam,
+        attribute_var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = context.get_entity(var.name);
@@ -126,7 +126,7 @@ generic_step_impl! {
     }
 
     #[step(expr = r"entity\(( ){label}( )\) get instances is empty")]
-    async fn entity_type_get_instances_is_empty(context: &mut Context, type_label: LabelParse) -> TypeDBResult {
+    async fn entity_type_get_instances_is_empty(context: &mut Context, type_label: LabelParam) -> TypeDBResult {
         let tx = context.transaction();
         let entity_type = context.get_entity_type(type_label.name).await?;
         assert!(entity_type.get_instances(tx)?.next().await.is_none());
@@ -136,9 +136,9 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) get instances {maybe_contain}: {var}")]
     async fn entity_type_get_instances_contain(
         context: &mut Context,
-        type_label: LabelParse,
-        containment: ContainmentParse,
-        var: VarParse,
+        type_label: LabelParam,
+        containment: ContainmentParam,
+        var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity_type = context.get_entity_type(type_label.name).await?;
@@ -157,7 +157,7 @@ generic_step_impl! {
     }
 
     #[step(expr = r"entity\(( ){label}( )\) create new instance; throws exception")]
-    async fn entity_type_create_new_instance_throws(context: &mut Context, type_label: LabelParse) {
+    async fn entity_type_create_new_instance_throws(context: &mut Context, type_label: LabelParam) {
         // FIXME ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v
         assert_err!(entity_type_create_new_instance(context, "".to_owned(), type_label.name).await);
     }
@@ -165,10 +165,10 @@ generic_step_impl! {
     #[step(expr = r"{var} = entity\(( ){label}( )\) create new instance with key\({label}\): {value}")]
     async fn entity_type_create_new_instance_with_key(
         context: &mut Context,
-        var: VarParse,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
-        value: ValueParse,
+        var: VarParam,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
+        value: ValueParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = context.get_entity_type(type_label.name).await?.create(tx).await?;
@@ -182,10 +182,10 @@ generic_step_impl! {
     #[step(expr = r"{var} = entity\(( ){label}( )\) get instance with key\({label}\): {value}")]
     async fn entity_type_get_instance_with_key(
         context: &mut Context,
-        var: VarParse,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
-        value: ValueParse,
+        var: VarParam,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
+        value: ValueParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(attribute_type_label.name).await?;
@@ -200,9 +200,9 @@ generic_step_impl! {
     #[step(expr = r"entity {var} get relations {maybe_contain}: {var}")]
     async fn entity_type_get_relations_contain(
         context: &mut Context,
-        var: VarParse,
-        containment: ContainmentParse,
-        relation_var: VarParse,
+        var: VarParam,
+        containment: ContainmentParam,
+        relation_var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity = context.get_entity(var.name);
@@ -215,10 +215,10 @@ generic_step_impl! {
     #[step(expr = r"entity {var} get relations\({scoped_label}\) {maybe_contain}: {var}")]
     async fn entity_type_get_relations_by_role(
         context: &mut Context,
-        var: VarParse,
-        role_label: ScopedLabelParse,
-        containment: ContainmentParse,
-        relation_var: VarParse,
+        var: VarParam,
+        role_label: ScopedLabelParam,
+        containment: ContainmentParam,
+        relation_var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let role_label = role_label.label;

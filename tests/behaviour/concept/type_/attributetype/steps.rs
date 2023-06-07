@@ -31,8 +31,8 @@ use crate::{
     assert_err,
     behaviour::{
         parameter::{
-            AnnotationsParse, ContainmentParse, LabelParse, OverrideLabelParse, OverrideScopedLabelParse,
-            ScopedLabelParse, TransitivityParse, ValueTypeParse,
+            AnnotationsParam, ContainmentParam, LabelParam, OverrideLabelParam, OverrideScopedLabelParam,
+            ScopedLabelParam, TransitivityParam, ValueTypeParam,
         },
         util::iter_table,
         Context,
@@ -42,23 +42,23 @@ use crate::{
 
 generic_step_impl! {
     #[step(expr = "put attribute type: {label}, with value type: {value_type}")]
-    async fn put_attribute_type(context: &mut Context, type_label: LabelParse, value_type: ValueTypeParse) {
+    async fn put_attribute_type(context: &mut Context, type_label: LabelParam, value_type: ValueTypeParam) {
         context.transaction().concept().put_attribute_type(type_label.name, value_type.value_type).await.unwrap();
     }
 
     #[step(expr = "delete attribute type: {label}")]
-    async fn delete_attribute_type(context: &mut Context, type_label: LabelParse) -> TypeDBResult {
+    async fn delete_attribute_type(context: &mut Context, type_label: LabelParam) -> TypeDBResult {
         let tx = context.transaction();
         context.get_attribute_type(type_label.name).await?.delete(tx).await
     }
 
     #[step(expr = "delete attribute type: {label}; throws exception")]
-    async fn delete_attribute_type_throws(context: &mut Context, type_label: LabelParse) {
+    async fn delete_attribute_type_throws(context: &mut Context, type_label: LabelParam) {
         assert_err!(delete_attribute_type(context, type_label).await);
     }
 
     #[step(expr = r"attribute\(( ){label}( )\) is null: {word}")]
-    async fn attribute_type_is_null(context: &mut Context, type_label: LabelParse, is_null: bool) -> TypeDBResult {
+    async fn attribute_type_is_null(context: &mut Context, type_label: LabelParam, is_null: bool) -> TypeDBResult {
         let res = context.transaction().concept().get_attribute_type(type_label.name).await?;
         assert_eq!(res.is_none(), is_null, "{res:?}");
         Ok(())
@@ -67,8 +67,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) set label: {label}")]
     async fn attribute_type_set_label(
         context: &mut Context,
-        type_label: LabelParse,
-        new_label: LabelParse,
+        type_label: LabelParam,
+        new_label: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         context.get_attribute_type(type_label.name).await?.set_label(tx, new_label.name).await
@@ -77,8 +77,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) get label: {label}")]
     async fn attribute_type_get_label(
         context: &mut Context,
-        type_label: LabelParse,
-        get_label: LabelParse,
+        type_label: LabelParam,
+        get_label: LabelParam,
     ) -> TypeDBResult {
         assert_eq!(context.get_attribute_type(type_label.name).await?.label, get_label.name);
         Ok(())
@@ -87,7 +87,7 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) set abstract: {word}")]
     async fn attribute_type_set_abstract(
         context: &mut Context,
-        type_label: LabelParse,
+        type_label: LabelParam,
         is_abstract: bool,
     ) -> TypeDBResult {
         let tx = context.transaction();
@@ -100,14 +100,14 @@ generic_step_impl! {
     }
 
     #[step(expr = r"attribute\(( ){label}( )\) set abstract: {word}; throws exception")]
-    async fn attribute_type_set_abstract_throws(context: &mut Context, type_label: LabelParse, is_abstract: bool) {
+    async fn attribute_type_set_abstract_throws(context: &mut Context, type_label: LabelParam, is_abstract: bool) {
         assert_err!(attribute_type_set_abstract(context, type_label, is_abstract).await);
     }
 
     #[step(expr = r"attribute\(( ){label}( )\) is abstract: {word}")]
     async fn attribute_type_is_abstract(
         context: &mut Context,
-        type_label: LabelParse,
+        type_label: LabelParam,
         is_abstract: bool,
     ) -> TypeDBResult {
         assert_eq!(context.get_attribute_type(type_label.name).await?.is_abstract, is_abstract);
@@ -117,8 +117,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) set supertype: {label}")]
     async fn attribute_type_set_supertype(
         context: &mut Context,
-        type_label: LabelParse,
-        supertype_label: LabelParse,
+        type_label: LabelParam,
+        supertype_label: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let supertype = context.get_attribute_type(supertype_label.name).await?;
@@ -128,8 +128,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) set supertype: {label}; throws exception")]
     async fn attribute_type_set_supertype_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        supertype_label: LabelParse,
+        type_label: LabelParam,
+        supertype_label: LabelParam,
     ) {
         assert_err!(attribute_type_set_supertype(context, type_label, supertype_label).await)
     }
@@ -137,8 +137,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) get supertype: {label}")]
     async fn attribute_type_get_supertype(
         context: &mut Context,
-        type_label: LabelParse,
-        supertype: LabelParse,
+        type_label: LabelParam,
+        supertype: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         assert_eq!(context.get_attribute_type(type_label.name).await?.get_supertype(tx).await?.label, supertype.name);
@@ -149,8 +149,8 @@ generic_step_impl! {
     async fn attribute_type_get_supertypes(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -165,8 +165,8 @@ generic_step_impl! {
     async fn attribute_type_get_subtypes(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -180,10 +180,10 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) set owns attribute type: {label}{override_label}{annotations}")]
     async fn attribute_type_set_owns_attribute_type(
         context: &mut Context,
-        type_label: LabelParse,
-        owned_attribute_type_label: LabelParse,
-        overridden_attribute_type_label: OverrideLabelParse,
-        annotations: AnnotationsParse,
+        type_label: LabelParam,
+        owned_attribute_type_label: LabelParam,
+        overridden_attribute_type_label: OverrideLabelParam,
+        annotations: AnnotationsParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -202,10 +202,10 @@ generic_step_impl! {
     )]
     async fn attribute_type_set_owns_attribute_type_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        owned_attribute_type_label: LabelParse,
-        overridden_attribute_type_label: OverrideLabelParse,
-        annotations: AnnotationsParse,
+        type_label: LabelParam,
+        owned_attribute_type_label: LabelParam,
+        overridden_attribute_type_label: OverrideLabelParam,
+        annotations: AnnotationsParam,
     ) {
         assert_err!(
             attribute_type_set_owns_attribute_type(
@@ -222,8 +222,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) unset owns attribute type: {label}")]
     async fn attribute_type_unset_owns_attribute_type(
         context: &mut Context,
-        type_label: LabelParse,
-        owned_attribute_type_label: LabelParse,
+        type_label: LabelParam,
+        owned_attribute_type_label: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -234,8 +234,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) unset owns attribute type: {label}; throws exception")]
     async fn attribute_type_unset_owns_attribute_type_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        owned_attribute_type_label: LabelParse,
+        type_label: LabelParam,
+        owned_attribute_type_label: LabelParam,
     ) {
         assert_err!(attribute_type_unset_owns_attribute_type(context, type_label, owned_attribute_type_label).await);
     }
@@ -246,10 +246,10 @@ generic_step_impl! {
     async fn attribute_type_get_owns_attribute_types_contain(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        transitivity: TransitivityParse,
-        annotations: AnnotationsParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        transitivity: TransitivityParam,
+        annotations: AnnotationsParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -267,8 +267,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) get owns overridden attribute\(( ){label}( )\) is null: {word}")]
     async fn attribute_type_get_owns_attribute_type(
         context: &mut Context,
-        type_label: LabelParse,
-        owned_attribute_type_label: LabelParse,
+        type_label: LabelParam,
+        owned_attribute_type_label: LabelParam,
         is_null: bool,
     ) -> TypeDBResult {
         let tx = context.transaction();
@@ -282,9 +282,9 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) get owns overridden attribute\(( ){label}( )\) get label: {label}")]
     async fn attribute_type_get_owns_attribute_type_label(
         context: &mut Context,
-        type_label: LabelParse,
-        owned_attribute_type_label: LabelParse,
-        overridden_label: LabelParse,
+        type_label: LabelParam,
+        owned_attribute_type_label: LabelParam,
+        overridden_label: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -297,9 +297,9 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) set plays role: {scoped_label}{override_scoped_label}")]
     async fn attribute_type_set_plays_role(
         context: &mut Context,
-        type_label: LabelParse,
-        role_label: ScopedLabelParse,
-        overridden_role_label: OverrideScopedLabelParse,
+        type_label: LabelParam,
+        role_label: ScopedLabelParam,
+        overridden_role_label: OverrideScopedLabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let role_label = role_label.label;
@@ -319,9 +319,9 @@ generic_step_impl! {
     )]
     async fn attribute_type_set_plays_role_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        role_label: ScopedLabelParse,
-        overridden_role_label: OverrideScopedLabelParse,
+        type_label: LabelParam,
+        role_label: ScopedLabelParam,
+        overridden_role_label: OverrideScopedLabelParam,
     ) {
         assert_err!(attribute_type_set_plays_role(context, type_label, role_label, overridden_role_label).await);
     }
@@ -329,8 +329,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) unset plays role: {scoped_label}")]
     async fn attribute_type_unset_plays_role(
         context: &mut Context,
-        type_label: LabelParse,
-        role_label: ScopedLabelParse,
+        type_label: LabelParam,
+        role_label: ScopedLabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let role_label = role_label.label;
@@ -343,8 +343,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) unset plays role: {scoped_label}; throws exception")]
     async fn attribute_type_unset_plays_role_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        role_label: ScopedLabelParse,
+        type_label: LabelParam,
+        role_label: ScopedLabelParam,
     ) {
         assert_err!(attribute_type_unset_plays_role(context, type_label, role_label).await);
     }
@@ -353,16 +353,16 @@ generic_step_impl! {
     async fn attribute_type_get_playing_roles_contain(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        transitivity: TransitivityParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        transitivity: TransitivityParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
         let actuals: Vec<ScopedLabel> =
             attribute_type.get_plays(tx, transitivity.transitivity)?.map_ok(|rt| rt.label).try_collect().await?;
         for role_label in iter_table(step) {
-            let role_label = role_label.parse::<ScopedLabelParse>().unwrap().label;
+            let role_label = role_label.parse::<ScopedLabelParam>().unwrap().label;
             containment.assert(&actuals, &role_label);
         }
         Ok(())
@@ -372,9 +372,9 @@ generic_step_impl! {
     async fn attribute_type_get_subtypes_as_value_type(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -392,8 +392,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) set regex: {}")]
     async fn attribute_type_set_regex(
         context: &mut Context,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
         regex: String,
     ) -> TypeDBResult {
         let tx = context.transaction();
@@ -405,8 +405,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) set regex: {}; throws exception")]
     async fn attribute_type_set_regex_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
         regex: String,
     ) {
         assert_err!(attribute_type_set_regex(context, type_label, value_type, regex).await)
@@ -415,8 +415,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) unset regex")]
     async fn attribute_type_unset_regex(
         context: &mut Context,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -427,8 +427,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) get regex: {}")]
     async fn attribute_type_get_regex(
         context: &mut Context,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
         regex: String,
     ) -> TypeDBResult {
         let tx = context.transaction();
@@ -441,8 +441,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )) as\(( ){value_type}( )) does not have any regex")]
     async fn attribute_type_no_regex(
         context: &mut Context,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -455,10 +455,10 @@ generic_step_impl! {
     async fn attribute_type_get_owners(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        transitivity: TransitivityParse,
-        annotations: AnnotationsParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        transitivity: TransitivityParam,
+        annotations: AnnotationsParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -476,8 +476,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )) get supertype value type: {value_type}")]
     async fn attribute_type_get_supertype_value_type(
         context: &mut Context,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let supertype = context.get_attribute_type(type_label.name).await?.get_supertype(tx).await?;
@@ -488,8 +488,8 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )) get value type: {value_type}")]
     async fn attribute_type_get_value_type(
         context: &mut Context,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
     ) -> TypeDBResult {
         let attribute_type = context.get_attribute_type(type_label.name).await?;
         assert_eq!(attribute_type.value_type, value_type.value_type);

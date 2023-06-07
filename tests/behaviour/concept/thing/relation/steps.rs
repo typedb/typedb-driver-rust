@@ -30,7 +30,7 @@ use typedb_client::{
 use crate::{
     assert_err,
     behaviour::{
-        parameter::{ContainmentParse, LabelParse, RoleParse, ValueParse, VarParse},
+        parameter::{ContainmentParam, LabelParam, RoleParam, ValueParam, VarParam},
         Context,
     },
     generic_step_impl,
@@ -38,23 +38,23 @@ use crate::{
 
 generic_step_impl! {
     #[step(expr = "relation {var} is deleted: {word}")]
-    async fn relation_is_deleted(context: &mut Context, var: VarParse, is_deleted: bool) -> TypeDBResult {
+    async fn relation_is_deleted(context: &mut Context, var: VarParam, is_deleted: bool) -> TypeDBResult {
         assert_eq!(context.get_relation(var.name).is_deleted(context.transaction()).await?, is_deleted);
         Ok(())
     }
 
     #[step(expr = "relation {var} has type: {label}")]
-    async fn relation_has_type(context: &mut Context, var: VarParse, type_label: LabelParse) {
+    async fn relation_has_type(context: &mut Context, var: VarParam, type_label: LabelParam) {
         assert_eq!(context.get_relation(var.name).type_.label, type_label.name);
     }
 
     #[step(expr = "delete relation: {var}")]
-    async fn delete_relation(context: &mut Context, var: VarParse) -> TypeDBResult {
+    async fn delete_relation(context: &mut Context, var: VarParam) -> TypeDBResult {
         context.get_relation(var.name).delete(context.transaction()).await
     }
 
     #[step(expr = r"relation\(( ){label}( )\) get instances is empty")]
-    async fn relation_type_get_instances_is_empty(context: &mut Context, type_label: LabelParse) -> TypeDBResult {
+    async fn relation_type_get_instances_is_empty(context: &mut Context, type_label: LabelParam) -> TypeDBResult {
         let tx = context.transaction();
         let relation_type = context.get_relation_type(type_label.name).await?;
         assert!(relation_type.get_instances(tx)?.next().await.is_none());
@@ -64,9 +64,9 @@ generic_step_impl! {
     #[step(expr = r"relation\(( ){label}( )\) get instances {maybe_contain}: {var}")]
     async fn relation_type_get_instances_contain(
         context: &mut Context,
-        type_label: LabelParse,
-        containment: ContainmentParse,
-        var: VarParse,
+        type_label: LabelParam,
+        containment: ContainmentParam,
+        var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation_type = context.get_relation_type(type_label.name).await?;
@@ -85,7 +85,7 @@ generic_step_impl! {
     }
 
     #[step(expr = r"relation\(( ){label}( )\) create new instance; throws exception")]
-    async fn relation_type_create_new_instance_throws(context: &mut Context, type_label: LabelParse) {
+    async fn relation_type_create_new_instance_throws(context: &mut Context, type_label: LabelParam) {
         // FIXME ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v
         assert_err!(relation_type_create_new_instance(context, "".to_owned(), type_label.name).await);
     }
@@ -93,10 +93,10 @@ generic_step_impl! {
     #[step(expr = r"{var} = relation\(( ){label}( )\) create new instance with key\({label}\): {value}")]
     async fn relation_type_create_new_instance_with_key(
         context: &mut Context,
-        var: VarParse,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
-        value: ValueParse,
+        var: VarParam,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
+        value: ValueParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation = context.get_relation_type(type_label.name).await?.create(tx).await?;
@@ -112,10 +112,10 @@ generic_step_impl! {
     )]
     async fn relation_type_create_new_instance_with_key_throws(
         context: &mut Context,
-        var: VarParse,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
-        value: ValueParse,
+        var: VarParam,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
+        value: ValueParam,
     ) {
         assert_err!(
             relation_type_create_new_instance_with_key(context, var, type_label, attribute_type_label, value).await
@@ -125,10 +125,10 @@ generic_step_impl! {
     #[step(expr = r"{var} = relation\(( ){label}( )\) get instance with key\({label}\): {value}")]
     async fn relation_type_get_instance_with_key(
         context: &mut Context,
-        var: VarParse,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
-        value: ValueParse,
+        var: VarParam,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
+        value: ValueParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(attribute_type_label.name).await?;
@@ -143,9 +143,9 @@ generic_step_impl! {
     #[step(expr = r"relation {var} add player for role\(( ){label}( )\): {var}")]
     async fn relation_add_player_for_role(
         context: &mut Context,
-        var: VarParse,
-        role_name: LabelParse,
-        player_var: VarParse,
+        var: VarParam,
+        role_name: LabelParam,
+        player_var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation = context.get_relation(var.name);
@@ -157,9 +157,9 @@ generic_step_impl! {
     #[step(expr = r"relation {var} add player for role\(( ){label}( )\): {var}; throws exception")]
     async fn relation_add_player_for_role_throws(
         context: &mut Context,
-        var: VarParse,
-        role_name: LabelParse,
-        player_var: VarParse,
+        var: VarParam,
+        role_name: LabelParam,
+        player_var: VarParam,
     ) {
         assert_err!(relation_add_player_for_role(context, var, role_name, player_var,).await);
     }
@@ -167,9 +167,9 @@ generic_step_impl! {
     #[step(expr = r"relation {var} remove player for role\(( ){label}( )\): {var}")]
     async fn relation_remove_player_for_role(
         context: &mut Context,
-        var: VarParse,
-        role_name: LabelParse,
-        player_var: VarParse,
+        var: VarParam,
+        role_name: LabelParam,
+        player_var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation = context.get_relation(var.name);
@@ -181,10 +181,10 @@ generic_step_impl! {
     #[step(expr = r"relation {var} get players{maybe_role} {maybe_contain}: {var}")]
     async fn relation_get_players_contain(
         context: &mut Context,
-        var: VarParse,
-        role: RoleParse,
-        containment: ContainmentParse,
-        player_var: VarParse,
+        var: VarParam,
+        role: RoleParam,
+        containment: ContainmentParam,
+        player_var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation = context.get_relation(var.name);
@@ -204,8 +204,8 @@ generic_step_impl! {
     async fn relation_get_players_contain_table(
         context: &mut Context,
         step: &Step,
-        var: VarParse,
-        containment: ContainmentParse,
+        var: VarParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation = context.get_relation(var.name);

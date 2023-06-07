@@ -30,7 +30,7 @@ use typedb_client::{
 use crate::{
     assert_err,
     behaviour::{
-        parameter::{ContainmentParse, LabelParse, ValueParse, ValueTypeParse, VarParse},
+        parameter::{ContainmentParam, LabelParam, ValueParam, ValueTypeParam, VarParam},
         Context,
     },
     generic_step_impl,
@@ -38,27 +38,27 @@ use crate::{
 
 generic_step_impl! {
     #[step(expr = "attribute {var} is deleted: {word}")]
-    async fn attribute_is_deleted(context: &mut Context, var: VarParse, is_deleted: bool) -> TypeDBResult {
+    async fn attribute_is_deleted(context: &mut Context, var: VarParam, is_deleted: bool) -> TypeDBResult {
         assert_eq!(context.get_attribute(var.name).is_deleted(context.transaction()).await?, is_deleted);
         Ok(())
     }
 
     #[step(expr = "attribute {var} has type: {label}")]
-    async fn attribute_has_type(context: &mut Context, var: VarParse, type_label: LabelParse) {
+    async fn attribute_has_type(context: &mut Context, var: VarParam, type_label: LabelParam) {
         assert_eq!(context.get_attribute(var.name).type_.label, type_label.name);
     }
 
     #[step(expr = "delete attribute: {var}")]
-    async fn delete_attribute(context: &mut Context, var: VarParse) -> TypeDBResult {
+    async fn delete_attribute(context: &mut Context, var: VarParam) -> TypeDBResult {
         context.get_attribute(var.name).delete(context.transaction()).await
     }
 
     #[step(expr = r"attribute\(( ){label}( )\) get instances {maybe_contain}: {var}")]
     async fn attribute_get_instances_contain(
         context: &mut Context,
-        type_label: LabelParse,
-        containment: ContainmentParse,
-        var: VarParse,
+        type_label: LabelParam,
+        containment: ContainmentParam,
+        var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -71,9 +71,9 @@ generic_step_impl! {
     #[step(expr = "attribute {var} get owners {maybe_contain}: {var}")]
     async fn attribute_get_owners_contain(
         context: &mut Context,
-        var: VarParse,
-        containment: ContainmentParse,
-        owner_var: VarParse,
+        var: VarParam,
+        containment: ContainmentParam,
+        owner_var: VarParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute = context.get_attribute(var.name);
@@ -84,17 +84,17 @@ generic_step_impl! {
     }
 
     #[step(expr = "attribute {var} has value type: {value_type}")]
-    async fn attribute_has_value_type(context: &mut Context, var: VarParse, value_type: ValueTypeParse) {
+    async fn attribute_has_value_type(context: &mut Context, var: VarParam, value_type: ValueTypeParam) {
         assert_eq!(context.get_attribute(var.name).type_.value_type, value_type.value_type);
     }
 
     #[step(expr = r"{var} = attribute\(( ){label}( )\) as\(( ){value_type}( )\) put: {value}")]
     async fn attribute_put_value(
         context: &mut Context,
-        var: VarParse,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
-        value: ValueParse,
+        var: VarParam,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
+        value: ValueParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -107,22 +107,22 @@ generic_step_impl! {
     #[step(expr = r"attribute\(( ){label}( )\) as\(( ){value_type}( )\) put: {value}; throws exception")]
     async fn attribute_put_value_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
-        value: ValueParse,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
+        value: ValueParam,
     ) {
         assert_err!(
-            attribute_put_value(context, VarParse { name: "".to_owned() }, type_label, value_type, value).await
+            attribute_put_value(context, VarParam { name: "".to_owned() }, type_label, value_type, value).await
         );
     }
 
     #[step(expr = r"{var} = attribute\(( ){label}( )\) as\(( ){value_type}( )\) get: {value}")]
     async fn attribute_get_value(
         context: &mut Context,
-        var: VarParse,
-        type_label: LabelParse,
-        value_type: ValueTypeParse,
-        value: ValueParse,
+        var: VarParam,
+        type_label: LabelParam,
+        value_type: ValueTypeParam,
+        value: ValueParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
@@ -133,7 +133,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "attribute {var} has {value_type} value: {value}")]
-    async fn attribute_has_value(context: &mut Context, var: VarParse, value_type: ValueTypeParse, value: ValueParse) {
+    async fn attribute_has_value(context: &mut Context, var: VarParam, value_type: ValueTypeParam, value: ValueParam) {
         assert_eq!(context.get_attribute(var.name).value, value.into_value(value_type.value_type));
     }
 }

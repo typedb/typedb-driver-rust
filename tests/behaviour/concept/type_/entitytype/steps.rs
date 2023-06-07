@@ -31,8 +31,8 @@ use crate::{
     assert_err,
     behaviour::{
         parameter::{
-            AnnotationsParse, ContainmentParse, LabelParse, OverrideLabelParse, OverrideScopedLabelParse,
-            ScopedLabelParse, TransitivityParse,
+            AnnotationsParam, ContainmentParam, LabelParam, OverrideLabelParam, OverrideScopedLabelParam,
+            ScopedLabelParam, TransitivityParam,
         },
         util::iter_table,
         Context,
@@ -42,23 +42,23 @@ use crate::{
 
 generic_step_impl! {
     #[step(expr = "put entity type: {label}")]
-    async fn put_entity_type(context: &mut Context, type_label: LabelParse) -> TypeDBResult<EntityType> {
+    async fn put_entity_type(context: &mut Context, type_label: LabelParam) -> TypeDBResult<EntityType> {
         context.transaction().concept().put_entity_type(type_label.name).await
     }
 
     #[step(expr = "delete entity type: {label}")]
-    async fn delete_entity_type(context: &mut Context, type_label: LabelParse) -> TypeDBResult {
+    async fn delete_entity_type(context: &mut Context, type_label: LabelParam) -> TypeDBResult {
         let tx = context.transaction();
         context.get_entity_type(type_label.name).await?.delete(tx).await
     }
 
     #[step(expr = "delete entity type: {label}; throws exception")]
-    async fn delete_entity_type_throws(context: &mut Context, type_label: LabelParse) {
+    async fn delete_entity_type_throws(context: &mut Context, type_label: LabelParam) {
         assert_err!(delete_entity_type(context, type_label).await);
     }
 
     #[step(expr = r"entity\(( ){label}( )\) is null: {word}")]
-    async fn entity_type_is_null(context: &mut Context, type_label: LabelParse, is_null: bool) -> TypeDBResult {
+    async fn entity_type_is_null(context: &mut Context, type_label: LabelParam, is_null: bool) -> TypeDBResult {
         let res = context.transaction().concept().get_entity_type(type_label.name).await?;
         assert_eq!(res.is_none(), is_null, "{res:?}");
         Ok(())
@@ -67,8 +67,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) set label: {label}")]
     async fn entity_type_set_label(
         context: &mut Context,
-        type_label: LabelParse,
-        new_label: LabelParse,
+        type_label: LabelParam,
+        new_label: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         context.get_entity_type(type_label.name).await?.set_label(tx, new_label.name).await
@@ -77,8 +77,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) get label: {label}")]
     async fn entity_type_get_label(
         context: &mut Context,
-        type_label: LabelParse,
-        get_label: LabelParse,
+        type_label: LabelParam,
+        get_label: LabelParam,
     ) -> TypeDBResult {
         assert_eq!(context.get_entity_type(type_label.name).await?.label, get_label.name);
         Ok(())
@@ -87,7 +87,7 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) set abstract: {word}")]
     async fn entity_type_set_abstract(
         context: &mut Context,
-        type_label: LabelParse,
+        type_label: LabelParam,
         is_abstract: bool,
     ) -> TypeDBResult {
         let tx = context.transaction();
@@ -100,12 +100,12 @@ generic_step_impl! {
     }
 
     #[step(expr = r"entity\(( ){label}( )\) set abstract: {word}; throws exception")]
-    async fn entity_type_set_abstract_throws(context: &mut Context, type_label: LabelParse, is_abstract: bool) {
+    async fn entity_type_set_abstract_throws(context: &mut Context, type_label: LabelParam, is_abstract: bool) {
         assert_err!(entity_type_set_abstract(context, type_label, is_abstract).await);
     }
 
     #[step(expr = r"entity\(( ){label}( )\) is abstract: {word}")]
-    async fn entity_type_is_abstract(context: &mut Context, type_label: LabelParse, is_abstract: bool) -> TypeDBResult {
+    async fn entity_type_is_abstract(context: &mut Context, type_label: LabelParam, is_abstract: bool) -> TypeDBResult {
         assert_eq!(context.get_entity_type(type_label.name).await?.is_abstract, is_abstract);
         Ok(())
     }
@@ -113,8 +113,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) set supertype: {label}")]
     async fn entity_type_set_supertype(
         context: &mut Context,
-        type_label: LabelParse,
-        supertype_label: LabelParse,
+        type_label: LabelParam,
+        supertype_label: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let supertype = context.get_entity_type(supertype_label.name).await?;
@@ -124,8 +124,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) set supertype: {label}; throws exception")]
     async fn entity_type_set_supertype_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        supertype_label: LabelParse,
+        type_label: LabelParam,
+        supertype_label: LabelParam,
     ) {
         assert_err!(entity_type_set_supertype(context, type_label, supertype_label).await)
     }
@@ -133,8 +133,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) get supertype: {label}")]
     async fn entity_type_get_supertype(
         context: &mut Context,
-        type_label: LabelParse,
-        supertype: LabelParse,
+        type_label: LabelParam,
+        supertype: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         assert_eq!(context.get_entity_type(type_label.name).await?.get_supertype(tx).await?.label, supertype.name);
@@ -145,8 +145,8 @@ generic_step_impl! {
     async fn entity_type_get_supertypes(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity_type = context.get_entity_type(type_label.name).await?;
@@ -161,8 +161,8 @@ generic_step_impl! {
     async fn entity_type_get_subtypes(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity_type = context.get_entity_type(type_label.name).await?;
@@ -176,10 +176,10 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) set owns attribute type: {label}{override_label}{annotations}")]
     async fn entity_type_set_owns_attribute_type(
         context: &mut Context,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
-        overridden_attribute_type_label: OverrideLabelParse,
-        annotations: AnnotationsParse,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
+        overridden_attribute_type_label: OverrideLabelParam,
+        annotations: AnnotationsParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut entity_type = context.get_entity_type(type_label.name).await?;
@@ -197,10 +197,10 @@ generic_step_impl! {
     )]
     async fn entity_type_set_owns_attribute_type_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
-        overridden_attribute_type_label: OverrideLabelParse,
-        annotations: AnnotationsParse,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
+        overridden_attribute_type_label: OverrideLabelParam,
+        annotations: AnnotationsParam,
     ) {
         assert_err!(
             entity_type_set_owns_attribute_type(
@@ -217,8 +217,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) unset owns attribute type: {label}")]
     async fn entity_type_unset_owns_attribute_type(
         context: &mut Context,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut entity_type = context.get_entity_type(type_label.name).await?;
@@ -229,8 +229,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) unset owns attribute type: {label}; throws exception")]
     async fn entity_type_unset_owns_attribute_type_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
     ) {
         assert_err!(entity_type_unset_owns_attribute_type(context, type_label, attribute_type_label).await);
     }
@@ -239,10 +239,10 @@ generic_step_impl! {
     async fn entity_type_get_owns_attribute_types_contain(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        transitivity: TransitivityParse,
-        annotations: AnnotationsParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        transitivity: TransitivityParam,
+        annotations: AnnotationsParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity_type = context.get_entity_type(type_label.name).await?;
@@ -260,8 +260,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) get owns overridden attribute\(( ){label}( )\) is null: {word}")]
     async fn entity_type_get_owns_attribute_type(
         context: &mut Context,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
         is_null: bool,
     ) -> TypeDBResult {
         let tx = context.transaction();
@@ -275,9 +275,9 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) get owns overridden attribute\(( ){label}( )\) get label: {label}")]
     async fn entity_type_get_owns_attribute_type_label(
         context: &mut Context,
-        type_label: LabelParse,
-        attribute_type_label: LabelParse,
-        overridden_label: LabelParse,
+        type_label: LabelParam,
+        attribute_type_label: LabelParam,
+        overridden_label: LabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity_type = context.get_entity_type(type_label.name).await?;
@@ -290,9 +290,9 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) set plays role: {scoped_label}{override_scoped_label}")]
     async fn entity_type_set_plays_role(
         context: &mut Context,
-        type_label: LabelParse,
-        role_label: ScopedLabelParse,
-        overridden_role_label: OverrideScopedLabelParse,
+        type_label: LabelParam,
+        role_label: ScopedLabelParam,
+        overridden_role_label: OverrideScopedLabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let role_label = role_label.label;
@@ -310,9 +310,9 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) set plays role: {scoped_label}{override_scoped_label}; throws exception")]
     async fn entity_type_set_plays_role_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        role_label: ScopedLabelParse,
-        overridden_role_label: OverrideScopedLabelParse,
+        type_label: LabelParam,
+        role_label: ScopedLabelParam,
+        overridden_role_label: OverrideScopedLabelParam,
     ) {
         assert_err!(entity_type_set_plays_role(context, type_label, role_label, overridden_role_label).await);
     }
@@ -320,8 +320,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) unset plays role: {scoped_label}")]
     async fn entity_type_unset_plays_role(
         context: &mut Context,
-        type_label: LabelParse,
-        role_label: ScopedLabelParse,
+        type_label: LabelParam,
+        role_label: ScopedLabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let role_label = role_label.label;
@@ -338,8 +338,8 @@ generic_step_impl! {
     #[step(expr = r"entity\(( ){label}( )\) unset plays role: {scoped_label}; throws exception")]
     async fn entity_type_unset_plays_role_throws(
         context: &mut Context,
-        type_label: LabelParse,
-        role_label: ScopedLabelParse,
+        type_label: LabelParam,
+        role_label: ScopedLabelParam,
     ) {
         assert_err!(entity_type_unset_plays_role(context, type_label, role_label).await);
     }
@@ -348,16 +348,16 @@ generic_step_impl! {
     async fn entity_type_get_playing_roles_contain(
         context: &mut Context,
         step: &Step,
-        type_label: LabelParse,
-        transitivity: TransitivityParse,
-        containment: ContainmentParse,
+        type_label: LabelParam,
+        transitivity: TransitivityParam,
+        containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let entity_type = context.get_entity_type(type_label.name).await?;
         let actuals: Vec<ScopedLabel> =
             entity_type.get_plays(tx, transitivity.transitivity)?.map_ok(|rt| rt.label).try_collect().await?;
         for role_label in iter_table(step) {
-            let role_label = role_label.parse::<ScopedLabelParse>().unwrap().label;
+            let role_label = role_label.parse::<ScopedLabelParam>().unwrap().label;
             containment.assert(&actuals, &role_label);
         }
         Ok(())

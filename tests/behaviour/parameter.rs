@@ -30,9 +30,9 @@ use typedb_client::{
 
 #[derive(Debug, Parameter)]
 #[param(name = "maybe_contain", regex = r"(?:do not )?contain")]
-pub struct ContainmentParse(bool);
+pub struct ContainmentParam(bool);
 
-impl ContainmentParse {
+impl ContainmentParam {
     pub fn assert<T, U>(&self, actuals: &[T], item: U)
     where
         T: Comparable<U> + fmt::Debug,
@@ -46,7 +46,7 @@ impl ContainmentParse {
     }
 }
 
-impl FromStr for ContainmentParse {
+impl FromStr for ContainmentParam {
     type Err = Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -76,9 +76,9 @@ where
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "value", regex = r".+")]
-pub struct ValueParse(String);
+pub struct ValueParam(String);
 
-impl ValueParse {
+impl ValueParam {
     pub fn into_value(self, value_type: ValueType) -> Value {
         match value_type {
             ValueType::Boolean => Value::Boolean(self.0.parse().unwrap()),
@@ -93,7 +93,7 @@ impl ValueParse {
     }
 }
 
-impl FromStr for ValueParse {
+impl FromStr for ValueParam {
     type Err = Infallible;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
@@ -103,11 +103,11 @@ impl FromStr for ValueParse {
 
 #[derive(Clone, Copy, Debug, Parameter)]
 #[param(name = "value_type", regex = r"boolean|long|double|string|datetime")]
-pub struct ValueTypeParse {
+pub struct ValueTypeParam {
     pub value_type: ValueType,
 }
 
-impl FromStr for ValueTypeParse {
+impl FromStr for ValueTypeParam {
     type Err = Infallible;
 
     fn from_str(type_: &str) -> Result<Self, Self::Err> {
@@ -124,25 +124,25 @@ impl FromStr for ValueTypeParse {
 
 #[derive(Clone, Copy, Debug, Parameter)]
 #[param(name = "maybe_value_type", regex = r" as\((boolean|long|double|string|datetime)\)|()")]
-pub struct AsValueTypeParse {
+pub struct AsValueTypeParam {
     pub value_type: Option<ValueType>,
 }
 
-impl FromStr for AsValueTypeParse {
+impl FromStr for AsValueTypeParam {
     type Err = Infallible;
 
     fn from_str(type_: &str) -> Result<Self, Self::Err> {
-        Ok(Self { value_type: type_.is_empty().not().then(|| type_.parse::<ValueTypeParse>().unwrap().value_type) })
+        Ok(Self { value_type: type_.is_empty().not().then(|| type_.parse::<ValueTypeParam>().unwrap().value_type) })
     }
 }
 
 #[derive(Clone, Copy, Debug, Parameter)]
 #[param(name = "maybe_explicit", regex = r" explicit|")]
-pub struct TransitivityParse {
+pub struct TransitivityParam {
     pub transitivity: Transitivity,
 }
 
-impl FromStr for TransitivityParse {
+impl FromStr for TransitivityParam {
     type Err = Infallible;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
@@ -156,11 +156,11 @@ impl FromStr for TransitivityParse {
 
 #[derive(Clone, Copy, Debug, Parameter)]
 #[param(name = "transaction_type", regex = r"write|read")]
-pub struct TransactionTypeParse {
+pub struct TransactionTypeParam {
     pub transaction_type: TransactionType,
 }
 
-impl FromStr for TransactionTypeParse {
+impl FromStr for TransactionTypeParam {
     type Err = Infallible;
 
     fn from_str(type_: &str) -> Result<Self, Self::Err> {
@@ -174,11 +174,11 @@ impl FromStr for TransactionTypeParse {
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "var", regex = r"(\$[\w_-]+)")]
-pub struct VarParse {
+pub struct VarParam {
     pub name: String,
 }
 
-impl FromStr for VarParse {
+impl FromStr for VarParam {
     type Err = Infallible;
 
     fn from_str(name: &str) -> Result<Self, Self::Err> {
@@ -188,11 +188,11 @@ impl FromStr for VarParse {
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "label", regex = r"[\w_-]+")]
-pub struct LabelParse {
+pub struct LabelParam {
     pub name: String,
 }
 
-impl FromStr for LabelParse {
+impl FromStr for LabelParam {
     type Err = Infallible;
 
     fn from_str(name: &str) -> Result<Self, Self::Err> {
@@ -202,11 +202,11 @@ impl FromStr for LabelParse {
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "override_label", regex = r" as ([\w-]+)|()")]
-pub struct OverrideLabelParse {
+pub struct OverrideLabelParam {
     pub name: Option<String>,
 }
 
-impl FromStr for OverrideLabelParse {
+impl FromStr for OverrideLabelParam {
     type Err = Infallible;
 
     fn from_str(name: &str) -> Result<Self, Self::Err> {
@@ -220,11 +220,11 @@ impl FromStr for OverrideLabelParse {
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "scoped_label", regex = r"\S+:\S+")]
-pub struct ScopedLabelParse {
+pub struct ScopedLabelParam {
     pub label: ScopedLabel,
 }
 
-impl FromStr for ScopedLabelParse {
+impl FromStr for ScopedLabelParam {
     type Err = Infallible;
 
     fn from_str(label: &str) -> Result<Self, Self::Err> {
@@ -235,11 +235,11 @@ impl FromStr for ScopedLabelParse {
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "override_scoped_label", regex = r" as (\S+:\S+)|()")]
-pub struct OverrideScopedLabelParse {
+pub struct OverrideScopedLabelParam {
     pub label: Option<ScopedLabel>,
 }
 
-impl FromStr for OverrideScopedLabelParse {
+impl FromStr for OverrideScopedLabelParam {
     type Err = Infallible;
 
     fn from_str(label: &str) -> Result<Self, Self::Err> {
@@ -253,11 +253,11 @@ impl FromStr for OverrideScopedLabelParse {
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "annotations", regex = r", with annotations: ([\w-]+(?:, (?:[\w-]+))*)|()")]
-pub struct AnnotationsParse {
+pub struct AnnotationsParam {
     pub annotations: Vec<Annotation>,
 }
 
-impl FromStr for AnnotationsParse {
+impl FromStr for AnnotationsParam {
     type Err = Infallible;
 
     fn from_str(annotations: &str) -> Result<Self, Self::Err> {
@@ -279,11 +279,11 @@ impl FromStr for AnnotationsParse {
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "maybe_role", regex = r" for role\(\s*(\S+)\s*\)|()")]
-pub struct RoleParse {
+pub struct RoleParam {
     pub role: Option<String>,
 }
 
-impl FromStr for RoleParse {
+impl FromStr for RoleParam {
     type Err = Infallible;
 
     fn from_str(role: &str) -> Result<Self, Self::Err> {

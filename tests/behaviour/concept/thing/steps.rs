@@ -22,13 +22,13 @@
 use cucumber::{given, then, when};
 
 use crate::{
-    behaviour::{parameter::VarParse, Context},
+    behaviour::{parameter::VarParam, Context},
     generic_step_impl,
 };
 
 generic_step_impl! {
     #[step(expr = r"entity/relation/attribute {var} is null: {word}")]
-    async fn thing_is_null(context: &mut Context, var: VarParse, is_null: bool) {
+    async fn thing_is_null(context: &mut Context, var: VarParam, is_null: bool) {
         assert!(context.things.contains_key(&var.name));
         let thing = context.things.get(&var.name).unwrap();
         assert_eq!(thing.is_none(), is_null, "{thing:?}");
