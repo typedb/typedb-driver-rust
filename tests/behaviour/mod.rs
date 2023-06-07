@@ -34,7 +34,7 @@ use typedb_client::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Thing},
     logic::Rule,
-    Connection, Database, DatabaseManager, Result as TypeDBResult, Transaction,
+    Connection, Database, DatabaseManager, Result as TypeDBResult, Transaction, UserManager,
 };
 
 use self::session_tracker::SessionTracker;
@@ -45,6 +45,7 @@ pub struct Context {
     pub databases: DatabaseManager,
     pub session_trackers: Vec<SessionTracker>,
     pub things: HashMap<String, Option<Thing>>,
+    pub users: UserManager,
     pub answer: Vec<ConceptMap>,
     pub answer_group: Vec<ConceptMapGroup>,
     pub numeric_answer: Option<Numeric>,
@@ -172,6 +173,7 @@ impl Default for Context {
             databases,
             session_trackers: Vec::new(),
             things: HashMap::new(),
+            users: UserManager::new(),
             answer: Vec::new(),
             answer_group: Vec::new(),
             numeric_answer: None,

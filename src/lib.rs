@@ -35,4 +35,5 @@ pub use self::{
     connection::Connection,
     database::{Database, DatabaseManager, Session},
     transaction::Transaction,
+    user::{User, UserManager},
 };
