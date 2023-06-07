@@ -30,7 +30,7 @@ use typedb_client::{
 use crate::{
     assert_err,
     behaviour::{
-        parameter::{AsValueTypeParam, ContainmentParam, LabelParam, ScopedLabelParam, ValueParam, VarParam},
+        parameter::{ContainmentParam, LabelParam, OptionalAsValueTypeParam, ScopedLabelParam, ValueParam, VarParam},
         Context,
     },
     generic_step_impl,
@@ -74,7 +74,7 @@ generic_step_impl! {
             .await
     }
 
-    #[step(expr = "entity {var} get keys {maybe_contain}: {var}")]
+    #[step(expr = "entity {var} get keys {containment}: {var}")]
     async fn entity_get_keys_contain(
         context: &mut Context,
         var: VarParam,
@@ -89,7 +89,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = "entity {var} get attributes {maybe_contain}: {var}")]
+    #[step(expr = "entity {var} get attributes {containment}: {var}")]
     async fn entity_get_attributes_contain(
         context: &mut Context,
         var: VarParam,
@@ -104,12 +104,12 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"entity {var} get attributes\(( ){label}( )\){maybe_value_type} {maybe_contain}: {var}")]
+    #[step(expr = r"entity {var} get attributes\(( ){label}( )\){optional_value_type} {containment}: {var}")]
     async fn entity_get_attributes_of_type_contain(
         context: &mut Context,
         var: VarParam,
         type_label: LabelParam,
-        value_type: AsValueTypeParam,
+        value_type: OptionalAsValueTypeParam,
         containment: ContainmentParam,
         attribute_var: VarParam,
     ) -> TypeDBResult {
@@ -133,7 +133,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"entity\(( ){label}( )\) get instances {maybe_contain}: {var}")]
+    #[step(expr = r"entity\(( ){label}( )\) get instances {containment}: {var}")]
     async fn entity_type_get_instances_contain(
         context: &mut Context,
         type_label: LabelParam,
@@ -197,7 +197,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"entity {var} get relations {maybe_contain}: {var}")]
+    #[step(expr = r"entity {var} get relations {containment}: {var}")]
     async fn entity_type_get_relations_contain(
         context: &mut Context,
         var: VarParam,
@@ -212,7 +212,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"entity {var} get relations\({scoped_label}\) {maybe_contain}: {var}")]
+    #[step(expr = r"entity {var} get relations\({scoped_label}\) {containment}: {var}")]
     async fn entity_type_get_relations_by_role(
         context: &mut Context,
         var: VarParam,

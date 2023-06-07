@@ -31,8 +31,8 @@ use crate::{
     assert_err,
     behaviour::{
         parameter::{
-            AnnotationsParam, ContainmentParam, LabelParam, OverrideLabelParam, OverrideScopedLabelParam,
-            ScopedLabelParam, TransitivityParam,
+            ContainmentParam, LabelParam, OptionalAnnotationsParam, OptionalExplicitParam, OptionalOverrideLabelParam,
+            OptionalOverrideScopedLabelParam, ScopedLabelParam,
         },
         util::iter_table,
         Context,
@@ -145,7 +145,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation\(( ){label}( )\) get supertypes {maybe_contain}:")]
+    #[step(expr = r"relation\(( ){label}( )\) get supertypes {containment}:")]
     async fn relation_type_get_supertypes(
         context: &mut Context,
         step: &Step,
@@ -161,7 +161,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation\(( ){label}( )\) get subtypes {maybe_contain}:")]
+    #[step(expr = r"relation\(( ){label}( )\) get subtypes {containment}:")]
     async fn relation_type_get_subtypes(
         context: &mut Context,
         step: &Step,
@@ -177,13 +177,13 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation\(( ){label}( )\) set owns attribute type: {label}{override_label}{annotations}")]
+    #[step(expr = r"relation\(( ){label}( )\) set owns attribute type: {label}{optional_override_label}{annotations}")]
     async fn relation_type_set_owns_attribute_type(
         context: &mut Context,
         type_label: LabelParam,
         attribute_type_label: LabelParam,
-        overridden_attribute_type_label: OverrideLabelParam,
-        annotations: AnnotationsParam,
+        overridden_attribute_type_label: OptionalOverrideLabelParam,
+        annotations: OptionalAnnotationsParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut relation_type = context.get_relation_type(type_label.name).await?;
@@ -197,14 +197,14 @@ generic_step_impl! {
     }
 
     #[step(
-        expr = r"relation\(( ){label}( )\) set owns attribute type: {label}{override_label}{annotations}; throws exception"
+        expr = r"relation\(( ){label}( )\) set owns attribute type: {label}{optional_override_label}{annotations}; throws exception"
     )]
     async fn relation_type_set_owns_attribute_type_throws(
         context: &mut Context,
         type_label: LabelParam,
         attribute_type_label: LabelParam,
-        overridden_attribute_type_label: OverrideLabelParam,
-        annotations: AnnotationsParam,
+        overridden_attribute_type_label: OptionalOverrideLabelParam,
+        annotations: OptionalAnnotationsParam,
     ) {
         assert_err!(
             relation_type_set_owns_attribute_type(
@@ -240,20 +240,20 @@ generic_step_impl! {
     }
 
     #[step(
-        expr = r"relation\(( ){label}( )\) get owns{maybe_explicit} attribute types{annotations}(;) {maybe_contain}:"
+        expr = r"relation\(( ){label}( )\) get owns{optional_explicit} attribute types{annotations}(;) {containment}:"
     )]
     async fn relation_type_get_owns_attribute_types_contain(
         context: &mut Context,
         step: &Step,
         type_label: LabelParam,
-        transitivity: TransitivityParam,
-        annotations: AnnotationsParam,
+        optional_explicit: OptionalExplicitParam,
+        annotations: OptionalAnnotationsParam,
         containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation_type = context.get_relation_type(type_label.name).await?;
         let actuals: Vec<String> = relation_type
-            .get_owns(tx, None, transitivity.transitivity, annotations.annotations)?
+            .get_owns(tx, None, optional_explicit.transitivity, annotations.annotations)?
             .map_ok(|at| at.label)
             .try_collect()
             .await?;
@@ -293,12 +293,12 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation\(( ){label}( )\) set plays role: {scoped_label}{override_scoped_label}")]
+    #[step(expr = r"relation\(( ){label}( )\) set plays role: {scoped_label}{optional_override_scoped_label}")]
     async fn relation_type_set_plays_role(
         context: &mut Context,
         type_label: LabelParam,
         role_label: ScopedLabelParam,
-        overridden_role_label: OverrideScopedLabelParam,
+        overridden_role_label: OptionalOverrideScopedLabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let role_label = role_label.label;
@@ -313,12 +313,14 @@ generic_step_impl! {
         relation_type.set_plays(tx, role, overridden_role).await
     }
 
-    #[step(expr = r"relation\(( ){label}( )\) set plays role: {scoped_label}{override_scoped_label}; throws exception")]
+    #[step(
+        expr = r"relation\(( ){label}( )\) set plays role: {scoped_label}{optional_override_scoped_label}; throws exception"
+    )]
     async fn relation_type_set_plays_role_throws(
         context: &mut Context,
         type_label: LabelParam,
         role_label: ScopedLabelParam,
-        overridden_role_label: OverrideScopedLabelParam,
+        overridden_role_label: OptionalOverrideScopedLabelParam,
     ) {
         assert_err!(relation_type_set_plays_role(context, type_label, role_label, overridden_role_label).await);
     }
@@ -346,18 +348,18 @@ generic_step_impl! {
         assert_err!(relation_type_unset_plays_role(context, type_label, role_label).await);
     }
 
-    #[step(expr = r"relation\(( ){label}( )\) get playing roles{maybe_explicit} {maybe_contain}:")]
+    #[step(expr = r"relation\(( ){label}( )\) get playing roles{optional_explicit} {containment}:")]
     async fn relation_type_get_playing_roles_contain(
         context: &mut Context,
         step: &Step,
         type_label: LabelParam,
-        transitivity: TransitivityParam,
+        optional_explicit: OptionalExplicitParam,
         containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation_type = context.get_relation_type(type_label.name).await?;
         let actuals: Vec<ScopedLabel> =
-            relation_type.get_plays(tx, transitivity.transitivity)?.map_ok(|rt| rt.label).try_collect().await?;
+            relation_type.get_plays(tx, optional_explicit.transitivity)?.map_ok(|rt| rt.label).try_collect().await?;
         for role_label in iter_table(step) {
             let role_label = role_label.parse::<ScopedLabelParam>().unwrap().label;
             containment.assert(&actuals, &role_label);
@@ -367,24 +369,24 @@ generic_step_impl! {
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    #[step(expr = r"relation\(( ){label}( )) set relates role: {label}{override_label}")]
+    #[step(expr = r"relation\(( ){label}( )) set relates role: {label}{optional_override_label}")]
     async fn relation_type_set_relates(
         context: &mut Context,
         type_label: LabelParam,
         role_name: LabelParam,
-        overridden_role_name: OverrideLabelParam,
+        overridden_role_name: OptionalOverrideLabelParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let mut relation_type = context.get_relation_type(type_label.name).await?;
         relation_type.set_relates(tx, role_name.name, overridden_role_name.name).await
     }
 
-    #[step(expr = r"relation\(( ){label}( )) set relates role: {label}{override_label}; throws exception")]
+    #[step(expr = r"relation\(( ){label}( )) set relates role: {label}{optional_override_label}; throws exception")]
     async fn relation_type_set_relates_throws(
         context: &mut Context,
         type_label: LabelParam,
         role_name: LabelParam,
-        overridden_role_name: OverrideLabelParam,
+        overridden_role_name: OptionalOverrideLabelParam,
     ) {
         assert_err!(relation_type_set_relates(context, type_label, role_name, overridden_role_name).await);
     }
@@ -488,18 +490,18 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation\(( ){label}( )) get related{maybe_explicit} roles {maybe_contain}:")]
+    #[step(expr = r"relation\(( ){label}( )) get related{optional_explicit} roles {containment}:")]
     async fn relation_type_get_related_roles(
         context: &mut Context,
         step: &Step,
         type_label: LabelParam,
-        transitivity: TransitivityParam,
+        optional_explicit: OptionalExplicitParam,
         containment: ContainmentParam,
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation_type = context.get_relation_type(type_label.name).await?;
         let actuals: Vec<ScopedLabel> =
-            relation_type.get_relates(tx, transitivity.transitivity)?.map_ok(|rt| rt.label).try_collect().await?;
+            relation_type.get_relates(tx, optional_explicit.transitivity)?.map_ok(|rt| rt.label).try_collect().await?;
         for role_label in iter_table(step) {
             let role_label: ScopedLabel = if role_label.contains(':') {
                 role_label.parse::<ScopedLabelParam>().unwrap().label
@@ -525,7 +527,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation\(( ){label}( )) get role\(( ){label}( )) get supertypes {maybe_contain}:")]
+    #[step(expr = r"relation\(( ){label}( )) get role\(( ){label}( )) get supertypes {containment}:")]
     async fn relation_type_get_role_get_supertypes(
         context: &mut Context,
         step: &Step,
@@ -544,7 +546,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation\(( ){label}( )) get role\(( ){label}( )) get players {maybe_contain}:")]
+    #[step(expr = r"relation\(( ){label}( )) get role\(( ){label}( )) get players {containment}:")]
     async fn relation_type_get_role_players(
         context: &mut Context,
         step: &Step,
@@ -566,7 +568,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation\(( ){label}( )) get role\(( ){label}( )) get subtypes {maybe_contain}:")]
+    #[step(expr = r"relation\(( ){label}( )) get role\(( ){label}( )) get subtypes {containment}:")]
     async fn relation_type_get_role_subtypes(
         context: &mut Context,
         step: &Step,

@@ -53,7 +53,7 @@ generic_step_impl! {
         context.get_attribute(var.name).delete(context.transaction()).await
     }
 
-    #[step(expr = r"attribute\(( ){label}( )\) get instances {maybe_contain}: {var}")]
+    #[step(expr = r"attribute\(( ){label}( )\) get instances {containment}: {var}")]
     async fn attribute_get_instances_contain(
         context: &mut Context,
         type_label: LabelParam,
@@ -68,7 +68,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = "attribute {var} get owners {maybe_contain}: {var}")]
+    #[step(expr = "attribute {var} get owners {containment}: {var}")]
     async fn attribute_get_owners_contain(
         context: &mut Context,
         var: VarParam,

@@ -29,7 +29,7 @@ use typedb_client::{
 };
 
 #[derive(Debug, Parameter)]
-#[param(name = "maybe_contain", regex = r"(?:do not )?contain")]
+#[param(name = "containment", regex = r"(?:do not )?contain")]
 pub struct ContainmentParam(bool);
 
 impl ContainmentParam {
@@ -123,12 +123,12 @@ impl FromStr for ValueTypeParam {
 }
 
 #[derive(Clone, Copy, Debug, Parameter)]
-#[param(name = "maybe_value_type", regex = r" as\((boolean|long|double|string|datetime)\)|()")]
-pub struct AsValueTypeParam {
+#[param(name = "optional_value_type", regex = r" as\((boolean|long|double|string|datetime)\)|()")]
+pub struct OptionalAsValueTypeParam {
     pub value_type: Option<ValueType>,
 }
 
-impl FromStr for AsValueTypeParam {
+impl FromStr for OptionalAsValueTypeParam {
     type Err = Infallible;
 
     fn from_str(type_: &str) -> Result<Self, Self::Err> {
@@ -137,12 +137,12 @@ impl FromStr for AsValueTypeParam {
 }
 
 #[derive(Clone, Copy, Debug, Parameter)]
-#[param(name = "maybe_explicit", regex = r" explicit|")]
-pub struct TransitivityParam {
+#[param(name = "optional_explicit", regex = r" explicit|")]
+pub struct OptionalExplicitParam {
     pub transitivity: Transitivity,
 }
 
-impl FromStr for TransitivityParam {
+impl FromStr for OptionalExplicitParam {
     type Err = Infallible;
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
@@ -201,12 +201,12 @@ impl FromStr for LabelParam {
 }
 
 #[derive(Clone, Debug, Parameter)]
-#[param(name = "override_label", regex = r" as ([\w-]+)|()")]
-pub struct OverrideLabelParam {
+#[param(name = "optional_override_label", regex = r" as ([\w-]+)|()")]
+pub struct OptionalOverrideLabelParam {
     pub name: Option<String>,
 }
 
-impl FromStr for OverrideLabelParam {
+impl FromStr for OptionalOverrideLabelParam {
     type Err = Infallible;
 
     fn from_str(name: &str) -> Result<Self, Self::Err> {
@@ -234,12 +234,12 @@ impl FromStr for ScopedLabelParam {
 }
 
 #[derive(Clone, Debug, Parameter)]
-#[param(name = "override_scoped_label", regex = r" as (\S+:\S+)|()")]
-pub struct OverrideScopedLabelParam {
+#[param(name = "optional_override_scoped_label", regex = r" as (\S+:\S+)|()")]
+pub struct OptionalOverrideScopedLabelParam {
     pub label: Option<ScopedLabel>,
 }
 
-impl FromStr for OverrideScopedLabelParam {
+impl FromStr for OptionalOverrideScopedLabelParam {
     type Err = Infallible;
 
     fn from_str(label: &str) -> Result<Self, Self::Err> {
@@ -253,11 +253,11 @@ impl FromStr for OverrideScopedLabelParam {
 
 #[derive(Clone, Debug, Parameter)]
 #[param(name = "annotations", regex = r", with annotations: ([\w-]+(?:, (?:[\w-]+))*)|()")]
-pub struct AnnotationsParam {
+pub struct OptionalAnnotationsParam {
     pub annotations: Vec<Annotation>,
 }
 
-impl FromStr for AnnotationsParam {
+impl FromStr for OptionalAnnotationsParam {
     type Err = Infallible;
 
     fn from_str(annotations: &str) -> Result<Self, Self::Err> {
@@ -278,12 +278,12 @@ impl FromStr for AnnotationsParam {
 }
 
 #[derive(Clone, Debug, Parameter)]
-#[param(name = "maybe_role", regex = r" for role\(\s*(\S+)\s*\)|()")]
-pub struct RoleParam {
+#[param(name = "optional_role", regex = r" for role\(\s*(\S+)\s*\)|()")]
+pub struct OptionalRoleParam {
     pub role: Option<String>,
 }
 
-impl FromStr for RoleParam {
+impl FromStr for OptionalRoleParam {
     type Err = Infallible;
 
     fn from_str(role: &str) -> Result<Self, Self::Err> {

@@ -30,7 +30,7 @@ use typedb_client::{
 use crate::{
     assert_err,
     behaviour::{
-        parameter::{ContainmentParam, LabelParam, RoleParam, ValueParam, VarParam},
+        parameter::{ContainmentParam, LabelParam, OptionalRoleParam, ValueParam, VarParam},
         Context,
     },
     generic_step_impl,
@@ -61,7 +61,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation\(( ){label}( )\) get instances {maybe_contain}: {var}")]
+    #[step(expr = r"relation\(( ){label}( )\) get instances {containment}: {var}")]
     async fn relation_type_get_instances_contain(
         context: &mut Context,
         type_label: LabelParam,
@@ -178,11 +178,11 @@ generic_step_impl! {
         relation.remove_role_player(tx, role_type, player.clone()).await
     }
 
-    #[step(expr = r"relation {var} get players{maybe_role} {maybe_contain}: {var}")]
+    #[step(expr = r"relation {var} get players{optional_role} {containment}: {var}")]
     async fn relation_get_players_contain(
         context: &mut Context,
         var: VarParam,
-        role: RoleParam,
+        role: OptionalRoleParam,
         containment: ContainmentParam,
         player_var: VarParam,
     ) -> TypeDBResult {
@@ -200,7 +200,7 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(expr = r"relation {var} get players {maybe_contain}:")]
+    #[step(expr = r"relation {var} get players {containment}:")]
     async fn relation_get_players_contain_table(
         context: &mut Context,
         step: &Step,
@@ -209,11 +209,8 @@ generic_step_impl! {
     ) -> TypeDBResult {
         let tx = context.transaction();
         let relation = context.get_relation(var.name);
-        let actuals: Vec<(String, Thing)> = relation
-            .get_role_players(tx)?
-            .map_ok(|(role, player)| (role.label.name, player))
-            .try_collect()
-            .await?;
+        let actuals: Vec<(String, Thing)> =
+            relation.get_role_players(tx)?.map_ok(|(role, player)| (role.label.name, player)).try_collect().await?;
         for row in &step.table().unwrap().rows {
             let [role, player_var] = &row[..] else { unreachable!() };
             let player = context.get_thing(player_var.to_owned());
