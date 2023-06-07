@@ -305,9 +305,44 @@ impl ServerConnection {
         }
     }
 
+    pub(crate) async fn all_users(&self) -> Result<Vec<User>> {
+        match self.request_async(Request::UsersAll).await? {
+            Response::UsersAll { users } => Ok(users),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn contains_user(&self, username: String) -> Result<bool> {
+        match self.request_async(Request::UsersContain { username }).await? {
+            Response::UsersContain { contains } => Ok(contains),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn create_user(&self, username: String, password: String) -> Result<()> {
+        match self.request_async(Request::UserCreate { username, password }).await? {
+            Response::UserCreate => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn delete_user(&self, username: String) -> Result<()> {
+        match self.request_async(Request::UserDelete { username }).await? {
+            Response::UserDelete => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
     pub(crate) async fn get_user(&self, username: String) -> Result<Option<User>> {
         match self.request_async(Request::UserGet { username }).await? {
             Response::UserGet { user } => Ok(user),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn set_user_password(&self, username: String, password: String) -> Result<()> {
+        match self.request_async(Request::UserPasswordSet { username, password }).await? {
+            Response::UserPasswordSet => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
