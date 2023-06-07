@@ -37,9 +37,7 @@ pub trait ThingTypeAPI: Clone + Sync + Send {
 
     fn into_thing_type(self) -> ThingType;
 
-    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
-        transaction.concept().get_entity_type(self.label().clone()).await.map(|res| res.is_none())
-    }
+    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
 
     async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().thing_type_delete(self.clone().into_thing_type()).await
@@ -147,6 +145,10 @@ impl ThingTypeAPI for EntityType {
     fn into_thing_type(self) -> ThingType {
         ThingType::EntityType(self)
     }
+
+    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_entity_type(self.label().clone()).await.map(|res| res.is_none())
+    }
 }
 
 #[async_trait]
@@ -187,6 +189,10 @@ impl ThingTypeAPI for RelationType {
 
     fn into_thing_type(self) -> ThingType {
         ThingType::RelationType(self)
+    }
+
+    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_relation_type(self.label().clone()).await.map(|res| res.is_none())
     }
 }
 
@@ -265,6 +271,10 @@ impl ThingTypeAPI for AttributeType {
 
     fn into_thing_type(self) -> ThingType {
         ThingType::AttributeType(self)
+    }
+
+    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_attribute_type(self.label().clone()).await.map(|res| res.is_none())
     }
 }
 

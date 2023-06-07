@@ -35,9 +35,7 @@ pub trait ThingAPI: Clone + Sync + Send {
 
     fn into_thing(self) -> Thing;
 
-    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
-        transaction.concept().get_entity(self.iid().clone()).await.map(|res| res.is_none())
-    }
+    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
 
     async fn delete(&self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().thing_delete(self.clone().into_thing()).await
@@ -82,6 +80,10 @@ impl ThingAPI for Entity {
     fn into_thing(self) -> Thing {
         Thing::Entity(self)
     }
+
+    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_entity(self.iid().clone()).await.map(|res| res.is_none())
+    }
 }
 
 #[async_trait]
@@ -98,6 +100,10 @@ impl ThingAPI for Relation {
 
     fn into_thing(self) -> Thing {
         Thing::Relation(self)
+    }
+
+    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_relation(self.iid().clone()).await.map(|res| res.is_none())
     }
 }
 
@@ -139,6 +145,10 @@ impl ThingAPI for Attribute {
 
     fn into_thing(self) -> Thing {
         Thing::Attribute(self)
+    }
+
+    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_attribute(self.iid().clone()).await.map(|res| res.is_none())
     }
 }
 
