@@ -19,7 +19,7 @@
  * under the License.
  */
 
-mod concept_map;
+pub mod concept_map;
 mod concept_map_group;
 mod numeric;
 mod numeric_group;

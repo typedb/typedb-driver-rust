@@ -21,6 +21,6 @@
 
 mod logic;
 mod rule;
-mod explanation;
+pub mod explanation;
 
 pub use self::{explanation::Explanation, logic::LogicManager, rule::Rule};
