@@ -30,9 +30,9 @@ use crate::{
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, IID},
     concept::{
         Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
-        Transitivity, Value, ValueType,
+        SchemaException, Transitivity, Value, ValueType,
     },
-    Options, SchemaException, SessionType, TransactionType,
+    Options, SessionType, TransactionType,
 };
 
 #[derive(Debug)]

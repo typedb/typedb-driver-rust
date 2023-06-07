@@ -39,7 +39,7 @@ use crate::{
         TransactionRequest, TransactionResponse,
     },
     error::InternalError,
-    Options, SchemaException, TransactionType,
+    Options, concept::SchemaException, TransactionType,
 };
 
 pub(crate) struct TransactionStream {

@@ -49,3 +49,9 @@ pub enum Transitivity {
     Explicit,
     Transitive,
 }
+
+#[derive(Clone, Debug)]
+pub struct SchemaException {
+    pub code: String,
+    pub message: String,
+}

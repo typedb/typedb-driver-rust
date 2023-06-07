@@ -29,7 +29,7 @@ mod database;
 pub mod transaction;
 
 pub use self::{
-    common::{error, Credential, Error, Options, Result, SchemaException, SessionType, TransactionType},
+    common::{error, Credential, Error, Options, Result, SessionType, TransactionType},
     connection::Connection,
     database::{Database, DatabaseManager, Session},
     transaction::Transaction,

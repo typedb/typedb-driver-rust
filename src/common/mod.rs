@@ -48,9 +48,3 @@ pub enum TransactionType {
     Read = 0,
     Write = 1,
 }
-
-#[derive(Clone, Debug)]
-pub struct SchemaException {
-    pub code: String,
-    pub message: String,
-}

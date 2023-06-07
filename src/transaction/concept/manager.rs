@@ -30,7 +30,7 @@ use crate::{
         Transitivity, Value, ValueType,
     },
     connection::TransactionStream,
-    Result, SchemaException,
+    Result, concept::SchemaException,
 };
 
 #[derive(Debug)]

@@ -41,7 +41,7 @@ use crate::{
         TransactionResponse,
     },
     error::{ConnectionError, InternalError},
-    SchemaException,
+    concept::SchemaException,
 };
 
 impl TryIntoProto<server_manager::all::Req> for Request {

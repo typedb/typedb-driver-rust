@@ -22,7 +22,7 @@
 use typedb_protocol::{session, transaction, Exception, Options as OptionsProto};
 
 use super::{FromProto, IntoProto};
-use crate::{Options, SchemaException, SessionType, TransactionType};
+use crate::{Options, concept::SchemaException, SessionType, TransactionType};
 
 impl FromProto<Exception> for SchemaException {
     fn from_proto(proto: Exception) -> Self {
