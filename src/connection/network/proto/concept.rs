@@ -148,7 +148,7 @@ impl IntoProto<ThingTypeProto> for ThingType {
 impl FromProto<EntityTypeProto> for EntityType {
     fn from_proto(proto: EntityTypeProto) -> Self {
         let EntityTypeProto { label, is_root, is_abstract } = proto;
-        Self::new(label, is_root, is_abstract)
+        Self { label, is_root, is_abstract }
     }
 }
 
@@ -162,7 +162,7 @@ impl IntoProto<EntityTypeProto> for EntityType {
 impl FromProto<RelationTypeProto> for RelationType {
     fn from_proto(proto: RelationTypeProto) -> Self {
         let RelationTypeProto { label, is_root, is_abstract } = proto;
-        Self::new(label, is_root, is_abstract)
+        Self { label, is_root, is_abstract }
     }
 }
 
@@ -175,7 +175,7 @@ impl IntoProto<RelationTypeProto> for RelationType {
 impl TryFromProto<AttributeTypeProto> for AttributeType {
     fn try_from_proto(proto: AttributeTypeProto) -> Result<Self> {
         let AttributeTypeProto { label, is_root, is_abstract, value_type } = proto;
-        Ok(Self::new(label, is_root, is_abstract, ValueType::try_from_proto(value_type)?))
+        Ok(Self { label, is_root, is_abstract, value_type: ValueType::try_from_proto(value_type)? })
     }
 }
 
@@ -216,14 +216,14 @@ impl IntoProto<i32> for ValueType {
 impl FromProto<RoleTypeProto> for RoleType {
     fn from_proto(proto: RoleTypeProto) -> Self {
         let RoleTypeProto { scope, label, is_root, is_abstract } = proto;
-        Self::new(ScopedLabel::new(scope, label), is_root, is_abstract)
+        Self { label: ScopedLabel { scope, name: label }, is_root, is_abstract }
     }
 }
 
 impl IntoProto<RoleTypeProto> for RoleType {
     fn into_proto(self) -> RoleTypeProto {
-        let RoleType { label, is_root, is_abstract } = self;
-        RoleTypeProto { scope: label.scope, label: label.name, is_root, is_abstract }
+        let RoleType { label: ScopedLabel { scope, name }, is_root, is_abstract } = self;
+        RoleTypeProto { scope, label: name, is_root, is_abstract }
     }
 }
 
@@ -255,10 +255,11 @@ impl IntoProto<ThingProto> for Thing {
 
 impl TryFromProto<EntityProto> for Entity {
     fn try_from_proto(proto: EntityProto) -> Result<Self> {
-        Ok(Self::new(
-            proto.iid.into(),
-            EntityType::from_proto(proto.entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?),
-        ))
+        let EntityProto { iid, entity_type, inferred: _ } = proto;
+        Ok(Self {
+            iid: iid.into(),
+            type_: EntityType::from_proto(entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?),
+        })
     }
 }
 
@@ -274,12 +275,13 @@ impl IntoProto<EntityProto> for Entity {
 
 impl TryFromProto<RelationProto> for Relation {
     fn try_from_proto(proto: RelationProto) -> Result<Self> {
-        Ok(Self::new(
-            proto.iid.into(),
-            RelationType::from_proto(
-                proto.relation_type.ok_or(ConnectionError::MissingResponseField("relation_type"))?,
+        let RelationProto { iid, relation_type, inferred: _ } = proto;
+        Ok(Self {
+            iid: iid.into(),
+            type_: RelationType::from_proto(
+                relation_type.ok_or(ConnectionError::MissingResponseField("relation_type"))?,
             ),
-        ))
+        })
     }
 }
 
@@ -295,13 +297,14 @@ impl IntoProto<RelationProto> for Relation {
 
 impl TryFromProto<AttributeProto> for Attribute {
     fn try_from_proto(proto: AttributeProto) -> Result<Self> {
-        Ok(Self::new(
-            proto.iid.into(),
-            AttributeType::try_from_proto(
-                proto.attribute_type.ok_or(ConnectionError::MissingResponseField("attribute_type"))?,
+        let AttributeProto { iid, attribute_type, value, inferred: _ } = proto;
+        Ok(Self {
+            iid: iid.into(),
+            type_: AttributeType::try_from_proto(
+                attribute_type.ok_or(ConnectionError::MissingResponseField("attribute_type"))?,
             )?,
-            Value::try_from_proto(proto.value.ok_or(ConnectionError::MissingResponseField("value"))?)?,
-        ))
+            value: Value::try_from_proto(value.ok_or(ConnectionError::MissingResponseField("value"))?)?,
+        })
     }
 }
 
