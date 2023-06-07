@@ -31,15 +31,15 @@ use crate::{
     answer::{ConceptMap, Numeric},
     common::{Result, IID},
     concept::{
-        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
-        Transitivity, Value, ValueType,
+        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, SchemaException,
+        Thing, ThingType, Transitivity, Value, ValueType,
     },
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
         TransactionRequest, TransactionResponse,
     },
     error::InternalError,
-    Options, concept::SchemaException, TransactionType,
+    Options, TransactionType,
 };
 
 pub(crate) struct TransactionStream {

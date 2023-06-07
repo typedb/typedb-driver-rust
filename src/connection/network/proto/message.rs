@@ -32,8 +32,8 @@ use crate::{
     answer::{ConceptMap, Numeric},
     common::{info::DatabaseInfo, RequestID, Result},
     concept::{
-        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
-        ValueType,
+        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, SchemaException,
+        Thing, ThingType, ValueType,
     },
     connection::message::{
         ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, Request, Response, RoleTypeRequest,
@@ -41,7 +41,6 @@ use crate::{
         TransactionResponse,
     },
     error::{ConnectionError, InternalError},
-    concept::SchemaException,
 };
 
 impl TryIntoProto<server_manager::all::Req> for Request {

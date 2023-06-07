@@ -26,11 +26,11 @@ use futures::Stream;
 use crate::{
     common::IID,
     concept::{
-        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
-        Transitivity, Value, ValueType,
+        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, SchemaException,
+        Thing, ThingType, Transitivity, Value, ValueType,
     },
     connection::TransactionStream,
-    Result, concept::SchemaException,
+    Result,
 };
 
 #[derive(Debug)]

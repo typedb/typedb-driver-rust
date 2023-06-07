@@ -29,8 +29,8 @@ use crate::{
     answer::{ConceptMap, Numeric},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, IID},
     concept::{
-        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
-        SchemaException, Transitivity, Value, ValueType,
+        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, SchemaException,
+        Thing, ThingType, Transitivity, Value, ValueType,
     },
     Options, SessionType, TransactionType,
 };
