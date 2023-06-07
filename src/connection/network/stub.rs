@@ -166,11 +166,46 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         .await
     }
 
+    pub(super) async fn user_create(
+        &mut self,
+        req: user_manager::create::Req,
+    ) -> Result<user_manager::create::Res> {
+        self.single(|this| Box::pin(this.grpc.users_create(req.clone()))).await
+    }
+
+    pub(super) async fn user_delete(
+        &mut self,
+        req: user_manager::delete::Req,
+    ) -> Result<user_manager::delete::Res> {
+        self.single(|this| Box::pin(this.grpc.users_delete(req.clone()))).await
+    }
+
     pub(super) async fn user_get(
         &mut self,
         req: user_manager::get::Req,
     ) -> Result<user_manager::get::Res> {
         self.single(|this| Box::pin(this.grpc.users_get(req.clone()))).await
+    }
+
+    pub(super) async fn user_password_set(
+        &mut self,
+        req: user_manager::password_set::Req,
+    ) -> Result<user_manager::password_set::Res> {
+        self.single(|this| Box::pin(this.grpc.users_password_set(req.clone()))).await
+    }
+
+    pub(super) async fn users_all(
+        &mut self,
+        req: user_manager::all::Req,
+    ) -> Result<user_manager::all::Res> {
+        self.single(|this| Box::pin(this.grpc.users_all(req.clone()))).await
+    }
+
+    pub(super) async fn users_contain(
+        &mut self,
+        req: user_manager::contains::Req,
+    ) -> Result<user_manager::contains::Res> {
+        self.single(|this| Box::pin(this.grpc.users_contains(req.clone()))).await
     }
 
     async fn single<F, R>(&mut self, call: F) -> Result<R>
