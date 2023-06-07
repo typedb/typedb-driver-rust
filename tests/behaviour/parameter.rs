@@ -172,7 +172,7 @@ impl FromStr for TransactionTypeParam {
     }
 }
 
-#[derive(Clone, Debug, Parameter)]
+#[derive(Clone, Debug, Default, Parameter)]
 #[param(name = "var", regex = r"(\$[\w_-]+)")]
 pub struct VarParam {
     pub name: String,

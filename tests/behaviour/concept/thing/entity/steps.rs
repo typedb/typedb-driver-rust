@@ -148,18 +148,17 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^(\$\S+) = entity\( ?(\S+) ?\) create new instance$")]
-    async fn entity_type_create_new_instance(context: &mut Context, var: String, type_label: String) -> TypeDBResult {
+    #[step(expr = r"{var} = entity\(( ){label}( )\) create new instance")]
+    async fn entity_type_create_new_instance(context: &mut Context, var: VarParam, type_label: LabelParam) -> TypeDBResult {
         let tx = context.transaction();
-        let entity = context.get_entity_type(type_label).await?.create(tx).await?;
-        context.insert_entity(var, Some(entity));
+        let entity = context.get_entity_type(type_label.name).await?.create(tx).await?;
+        context.insert_entity(var.name, Some(entity));
         Ok(())
     }
 
     #[step(expr = r"entity\(( ){label}( )\) create new instance; throws exception")]
     async fn entity_type_create_new_instance_throws(context: &mut Context, type_label: LabelParam) {
-        // FIXME ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v
-        assert_err!(entity_type_create_new_instance(context, "".to_owned(), type_label.name).await);
+        assert_err!(entity_type_create_new_instance(context, VarParam::default(), type_label).await);
     }
 
     #[step(expr = r"{var} = entity\(( ){label}( )\) create new instance with key\({label}\): {value}")]

@@ -76,18 +76,17 @@ generic_step_impl! {
         Ok(())
     }
 
-    #[step(regex = r"^(\$\S+) = relation\( ?(\S+) ?\) create new instance$")]
-    async fn relation_type_create_new_instance(context: &mut Context, var: String, type_label: String) -> TypeDBResult {
+    #[step(expr = r"{var} = relation\(( ){label}( )\) create new instance")]
+    async fn relation_type_create_new_instance(context: &mut Context, var: VarParam, type_label: LabelParam) -> TypeDBResult {
         let tx = context.transaction();
-        let relation = context.get_relation_type(type_label).await?.create(tx).await?;
-        context.insert_relation(var, Some(relation));
+        let relation = context.get_relation_type(type_label.name).await?.create(tx).await?;
+        context.insert_relation(var.name, Some(relation));
         Ok(())
     }
 
     #[step(expr = r"relation\(( ){label}( )\) create new instance; throws exception")]
     async fn relation_type_create_new_instance_throws(context: &mut Context, type_label: LabelParam) {
-        // FIXME ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v
-        assert_err!(relation_type_create_new_instance(context, "".to_owned(), type_label.name).await);
+        assert_err!(relation_type_create_new_instance(context, VarParam::default(), type_label).await);
     }
 
     #[step(expr = r"{var} = relation\(( ){label}( )\) create new instance with key\({label}\): {value}")]

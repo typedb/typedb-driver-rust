@@ -111,9 +111,7 @@ generic_step_impl! {
         value_type: ValueTypeParam,
         value: ValueParam,
     ) {
-        assert_err!(
-            attribute_put_value(context, VarParam { name: "".to_owned() }, type_label, value_type, value).await
-        );
+        assert_err!(attribute_put_value(context, VarParam::default(), type_label, value_type, value).await);
     }
 
     #[step(expr = r"{var} = attribute\(( ){label}( )\) as\(( ){value_type}( )\) get: {value}")]
