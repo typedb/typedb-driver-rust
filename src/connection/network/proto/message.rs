@@ -390,9 +390,39 @@ impl TryFromProto<transaction::ResPart> for TransactionResponse {
     }
 }
 
+impl FromProto<user_manager::all::Res> for Response {
+    fn from_proto(proto: user_manager::all::Res) -> Self {
+        Self::UsersAll { users: proto.users.iter().map(|user| User::from_proto(user.clone())).collect::<Vec<_>>() }
+    }
+}
+
+impl FromProto<user_manager::contains::Res> for Response {
+    fn from_proto(proto: user_manager::contains::Res) -> Self {
+        Self::UsersContain { contains: proto.contains }
+    }
+}
+
+impl FromProto<user_manager::create::Res> for Response {
+    fn from_proto(_: user_manager::create::Res) -> Self {
+        Self::UserCreate {}
+    }
+}
+
+impl FromProto<user_manager::delete::Res> for Response {
+    fn from_proto(_: user_manager::delete::Res) -> Self {
+        Self::UserDelete {}
+    }
+}
+
 impl FromProto<user_manager::get::Res> for Response {
     fn from_proto(proto: user_manager::get::Res) -> Self {
-        Self::UserGet { user: proto.user.and_then(|u| Some(User::from_proto(u))) }
+        Self::UserGet { user: proto.user.and_then(|user| Some(User::from_proto(user))) }
+    }
+}
+
+impl FromProto<user_manager::password_set::Res> for Response {
+    fn from_proto(_: user_manager::password_set::Res) -> Self {
+        Self::UserPasswordSet {}
     }
 }
 
