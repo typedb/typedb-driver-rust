@@ -26,9 +26,11 @@ mod common;
 pub mod concept;
 mod connection;
 mod database;
+mod transaction;
 
 pub use self::{
     common::{error, Credential, Error, Options, Result, SchemaException, SessionType, TransactionType},
     connection::Connection,
-    database::{Database, DatabaseManager, Session, Transaction},
+    database::{Database, DatabaseManager, Session},
+    transaction::Transaction,
 };

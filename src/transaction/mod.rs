@@ -19,9 +19,12 @@
  * under the License.
  */
 
+mod concept;
+mod query;
+
 use std::{fmt, marker::PhantomData, sync::Arc};
 
-use super::{concept::ConceptManager, query::QueryManager};
+use self::{concept::ConceptManager, query::QueryManager};
 use crate::{
     common::{Result, TransactionType},
     connection::TransactionStream,
