@@ -168,12 +168,13 @@ impl Default for Context {
     fn default() -> Self {
         let connection = Connection::new_plaintext("0.0.0.0:1729").unwrap();
         let databases = DatabaseManager::new(connection.clone());
+        let users = UserManager::new(connection.clone());
         Self {
             connection,
             databases,
             session_trackers: Vec::new(),
             things: HashMap::new(),
-            users: UserManager::new(),
+            users,
             answer: Vec::new(),
             answer_group: Vec::new(),
             numeric_answer: None,

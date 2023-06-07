@@ -21,20 +21,48 @@
 
 use std::future::Future;
 
-use crate::{
-    common::Result,
-    connection::ServerConnection,
-    Connection,
-};
+use crate::{common::Result, connection::ServerConnection, Connection, User};
+use crate::error::ConnectionError;
 
 #[derive(Clone, Debug)]
 pub struct UserManager {
-    // client: Client,
+    connection: Connection,
 }
 
 impl UserManager {
-    pub fn new() -> Self {
-        Self {  }
+    pub fn new(connection: Connection) -> Self {
+        Self { connection }
     }
+
+    // pub async fn contains(&self, username: String) -> Result<bool> {
+    //     self.run_failsafe(name.into(), move |database, server_connection, _| async move {
+    //         server_connection.database_exists(database.name().to_owned()).await
+    //     }).await
+    //     self.connection.
+    // }
+
+    pub async fn all(&self) -> Result<Vec<User>> {
+        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
+        for server_connection in self.connection.connections() {
+            match server_connection.all_users().await {
+                Ok(list) => {
+                    return Ok(list);
+                },
+                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
+            }
+        }
+        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+    }
+
+    // pub fn all() -> Vec<User> {
+    //
+    // }
+    // async fn run_failsafe<F, P, R>(&self, name: String, task: F) -> Result<R>
+    //     where
+    //         F: Fn(ServerDatabase, ServerConnection, bool) -> P,
+    //         P: Future<Output = Result<R>>,
+    // {
+    //     Database::get(name, self.connection.clone()).await?.run_failsafe(&task).await
+    // }
 
 }
