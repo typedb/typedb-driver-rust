@@ -21,3 +21,8 @@
 
 mod thing;
 mod type_;
+
+pub use self::{
+    thing::{AttributeAPI, EntityAPI, RelationAPI, ThingAPI},
+    type_::{AttributeTypeAPI, EntityTypeAPI, RelationTypeAPI, RoleTypeAPI, ThingTypeAPI},
+};

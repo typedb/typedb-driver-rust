@@ -19,18 +19,8 @@
  * under the License.
  */
 
-#![deny(unused_must_use)]
+use futures::{stream::BoxStream, Stream};
 
-mod answer;
-mod common;
-pub mod concept;
-mod connection;
-mod database;
-pub mod transaction;
-
-pub use self::{
-    common::{error, Credential, Error, Options, Result, SchemaException, SessionType, TransactionType},
-    connection::Connection,
-    database::{Database, DatabaseManager, Session},
-    transaction::Transaction,
-};
+pub(crate) fn box_stream<'a, T>(stream: impl Stream<Item = T> + Send + 'a) -> BoxStream<'a, T> {
+    Box::pin(stream) as futures::stream::BoxStream<_>
+}

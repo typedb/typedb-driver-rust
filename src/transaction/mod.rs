@@ -19,7 +19,7 @@
  * under the License.
  */
 
-mod concept;
+pub mod concept;
 mod query;
 
 use std::{fmt, marker::PhantomData, sync::Arc};

@@ -25,7 +25,9 @@ pub mod error;
 mod id;
 pub(crate) mod info;
 mod options;
+mod stream;
 
+pub(crate) use self::stream::box_stream;
 pub use self::{credential::Credential, error::Error, options::Options};
 
 pub(crate) type StdResult<T, E> = std::result::Result<T, E>;

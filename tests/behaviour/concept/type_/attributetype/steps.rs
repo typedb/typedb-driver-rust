@@ -21,7 +21,11 @@
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
-use typedb_client::{concept::ScopedLabel, Result as TypeDBResult};
+use typedb_client::{
+    concept::ScopedLabel,
+    transaction::concept::api::{AttributeTypeAPI, RelationTypeAPI, ThingTypeAPI},
+    Result as TypeDBResult,
+};
 
 use crate::{
     assert_err,

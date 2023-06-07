@@ -23,6 +23,7 @@ use cucumber::{given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{
     concept::{Attribute, Thing},
+    transaction::concept::api::{AttributeAPI, AttributeTypeAPI, ThingAPI},
     Result as TypeDBResult,
 };
 

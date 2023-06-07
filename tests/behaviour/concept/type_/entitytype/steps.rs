@@ -23,6 +23,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{
     concept::{EntityType, ScopedLabel},
+    transaction::concept::api::{EntityTypeAPI, RelationTypeAPI, ThingTypeAPI},
     Result as TypeDBResult,
 };
 

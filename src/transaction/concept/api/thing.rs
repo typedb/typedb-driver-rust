@@ -19,167 +19,139 @@
  * under the License.
  */
 
-use futures::Stream;
+use async_trait::async_trait;
+use futures::stream::BoxStream;
 use typeql_lang::pattern::Annotation;
 
 use crate::{
+    common::{box_stream, IID},
     concept::{Attribute, AttributeType, Entity, Relation, RoleType, Thing, ThingType},
     Result, Transaction,
 };
 
-impl Entity {
-    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
-        transaction.concept().get_entity(self.iid.clone()).await.map(|res| res.is_none())
+#[async_trait]
+pub trait ThingAPI: Clone + Sync + Send {
+    fn iid(&self) -> &IID;
+
+    fn into_thing(self) -> Thing;
+
+    async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
+        transaction.concept().get_entity(self.iid().clone()).await.map(|res| res.is_none())
     }
 
-    pub async fn delete(&self, transaction: &Transaction<'_>) -> Result {
-        transaction.concept().thing_delete(Thing::Entity(self.clone())).await
+    async fn delete(&self, transaction: &Transaction<'_>) -> Result {
+        transaction.concept().thing_delete(self.clone().into_thing()).await
     }
 
-    pub fn get_has(
+    fn get_has(
         &self,
         transaction: &Transaction<'_>,
         attribute_types: Vec<AttributeType>,
         annotations: Vec<Annotation>,
-    ) -> Result<impl Stream<Item = Result<Attribute>>> {
-        transaction.concept().thing_get_has(Thing::Entity(self.clone()), attribute_types, annotations)
+    ) -> Result<BoxStream<Result<Attribute>>> {
+        transaction.concept().thing_get_has(self.clone().into_thing(), attribute_types, annotations).map(box_stream)
     }
 
-    pub async fn set_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
-        transaction.concept().thing_set_has(Thing::Entity(self.clone()), attribute).await
+    async fn set_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
+        transaction.concept().thing_set_has(self.clone().into_thing(), attribute).await
     }
 
-    pub async fn unset_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
-        transaction.concept().thing_unset_has(Thing::Entity(self.clone()), attribute).await
+    async fn unset_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
+        transaction.concept().thing_unset_has(self.clone().into_thing(), attribute).await
     }
 
-    pub fn get_relations(
+    fn get_relations(
         &self,
         transaction: &Transaction<'_>,
         role_types: Vec<RoleType>,
-    ) -> Result<impl Stream<Item = Result<Relation>>> {
-        transaction.concept().thing_get_relations(Thing::Entity(self.clone()), role_types)
+    ) -> Result<BoxStream<Result<Relation>>> {
+        transaction.concept().thing_get_relations(self.clone().into_thing(), role_types).map(box_stream)
     }
 
-    pub fn get_playing(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<RoleType>>> {
-        transaction.concept().thing_get_playing(Thing::Entity(self.clone()))
+    fn get_playing(&self, transaction: &Transaction<'_>) -> Result<BoxStream<Result<RoleType>>> {
+        transaction.concept().thing_get_playing(self.clone().into_thing()).map(box_stream)
     }
 }
 
-impl Relation {
-    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
-        transaction.concept().get_relation(self.iid.clone()).await.map(|res| res.is_none())
+#[async_trait]
+impl ThingAPI for Entity {
+    fn iid(&self) -> &IID {
+        &self.iid
     }
 
-    pub async fn delete(&self, transaction: &Transaction<'_>) -> Result {
-        transaction.concept().thing_delete(Thing::Relation(self.clone())).await
-    }
-
-    pub fn get_has(
-        &self,
-        transaction: &Transaction<'_>,
-        attribute_types: Vec<AttributeType>,
-        annotations: Vec<Annotation>,
-    ) -> Result<impl Stream<Item = Result<Attribute>>> {
-        transaction.concept().thing_get_has(Thing::Relation(self.clone()), attribute_types, annotations)
-    }
-
-    pub async fn set_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
-        transaction.concept().thing_set_has(Thing::Relation(self.clone()), attribute).await
-    }
-
-    pub async fn unset_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
-        transaction.concept().thing_unset_has(Thing::Relation(self.clone()), attribute).await
-    }
-
-    pub fn get_relations(
-        &self,
-        transaction: &Transaction<'_>,
-        role_types: Vec<RoleType>,
-    ) -> Result<impl Stream<Item = Result<Relation>>> {
-        transaction.concept().thing_get_relations(Thing::Relation(self.clone()), role_types)
-    }
-
-    pub fn get_playing(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<RoleType>>> {
-        transaction.concept().thing_get_playing(Thing::Relation(self.clone()))
-    }
-
-    pub async fn add_role_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
-        transaction.concept().relation_add_role_player(self.clone(), role_type, player).await
-    }
-
-    pub async fn remove_role_player(
-        &self,
-        transaction: &Transaction<'_>,
-        role_type: RoleType,
-        player: Thing,
-    ) -> Result {
-        transaction.concept().relation_remove_role_player(self.clone(), role_type, player).await
-    }
-
-    pub fn get_players_by_role_type(
-        &self,
-        transaction: &Transaction<'_>,
-        role_types: Vec<RoleType>,
-    ) -> Result<impl Stream<Item = Result<Thing>>> {
-        transaction.concept().relation_get_players_by_role_type(self.clone(), role_types)
-    }
-
-    pub fn get_role_players(
-        &self,
-        transaction: &Transaction<'_>,
-    ) -> Result<impl Stream<Item = Result<(RoleType, Thing)>>> {
-        transaction.concept().relation_get_role_players(self.clone())
-    }
-
-    pub fn get_relating(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<RoleType>>> {
-        transaction.concept().relation_get_relating(self.clone())
+    fn into_thing(self) -> Thing {
+        Thing::Entity(self)
     }
 }
 
-impl Attribute {
-    pub async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
-        transaction.concept().get_attribute(self.iid.clone()).await.map(|res| res.is_none())
+#[async_trait]
+pub trait EntityAPI: ThingAPI + Into<Entity> {}
+
+#[async_trait]
+impl EntityAPI for Entity {}
+
+#[async_trait]
+impl ThingAPI for Relation {
+    fn iid(&self) -> &IID {
+        &self.iid
     }
 
-    pub async fn delete(&self, transaction: &Transaction<'_>) -> Result {
-        transaction.concept().thing_delete(Thing::Attribute(self.clone())).await
+    fn into_thing(self) -> Thing {
+        Thing::Relation(self)
+    }
+}
+
+#[async_trait]
+pub trait RelationAPI: ThingAPI + Into<Relation> {
+    async fn add_role_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
+        transaction.concept().relation_add_role_player(self.clone().into(), role_type, player).await
     }
 
-    pub fn get_has(
-        &self,
-        transaction: &Transaction<'_>,
-        attribute_types: Vec<AttributeType>,
-        annotations: Vec<Annotation>,
-    ) -> Result<impl Stream<Item = Result<Attribute>>> {
-        transaction.concept().thing_get_has(Thing::Attribute(self.clone()), attribute_types, annotations)
+    async fn remove_role_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
+        transaction.concept().relation_remove_role_player(self.clone().into(), role_type, player).await
     }
 
-    pub async fn set_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
-        transaction.concept().thing_set_has(Thing::Attribute(self.clone()), attribute).await
-    }
-
-    pub async fn unset_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
-        transaction.concept().thing_unset_has(Thing::Attribute(self.clone()), attribute).await
-    }
-
-    pub fn get_relations(
+    fn get_players_by_role_type(
         &self,
         transaction: &Transaction<'_>,
         role_types: Vec<RoleType>,
-    ) -> Result<impl Stream<Item = Result<Relation>>> {
-        transaction.concept().thing_get_relations(Thing::Attribute(self.clone()), role_types)
+    ) -> Result<BoxStream<Result<Thing>>> {
+        transaction.concept().relation_get_players_by_role_type(self.clone().into(), role_types).map(box_stream)
     }
 
-    pub fn get_playing(&self, transaction: &Transaction<'_>) -> Result<impl Stream<Item = Result<RoleType>>> {
-        transaction.concept().thing_get_playing(Thing::Attribute(self.clone()))
+    fn get_role_players(&self, transaction: &Transaction<'_>) -> Result<BoxStream<Result<(RoleType, Thing)>>> {
+        transaction.concept().relation_get_role_players(self.clone().into()).map(box_stream)
     }
 
-    pub fn get_owners(
+    fn get_relating(&self, transaction: &Transaction<'_>) -> Result<BoxStream<Result<RoleType>>> {
+        transaction.concept().relation_get_relating(self.clone().into()).map(box_stream)
+    }
+}
+
+#[async_trait]
+impl RelationAPI for Relation {}
+
+#[async_trait]
+impl ThingAPI for Attribute {
+    fn iid(&self) -> &IID {
+        &self.iid
+    }
+
+    fn into_thing(self) -> Thing {
+        Thing::Attribute(self)
+    }
+}
+
+#[async_trait]
+pub trait AttributeAPI: ThingAPI + Into<Attribute> {
+    fn get_owners(
         &self,
         transaction: &Transaction<'_>,
         thing_type: Option<ThingType>,
-    ) -> Result<impl Stream<Item = Result<Thing>>> {
-        transaction.concept().attribute_get_owners(self.clone(), thing_type)
+    ) -> Result<BoxStream<Result<Thing>>> {
+        transaction.concept().attribute_get_owners(self.clone().into(), thing_type).map(box_stream)
     }
 }
+
+#[async_trait]
+impl AttributeAPI for Attribute {}

@@ -105,7 +105,7 @@ impl ConceptManager {
         value_type: Option<ValueType>,
         transitivity: Transitivity,
         annotations: Vec<Annotation>,
-    ) -> Result<impl Stream<Item = Result<AttributeType>>> {
+    ) -> Result<impl Stream<Item = Result<AttributeType>> + Send> {
         self.transaction_stream.thing_type_get_owns(thing_type, value_type, transitivity, annotations)
     }
 
@@ -137,7 +137,7 @@ impl ConceptManager {
         &self,
         thing_type: ThingType,
         transitivity: Transitivity,
-    ) -> Result<impl Stream<Item = Result<RoleType>>> {
+    ) -> Result<impl Stream<Item = Result<RoleType>> + Send> {
         self.transaction_stream.thing_type_get_plays(thing_type, transitivity)
     }
 
