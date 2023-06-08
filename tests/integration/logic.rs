@@ -74,6 +74,7 @@ macro_rules! test_for_each_arg {
 test_for_each_arg! {
     {
         core => common::new_core_connection().unwrap(),
+        cluster => common::new_cluster_connection().unwrap(),
     }
 
     async fn test_disjunction_explainable(connection: Connection) -> typedb_client::Result {

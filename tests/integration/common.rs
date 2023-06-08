@@ -33,16 +33,24 @@ pub fn new_core_connection() -> typedb_client::Result<Connection> {
 }
 
 pub fn new_cluster_connection() -> typedb_client::Result<Connection> {
+    // TODO: change back to encrypted connection after fixing problems with Cluster
+    // Connection::new_encrypted(
+    //     &["127.0.0.1:11729", "127.0.0.1:21729", "127.0.0.1:31729"],
+    //     Credential::with_tls(
+    //         "admin",
+    //         "password",
+    //         Some(&PathBuf::from(
+    //             std::env::var("ROOT_CA")
+    //                 .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
+    //         )),
+    //     )?,
+    // )
     Connection::new_encrypted(
-        &["localhost:11729", "localhost:21729", "localhost:31729"],
-        Credential::with_tls(
+        &["127.0.0.1:11729", "127.0.0.1:21729", "127.0.0.1:31729"],
+        Credential::without_tls(
             "admin",
             "password",
-            Some(&PathBuf::from(
-                std::env::var("ROOT_CA")
-                    .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
-            )),
-        )?,
+        ),
     )
 }
 
