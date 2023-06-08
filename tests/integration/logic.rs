@@ -27,7 +27,8 @@ use futures::{StreamExt, TryFutureExt, TryStreamExt};
 use regex::internal::Input;
 use serial_test::serial;
 use tokio::sync::mpsc;
-use typedb_client::{concept::{Attribute, Concept, Value}, error::ConnectionError, Connection, DatabaseManager, Error, Options, Session, SessionType::{Data, Schema}, TransactionType::{Read, Write}, answer::ConceptMap, Transaction};
+use typedb_client::{concept::{Attribute, AttributeType, Concept, Value}, error::ConnectionError, Connection, DatabaseManager, Error, Options, Session, SessionType::{Data, Schema}, TransactionType::{Read, Write}, answer::ConceptMap, Transaction};
+use typedb_client::concept::Thing;
 use typedb_client::logic::Explanation;
 
 use super::common;
@@ -251,6 +252,79 @@ test_for_each_arg! {
 
         assert_single_explainable_explanations(answers.get(0).unwrap(), 1, 3, &transaction).await;
         assert_single_explainable_explanations(answers.get(1).unwrap(), 1, 3, &transaction).await;
+
+        Ok(())
+    }
+
+    async fn test_has_explicit_explainable_two_ways(connection: Connection) -> typedb_client::Result {
+        let schema = r#"define
+            milk sub entity,
+                owns age-in-days,
+                owns is-still-good;
+            age-in-days sub attribute, value long;
+            is-still-good sub attribute, value boolean;"#;
+        common::create_test_database_with_schema(connection.clone(), schema).await?;
+
+        let databases = DatabaseManager::new(connection);
+        {
+            let session = Session::new(databases.get(common::TEST_DATABASE).await?, Schema).await?;
+            let transaction = session.transaction(Write).await?;
+            transaction.logic().put_rule(
+                "old-milk-is-not-good".to_string(),
+                typeql_lang::parse_pattern("{ $x isa milk, has age-in-days <= 10; }")
+                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?
+                    .into_conjunction(),
+                typeql_lang::parse_variable("$x has is-still-good true")
+                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?,
+            ).await?;
+            transaction.logic().put_rule(
+                "all-milk-is-good".to_string(),
+                typeql_lang::parse_pattern("{ $x isa milk; }")
+                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?
+                    .into_conjunction(),
+                typeql_lang::parse_variable("$x has is-still-good true")
+                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?,
+            ).await?;
+            transaction.commit().await?;
+        }
+
+        let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
+        let transaction = session.transaction(Write).await?;
+        let data = r#"insert $x isa milk, has age-in-days 5;"#;
+        let _ = transaction.query().insert(data)?;
+        let data = r#"insert $x isa milk, has age-in-days 10;"#;
+        let _ = transaction.query().insert(data)?;
+        let data = r#"insert $x isa milk, has age-in-days 15;"#;
+        let _ = transaction.query().insert(data)?;
+        transaction.commit().await?;
+
+        let with_inference_and_explanation = Options::new().infer(true).explain(true);
+        let transaction = session.transaction_with_options(Read, with_inference_and_explanation).await?;
+        let answer_stream = transaction.query().match_(
+            r#"match $x has is-still-good $a;"#,
+        )?;
+        let answers = answer_stream.try_collect::<Vec<ConceptMap>>().await?;
+
+        assert_eq!(3, answers.len());
+
+        assert!(answers.get(0).unwrap().explainables.is_some());
+        assert!(answers.get(1).unwrap().explainables.is_some());
+        assert!(answers.get(2).unwrap().explainables.is_some());
+
+        let age_in_days = transaction.concept().get_attribute_type(String::from("age-in-days")).await?.unwrap();
+        for ans in answers {
+            match ans.map.get("x").unwrap() {
+                Concept::Entity(entity) => {
+                    let attributes: Vec<Attribute> = entity.get_has(&transaction, vec![age_in_days.clone()], vec![])?.try_collect().await?;
+                    if attributes.first().unwrap().value == Value::Long(15) {
+                        assert_single_explainable_explanations(&ans, 1, 1, &transaction).await;
+                    } else {
+                        assert_single_explainable_explanations(&ans, 1, 2, &transaction).await;
+                    }
+                },
+                _ => panic!("Incorrect Concept type: {:?}", ans.map.get("x").unwrap()),
+            }
+        }
 
         Ok(())
     }
