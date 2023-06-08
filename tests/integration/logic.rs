@@ -20,19 +20,15 @@
  */
 
 use std::collections::HashMap;
-use std::{sync::Arc, time::Instant};
 
-use chrono::{NaiveDate, NaiveDateTime};
 use futures::{StreamExt, TryFutureExt, TryStreamExt};
 use regex::internal::Input;
 use serial_test::serial;
-use tokio::sync::mpsc;
 use typedb_client::{
     answer::ConceptMap,
-    concept::{Attribute, AttributeType, Concept, Thing, Value},
-    error::ConnectionError,
+    concept::{Attribute, Concept, Value},
     logic::Explanation,
-    Connection, DatabaseManager, Error, Options, Session,
+    Connection, DatabaseManager, Options, Session,
     SessionType::{Data, Schema},
     Transaction,
     TransactionType::{Read, Write},
