@@ -22,9 +22,13 @@
 use std::time::Duration;
 
 use itertools::Itertools;
-use typedb_protocol::{attribute, attribute_type, concept_manager, database, database_manager, entity_type, logic_manager, query_manager, r#type, relation, relation_type, role_type, server_manager, session, thing, thing_type, transaction};
+use typedb_protocol::{
+    attribute, attribute_type, concept_manager, database, database_manager, entity_type, logic_manager, query_manager,
+    r#type, relation, relation_type, role_type, server_manager, session, thing, thing_type, transaction,
+};
 
 use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
+use crate::logic::Explanation;
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::{info::DatabaseInfo, RequestID, Result},
@@ -40,7 +44,6 @@ use crate::{
     error::{ConnectionError, InternalError},
     Rule, SchemaException,
 };
-use crate::logic::Explanation;
 
 impl TryIntoProto<server_manager::all::Req> for Request {
     fn try_into_proto(self) -> Result<server_manager::all::Req> {
@@ -317,7 +320,9 @@ impl TryFromProto<transaction::ResPart> for TransactionResponse {
                 res: Some(r#type::res_part::Res::RoleTypeResPart(res)),
             })) => Ok(Self::RoleType(RoleTypeResponse::try_from_proto(res)?)),
             Some(transaction::res_part::Res::ThingResPart(res)) => Ok(Self::Thing(ThingResponse::try_from_proto(res)?)),
-            Some(transaction::res_part::Res::LogicManagerResPart(res)) => Ok(Self::Logic(LogicResponse::try_from_proto(res)?)),
+            Some(transaction::res_part::Res::LogicManagerResPart(res)) => {
+                Ok(Self::Logic(LogicResponse::try_from_proto(res)?))
+            }
             Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
@@ -399,9 +404,9 @@ impl TryFromProto<query_manager::ResPart> for QueryResponse {
             Some(query_manager::res_part::Res::MatchGroupAggregateResPart(res)) => Ok(Self::MatchGroupAggregate {
                 answers: res.answers.into_iter().map(NumericGroup::try_from_proto).try_collect()?,
             }),
-            Some(query_manager::res_part::Res::ExplainResPart(res)) => {
-                Ok(Self::Explain { answers: res.explanations.into_iter().map(Explanation::try_from_proto).try_collect()? })
-            }
+            Some(query_manager::res_part::Res::ExplainResPart(res)) => Ok(Self::Explain {
+                answers: res.explanations.into_iter().map(Explanation::try_from_proto).try_collect()?,
+            }),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
@@ -1114,19 +1119,13 @@ impl TryFromProto<thing::ResPart> for ThingResponse {
 impl IntoProto<logic_manager::Req> for LogicRequest {
     fn into_proto(self) -> logic_manager::Req {
         let req = match self {
-            Self::PutRule { label, when, then } => {
-                logic_manager::req::Req::PutRuleReq(logic_manager::put_rule::Req {
-                    label,
-                    when: when.to_string(),
-                    then: then.to_string(),
-                })
-            }
-            Self::GetRule { label } => {
-                logic_manager::req::Req::GetRuleReq(logic_manager::get_rule::Req { label })
-            }
-            Self::GetRules => {
-                logic_manager::req::Req::GetRulesReq(logic_manager::get_rules::Req {})
-            }
+            Self::PutRule { label, when, then } => logic_manager::req::Req::PutRuleReq(logic_manager::put_rule::Req {
+                label,
+                when: when.to_string(),
+                then: then.to_string(),
+            }),
+            Self::GetRule { label } => logic_manager::req::Req::GetRuleReq(logic_manager::get_rule::Req { label }),
+            Self::GetRules => logic_manager::req::Req::GetRulesReq(logic_manager::get_rules::Req {}),
         };
         logic_manager::Req { req: Some(req) }
     }
@@ -1135,10 +1134,12 @@ impl IntoProto<logic_manager::Req> for LogicRequest {
 impl TryFromProto<logic_manager::Res> for LogicResponse {
     fn try_from_proto(proto: logic_manager::Res) -> Result<Self> {
         match proto.res {
-            Some(logic_manager::res::Res::PutRuleRes(logic_manager::put_rule::Res { rule})) =>
-                Ok(Self::PutRule { rule: Rule::try_from_proto(rule.unwrap()).unwrap() }),
-            Some(logic_manager::res::Res::GetRuleRes(logic_manager::get_rule::Res { rule })) =>
-                Ok(Self::GetRule { rule: Rule::try_from_proto(rule.unwrap()).unwrap() }),
+            Some(logic_manager::res::Res::PutRuleRes(logic_manager::put_rule::Res { rule })) => {
+                Ok(Self::PutRule { rule: Rule::try_from_proto(rule.unwrap()).unwrap() })
+            }
+            Some(logic_manager::res::Res::GetRuleRes(logic_manager::get_rule::Res { rule })) => {
+                Ok(Self::GetRule { rule: Rule::try_from_proto(rule.unwrap()).unwrap() })
+            }
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
@@ -1146,6 +1147,8 @@ impl TryFromProto<logic_manager::Res> for LogicResponse {
 
 impl TryFromProto<logic_manager::ResPart> for LogicResponse {
     fn try_from_proto(proto: logic_manager::ResPart) -> Result<Self> {
-        Ok(Self::GetRules { rules: proto.get_rules_res_part.unwrap().rules.into_iter().map(Rule::try_from_proto).try_collect()? })
+        Ok(Self::GetRules {
+            rules: proto.get_rules_res_part.unwrap().rules.into_iter().map(Rule::try_from_proto).try_collect()?,
+        })
     }
 }

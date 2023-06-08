@@ -27,12 +27,12 @@ use util::{
     equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_answer_rule, match_templated_answer,
 };
 
+use crate::behaviour::parameter::Comparable;
 use crate::{
     assert_err,
     behaviour::{util, Context},
     generic_step_impl,
 };
-use crate::behaviour::parameter::Comparable;
 
 generic_step_impl! {
     #[step(expr = "typeql define")]

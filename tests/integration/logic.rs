@@ -19,17 +19,24 @@
  * under the License.
  */
 
-use std::{sync::Arc, time::Instant};
 use std::collections::HashMap;
+use std::{sync::Arc, time::Instant};
 
 use chrono::{NaiveDate, NaiveDateTime};
 use futures::{StreamExt, TryFutureExt, TryStreamExt};
 use regex::internal::Input;
 use serial_test::serial;
 use tokio::sync::mpsc;
-use typedb_client::{concept::{Attribute, AttributeType, Concept, Value}, error::ConnectionError, Connection, DatabaseManager, Error, Options, Session, SessionType::{Data, Schema}, TransactionType::{Read, Write}, answer::ConceptMap, Transaction};
-use typedb_client::concept::Thing;
-use typedb_client::logic::Explanation;
+use typedb_client::{
+    answer::ConceptMap,
+    concept::{Attribute, AttributeType, Concept, Thing, Value},
+    error::ConnectionError,
+    logic::Explanation,
+    Connection, DatabaseManager, Error, Options, Session,
+    SessionType::{Data, Schema},
+    Transaction,
+    TransactionType::{Read, Write},
+};
 
 use super::common;
 
@@ -356,14 +363,18 @@ async fn assert_single_explainable_explanations(
         for var in projected.map.keys() {
             assert!(explanation.conclusion.map.contains_key(var));
             assert_eq!(explanation.conclusion.map.get(var), projected.map.get(var));
-        };
-    };
+        }
+    }
 }
 
 fn check_explainable_vars(ans: &ConceptMap) {
     ans.clone().explainables.unwrap().relations.into_keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
     ans.clone().explainables.unwrap().attributes.into_keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
-    ans.clone().explainables.unwrap().ownerships.into_keys()
+    ans.clone()
+        .explainables
+        .unwrap()
+        .ownerships
+        .into_keys()
         .for_each(|(k1, k2)| assert!(ans.map.contains_key(k1.as_str()) && ans.map.contains_key(k2.as_str())));
 }
 
@@ -377,8 +388,5 @@ fn apply_mapping(mapping: &HashMap<String, Vec<String>>, complete_map: &ConceptM
             concepts.insert(mapped.to_string(), concept.clone());
         }
     }
-    ConceptMap {
-        map: concepts,
-        explainables: None,
-    }
+    ConceptMap { map: concepts, explainables: None }
 }

@@ -183,7 +183,12 @@ pub async fn match_answer_rule(
 ) -> bool {
     let when_clause = answer_identifiers.get(&String::from("when")).unwrap().trim_end_matches(";").to_string();
     let when = parse_pattern(when_clause.as_str()).unwrap().into_conjunction();
-    let then_clause = answer_identifiers.get(&String::from("then")).unwrap().trim_end_matches(['}', ';', ' ']).trim_start_matches("{").to_string();
+    let then_clause = answer_identifiers
+        .get(&String::from("then"))
+        .unwrap()
+        .trim_end_matches(['}', ';', ' '])
+        .trim_start_matches("{")
+        .to_string();
     let then_var = parse_pattern(then_clause.as_str()).unwrap().into_variable();
     if let Variable::Thing(then) = then_var {
         answer_identifiers.get(&String::from("label")).unwrap().to_string() == answer.label

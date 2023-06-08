@@ -95,7 +95,7 @@ impl IntoIterator for ConceptMap {
 impl Explainables {
     pub(crate) fn new(
         relations: HashMap<String, Explainable>,
-        attributes:HashMap<String, Explainable>,
+        attributes: HashMap<String, Explainable>,
         ownerships: HashMap<(String, String), Explainable>,
     ) -> Self {
         Self { relations, attributes, ownerships }

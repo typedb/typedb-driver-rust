@@ -23,13 +23,13 @@ use std::sync::Arc;
 
 use futures::Stream;
 
+use crate::logic::Explanation;
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::Result,
     connection::TransactionStream,
     Options,
 };
-use crate::logic::Explanation;
 
 #[derive(Debug)]
 pub struct QueryManager {
@@ -125,7 +125,11 @@ impl QueryManager {
         self.explain_with_options(explainable_id, Options::new())
     }
 
-    pub fn explain_with_options(&self, explainable_id: i64, options: Options) -> Result<impl Stream<Item = Result<Explanation>>> {
+    pub fn explain_with_options(
+        &self,
+        explainable_id: i64,
+        options: Options,
+    ) -> Result<impl Stream<Item = Result<Explanation>>> {
         self.transaction_stream.explain(explainable_id, options)
     }
 }

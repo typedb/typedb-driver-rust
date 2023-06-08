@@ -26,6 +26,7 @@ use tonic::Streaming;
 use typedb_protocol::transaction;
 use typeql_lang::pattern::{Conjunction, Variable};
 
+use crate::logic::Explanation;
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, IID},
@@ -36,7 +37,6 @@ use crate::{
     Options, SessionType, TransactionType,
     Rule, SchemaException,
 };
-use crate::logic::Explanation;
 
 #[derive(Debug)]
 pub(super) enum Request {

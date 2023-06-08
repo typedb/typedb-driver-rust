@@ -42,7 +42,6 @@ pub struct Transaction<'a> {
     transaction_stream: Arc<TransactionStream>,
 
     _lifetime_guard: PhantomData<&'a ()>,
-
 }
 
 impl Transaction<'_> {

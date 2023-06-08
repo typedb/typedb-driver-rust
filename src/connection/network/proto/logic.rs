@@ -19,14 +19,12 @@
  * under the License.
  */
 
-use typedb_protocol::{
-    Rule as RuleProto,
-};
-use typeql_lang::{parse_pattern, parse_variable};
-use typeql_lang::pattern::{Pattern, Variable};
-use crate::{common::Result, Error, error::InternalError, Rule};
-use crate::error::ConnectionError;
 use super::{IntoProto, TryFromProto};
+use crate::error::ConnectionError;
+use crate::{common::Result, error::InternalError, Error, Rule};
+use typedb_protocol::Rule as RuleProto;
+use typeql_lang::pattern::{Pattern, Variable};
+use typeql_lang::{parse_pattern, parse_variable};
 
 impl TryFromProto<RuleProto> for Rule {
     fn try_from_proto(proto: RuleProto) -> Result<Self> {
@@ -46,11 +44,6 @@ impl TryFromProto<RuleProto> for Rule {
 
 impl IntoProto<RuleProto> for Rule {
     fn into_proto(self) -> RuleProto {
-        RuleProto {
-            label: self.label,
-            when: self.when.to_string(),
-            then: self.then.to_string() ,
-        }
+        RuleProto { label: self.label, when: self.when.to_string(), then: self.then.to_string() }
     }
 }
-

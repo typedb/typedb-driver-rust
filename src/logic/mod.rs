@@ -19,8 +19,8 @@
  * under the License.
  */
 
+pub mod explanation;
 mod logic;
 mod rule;
-pub mod explanation;
 
 pub use self::{explanation::Explanation, logic::LogicManager, rule::Rule};

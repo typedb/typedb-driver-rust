@@ -28,6 +28,8 @@ use super::{
     message::{RoleTypeRequest, RoleTypeResponse, ThingRequest, ThingResponse},
     network::transmitter::TransactionTransmitter,
 };
+use crate::connection::message::{LogicRequest, LogicResponse};
+use crate::logic::Explanation;
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::{Result, IID},
@@ -42,8 +44,6 @@ use crate::{
     error::InternalError,
     Options, Rule, SchemaException, TransactionType,
 };
-use crate::connection::message::{LogicRequest, LogicResponse};
-use crate::logic::Explanation;
 
 pub(crate) struct TransactionStream {
     type_: TransactionType,
@@ -933,7 +933,7 @@ impl TransactionStream {
     }
 
     pub(crate) async fn put_rule(&self, label: String, when: Conjunction, then: Variable) -> Result<Rule> {
-        match self.logic_single(LogicRequest::PutRule { label, when, then } ).await? {
+        match self.logic_single(LogicRequest::PutRule { label, when, then }).await? {
             LogicResponse::PutRule { rule } => Ok(rule),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
@@ -1001,7 +1001,11 @@ impl TransactionStream {
         }
     }
 
-    pub(crate) fn explain(&self, explainable_id: i64, options: Options) -> Result<impl Stream<Item = Result<Explanation>>> {
+    pub(crate) fn explain(
+        &self,
+        explainable_id: i64,
+        options: Options,
+    ) -> Result<impl Stream<Item = Result<Explanation>>> {
         let stream = self.query_stream(QueryRequest::Explain { explainable_id, options })?;
         Ok(stream.flat_map(|result| match result {
             Ok(QueryResponse::Explain { answers }) => stream_iter(answers.into_iter().map(Ok)),
@@ -1061,7 +1065,6 @@ impl TransactionStream {
             Err(err) => Err(err),
         }))
     }
-
 }
 
 impl fmt::Debug for TransactionStream {
