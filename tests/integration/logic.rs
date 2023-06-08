@@ -86,29 +86,7 @@ test_for_each_arg! {
                 relates husband, relates wife;"#;
         common::create_test_database_with_schema(connection.clone(), schema).await?;
 
-        // let databases = DatabaseManager::new(connection);
-        // if databases.contains(common::TEST_DATABASE).await? {
-        //     databases.get(common::TEST_DATABASE).and_then(Database::delete).await?;
-        // }
-        // databases.create(common::TEST_DATABASE).await?;
-        // let database = databases.get(common::TEST_DATABASE).await?;
-        // let session = Session::new(database, Schema).await?;
-        // let transaction = session.transaction(Write).await?;
-        //
-        // let person = transaction.concept().put_entity_type(str!{"person"}).await?;
-        // let name = transaction.concept().put_attribute_type("name", AttributeType.ValueType.STRING);
-        // person.set_owns(name).await?;
-        // let friendship = transaction.concept().put_relation_type("friendship").await?;
-        // friendship.set_relates("friend").await?;
-        // let marriage = transaction.concept().put_relation_type("marriage").await?;
-        // marriage.set_relates("husband").await?;
-        // marriage.set_relates("wife").await?;
-        // person.set_plays(friendship.get_relates("friend")).await?;
-        // person.set_plays(marriage.get_relates("husband")).await?;
-        // person.set_plays(marriage.get_relates("wife")).await?;
-
         let databases = DatabaseManager::new(connection);
-
         {
             let session = Session::new(databases.get(common::TEST_DATABASE).await?, Schema).await?;
             let transaction = session.transaction(Write).await?;
@@ -182,21 +160,12 @@ async fn assert_single_explainable_explanations(
     assert_eq!(explanations_count, explanations.len());
     for explanation in explanations {
         let mapping = explanation.variable_mapping;
-
-    }
-    // explanations.forEach(explanation -> {
-    // Map<Retrievable, Set<Variable>> mapping = explanation.variableMapping();
-    // Map<Retrievable, Set<Retrievable>> retrievableMapping = new HashMap<>();
-    // mapping.forEach((k, v) -> retrievableMapping.put(
-    // k, iterate(v).filter(Identifier::isRetrievable).map(Variable::asRetrievable).toSet()
-    // ));
-    // ConceptMap projected = applyMapping(retrievableMapping, ans);
-    // projected.concepts().forEach((var, concept) -> {
-    // assertTrue(explanation.conclusionAnswer().concepts().containsKey(var));
-    // assertEquals(explanation.conclusionAnswer().concepts().get(var), concept);
-    // });
-    // });
-    // return explanations;
+        let projected = apply_mapping(&mapping, ans);
+        for var in projected.map.keys() {
+            assert!(explanation.conclusion.map.contains_key(var));
+            assert_eq!(explanation.conclusion.map.get(var), projected.map.get(var));
+        };
+    };
 }
 
 fn check_explainable_vars(ans: &ConceptMap) {
@@ -206,15 +175,18 @@ fn check_explainable_vars(ans: &ConceptMap) {
         .for_each(|(k1, k2)| assert!(ans.map.contains_key(k1.as_str()) && ans.map.contains_key(k2.as_str())));
 }
 
-fn apply_mapping(mapping: HashMap<String, Vec<String>>, complete_map: ConceptMap) -> ConceptMap {
-    let concepts: HashMap<String, Vec<String>> = HashMap::new();
+fn apply_mapping(mapping: &HashMap<String, Vec<String>>, complete_map: &ConceptMap) -> ConceptMap {
+    let mut concepts: HashMap<String, Concept> = HashMap::new();
     for key in mapping.keys() {
         assert!(complete_map.map.contains_key(key));
         let concept = complete_map.get(key).unwrap();
         for mapped in mapping.get(key).unwrap() {
-            assert!(!concepts.contains_key(mapped) || concepts.get(mapped).unwrap().equals(concept));
-            concepts.insert(mapped, concept);
+            assert!(!concepts.contains_key(mapped) || concepts.get(mapped).unwrap() == concept);
+            concepts.insert(mapped.to_string(), concept.clone());
         }
     }
-    return ConceptMap::from(concepts);
+    ConceptMap {
+        map: concepts,
+        explainables: None,
+    }
 }
