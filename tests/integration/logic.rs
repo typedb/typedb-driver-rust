@@ -136,6 +136,61 @@ test_for_each_arg! {
 
         Ok(())
     }
+
+    async fn test_relation_explainable(connection: Connection) -> typedb_client::Result {
+        let schema = r#"define
+            person sub entity,
+                owns name,
+                plays friendship:friend,
+                plays marriage:husband,
+                plays marriage:wife;
+            name sub attribute, value string;
+            friendship sub relation,
+                relates friend;
+            marriage sub relation,
+                relates husband, relates wife;"#;
+        common::create_test_database_with_schema(connection.clone(), schema).await?;
+
+        let databases = DatabaseManager::new(connection);
+        {
+            let session = Session::new(databases.get(common::TEST_DATABASE).await?, Schema).await?;
+            let transaction = session.transaction(Write).await?;
+            transaction.logic().put_rule(
+                "marriage-is-friendship".to_string(),
+                typeql_lang::parse_pattern("{ $x isa person; $y isa person; (husband: $x, wife: $y) isa marriage; }")
+                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?
+                    .into_conjunction(),
+                typeql_lang::parse_variable("(friend: $x, friend: $y) isa friendship")
+                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?,
+            ).await?;
+            transaction.commit().await?;
+        }
+
+        let session = Session::new(databases.get(common::TEST_DATABASE).await?, Data).await?;
+        let transaction = session.transaction(Write).await?;
+        let data = r#"insert $x isa person, has name 'Zack';
+            $y isa person, has name 'Yasmin';
+            (husband: $x, wife: $y) isa marriage;"#;
+        let _ = transaction.query().insert(data)?;
+        transaction.commit().await?;
+
+        let with_inference_and_explanation = Options::new().infer(true).explain(true);
+        let transaction = session.transaction_with_options(Read, with_inference_and_explanation).await?;
+        let answer_stream = transaction.query().match_(
+            r#"match (friend: $p1, friend: $p2) isa friendship; $p1 has name $na;"#,
+        )?;
+        let answers = answer_stream.try_collect::<Vec<ConceptMap>>().await?;
+
+        assert_eq!(2, answers.len());
+
+        assert!(answers.get(0).unwrap().explainables.is_some());
+        assert!(answers.get(1).unwrap().explainables.is_some());
+
+        assert_single_explainable_explanations(answers.get(0).unwrap(), 1, 1, &transaction).await;
+        assert_single_explainable_explanations(answers.get(1).unwrap(), 1, 1, &transaction).await;
+
+        Ok(())
+    }
 }
 
 async fn assert_single_explainable_explanations(
