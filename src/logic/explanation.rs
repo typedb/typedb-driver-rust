@@ -19,9 +19,9 @@
  * under the License.
  */
 
-use crate::answer::ConceptMap;
-use crate::Rule;
 use std::collections::HashMap;
+
+use crate::{answer::ConceptMap, Rule};
 
 #[derive(Debug)]
 pub struct Explanation {

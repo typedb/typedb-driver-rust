@@ -27,10 +27,9 @@ use util::{
     equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_answer_rule, match_templated_answer,
 };
 
-use crate::behaviour::parameter::Comparable;
 use crate::{
     assert_err,
-    behaviour::{util, Context},
+    behaviour::{parameter::Comparable, util, Context},
     generic_step_impl,
 };
 

@@ -28,8 +28,6 @@ use super::{
     message::{RoleTypeRequest, RoleTypeResponse, ThingRequest, ThingResponse},
     network::transmitter::TransactionTransmitter,
 };
-use crate::connection::message::{LogicRequest, LogicResponse};
-use crate::logic::Explanation;
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::{Result, IID},
@@ -38,10 +36,11 @@ use crate::{
         Thing, ThingType, Transitivity, Value, ValueType,
     },
     connection::message::{
-        ConceptRequest, ConceptResponse, QueryRequest, QueryResponse, ThingTypeRequest, ThingTypeResponse,
-        TransactionRequest, TransactionResponse,
+        ConceptRequest, ConceptResponse, LogicRequest, LogicResponse, QueryRequest, QueryResponse, ThingTypeRequest,
+        ThingTypeResponse, TransactionRequest, TransactionResponse,
     },
     error::InternalError,
+    logic::Explanation,
     Options, Rule, SchemaException, TransactionType,
 };
 

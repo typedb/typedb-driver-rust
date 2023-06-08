@@ -38,7 +38,6 @@ use typedb_protocol::{
 };
 
 use super::{FromProto, IntoProto, TryFromProto};
-use crate::logic::Explanation;
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Explainable, Explainables, Numeric, NumericGroup},
     concept::{
@@ -46,6 +45,7 @@ use crate::{
         RootThingType, ScopedLabel, Thing, ThingType, Transitivity, Value, ValueType,
     },
     error::{ConnectionError, InternalError},
+    logic::Explanation,
     Result, Rule,
 };
 

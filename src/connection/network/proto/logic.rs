@@ -19,11 +19,14 @@
  * under the License.
  */
 
+use typedb_protocol::Rule as RuleProto;
+use typeql_lang::{
+    parse_pattern, parse_variable,
+    pattern::{Pattern, Variable},
+};
+
 use super::{IntoProto, TryFromProto};
 use crate::{common::Result, Error, Rule};
-use typedb_protocol::Rule as RuleProto;
-use typeql_lang::pattern::{Pattern, Variable};
-use typeql_lang::{parse_pattern, parse_variable};
 
 impl TryFromProto<RuleProto> for Rule {
     fn try_from_proto(proto: RuleProto) -> Result<Self> {

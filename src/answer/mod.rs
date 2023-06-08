@@ -25,6 +25,8 @@ mod numeric;
 mod numeric_group;
 
 pub use self::{
-    concept_map::ConceptMap, concept_map::Explainable, concept_map::Explainables, concept_map_group::ConceptMapGroup,
-    numeric::Numeric, numeric_group::NumericGroup,
+    concept_map::{ConceptMap, Explainable, Explainables},
+    concept_map_group::ConceptMapGroup,
+    numeric::Numeric,
+    numeric_group::NumericGroup,
 };

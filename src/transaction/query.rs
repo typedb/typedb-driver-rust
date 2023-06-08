@@ -23,11 +23,11 @@ use std::sync::Arc;
 
 use futures::Stream;
 
-use crate::logic::Explanation;
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::Result,
     connection::TransactionStream,
+    logic::Explanation,
     Options,
 };
 

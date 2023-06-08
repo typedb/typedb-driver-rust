@@ -26,7 +26,6 @@ use tonic::Streaming;
 use typedb_protocol::transaction;
 use typeql_lang::pattern::{Conjunction, Variable};
 
-use crate::logic::Explanation;
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     common::{address::Address, info::DatabaseInfo, RequestID, SessionID, IID},
@@ -34,8 +33,8 @@ use crate::{
         Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, SchemaException,
         Thing, ThingType, Transitivity, Value, ValueType,
     },
-    Options, SessionType, TransactionType,
-    Rule, SchemaException,
+    logic::Explanation,
+    Options, Rule, SchemaException, SessionType, TransactionType,
 };
 
 #[derive(Debug)]
