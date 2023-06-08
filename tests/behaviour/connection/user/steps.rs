@@ -33,7 +33,7 @@ generic_step_impl! {
 
     #[step(expr = "connection opens with authentication: {word}, {word}")]
     async fn connection_opens_with_authentication(context: &mut Context, login: String, password: String) {
-        Connection::new_encrypted(
+        context.connection = Connection::new_encrypted(
             &["localhost:11729", "localhost:21729", "localhost:31729"],
             Credential::with_tls(
                 &login.as_str(),
@@ -44,6 +44,20 @@ generic_step_impl! {
                 )),
             ).unwrap(),
         ).unwrap();
+    }
+
+    #[step(expr = "users get all")]
+    async fn users_get_all(context: &mut Context) {
+        let res = context.users.all().await;
+        assert!(res.is_ok());
+        panic!("{res:?}");
+    }
+
+    #[step(expr = "users contains: {word}")]
+    async fn users_contains(context: &mut Context, username: String) {
+        let res = context.users.contains(username).await;
+        assert!(res.is_ok(), "{:?}", res.err());
+        assert!(res.unwrap());
     }
 
     #[step(expr = "users delete: {word}")]

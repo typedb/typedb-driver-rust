@@ -54,6 +54,19 @@ impl UserManager {
         Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
 
+    pub async fn contains(&self, username: String) -> Result<bool> {
+        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
+        for server_connection in self.connection.connections() {
+            match server_connection.contains_user(username.clone()).await {
+                Ok(contains) => {
+                    return Ok(contains);
+                },
+                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
+            }
+        }
+        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+    }
+
     // pub fn all() -> Vec<User> {
     //
     // }
