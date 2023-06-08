@@ -102,7 +102,18 @@ impl TryFromProto<ConceptMapProto> for ConceptMap {
         for (k, v) in proto.map {
             map.insert(k, Concept::try_from_proto(v)?);
         }
-        Ok(Self { map, explainables: proto.explainables.map(Explainables::from_proto) })
+        let explainables = match proto.explainables {
+            Some(expl) => {
+                if expl.attributes.len() > 0 || expl.relations.len() > 0 || expl.ownerships.len() > 0 {
+                    Some(Explainables::from_proto(expl))
+                }
+                else {
+                    None
+                }
+            }
+            None => return Err(ConnectionError::MissingResponseField("explainables").into()),
+        };
+        Ok(Self { map, explainables })
     }
 }
 

@@ -130,7 +130,7 @@ test_for_each_arg! {
         assert_eq!(2, without_explainable.map.len());
 
         assert!(with_explainable.explainables.is_some());
-        // assert!(without_explainable.explainables.is_none());
+        assert!(without_explainable.explainables.is_none());
 
         assert_single_explainable_explanations(with_explainable, 1, 1, &transaction).await;
 
