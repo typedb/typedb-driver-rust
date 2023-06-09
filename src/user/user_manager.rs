@@ -21,8 +21,7 @@
 
 use std::future::Future;
 
-use crate::{common::Result, connection::ServerConnection, Connection, User};
-use crate::error::ConnectionError;
+use crate::{common::Result, connection::ServerConnection, error::ConnectionError, Connection, User};
 
 #[derive(Clone, Debug)]
 pub struct UserManager {
@@ -47,7 +46,7 @@ impl UserManager {
             match server_connection.all_users().await {
                 Ok(list) => {
                     return Ok(list);
-                },
+                }
                 Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
             }
         }
@@ -60,7 +59,7 @@ impl UserManager {
             match server_connection.contains_user(username.clone()).await {
                 Ok(contains) => {
                     return Ok(contains);
-                },
+                }
                 Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
             }
         }
@@ -77,5 +76,4 @@ impl UserManager {
     // {
     //     Database::get(name, self.connection.clone()).await?.run_failsafe(&task).await
     // }
-
 }

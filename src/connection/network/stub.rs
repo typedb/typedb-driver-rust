@@ -27,7 +27,8 @@ use tokio::sync::mpsc::{unbounded_channel as unbounded_async, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Response, Status, Streaming};
 use typedb_protocol::{
-    database, database_manager, server_manager, session, transaction, type_db_client::TypeDbClient as GRPC, user, user_manager
+    database, database_manager, server_manager, session, transaction, type_db_client::TypeDbClient as GRPC, user,
+    user_manager,
 };
 
 use super::channel::{CallCredentials, GRPCChannel};
@@ -166,24 +167,15 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         .await
     }
 
-    pub(super) async fn user_create(
-        &mut self,
-        req: user_manager::create::Req,
-    ) -> Result<user_manager::create::Res> {
+    pub(super) async fn user_create(&mut self, req: user_manager::create::Req) -> Result<user_manager::create::Res> {
         self.single(|this| Box::pin(this.grpc.users_create(req.clone()))).await
     }
 
-    pub(super) async fn user_delete(
-        &mut self,
-        req: user_manager::delete::Req,
-    ) -> Result<user_manager::delete::Res> {
+    pub(super) async fn user_delete(&mut self, req: user_manager::delete::Req) -> Result<user_manager::delete::Res> {
         self.single(|this| Box::pin(this.grpc.users_delete(req.clone()))).await
     }
 
-    pub(super) async fn user_get(
-        &mut self,
-        req: user_manager::get::Req,
-    ) -> Result<user_manager::get::Res> {
+    pub(super) async fn user_get(&mut self, req: user_manager::get::Req) -> Result<user_manager::get::Res> {
         self.single(|this| Box::pin(this.grpc.users_get(req.clone()))).await
     }
 
@@ -194,10 +186,7 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         self.single(|this| Box::pin(this.grpc.users_password_set(req.clone()))).await
     }
 
-    pub(super) async fn users_all(
-        &mut self,
-        req: user_manager::all::Req,
-    ) -> Result<user_manager::all::Res> {
+    pub(super) async fn users_all(&mut self, req: user_manager::all::Req) -> Result<user_manager::all::Res> {
         self.single(|this| Box::pin(this.grpc.users_all(req.clone()))).await
     }
 

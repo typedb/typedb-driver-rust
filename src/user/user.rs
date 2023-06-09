@@ -30,8 +30,5 @@ impl User {
         Self { username, password_expiry_seconds }
     }
 
-    pub fn password_update(password_old: String, password_new: String) {
-
-    }
-
+    pub fn password_update(password_old: String, password_new: String) {}
 }

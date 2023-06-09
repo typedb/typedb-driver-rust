@@ -47,9 +47,9 @@ use crate::{
     },
     connection::message::{Request, Response, TransactionRequest},
     error::InternalError,
+    user::User,
     Credential, Options,
 };
-use crate::user::User;
 
 #[derive(Clone)]
 pub struct Connection {

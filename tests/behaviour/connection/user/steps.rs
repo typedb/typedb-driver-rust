@@ -24,10 +24,7 @@ use std::path::PathBuf;
 use cucumber::{gherkin::Step, given, then, when};
 use typedb_client::{Connection, Credential, Options, TransactionType};
 
-use crate::{
-    behaviour::{Context},
-    generic_step_impl,
-};
+use crate::{behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
 

@@ -34,9 +34,9 @@ use crate::{
         Thing, ThingType, Transitivity, Value, ValueType,
     },
     logic::{Explanation, Rule},
+    user::User,
     Options, SessionType, TransactionType,
 };
-use crate::user::User;
 
 #[derive(Debug)]
 pub(super) enum Request {
@@ -108,10 +108,16 @@ pub(super) enum Response {
 
     UserCreate,
     UserDelete,
-    UserGet { user: Option<User> },
+    UserGet {
+        user: Option<User>,
+    },
     UserPasswordSet,
-    UsersAll { users: Vec<User> },
-    UsersContain { contains: bool },
+    UsersAll {
+        users: Vec<User>,
+    },
+    UsersContain {
+        contains: bool,
+    },
 }
 
 #[derive(Debug)]

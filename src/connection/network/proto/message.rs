@@ -42,8 +42,8 @@ use crate::{
     },
     error::{ConnectionError, InternalError},
     logic::{Explanation, Rule},
+    user::User,
 };
-use crate::user::User;
 
 impl TryIntoProto<server_manager::all::Req> for Request {
     fn try_into_proto(self) -> Result<server_manager::all::Req> {
@@ -196,7 +196,7 @@ impl TryIntoProto<user_manager::create::Req> for Request {
 impl TryIntoProto<user_manager::delete::Req> for Request {
     fn try_into_proto(self) -> Result<user_manager::delete::Req> {
         match self {
-            Self::UserDelete { username} => Ok(user_manager::delete::Req { username }),
+            Self::UserDelete { username } => Ok(user_manager::delete::Req { username }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
