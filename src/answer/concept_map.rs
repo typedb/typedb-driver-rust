@@ -26,20 +26,20 @@ use std::{
 
 use crate::concept::Concept;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ConceptMap {
     pub map: HashMap<String, Concept>,
     pub explainables: Option<Explainables>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Explainables {
     pub relations: HashMap<String, Explainable>,
     pub attributes: HashMap<String, Explainable>,
     pub ownerships: HashMap<(String, String), Explainable>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Explainable {
     pub conjunction: String,
     pub id: i64,

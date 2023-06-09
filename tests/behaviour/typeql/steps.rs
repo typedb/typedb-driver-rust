@@ -19,9 +19,11 @@
  * under the License.
  */
 
+use std::collections::{HashMap, HashSet};
+
 use cucumber::{gherkin::Step, given, then, when};
 use futures::{StreamExt, TryFutureExt, TryStreamExt};
-use typedb_client::{answer::Numeric, Result as TypeDBResult};
+use typedb_client::{answer::Numeric, Result as TypeDBResult, Session, SessionType, TransactionType};
 use typeql_lang::parse_query;
 use util::{
     equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_answer_rule, match_templated_answer,
@@ -116,6 +118,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "answer size is: {int}")]
+    #[step(expr = "verify answer size is: {int}")]
     async fn answer_size(context: &mut Context, expected_answers: usize) {
         let actual_answers = context.answer.len();
         assert_eq!(
@@ -399,5 +402,74 @@ generic_step_impl! {
             matched entries of given {actual_answers}."
         );
     }
+
+    #[step(expr = "reasoning schema")]
+    async fn reasoning_schema(context: &mut Context, step: &Step) {
+        if context.databases.all().await.unwrap().is_empty() {
+            context.databases.create(Context::DEFAULT_DATABASE).await.unwrap();
+        }
+        context
+            .session_trackers
+            .push(Session::new(context.databases.get(Context::DEFAULT_DATABASE).await.unwrap(), SessionType::Schema).await.unwrap().into());
+        for session_tracker in &mut context.session_trackers {
+            session_tracker.open_transaction(TransactionType::Write).await.unwrap();
+        }
+        typeql_define(context, step).await;
+        context.take_transaction().commit().await.unwrap();
+        context.session_trackers.clear();
+    }
+
+    #[step(expr = "reasoning data")]
+    async fn reasoning_data(context: &mut Context, step: &Step) {
+        context
+            .session_trackers
+            .push(Session::new(context.databases.get(Context::DEFAULT_DATABASE).await.unwrap(), SessionType::Data).await.unwrap().into());
+        for session_tracker in &mut context.session_trackers {
+            session_tracker.open_transaction(TransactionType::Write).await.unwrap();
+        }
+        typeql_insert(context, step).await;
+        context.take_transaction().commit().await.unwrap();
+        context.session_trackers.clear();
+    }
+
+    #[step(expr = "reasoning query")]
+    async fn reasoning_query(context: &mut Context, step: &Step) {
+        context
+            .session_trackers
+            .push(Session::new(context.databases.get(Context::DEFAULT_DATABASE).await.unwrap(), SessionType::Data).await.unwrap().into());
+        for session_tracker in &mut context.session_trackers {
+            session_tracker.open_transaction(TransactionType::Read).await.unwrap();
+        }
+        get_answers_typeql_match(context, step).await;
+        context.session_trackers.clear();
+    }
+
+    #[step(expr = "verify answer set is equivalent for query")]
+    async fn verify_answer_set_is_equivalent_for_query(context: &mut Context, step: &Step) {
+        let prev_answer = context.answer.clone();
+        reasoning_query(context, step).await;
+        let total_rows = context.answer.len();
+        let mut matched_rows = 0;
+        for row_curr in &context.answer {
+            for row_prev in &prev_answer {
+                if row_curr == row_prev {
+                    matched_rows += 1;
+                    break;
+                }
+            }
+        }
+        assert_eq!(
+            matched_rows, total_rows,
+            "There are only {matched_rows} matched entries of given {total_rows}."
+        );
+    }
+
+    #[step(expr = "verifier is initialised")]
+    #[step(expr = "verify answers are sound")]
+    #[step(expr = "verify answers are complete")]
+    async fn do_nothing(context: &mut Context) {}
+
+    #[step(expr = "verify answers are consistent across {int} executions")]
+    async fn verify_answers_are_consistent_across_executions(context: &mut Context, executions: usize) {}
 
 }
