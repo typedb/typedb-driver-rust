@@ -20,7 +20,7 @@
  */
 
 pub mod explanation;
-mod logic;
+mod logic_manager;
 mod rule;
 
-pub use self::{explanation::Explanation, logic::LogicManager, rule::Rule};
+pub use self::{explanation::Explanation, logic_manager::LogicManager, rule::Rule};
