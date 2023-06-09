@@ -36,13 +36,13 @@ use crate::{
         Thing, ThingType, ValueType,
     },
     connection::message::{
-        ConceptRequest, ConceptResponse, LogicRequest, LogicResponse, QueryRequest, QueryResponse, Request, Response, RoleTypeRequest,
-        RoleTypeResponse, ThingRequest, ThingResponse, ThingTypeRequest, ThingTypeResponse, TransactionRequest,
-        TransactionResponse,
+        ConceptRequest, ConceptResponse, LogicRequest, LogicResponse, QueryRequest, QueryResponse, Request, Response,
+        RoleTypeRequest, RoleTypeResponse, ThingRequest, ThingResponse, ThingTypeRequest, ThingTypeResponse,
+        TransactionRequest, TransactionResponse,
     },
     error::{ConnectionError, InternalError},
     logic::Explanation,
-    Rule, SchemaException,
+    Rule,
 };
 
 impl TryIntoProto<server_manager::all::Req> for Request {

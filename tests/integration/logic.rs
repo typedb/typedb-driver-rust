@@ -28,6 +28,7 @@ use typedb_client::{
     answer::ConceptMap,
     concept::{Attribute, Concept, Value},
     logic::Explanation,
+    transaction::concept::api::ThingAPI,
     Connection, DatabaseManager, Options, Session,
     SessionType::{Data, Schema},
     Transaction,

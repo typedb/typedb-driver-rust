@@ -28,8 +28,7 @@ use self::{concept::ConceptManager, query::QueryManager};
 use crate::{
     common::{Result, TransactionType},
     connection::TransactionStream,
-    LogicManager,
-    Options,
+    LogicManager, Options,
 };
 
 pub struct Transaction<'a> {

@@ -34,7 +34,7 @@ use crate::{
         Thing, ThingType, Transitivity, Value, ValueType,
     },
     logic::Explanation,
-    Options, Rule, SchemaException, SessionType, TransactionType,
+    Options, Rule, SessionType, TransactionType,
 };
 
 #[derive(Debug)]
