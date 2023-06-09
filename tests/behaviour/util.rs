@@ -30,6 +30,7 @@ use typedb_client::{
     concept::{
         Annotation, Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, Value,
     },
+    transaction::concept::api::ThingAPI,
 };
 
 use crate::behaviour::Context;
