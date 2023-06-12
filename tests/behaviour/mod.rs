@@ -159,8 +159,15 @@ impl Context {
         self.insert_thing(var_name, attribute.map(Thing::Attribute));
     }
 
+
     pub async fn get_rule(&self, label: String) -> TypeDBResult<Rule> {
         self.transaction().logic().get_rule(label).await
+    }
+
+    pub fn set_connection(&mut self, new_connection: Connection) {
+        self.connection = new_connection;
+        self.databases = DatabaseManager::new(self.connection.clone());
+        self.users = UserManager::new(self.connection.clone());
     }
 }
 

@@ -30,17 +30,19 @@ generic_step_impl! {
 
     #[step(expr = "connection opens with authentication: {word}, {word}")]
     async fn connection_opens_with_authentication(context: &mut Context, login: String, password: String) {
-        context.connection = Connection::new_encrypted(
-            &["localhost:11729", "localhost:21729", "localhost:31729"],
-            Credential::with_tls(
-                &login.as_str(),
-                &password.as_str(),
-                Some(&PathBuf::from(
-                    std::env::var("ROOT_CA")
-                        .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
-                )),
-            ).unwrap(),
-        ).unwrap();
+        context.set_connection(
+            Connection::new_encrypted(
+                &["localhost:11729", "localhost:21729", "localhost:31729"],
+                Credential::with_tls(
+                    &login.as_str(),
+                    &password.as_str(),
+                    Some(&PathBuf::from(
+                        std::env::var("ROOT_CA")
+                            .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
+                    )),
+                ).unwrap(),
+            ).unwrap()
+        );
     }
 
     #[step(expr = "users get all")]
