@@ -110,24 +110,7 @@ async fn key_values_equal(context: &Context, expected_label_and_value: &str, ans
 }
 
 fn labels_equal(expected_label: &str, answer: &Concept) -> bool {
-    let mut binding = String::new();
-    let label = match answer {
-        Concept::EntityType(type_) => &type_.label,
-        Concept::RoleType(RoleType { label, .. }) => {
-            binding = format!("{label}");
-            &binding
-        }
-        Concept::Entity(Entity { type_: EntityType { label, .. }, .. }) => label,
-        Concept::Relation(Relation { type_: RelationType { label, .. }, .. }) => label,
-        Concept::RootThingType(_) => {
-            binding = String::from("thing");
-            &binding
-        }
-        Concept::RelationType(RelationType { label, .. }) => label,
-        Concept::AttributeType(AttributeType { label, .. }) => label,
-        Concept::Attribute(Attribute { type_: AttributeType { label, .. }, .. }) => label,
-    };
-    label == expected_label
+    answer.label() == expected_label
 }
 
 fn values_equal(expected_label_and_value: &str, answer: &Concept) -> bool {
