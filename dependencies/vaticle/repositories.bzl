@@ -38,10 +38,8 @@ def vaticle_typedb_common():
 def vaticle_typedb_protocol():
     git_repository(
         name = "vaticle_typedb_protocol",
-        remote = "https://github.com/dmitrii-ubskii/typedb-protocol",
-        branch = "api-rearchitecture",  # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_typedb_protocol
-#        remote = "https://github.com/vaticle/typedb-protocol",
-#        commit = "aac5578529424bab662b7a66ca1e0419986ddc9d",  # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_typedb_protocol
+        remote = "https://github.com/vaticle/typedb-protocol",
+        commit = "aac5578529424bab662b7a66ca1e0419986ddc9d",  # sync-marker: do not remove this comment, this is used for sync-dependencies by @vaticle_typedb_protocol
     )
 
 def vaticle_typedb_behaviour():

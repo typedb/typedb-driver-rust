@@ -19,9 +19,6 @@
  * under the License.
  */
 
-// use crate::concept::Concept;
-// use crate::numeric::Numeric;
-
 use crate::{answer::Numeric, concept::Concept};
 
 #[derive(Clone, Debug)]

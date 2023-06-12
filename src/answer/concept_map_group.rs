@@ -26,11 +26,3 @@ pub struct ConceptMapGroup {
     pub owner: Concept,
     pub concept_maps: Vec<ConceptMap>,
 }
-
-// impl Clone for ConceptMapGroup {
-//     fn clone(&self) -> Self {
-//         let owner = self.owner.clone();
-//         let concept_maps = self.concept_maps.clone();
-//         Self { owner, concept_maps }
-//     }
-// }
