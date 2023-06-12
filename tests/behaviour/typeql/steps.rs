@@ -21,14 +21,15 @@
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
-use typedb_client::{
-    answer::Numeric,
-    Result as TypeDBResult,
-};
+use typedb_client::{answer::Numeric, Result as TypeDBResult};
 use typeql_lang::parse_query;
 use util::{equals_approximate, iter_map_table, match_answer_concept_map, match_templated_answer};
 
-use crate::{assert_err, behaviour::{util, Context}, generic_step_impl};
+use crate::{
+    assert_err,
+    behaviour::{util, Context},
+    generic_step_impl,
+};
 
 generic_step_impl! {
     #[step(expr = "typeql define")]

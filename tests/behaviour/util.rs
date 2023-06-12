@@ -54,9 +54,12 @@ pub async fn match_answer_concept_map(
     answer_identifiers: &HashMap<&String, &String>,
     answer: &ConceptMap,
 ) -> bool {
-    stream::iter(answer_identifiers.keys()).all(|key| async { answer.map.contains_key(key.clone())
-        && match_answer_concept(context, answer_identifiers.get(key).unwrap(), answer.get(key).unwrap()).await }
-    ).await
+    stream::iter(answer_identifiers.keys())
+        .all(|key| async {
+            answer.map.contains_key(key.clone())
+                && match_answer_concept(context, answer_identifiers.get(key).unwrap(), answer.get(key).unwrap()).await
+        })
+        .await
 }
 
 pub async fn match_answer_concept(context: &Context, answer_identifier: &String, answer: &Concept) -> bool {
@@ -148,7 +151,11 @@ fn format_datetime(datetime: &NaiveDateTime) -> String {
     }
 }
 
-pub async fn match_templated_answer(context: &mut Context, step: &Step, answer: &ConceptMap) -> TypeDBResult<Vec<ConceptMap>> {
+pub async fn match_templated_answer(
+    context: &mut Context,
+    step: &Step,
+    answer: &ConceptMap,
+) -> TypeDBResult<Vec<ConceptMap>> {
     let query = apply_query_template(step.docstring().unwrap(), answer);
     let parsed = parse_query(&query)?;
     Ok(context.transaction().query().match_(&parsed.to_string())?.try_collect::<Vec<_>>().await?)
