@@ -80,21 +80,14 @@ swig_java(
     package = "com.vaticle.typedb.client.jni",
 )
 
-cc_binary(
-    name = "libtypedb_client_java_jni.dylib",
-    linkopts = ["-Wl,-install_name,libtypedb_client_java_jni.dylib"],
-    linkshared = True,
-    deps = [":typedb_client_java", ":typedb_client_h"],
-    srcs = [":typedb_client_java"],
-)
-
 java_binary(
     name = "jni-test",
     srcs = ["Main.java"],
     main_class = "Main",
-    deps = [":libtypedb_client_java_jni.dylib"],
-    #jvm_flags = ["-Djava.library.path=/private/var/tmp/_bazel_dmitriiubskii/ac34f3129c829d86eb8439970c02f532/execroot/__main__/bazel-out/darwin_arm64-fastbuild/bin"],
-    #jvm_flags = ["-Djava.library.path=bazel-bin"],
+    deps = [
+        ":typedb_client_java",
+        ":libtypedb_client_java.so",
+    ],
 )
 
 assemble_crate(
