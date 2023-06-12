@@ -133,8 +133,7 @@ fn labels_equal(expected_label: &str, answer: &Concept) -> bool {
 fn values_equal(expected_label_and_value: &str, answer: &Concept) -> bool {
     let identifiers: Vec<&str> = expected_label_and_value.splitn(2, ":").collect();
     assert_eq!(identifiers.len(), 2, "Unexpected table cell format: {expected_label_and_value}.");
-    let Concept::Attribute(Attribute { value, .. }) = answer else { return false; }
-    // should probably be `unreachable!()`, because if that's not an Attribute something went horribly wrong
+    let Concept::Attribute(Attribute { value, .. }) = answer else { unreachable!() };
     value_equals_str(value, identifiers[1])
 }
 
