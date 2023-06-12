@@ -37,3 +37,9 @@ pub use self::{
     transaction::Transaction,
     user::{User, UserManager},
 };
+
+#[no_mangle]
+pub extern "C" fn hello() {
+	println!("Hello from Rust!");
+}
+
