@@ -23,7 +23,10 @@ use std::collections::HashMap;
 
 use chrono::{NaiveDateTime, NaiveTime};
 use cucumber::gherkin::Step;
-use futures::{TryFutureExt, TryStreamExt};
+use futures::{
+    stream::{self, StreamExt},
+    TryFutureExt, TryStreamExt,
+};
 use regex::{Captures, Regex};
 use typedb_client::{
     answer::ConceptMap,
@@ -49,14 +52,9 @@ pub async fn match_answer_concept_map(
     answer_identifiers: &HashMap<&String, &String>,
     answer: &ConceptMap,
 ) -> bool {
-    for key in answer_identifiers.keys() {
-        if !(answer.map.contains_key(key.clone())
-            && match_answer_concept(context, answer_identifiers.get(key).unwrap(), answer.get(key).unwrap()).await)
-        {
-            return false;
-        }
-    }
-    true
+    stream::iter(answer_identifiers.keys()).all(|key| async { answer.map.contains_key(key.clone())
+        && match_answer_concept(context, answer_identifiers.get(key).unwrap(), answer.get(key).unwrap()).await }
+    ).await
 }
 
 pub async fn match_answer_concept(context: &Context, answer_identifier: &String, answer: &Concept) -> bool {
@@ -152,25 +150,9 @@ fn value_equals_str(value: &Value, expected: &str) -> bool {
     }
 }
 
-fn get_iid(concept: &Concept) -> String {
-    let iid = match concept {
-        Concept::Entity(Entity { iid, .. }) => iid,
-        Concept::Attribute(Attribute { iid, .. }) => iid,
-        Concept::Relation(Relation { iid, .. }) => iid,
-        _ => unreachable!("Unexpected Concept type: {concept:?}"),
-    };
-    format!("0x{iid}")
-}
-
 pub fn equals_approximate(first: f64, second: f64) -> bool {
     const EPS: f64 = 1e-4;
     return (first - second).abs() < EPS;
-}
-
-pub fn apply_query_template(query_template: &String, answer: &ConceptMap) -> String {
-    let re = Regex::new(r"<answer\.(.+?)\.iid>").unwrap();
-    re.replace_all(query_template, |caps: &Captures| format!("{}", get_iid(&answer.map.get(&caps[1]).unwrap())))
-        .to_string()
 }
 
 fn format_datetime(datetime: &NaiveDateTime) -> String {
@@ -179,4 +161,20 @@ fn format_datetime(datetime: &NaiveDateTime) -> String {
     } else {
         format!("{0}", datetime)
     }
+}
+
+pub fn apply_query_template(query_template: &String, answer: &ConceptMap) -> String {
+    let re = Regex::new(r"<answer\.(.+?)\.iid>").unwrap();
+    re.replace_all(query_template, |caps: &Captures| format!("{}", get_iid(&answer.map.get(&caps[1]).unwrap())))
+        .to_string()
+}
+
+fn get_iid(concept: &Concept) -> String {
+    let iid = match concept {
+        Concept::Entity(Entity { iid, .. }) => iid,
+        Concept::Attribute(Attribute { iid, .. }) => iid,
+        Concept::Relation(Relation { iid, .. }) => iid,
+        _ => unreachable!("Unexpected Concept type: {concept:?}"),
+    };
+    format!("0x{iid}")
 }
