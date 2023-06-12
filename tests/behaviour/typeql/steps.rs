@@ -239,14 +239,10 @@ generic_step_impl! {
     }
 
     #[step(expr = "get answers of typeql match group")]
-    async fn get_answers_typeql_match_group(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        assert!(parsed.is_ok());
-        let matched = context.transaction().query().match_group(&parsed.unwrap().to_string());
-        assert!(matched.is_ok());
-        let res = matched.unwrap().try_collect::<Vec<_>>().await;
-        assert!(res.is_ok());
-        context.answer_group = res.unwrap();
+    async fn get_answers_typeql_match_group(context: &mut Context, step: &Step) -> TypeDBResult {
+        let parsed = parse_query(step.docstring().unwrap())?;
+        context.answer_group = context.transaction().query().match_group(&parsed.to_string())?.try_collect::<Vec<_>>().await?;
+        Ok(())
     }
 
     #[step(expr = "typeql match group; throws exception")]
