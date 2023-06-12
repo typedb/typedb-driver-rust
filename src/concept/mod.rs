@@ -45,13 +45,13 @@ pub enum Concept {
 }
 
 impl Concept {
-    pub fn label(&self) -> String {
+    pub fn type_label(&self) -> String {
         match self {
             Concept::EntityType(type_) => type_.label.clone(),
             Concept::RoleType(RoleType { label, .. }) => format!("{label}"),
             Concept::Entity(Entity { type_: EntityType { label, .. }, .. }) => label.clone(),
             Concept::Relation(Relation { type_: RelationType { label, .. }, .. }) => label.clone(),
-            Concept::RootThingType(_) => String::from("thing"),
+            Concept::RootThingType(_) => RootThingType::LABEL.to_string(),
             Concept::RelationType(RelationType { label, .. }) => label.clone(),
             Concept::AttributeType(AttributeType { label, .. }) => label.clone(),
             Concept::Attribute(Attribute { type_: AttributeType { label, .. }, .. }) => label.clone(),
