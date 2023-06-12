@@ -187,3 +187,7 @@ impl From<std::io::Error> for Error {
         Self::Other(err.to_string())
     }
 }
+
+impl From<typeql_lang::common::Error> for Error {
+    fn from(err: typeql_lang::common::Error) -> Self { Self::Other(err.to_string()) }
+}

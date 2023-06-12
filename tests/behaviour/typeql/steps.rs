@@ -20,156 +20,96 @@
  */
 
 use cucumber::{gherkin::Step, given, then, when};
-use futures::{TryFutureExt, TryStreamExt};
-use typedb_client::answer::Numeric;
-use typeql_lang::parse_query;
-use util::{apply_query_template, equals_approximate, iter_map_table, match_answer_concept_map};
-
-use crate::{
-    behaviour::{util, Context},
-    generic_step_impl,
+use futures::TryStreamExt;
+use typedb_client::{
+    answer::Numeric,
+    Result as TypeDBResult,
 };
+use typeql_lang::parse_query;
+use util::{equals_approximate, iter_map_table, match_answer_concept_map, match_templated_answer};
+
+use crate::{assert_err, behaviour::{util, Context}, generic_step_impl};
 
 generic_step_impl! {
     #[step(expr = "typeql define")]
-    async fn typeql_define(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        assert!(parsed.is_ok());
-        let res = context.transaction().query().define(&parsed.unwrap().to_string()).await;
-        assert!(res.is_ok());
+    async fn typeql_define(context: &mut Context, step: &Step) -> TypeDBResult {
+        let parsed = parse_query(step.docstring().unwrap())?;
+        context.transaction().query().define(&parsed.to_string()).await
     }
 
     #[step(expr = "typeql define; throws exception")]
     async fn typeql_define_throws(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        if parsed.is_ok() {
-            let res = context.transaction().query().define(&parsed.unwrap().to_string()).await;
-            assert!(res.is_err());
-        }
+        assert_err!(typeql_define(context, step).await);
     }
 
     #[step(expr = "typeql define; throws exception containing {string}")]
     async fn typeql_define_throws_exception(context: &mut Context, step: &Step, exception: String) {
-        let result = async { parse_query(step.docstring().unwrap()).map_err(|error| error.to_string()) }
-            .and_then(|parsed| async move {
-                context.transaction().query().define(&parsed.to_string()).await.map_err(|error| error.to_string())
-            })
-            .await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains(&exception));
+        assert!(typeql_define(context, step).await.unwrap_err().to_string().contains(&exception));
     }
 
     #[step(expr = "typeql undefine")]
-    async fn typeql_undefine(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        assert!(parsed.is_ok());
-        let res = context.transaction().query().undefine(&parsed.unwrap().to_string()).await;
-        assert!(res.is_ok());
+    async fn typeql_undefine(context: &mut Context, step: &Step) -> TypeDBResult {
+        let parsed = parse_query(step.docstring().unwrap())?;
+        context.transaction().query().undefine(&parsed.to_string()).await
     }
 
     #[step(expr = "typeql undefine; throws exception")]
     async fn typeql_undefine_throws(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        if parsed.is_ok() {
-            let res = context.transaction().query().undefine(&parsed.unwrap().to_string()).await;
-            assert!(res.is_err());
-        }
+        assert_err!(typeql_undefine(context, step).await);
     }
 
     #[step(expr = "typeql insert")]
-    async fn typeql_insert(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        assert!(parsed.is_ok());
-        let inserted = context.transaction().query().insert(&parsed.unwrap().to_string());
-        assert!(inserted.is_ok());
-        let res = inserted.unwrap().try_collect::<Vec<_>>().await;
-        assert!(res.is_ok());
+    async fn typeql_insert(context: &mut Context, step: &Step) -> TypeDBResult {
+        let parsed = parse_query(step.docstring().unwrap())?;
+        context.transaction().query().insert(&parsed.to_string())?.try_collect::<Vec<_>>().await?;
+        Ok(())
     }
 
     #[step(expr = "typeql insert; throws exception")]
     async fn typeql_insert_throws(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        if parsed.is_ok() {
-            let inserted = context.transaction().query().insert(&parsed.unwrap().to_string());
-            if inserted.is_ok() {
-                let res = inserted.unwrap().try_collect::<Vec<_>>().await;
-                assert!(res.is_err());
-            }
-        }
+        assert_err!(typeql_insert(context, step).await);
     }
 
     #[step(expr = "typeql insert; throws exception containing {string}")]
     async fn typeql_insert_throws_exception(context: &mut Context, step: &Step, exception: String) {
-        let result = async {
-            parse_query(step.docstring().unwrap()).map_err(|error| error.to_string()).and_then(|parsed| {
-                context.transaction().query().insert(&parsed.to_string()).map_err(|error| error.to_string())
-            })
-        }
-        .and_then(|inserted| async { inserted.try_collect::<Vec<_>>().await.map_err(|error| error.to_string()) })
-        .await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains(&exception));
+        assert!(typeql_insert(context, step).await.unwrap_err().to_string().contains(&exception));
     }
 
     #[step(expr = "typeql delete")]
-    async fn typeql_delete(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        assert!(parsed.is_ok());
-        let res = context.transaction().query().delete(&parsed.unwrap().to_string()).await;
-        assert!(res.is_ok());
+    async fn typeql_delete(context: &mut Context, step: &Step) -> TypeDBResult {
+        let parsed = parse_query(step.docstring().unwrap())?;
+        context.transaction().query().delete(&parsed.to_string()).await
     }
 
     #[step(expr = "typeql delete; throws exception")]
     async fn typeql_delete_throws(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        if parsed.is_ok() {
-            let res = context.transaction().query().delete(&parsed.unwrap().to_string()).await;
-            assert!(res.is_err());
-        }
+        assert_err!(typeql_delete(context, step).await);
     }
 
     #[step(expr = "typeql update")]
-    async fn typeql_update(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        assert!(parsed.is_ok());
-        let updated = context.transaction().query().update(&parsed.unwrap().to_string());
-        assert!(updated.is_ok());
-        let res = updated.unwrap().try_collect::<Vec<_>>().await;
-        assert!(res.is_ok());
+    async fn typeql_update(context: &mut Context, step: &Step) -> TypeDBResult {
+        let parsed = parse_query(step.docstring().unwrap())?;
+        context.transaction().query().update(&parsed.to_string())?.try_collect::<Vec<_>>().await?;
+        Ok(())
     }
 
     #[step(expr = "typeql update; throws exception")]
     async fn typeql_update_throws(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        if parsed.is_ok() {
-            let updated = context.transaction().query().update(&parsed.unwrap().to_string());
-            if updated.is_ok() {
-                let res = updated.unwrap().try_collect::<Vec<_>>().await;
-                assert!(res.is_err());
-            }
-        }
+        assert_err!(typeql_update(context, step).await);
     }
 
     #[step(expr = "get answers of typeql match")]
-    async fn get_answers_typeql_match(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        assert!(parsed.is_ok());
-        let stream = context.transaction().query().match_(&parsed.unwrap().to_string());
-        assert!(stream.is_ok());
-        let res = stream.unwrap().try_collect::<Vec<_>>().await;
-        assert!(res.is_ok());
-        context.answer = res.unwrap();
+    async fn get_answers_typeql_match(context: &mut Context, step: &Step) -> TypeDBResult {
+        let parsed = parse_query(step.docstring().unwrap())?;
+        context.answer = context.transaction().query().match_(&parsed.to_string())?.try_collect::<Vec<_>>().await?;
+        Ok(())
     }
 
     #[step(expr = "get answers of typeql insert")]
-    async fn get_answers_typeql_insert(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        assert!(parsed.is_ok());
-        let inserted = context.transaction().query().insert(&parsed.unwrap().to_string());
-        assert!(inserted.is_ok());
-        let res = inserted.unwrap().try_collect::<Vec<_>>().await;
-        assert!(res.is_ok());
-        context.answer = res.unwrap();
+    async fn get_answers_typeql_insert(context: &mut Context, step: &Step) -> TypeDBResult {
+        let parsed = parse_query(step.docstring().unwrap())?;
+        context.answer = context.transaction().query().insert(&parsed.to_string())?.try_collect::<Vec<_>>().await?;
+        Ok(())
     }
 
     #[step(expr = "answer size is: {int}")]
@@ -230,31 +170,18 @@ generic_step_impl! {
     }
 
     #[step(expr = "each answer satisfies")]
-    async fn each_answer_satisfies(context: &mut Context, step: &Step) {
-        for answer in &context.answer {
-            let query = apply_query_template(step.docstring().unwrap(), answer);
-            let parsed = parse_query(&query);
-            assert!(parsed.is_ok());
-            let stream = context.transaction().query().match_(&parsed.unwrap().to_string());
-            assert!(stream.is_ok());
-            let res = stream.unwrap().try_collect::<Vec<_>>().await;
-            assert!(res.is_ok());
-            assert_eq!(res.unwrap().len(), 1);
+    async fn each_answer_satisfies(context: &mut Context, step: &Step) -> TypeDBResult {
+        for answer in context.answer.clone() {
+            let answer = match_templated_answer(context, step, &answer).await?;
+            assert_eq!(answer.len(), 1);
         }
+        Ok(())
     }
 
     #[step(expr = "templated typeql match; throws exception")]
     async fn templated_typeql_match_throws(context: &mut Context, step: &Step) {
-        for answer in &context.answer {
-            let query = apply_query_template(step.docstring().unwrap(), answer);
-            let parsed = parse_query(&query);
-            if parsed.is_ok() {
-                let stream = context.transaction().query().match_(&parsed.unwrap().to_string());
-                if stream.is_ok() {
-                    let res = stream.unwrap().try_collect::<Vec<_>>().await;
-                    assert!(res.is_err());
-                }
-            }
+        for answer in context.answer.clone() {
+            assert_err!(match_templated_answer(context, step, &answer).await);
         }
     }
 
@@ -279,12 +206,15 @@ generic_step_impl! {
     }
 
     #[step(expr = "get answer of typeql match aggregate")]
-    async fn get_answers_typeql_match_aggregate(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        assert!(parsed.is_ok());
-        let res = context.transaction().query().match_aggregate(&parsed.unwrap().to_string()).await;
-        assert!(res.is_ok());
-        context.numeric_answer = Some(res.unwrap());
+    async fn get_answers_typeql_match_aggregate(context: &mut Context, step: &Step) -> TypeDBResult {
+        let parsed = parse_query(step.docstring().unwrap())?;
+        context.numeric_answer = Some(context.transaction().query().match_aggregate(&parsed.to_string()).await?);
+        Ok(())
+    }
+
+    #[step(expr = "typeql match aggregate; throws exception")]
+    async fn typeql_match_aggregate_throws(context: &mut Context, step: &Step) {
+        assert_err!(get_answers_typeql_match_aggregate(context, step).await);
     }
 
     #[step(expr = "aggregate value is: {float}")]
@@ -306,24 +236,4 @@ generic_step_impl! {
         assert!(context.numeric_answer.is_some(), "There is no stored answer from the previous query.");
         assert!(matches!(context.numeric_answer.as_ref().unwrap(), Numeric::NaN));
     }
-
-    #[step(expr = "typeql match aggregate; throws exception")]
-    async fn typeql_match_aggregate_throws(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        if parsed.is_ok() {
-            let res = context.transaction().query().match_aggregate(&parsed.unwrap().to_string()).await;
-            assert!(res.is_err());
-        }
-    }
-
-    // #[step(expr = "get answers of typeql match group")]
-    // async fn get_answers_typeql_match_group(context: &mut Context, step: &Step) {
-    //     let parsed = parse_query(step.docstring().unwrap());
-    //     assert!(parsed.is_ok());
-    //     let stream = context.transaction().query().match_(&parsed.unwrap().to_string());
-    //     assert!(stream.is_ok());
-    //     let res = stream.unwrap().try_collect::<Vec<_>>().await;
-    //     assert!(res.is_ok());
-    //     context.answer = res.unwrap();
-    // }
 }

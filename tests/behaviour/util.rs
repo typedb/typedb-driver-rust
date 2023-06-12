@@ -34,7 +34,9 @@ use typedb_client::{
         Annotation, Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, Value,
     },
     transaction::concept::api::ThingAPI,
+    Result as TypeDBResult,
 };
+use typeql_lang::parse_query;
 
 use crate::behaviour::Context;
 
@@ -163,7 +165,13 @@ fn format_datetime(datetime: &NaiveDateTime) -> String {
     }
 }
 
-pub fn apply_query_template(query_template: &String, answer: &ConceptMap) -> String {
+pub async fn match_templated_answer(context: &mut Context, step: &Step, answer: &ConceptMap) -> TypeDBResult<Vec<ConceptMap>> {
+    let query = apply_query_template(step.docstring().unwrap(), answer);
+    let parsed = parse_query(&query)?;
+    Ok(context.transaction().query().match_(&parsed.to_string())?.try_collect::<Vec<_>>().await?)
+}
+
+fn apply_query_template(query_template: &String, answer: &ConceptMap) -> String {
     let re = Regex::new(r"<answer\.(.+?)\.iid>").unwrap();
     re.replace_all(query_template, |caps: &Captures| format!("{}", get_iid(&answer.map.get(&caps[1]).unwrap())))
         .to_string()
