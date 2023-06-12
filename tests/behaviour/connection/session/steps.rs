@@ -113,5 +113,4 @@ generic_step_impl! {
         // }
         // optionSetters.get(option).accept(sessionOptions, value);
     }
-
 }
