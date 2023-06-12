@@ -19,8 +19,6 @@
  * under the License.
  */
 
-use std::collections::HashMap;
-
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
@@ -238,15 +236,6 @@ generic_step_impl! {
     async fn aggregate_answer_is_nan(context: &mut Context) {
         assert!(context.numeric_answer.is_some(), "There is no stored answer from the previous query.");
         assert!(matches!(context.numeric_answer.as_ref().unwrap(), Numeric::NaN));
-    }
-
-    #[step(expr = "typeql match aggregate; throws exception")]
-    async fn typeql_match_aggregate_throws(context: &mut Context, step: &Step) {
-        let parsed = parse_query(step.docstring().unwrap());
-        if parsed.is_ok() {
-            let res = context.transaction().query().match_aggregate(&parsed.unwrap().to_string()).await;
-            assert!(res.is_err());
-        }
     }
 
     #[step(expr = "get answers of typeql match group")]
