@@ -30,9 +30,7 @@ use futures::{
 use regex::{Captures, Regex};
 use typedb_client::{
     answer::ConceptMap,
-    concept::{
-        Annotation, Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, Value,
-    },
+    concept::{Annotation, Attribute, Concept, Entity, Relation, Value},
     transaction::concept::api::ThingAPI,
     Result as TypeDBResult,
 };

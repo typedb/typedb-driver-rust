@@ -31,7 +31,7 @@ use std::collections::HashMap;
 use cucumber::{StatsWriter, World};
 use futures::future::try_join_all;
 use typedb_client::{
-    answer::{ConceptMap, Numeric, Numeric::NaN},
+    answer::{ConceptMap, Numeric},
     concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Thing},
     Connection, Database, DatabaseManager, Result as TypeDBResult, Transaction,
 };

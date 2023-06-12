@@ -72,7 +72,7 @@ error_messages! { InternalError
         6: "Value '{}' is out of bounds for enum '{}'.",
 }
 
-#[derive(Debug)]  // FIXME: add Clone, PartialEq, Eq after adding them for `typeql_lang::common::Error`
+#[derive(Debug)] // FIXME: add Clone, PartialEq, Eq after adding them for `typeql_lang::common::Error`
 pub enum Error {
     Connection(ConnectionError),
     Internal(InternalError),
@@ -96,7 +96,7 @@ impl StdError for Error {
         match self {
             Self::Connection(error) => Some(error),
             Self::Internal(error) => Some(error),
-            Self::TypeQL(_) => None,    // FIXME after implementing `std::error::Error` for `typeql_lang::common::Error`
+            Self::TypeQL(_) => None, // FIXME after implementing `std::error::Error` for `typeql_lang::common::Error`
             Self::Other(_) => None,
         }
     }

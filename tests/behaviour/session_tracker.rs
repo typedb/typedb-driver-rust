@@ -65,10 +65,6 @@ impl SessionTracker {
         Ok(())
     }
 
-    pub fn has_transactions(&self) -> bool {
-        !self.transactions.is_empty()
-    }
-
     pub fn transaction(&self) -> &Transaction {
         // SAFETY: the returned transaction borrows SessionTracker, which from the POV of lifetimes is equivalent to
         // borrowing SessionTracker::session.
