@@ -38,5 +38,4 @@ async fn test() {
     assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/match.feature").await);
     // assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/get.feature").await);
     assert!(Context::test("../vaticle_typedb_behaviour/typeql/language/rule-validation.feature").await);
-    // assert!(Context::test("tests/behaviour/typeql/debug.feature").await);
 }
