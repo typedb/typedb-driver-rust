@@ -45,7 +45,7 @@ pub struct Context {
     pub session_trackers: Vec<SessionTracker>,
     pub things: HashMap<String, Option<Thing>>,
     pub answer: Vec<ConceptMap>,
-    pub numeric_answer: Numeric,
+    pub numeric_answer: Option<Numeric>,
 }
 
 impl Context {
@@ -162,7 +162,7 @@ impl Default for Context {
             session_trackers: Vec::new(),
             things: HashMap::new(),
             answer: Vec::new(),
-            numeric_answer: NaN,
+            numeric_answer: None,
         }
     }
 }

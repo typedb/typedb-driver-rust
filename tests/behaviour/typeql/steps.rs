@@ -284,14 +284,15 @@ generic_step_impl! {
         assert!(parsed.is_ok());
         let res = context.transaction().query().match_aggregate(&parsed.unwrap().to_string()).await;
         assert!(res.is_ok());
-        context.numeric_answer = res.unwrap();
+        context.numeric_answer = Some(res.unwrap());
     }
 
     #[step(expr = "aggregate value is: {float}")]
     async fn aggregate_value(context: &mut Context, expected_answer: f64) {
-        let answer: f64 = match context.numeric_answer {
-            Numeric::Long(value) => value as f64,
-            Numeric::Double(value) => value,
+        assert!(context.numeric_answer.is_some(), "There is no stored answer from the previous query.");
+        let answer: f64 = match context.numeric_answer.as_ref().unwrap() {
+            Numeric::Long(value) => *value as f64,
+            Numeric::Double(value) => *value,
             Numeric::NaN => unreachable!("Last answer in NaN while expected answer is not."),
         };
         assert!(
@@ -302,7 +303,8 @@ generic_step_impl! {
 
     #[step(expr = "aggregate answer is not a number")]
     async fn aggregate_answer_is_nan(context: &mut Context) {
-        assert!(matches!(context.numeric_answer, Numeric::NaN));
+        assert!(context.numeric_answer.is_some(), "There is no stored answer from the previous query.");
+        assert!(matches!(context.numeric_answer.as_ref().unwrap(), Numeric::NaN));
     }
 
     #[step(expr = "typeql match aggregate; throws exception")]
