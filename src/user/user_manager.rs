@@ -66,14 +66,43 @@ impl UserManager {
         Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
 
-    // pub fn all() -> Vec<User> {
-    //
-    // }
-    // async fn run_failsafe<F, P, R>(&self, name: String, task: F) -> Result<R>
-    //     where
-    //         F: Fn(ServerDatabase, ServerConnection, bool) -> P,
-    //         P: Future<Output = Result<R>>,
-    // {
-    //     Database::get(name, self.connection.clone()).await?.run_failsafe(&task).await
-    // }
+    pub async fn create(&self, username: String, password: String) -> Result<()> {
+        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
+        for server_connection in self.connection.connections() {
+            match server_connection.create_user(username.clone(), password.clone()).await {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
+            }
+        }
+        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+    }
+
+    pub async fn delete(&self, username: String) -> Result<()> {
+        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
+        for server_connection in self.connection.connections() {
+            match server_connection.delete_user(username.clone()).await {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
+            }
+        }
+        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+    }
+
+    pub async fn set_password(&self, username: String, password: String) -> Result<()> {
+        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
+        for server_connection in self.connection.connections() {
+            match server_connection.set_user_password(username.clone(), password.clone()).await {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
+            }
+        }
+        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+    }
+
 }

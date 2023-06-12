@@ -59,11 +59,29 @@ generic_step_impl! {
         assert!(res.unwrap());
     }
 
+    #[step(expr = "users not contains: {word}")]
+    async fn users_not_contains(context: &mut Context, username: String) {
+        let res = context.users.contains(username).await;
+        assert!(res.is_ok(), "{:?}", res.err());
+        assert!(!res.unwrap());
+    }
+
+    #[step(expr = "users create: {word}, {word}")]
+    async fn users_create(context: &mut Context, username: String, password: String) {
+        let res = context.users.create(username, password).await;
+        assert!(res.is_ok(), "{:?}", res.err());
+    }
+
+    #[step(expr = "users password set: {word}, {word}")]
+    async fn users_password_set(context: &mut Context, username: String, password: String) {
+        let res = context.users.set_password(username, password).await;
+        assert!(res.is_ok(), "{:?}", res.err());
+    }
+
     #[step(expr = "users delete: {word}")]
-    async fn user_delete(context: &mut Context, user: String) {
-        // for session_tracker in &mut context.session_trackers {
-        //     session_tracker.open_transaction(type_.transaction_type).await.unwrap();
-        // }
+    async fn user_delete(context: &mut Context, username: String) {
+        let res = context.users.delete(username).await;
+        assert!(res.is_ok(), "{:?}", res.err());
     }
 
 }
