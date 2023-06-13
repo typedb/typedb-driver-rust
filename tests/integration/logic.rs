@@ -21,8 +21,7 @@
 
 use std::collections::HashMap;
 
-use futures::{StreamExt, TryFutureExt, TryStreamExt};
-use regex::internal::Input;
+use futures::{TryFutureExt, TryStreamExt};
 use serial_test::serial;
 use typedb_client::{
     answer::ConceptMap,

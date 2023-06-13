@@ -30,14 +30,3 @@ pub struct Explanation {
     pub condition: ConceptMap,
     pub variable_mapping: HashMap<String, Vec<String>>,
 }
-
-// impl Explanation {
-//     pub(crate) fn new(
-//         rule: Rule,
-//         conclusion: ConceptMap,
-//         condition: ConceptMap,
-//         variable_mapping: HashMap<String, Vec<String>>,
-//     ) -> Self {
-//         Self { rule, conclusion, condition, variable_mapping }
-//     }
-// }
