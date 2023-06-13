@@ -26,23 +26,10 @@ use std::{
 
 use crate::concept::Concept;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ConceptMap {
     pub map: HashMap<String, Concept>,
     pub explainables: Option<Explainables>,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Explainables {
-    pub relations: HashMap<String, Explainable>,
-    pub attributes: HashMap<String, Explainable>,
-    pub ownerships: HashMap<(String, String), Explainable>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Explainable {
-    pub conjunction: String,
-    pub id: i64,
 }
 
 impl ConceptMap {
@@ -56,16 +43,6 @@ impl ConceptMap {
 
     pub fn concepts_to_vec(&self) -> Vec<&Concept> {
         self.concepts().collect::<Vec<&Concept>>()
-    }
-}
-
-impl Clone for ConceptMap {
-    fn clone(&self) -> Self {
-        let mut map = HashMap::with_capacity(self.map.len());
-        for (k, v) in &self.map {
-            map.insert(k.clone(), v.clone());
-        }
-        Self { map, explainables: self.explainables.clone() }
     }
 }
 
@@ -92,6 +69,13 @@ impl IntoIterator for ConceptMap {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Explainables {
+    pub relations: HashMap<String, Explainable>,
+    pub attributes: HashMap<String, Explainable>,
+    pub ownerships: HashMap<(String, String), Explainable>,
+}
+
 impl Explainables {
     pub(crate) fn new(
         relations: HashMap<String, Explainable>,
@@ -102,27 +86,14 @@ impl Explainables {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Explainable {
+    pub conjunction: String,
+    pub id: i64,
+}
+
 impl Explainable {
     pub(crate) fn new(conjunction: String, id: i64) -> Self {
         Self { conjunction, id }
-    }
-}
-
-impl Clone for Explainables {
-    fn clone(&self) -> Self {
-        let mut relations = HashMap::with_capacity(self.relations.len());
-        for (k, v) in &self.relations {
-            relations.insert(k.clone(), v.clone());
-        }
-        let mut attributes = HashMap::with_capacity(self.attributes.len());
-        for (k, v) in &self.attributes {
-            attributes.insert(k.clone(), v.clone());
-        }
-        let mut ownerships = HashMap::with_capacity(self.ownerships.len());
-        for (k, v) in &self.ownerships {
-            ownerships.insert(k.clone(), v.clone());
-        }
-
-        Self { relations, attributes, ownerships }
     }
 }
