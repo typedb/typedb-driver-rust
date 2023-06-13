@@ -111,7 +111,7 @@ async fn key_values_equal(context: &Context, expected_label_and_value: &str, ans
 }
 
 fn labels_equal(expected_label: &str, answer: &Concept) -> bool {
-    answer.type_label() == expected_label
+    answer.type_label_cloned() == expected_label
 }
 
 fn values_equal(expected_label_and_value: &str, answer: &Concept) -> bool {
