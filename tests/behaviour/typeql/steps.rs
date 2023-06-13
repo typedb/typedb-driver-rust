@@ -23,7 +23,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
 use typeql_lang::parse_query;
-use util::{equals_approximate, iter_map_table, match_answer_concept_map, match_templated_answer};
+use util::{equals_approximate, iter_table_map, match_answer_concept_map, match_templated_answer};
 
 use crate::{
     assert_err,
@@ -44,7 +44,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "typeql define; throws exception containing {string}")]
-    async fn typeql_define_throws_exception(context: &mut Context, step: &Step, exception: String) {
+    async fn typeql_define_throws_containing(context: &mut Context, step: &Step, exception: String) {
         assert!(typeql_define(context, step).await.unwrap_err().to_string().contains(&exception));
     }
 
@@ -72,7 +72,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "typeql insert; throws exception containing {string}")]
-    async fn typeql_insert_throws_exception(context: &mut Context, step: &Step, exception: String) {
+    async fn typeql_insert_throws_containing(context: &mut Context, step: &Step, exception: String) {
         assert!(typeql_insert(context, step).await.unwrap_err().to_string().contains(&exception));
     }
 
@@ -125,7 +125,7 @@ generic_step_impl! {
 
     #[step(expr = "uniquely identify answer concepts")]
     async fn uniquely_identify_answer_concepts(context: &mut Context, step: &Step) {
-        let step_table = iter_map_table(step).collect::<Vec<_>>();
+        let step_table = iter_table_map(step).collect::<Vec<_>>();
         let expected_answers = step_table.len();
         let actual_answers = context.answer.len();
         assert_eq!(
@@ -188,7 +188,7 @@ generic_step_impl! {
 
     #[step(expr = "order of answer concepts is")]
     async fn order_of_answer_concept(context: &mut Context, step: &Step) {
-        let step_table = iter_map_table(step).collect::<Vec<_>>();
+        let step_table = iter_table_map(step).collect::<Vec<_>>();
         let expected_answers = step_table.len();
         let actual_answers = context.answer.len();
         assert_eq!(

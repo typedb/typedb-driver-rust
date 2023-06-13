@@ -42,7 +42,7 @@ pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
     step.table().unwrap().rows.iter().flatten().map(String::as_str)
 }
 
-pub fn iter_map_table(step: &Step) -> impl Iterator<Item = HashMap<&String, &String>> {
+pub fn iter_table_map(step: &Step) -> impl Iterator<Item = HashMap<&String, &String>> {
     let (keys, rows) = step.table().unwrap().rows.split_first().unwrap();
     rows.iter().map(|row| keys.iter().zip(row).collect())
 }
