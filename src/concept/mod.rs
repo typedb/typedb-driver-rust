@@ -49,7 +49,7 @@ impl Concept {
         // FIXME: Add a Label type to simplify this function
         match self {
             Concept::RoleType(RoleType { label, .. }) => format!("{label}"),
-            Concept::RootThingType(_) => RootThingType::LABEL.to_string(),
+            Concept::RootThingType(_) => RootThingType::LABEL.to_owned(),
             Concept::EntityType(type_) => type_.label.clone(),
             Concept::RelationType(RelationType { label, .. }) => label.clone(),
             Concept::AttributeType(AttributeType { label, .. }) => label.clone(),

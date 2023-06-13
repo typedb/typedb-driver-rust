@@ -114,6 +114,12 @@ impl From<InternalError> for Error {
     }
 }
 
+impl From<typeql_lang::common::Error> for Error {
+    fn from(err: typeql_lang::common::Error) -> Self {
+        Self::TypeQL(err)
+    }
+}
+
 impl From<Status> for Error {
     fn from(status: Status) -> Self {
         if is_rst_stream(&status) {
@@ -188,11 +194,5 @@ impl From<String> for Error {
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         Self::Other(err.to_string())
-    }
-}
-
-impl From<typeql_lang::common::Error> for Error {
-    fn from(err: typeql_lang::common::Error) -> Self {
-        Self::TypeQL(err)
     }
 }
