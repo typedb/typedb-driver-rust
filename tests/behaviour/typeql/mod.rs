@@ -20,7 +20,7 @@
  */
 
 // mod get;
-// mod define;
+mod define;
 mod delete;
 mod insert;
 mod match_;
