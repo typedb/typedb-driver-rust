@@ -80,13 +80,13 @@ async fn key_values_equal(context: &Context, expected_label_and_value: &str, ans
                 .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
                 .await
         }
-        Concept::Attribute(attr) => {
-            async { attr.get_has(context.transaction(), vec![], vec![Annotation::Key]) }
+        Concept::Relation(rel) => {
+            async { rel.get_has(context.transaction(), vec![], vec![Annotation::Key]) }
                 .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
                 .await
         }
-        Concept::Relation(rel) => {
-            async { rel.get_has(context.transaction(), vec![], vec![Annotation::Key]) }
+        Concept::Attribute(attr) => {
+            async { attr.get_has(context.transaction(), vec![], vec![Annotation::Key]) }
                 .and_then(|stream| async { stream.try_collect::<Vec<_>>().await })
                 .await
         }
@@ -168,8 +168,8 @@ fn apply_query_template(query_template: &String, answer: &ConceptMap) -> String 
 fn get_iid(concept: &Concept) -> String {
     let iid = match concept {
         Concept::Entity(Entity { iid, .. }) => iid,
-        Concept::Attribute(Attribute { iid, .. }) => iid,
         Concept::Relation(Relation { iid, .. }) => iid,
+        Concept::Attribute(Attribute { iid, .. }) => iid,
         _ => unreachable!("Unexpected Concept type: {concept:?}"),
     };
     format!("0x{iid}")

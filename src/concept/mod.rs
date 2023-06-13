@@ -31,12 +31,11 @@ pub use self::{
 
 #[derive(Clone, Debug)]
 pub enum Concept {
-    RoleType(RoleType),
-
     RootThingType(RootThingType),
 
     EntityType(EntityType),
     RelationType(RelationType),
+    RoleType(RoleType),
     AttributeType(AttributeType),
 
     Entity(Entity),
@@ -48,10 +47,10 @@ impl Concept {
     pub fn type_label_cloned(&self) -> String {
         // FIXME: Add a Label type to simplify this function
         match self {
-            Concept::RoleType(RoleType { label, .. }) => format!("{label}"),
             Concept::RootThingType(_) => RootThingType::LABEL.to_owned(),
             Concept::EntityType(type_) => type_.label.clone(),
             Concept::RelationType(RelationType { label, .. }) => label.clone(),
+            Concept::RoleType(RoleType { label, .. }) => format!("{label}"),
             Concept::AttributeType(AttributeType { label, .. }) => label.clone(),
             Concept::Entity(Entity { type_: EntityType { label, .. }, .. }) => label.clone(),
             Concept::Relation(Relation { type_: RelationType { label, .. }, .. }) => label.clone(),
