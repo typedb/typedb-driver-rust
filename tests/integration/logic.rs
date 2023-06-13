@@ -24,7 +24,7 @@ use std::collections::HashMap;
 use futures::{TryFutureExt, TryStreamExt};
 use serial_test::serial;
 use typedb_client::{
-    answer::ConceptMap,
+    answer::{ConceptMap, Explainable, Explainables},
     concept::{Attribute, Concept, Value},
     logic::Explanation,
     transaction::concept::api::ThingAPI,
@@ -100,8 +100,8 @@ test_for_each_arg! {
         assert_eq!(3, with_explainable.map.len());
         assert_eq!(2, without_explainable.map.len());
 
-        assert!(with_explainable.explainables.is_some());
-        assert!(without_explainable.explainables.is_none());
+        assert!(!with_explainable.explainables.is_empty());
+        assert!(without_explainable.explainables.is_empty());
 
         assert_single_explainable_explanations(with_explainable, 1, 1, &transaction).await;
 
@@ -154,8 +154,8 @@ test_for_each_arg! {
 
         assert_eq!(2, answers.len());
 
-        assert!(answers.get(0).unwrap().explainables.is_some());
-        assert!(answers.get(1).unwrap().explainables.is_some());
+        assert!(!answers.get(0).unwrap().explainables.is_empty());
+        assert!(!answers.get(1).unwrap().explainables.is_empty());
 
         assert_single_explainable_explanations(answers.get(0).unwrap(), 1, 1, &transaction).await;
         assert_single_explainable_explanations(answers.get(1).unwrap(), 1, 1, &transaction).await;
@@ -217,8 +217,8 @@ test_for_each_arg! {
 
         assert_eq!(2, answers.len());
 
-        assert!(answers.get(0).unwrap().explainables.is_some());
-        assert!(answers.get(1).unwrap().explainables.is_some());
+        assert!(!answers.get(0).unwrap().explainables.is_empty());
+        assert!(!answers.get(1).unwrap().explainables.is_empty());
 
         assert_single_explainable_explanations(answers.get(0).unwrap(), 1, 3, &transaction).await;
         assert_single_explainable_explanations(answers.get(1).unwrap(), 1, 3, &transaction).await;
@@ -277,9 +277,9 @@ test_for_each_arg! {
 
         assert_eq!(3, answers.len());
 
-        assert!(answers.get(0).unwrap().explainables.is_some());
-        assert!(answers.get(1).unwrap().explainables.is_some());
-        assert!(answers.get(2).unwrap().explainables.is_some());
+        assert!(!answers.get(0).unwrap().explainables.is_empty());
+        assert!(!answers.get(1).unwrap().explainables.is_empty());
+        assert!(!answers.get(2).unwrap().explainables.is_empty());
 
         let age_in_days = transaction.concept().get_attribute_type(String::from("age-in-days")).await?.unwrap();
         for ans in answers {
@@ -307,7 +307,7 @@ async fn assert_single_explainable_explanations(
     transaction: &Transaction<'_>,
 ) {
     check_explainable_vars(ans);
-    let explainables = ans.clone().explainables.unwrap();
+    let explainables = ans.clone().explainables;
     let mut all_explainables = explainables.attributes.values().collect::<Vec<_>>();
     all_explainables.extend(explainables.relations.values().collect::<Vec<_>>());
     all_explainables.extend(explainables.ownerships.values().collect::<Vec<_>>());
@@ -331,11 +331,10 @@ async fn assert_single_explainable_explanations(
 }
 
 fn check_explainable_vars(ans: &ConceptMap) {
-    ans.clone().explainables.unwrap().relations.into_keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
-    ans.clone().explainables.unwrap().attributes.into_keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
+    ans.clone().explainables.relations.into_keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
+    ans.clone().explainables.attributes.into_keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
     ans.clone()
         .explainables
-        .unwrap()
         .ownerships
         .into_keys()
         .for_each(|(k1, k2)| assert!(ans.map.contains_key(k1.as_str()) && ans.map.contains_key(k2.as_str())));
@@ -351,5 +350,8 @@ fn apply_mapping(mapping: &HashMap<String, Vec<String>>, complete_map: &ConceptM
             concepts.insert(mapped.to_string(), concept.clone());
         }
     }
-    ConceptMap { map: concepts, explainables: None }
+    let relations: HashMap<String, Explainable> = HashMap::new();
+    let attributes: HashMap<String, Explainable> = HashMap::new();
+    let ownerships: HashMap<(String, String), Explainable> = HashMap::new();
+    ConceptMap { map: concepts, explainables: Explainables {relations, attributes, ownerships} }
 }

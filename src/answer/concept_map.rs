@@ -29,7 +29,7 @@ use crate::concept::Concept;
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConceptMap {
     pub map: HashMap<String, Concept>,
-    pub explainables: Option<Explainables>,
+    pub explainables: Explainables,
 }
 
 impl ConceptMap {
@@ -83,6 +83,10 @@ impl Explainables {
         ownerships: HashMap<(String, String), Explainable>,
     ) -> Self {
         Self { relations, attributes, ownerships }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.relations.is_empty() && self.attributes.is_empty() && self.ownerships.is_empty()
     }
 }
 
