@@ -96,8 +96,8 @@ impl TryFromProto<ConceptMapGroupProto> for ConceptMapGroup {
             None => return Err(ConnectionError::MissingResponseField("owner").into()),
         };
         let mut concept_maps = Vec::with_capacity(proto.concept_maps.len());
-        for cm in proto.concept_maps {
-            concept_maps.push(ConceptMap::try_from_proto(cm)?);
+        for concept_map in proto.concept_maps {
+            concept_maps.push(ConceptMap::try_from_proto(concept_map)?);
         }
 
         Ok(Self { owner, concept_maps })
