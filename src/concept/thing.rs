@@ -47,14 +47,14 @@ impl Thing {
 pub struct Entity {
     pub iid: IID,
     pub type_: EntityType,
-    pub inferred: bool,
+    pub is_inferred: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Relation {
     pub iid: IID,
     pub type_: RelationType,
-    pub inferred: bool,
+    pub is_inferred: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -62,7 +62,7 @@ pub struct Attribute {
     pub iid: IID,
     pub type_: AttributeType,
     pub value: Value,
-    pub inferred: bool,
+    pub is_inferred: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]

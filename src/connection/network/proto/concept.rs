@@ -284,14 +284,14 @@ impl TryFromProto<EntityProto> for Entity {
         Ok(Self {
             iid: iid.into(),
             type_: EntityType::from_proto(entity_type.ok_or(ConnectionError::MissingResponseField("entity_type"))?),
-            inferred,
+            is_inferred: inferred,
         })
     }
 }
 
 impl IntoProto<EntityProto> for Entity {
     fn into_proto(self) -> EntityProto {
-        EntityProto { iid: self.iid.into(), entity_type: Some(self.type_.into_proto()), inferred: self.inferred }
+        EntityProto { iid: self.iid.into(), entity_type: Some(self.type_.into_proto()), inferred: self.is_inferred }
     }
 }
 
@@ -303,14 +303,14 @@ impl TryFromProto<RelationProto> for Relation {
             type_: RelationType::from_proto(
                 relation_type.ok_or(ConnectionError::MissingResponseField("relation_type"))?,
             ),
-            inferred,
+            is_inferred: inferred,
         })
     }
 }
 
 impl IntoProto<RelationProto> for Relation {
     fn into_proto(self) -> RelationProto {
-        RelationProto { iid: self.iid.into(), relation_type: Some(self.type_.into_proto()), inferred: self.inferred }
+        RelationProto { iid: self.iid.into(), relation_type: Some(self.type_.into_proto()), inferred: self.is_inferred }
     }
 }
 
@@ -323,7 +323,7 @@ impl TryFromProto<AttributeProto> for Attribute {
                 attribute_type.ok_or(ConnectionError::MissingResponseField("attribute_type"))?,
             )?,
             value: Value::try_from_proto(value.ok_or(ConnectionError::MissingResponseField("value"))?)?,
-            inferred,
+            is_inferred: inferred,
         })
     }
 }
