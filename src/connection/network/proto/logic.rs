@@ -26,7 +26,7 @@ use typeql_lang::{
 };
 
 use super::{IntoProto, TryFromProto};
-use crate::{common::Result, Error, Rule};
+use crate::{common::Result, Error, logic::Rule};
 
 impl TryFromProto<RuleProto> for Rule {
     fn try_from_proto(proto: RuleProto) -> Result<Self> {

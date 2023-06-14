@@ -41,8 +41,7 @@ use crate::{
         TransactionRequest, TransactionResponse,
     },
     error::{ConnectionError, InternalError},
-    logic::Explanation,
-    Rule,
+    logic::{Explanation, Rule},
 };
 
 impl TryIntoProto<server_manager::all::Req> for Request {

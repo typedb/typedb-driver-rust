@@ -40,8 +40,8 @@ use crate::{
         ThingTypeRequest, ThingTypeResponse, TransactionRequest, TransactionResponse,
     },
     error::InternalError,
-    logic::Explanation,
-    Options, Rule, TransactionType,
+    logic::{Explanation, Rule},
+    Options, TransactionType,
 };
 
 pub(crate) struct TransactionStream {

@@ -33,6 +33,5 @@ pub use self::{
     common::{error, Credential, Error, Options, Result, SessionType, TransactionType},
     connection::Connection,
     database::{Database, DatabaseManager, Session},
-    logic::{LogicManager, Rule},
     transaction::Transaction,
 };

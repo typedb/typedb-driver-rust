@@ -31,9 +31,9 @@ use regex::{Captures, Regex};
 use typedb_client::{
     answer::ConceptMap,
     concept::{Annotation, Attribute, Concept, Entity, Relation, Value},
+    logic::Rule,
     transaction::concept::api::ThingAPI,
     Result as TypeDBResult,
-    Rule,
 };
 use typeql_lang::{
     parse_pattern, parse_query, parse_rule,

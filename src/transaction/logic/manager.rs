@@ -24,7 +24,7 @@ use std::sync::Arc;
 use futures::Stream;
 use typeql_lang::pattern::{Conjunction, Variable};
 
-use crate::{common::Result, connection::TransactionStream, Rule};
+use crate::{common::Result, connection::TransactionStream, logic::Rule};
 
 #[derive(Clone, Debug)]
 pub struct LogicManager {

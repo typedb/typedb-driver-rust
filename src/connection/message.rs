@@ -33,8 +33,8 @@ use crate::{
         Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, SchemaException,
         Thing, ThingType, Transitivity, Value, ValueType,
     },
-    logic::Explanation,
-    Options, Rule, SessionType, TransactionType,
+    logic::{Explanation, Rule},
+    Options, SessionType, TransactionType,
 };
 
 #[derive(Debug)]

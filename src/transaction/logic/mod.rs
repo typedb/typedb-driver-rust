@@ -19,14 +19,6 @@
  * under the License.
  */
 
-use std::collections::HashMap;
+mod manager;
 
-use crate::{answer::ConceptMap, logic::Rule};
-
-#[derive(Debug)]
-pub struct Explanation {
-    pub rule: Rule,
-    pub conclusion: ConceptMap,
-    pub condition: ConceptMap,
-    pub variable_mapping: HashMap<String, Vec<String>>,
-}
+pub use self::manager::LogicManager;

@@ -45,8 +45,8 @@ use crate::{
         RootThingType, ScopedLabel, Thing, ThingType, Transitivity, Value, ValueType,
     },
     error::{ConnectionError, InternalError},
-    logic::Explanation,
-    Result, Rule,
+    logic::{Explanation, Rule},
+    Result,
 };
 
 impl IntoProto<i32> for Transitivity {

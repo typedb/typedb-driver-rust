@@ -20,15 +20,16 @@
  */
 
 pub mod concept;
+pub mod logic;
 mod query;
 
 use std::{fmt, marker::PhantomData, sync::Arc};
 
-use self::{concept::ConceptManager, query::QueryManager};
+use self::{concept::ConceptManager, logic::LogicManager, query::QueryManager};
 use crate::{
     common::{Result, TransactionType},
     connection::TransactionStream,
-    LogicManager, Options,
+    Options,
 };
 
 pub struct Transaction<'a> {
