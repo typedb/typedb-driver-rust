@@ -66,12 +66,13 @@ impl IntoProto<AnnotationProto> for Annotation {
 
 impl TryFromProto<NumericGroupProto> for NumericGroup {
     fn try_from_proto(proto: NumericGroupProto) -> Result<Self> {
-        let owner = match proto.owner {
-            Some(proto_owner) => Concept::try_from_proto(proto_owner)?,
+        let NumericGroupProto { owner: owner_proto, number: number_proto } = proto;
+        let owner = match owner_proto {
+            Some(_) => Concept::try_from_proto(owner_proto.unwrap())?,
             None => return Err(ConnectionError::MissingResponseField("owner").into()),
         };
-        let numeric = match proto.number {
-            Some(proto_number) => Numeric::try_from_proto(proto_number)?,
+        let numeric = match number_proto {
+            Some(_) => Numeric::try_from_proto(number_proto.unwrap())?,
             None => return Err(ConnectionError::MissingResponseField("value").into()),
         };
         Ok(Self { owner, numeric })
@@ -80,7 +81,8 @@ impl TryFromProto<NumericGroupProto> for NumericGroup {
 
 impl TryFromProto<NumericProto> for Numeric {
     fn try_from_proto(proto: NumericProto) -> Result<Self> {
-        match proto.value {
+        let NumericProto { value: value_proto } = proto;
+        match value_proto {
             Some(NumericValue::LongValue(long)) => Ok(Self::Long(long)),
             Some(NumericValue::DoubleValue(double)) => Ok(Self::Double(double)),
             Some(NumericValue::Nan(_)) => Ok(Self::NaN),
@@ -91,12 +93,13 @@ impl TryFromProto<NumericProto> for Numeric {
 
 impl TryFromProto<ConceptMapGroupProto> for ConceptMapGroup {
     fn try_from_proto(proto: ConceptMapGroupProto) -> Result<Self> {
-        let owner = match proto.owner {
-            Some(proto_owner) => Concept::try_from_proto(proto_owner)?,
+        let ConceptMapGroupProto { owner: owner_proto, concept_maps: concept_maps_proto } = proto;
+        let owner = match owner_proto {
+            Some(_) => Concept::try_from_proto(owner_proto.unwrap())?,
             None => return Err(ConnectionError::MissingResponseField("owner").into()),
         };
-        let mut concept_maps = Vec::with_capacity(proto.concept_maps.len());
-        for concept_map in proto.concept_maps {
+        let mut concept_maps = Vec::with_capacity(concept_maps_proto.len());
+        for concept_map in concept_maps_proto {
             concept_maps.push(ConceptMap::try_from_proto(concept_map)?);
         }
 
@@ -116,7 +119,8 @@ impl TryFromProto<ConceptMapProto> for ConceptMap {
 
 impl TryFromProto<ConceptProto> for Concept {
     fn try_from_proto(proto: ConceptProto) -> Result<Self> {
-        match proto.concept {
+        let ConceptProto { concept: concept_proto } = proto;
+        match concept_proto {
             Some(concept::Concept::EntityType(entity_type_proto)) => {
                 Ok(Self::EntityType(EntityType::from_proto(entity_type_proto)))
             }
