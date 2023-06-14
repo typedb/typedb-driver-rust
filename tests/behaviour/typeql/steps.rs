@@ -23,7 +23,7 @@ use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
 use typeql_lang::parse_query;
-use util::{equals_approximate, iter_table_map, match_answer_concept_map, match_templated_answer};
+use util::{equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_templated_answer};
 
 use crate::{
     assert_err,
@@ -269,7 +269,7 @@ generic_step_impl! {
 
     #[step(expr = "answer groups are")]
     async fn answer_groups_are(context: &mut Context, step: &Step) {
-        let step_table = iter_map_table(step).collect::<Vec<_>>();
+        let step_table = iter_table_map(step).collect::<Vec<_>>();
         let expected_answers = step_table.len();
         let actual_answers: usize =
             context.answer_group.clone().into_iter().map(|group| group.concept_maps.len()).sum();
@@ -316,7 +316,7 @@ generic_step_impl! {
 
     #[step(expr = "group aggregate values are")]
     async fn group_aggregate_values_are(context: &mut Context, step: &Step) {
-        let step_table = iter_map_table(step).collect::<Vec<_>>();
+        let step_table = iter_table_map(step).collect::<Vec<_>>();
         let expected_answers = step_table.len();
         let actual_answers = context.numeric_answer_group.len();
         assert_eq!(
