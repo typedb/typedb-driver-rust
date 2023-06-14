@@ -172,5 +172,5 @@ fn get_iid(concept: &Concept) -> String {
         Concept::Attribute(Attribute { iid, .. }) => iid,
         _ => unreachable!("Unexpected Concept type: {concept:?}"),
     };
-    format!("0x{iid}")
+    iid.to_string()
 }
