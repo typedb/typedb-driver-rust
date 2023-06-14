@@ -24,6 +24,7 @@ mod delete;
 mod get;
 mod insert;
 mod match_;
+mod reasoner;
 mod rule_validation;
 mod steps;
 mod undefine;
