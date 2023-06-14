@@ -19,6 +19,7 @@
  * under the License.
  */
 
+pub mod api;
 mod manager;
 
 pub use self::manager::LogicManager;

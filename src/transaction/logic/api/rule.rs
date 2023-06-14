@@ -19,32 +19,35 @@
  * under the License.
  */
 
-use std::sync::Arc;
+use async_trait::async_trait;
+use futures::stream::BoxStream;
 
-use futures::Stream;
-use typeql_lang::pattern::{Conjunction, Variable};
+use crate::{
+    common::box_stream,
+    logic::Rule,
+    Result, Transaction,
+};
 
-use crate::{common::Result, connection::TransactionStream, logic::Rule};
-
-#[derive(Clone, Debug)]
-pub struct LogicManager {
-    pub(super) transaction_stream: Arc<TransactionStream>,
+#[async_trait]
+pub trait RuleAPI: Clone + Sync + Send {
+    fn label(&self) -> &String;
+    async fn delete(&mut self, transaction: &Transaction<'_>) -> Result;
+    async fn set_label(&mut self, transaction: &Transaction<'_>, new_label: String) -> Result;
 }
 
-impl LogicManager {
-    pub(crate) fn new(transaction_stream: Arc<TransactionStream>) -> Self {
-        Self { transaction_stream }
+#[async_trait]
+impl RuleAPI for Rule {
+    fn label(&self) -> &String {
+        &self.label
     }
 
-    pub async fn put_rule(&self, label: String, when: Conjunction, then: Variable) -> Result<Rule> {
-        self.transaction_stream.put_rule(label, when, then).await
+    async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
+        transaction.logic().transaction_stream.rule_delete(self.clone()).await
     }
 
-    pub async fn get_rule(&self, label: String) -> Result<Rule> {
-        self.transaction_stream.get_rule(label).await
-    }
-
-    pub fn get_rules(&self) -> Result<impl Stream<Item = Result<Rule>>> {
-        self.transaction_stream.get_rules()
+    async fn set_label(&mut self, transaction: &Transaction<'_>, new_label: String) -> Result {
+        transaction.logic().transaction_stream.rule_set_label(self.clone(), new_label).await
     }
 }
+
+

@@ -19,19 +19,8 @@
  * under the License.
  */
 
-use typeql_lang::pattern::{Conjunction, ThingVariable};
+mod rule;
 
-use crate::common::Result;
-
-#[derive(Clone, Debug)]
-pub struct Rule {
-    pub label: String,
-    pub when: Conjunction,
-    pub then: ThingVariable,
-}
-
-impl Rule {
-    pub(crate) fn new(label: String, when: Conjunction, then: ThingVariable) -> Self {
-        Self { label, when, then }
-    }
-}
+pub use self::{
+    rule::{RuleAPI},
+};

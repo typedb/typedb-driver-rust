@@ -938,8 +938,8 @@ impl TransactionStream {
         }
     }
 
-    pub(crate) async fn rule_set_label(&self, rule: Rule, label: String) -> Result {
-        match self.rule_single(RuleRequest::SetLabel { current_label: rule.label, new_label: label }).await? {
+    pub(crate) async fn rule_set_label(&self, rule: Rule, new_label: String) -> Result {
+        match self.rule_single(RuleRequest::SetLabel { current_label: rule.label, new_label }).await? {
             RuleResponse::SetLabel => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
