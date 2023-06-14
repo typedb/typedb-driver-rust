@@ -54,7 +54,7 @@ impl fmt::Debug for ID {
 
 impl fmt::Display for ID {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", ID::PREFIX)?;
+        write!(f, "{}", Self::PREFIX)?;
         self.0.iter().try_for_each(|byte| write!(f, "{byte:02x}"))
     }
 }
