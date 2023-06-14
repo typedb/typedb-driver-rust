@@ -24,7 +24,7 @@ use std::time::Duration;
 use itertools::Itertools;
 use typedb_protocol::{
     attribute, attribute_type, concept_manager, database, database_manager, entity_type, logic_manager, query_manager,
-    r#type, relation, relation_type, role_type, server_manager, session, thing, thing_type, transaction,
+    r#type, relation, relation_type, role_type, rule, server_manager, session, thing, thing_type, transaction,
 };
 
 use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
@@ -37,7 +37,7 @@ use crate::{
     },
     connection::message::{
         ConceptRequest, ConceptResponse, LogicRequest, LogicResponse, QueryRequest, QueryResponse, Request, Response,
-        RoleTypeRequest, RoleTypeResponse, ThingRequest, ThingResponse, ThingTypeRequest, ThingTypeResponse,
+        RoleTypeRequest, RoleTypeResponse, RuleRequest, RuleResponse, ThingRequest, ThingResponse, ThingTypeRequest, ThingTypeResponse,
         TransactionRequest, TransactionResponse,
     },
     error::{ConnectionError, InternalError},
@@ -272,6 +272,7 @@ impl IntoProto<transaction::Req> for TransactionRequest {
                 request_id = Some(req_id);
                 transaction::req::Req::StreamReq(transaction::stream::Req {})
             }
+            Self::Rule(rule_request) => transaction::req::Req::RuleReq(rule_request.into_proto()),
             Self::Logic(logic_request) => transaction::req::Req::LogicManagerReq(logic_request.into_proto()),
         };
 
@@ -299,9 +300,10 @@ impl TryFromProto<transaction::Res> for TransactionResponse {
             Some(transaction::res::Res::TypeRes(r#type::Res { res: Some(r#type::res::Res::RoleTypeRes(res)) })) => {
                 Ok(Self::RoleType(RoleTypeResponse::try_from_proto(res)?))
             }
+            Some(transaction::res::Res::TypeRes(r#type::Res { res: None })) => Err(ConnectionError::MissingResponseField("res").into()),
             Some(transaction::res::Res::ThingRes(res)) => Ok(Self::Thing(ThingResponse::try_from_proto(res)?)),
+            Some(transaction::res::Res::RuleRes(res)) => Ok(Self::Rule(RuleResponse::try_from_proto(res)?)),
             Some(transaction::res::Res::LogicManagerRes(res)) => Ok(Self::Logic(LogicResponse::try_from_proto(res)?)),
-            Some(_) => todo!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
@@ -319,11 +321,12 @@ impl TryFromProto<transaction::ResPart> for TransactionResponse {
             Some(transaction::res_part::Res::TypeResPart(r#type::ResPart {
                 res: Some(r#type::res_part::Res::RoleTypeResPart(res)),
             })) => Ok(Self::RoleType(RoleTypeResponse::try_from_proto(res)?)),
+            Some(transaction::res_part::Res::TypeResPart(r#type::ResPart { res: None })) => Err(ConnectionError::MissingResponseField("res").into()),
             Some(transaction::res_part::Res::ThingResPart(res)) => Ok(Self::Thing(ThingResponse::try_from_proto(res)?)),
             Some(transaction::res_part::Res::LogicManagerResPart(res)) => {
                 Ok(Self::Logic(LogicResponse::try_from_proto(res)?))
             }
-            Some(_) => todo!(),
+            Some(transaction::res_part::Res::StreamResPart(_)) => unreachable!(),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }
@@ -1111,6 +1114,31 @@ impl TryFromProto<thing::ResPart> for ThingResponse {
             Some(thing::res_part::Res::AttributeGetOwnersResPart(attribute::get_owners::ResPart { things })) => {
                 Ok(Self::AttributeGetOwners { owners: things.into_iter().map(Thing::try_from_proto).try_collect()? })
             }
+            None => Err(ConnectionError::MissingResponseField("res").into()),
+        }
+    }
+}
+
+impl IntoProto<rule::Req> for RuleRequest {
+    fn into_proto(self) -> rule::Req {
+        let (req, label) = match self {
+            Self::Delete { label } => {
+                (rule::req::Req::RuleDeleteReq(rule::delete::Req {}), label)
+            }
+            Self::SetLabel { current_label, new_label } => (
+                rule::req::Req::RuleSetLabelReq(rule::set_label::Req { label: new_label }),
+                current_label,
+            ),
+        };
+        rule::Req { label, req: Some(req) }
+    }
+}
+
+impl TryFromProto<rule::Res> for RuleResponse {
+    fn try_from_proto(proto: rule::Res) -> Result<Self> {
+        match proto.res {
+            Some(rule::res::Res::RuleDeleteRes(_)) => Ok(Self::Delete),
+            Some(rule::res::Res::RuleSetLabelRes(_)) => Ok(Self::SetLabel),
             None => Err(ConnectionError::MissingResponseField("res").into()),
         }
     }

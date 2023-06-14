@@ -21,6 +21,8 @@
 
 use typeql_lang::pattern::{Conjunction, ThingVariable};
 
+use crate::common::Result;
+
 #[derive(Debug)]
 pub struct Rule {
     pub label: String,

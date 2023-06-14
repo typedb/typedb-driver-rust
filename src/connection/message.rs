@@ -110,6 +110,7 @@ pub(super) enum TransactionRequest {
     RoleType(RoleTypeRequest),
     Thing(ThingRequest),
     Stream { request_id: RequestID },
+    Rule(RuleRequest),
     Logic(LogicRequest),
 }
 
@@ -123,6 +124,7 @@ pub(super) enum TransactionResponse {
     ThingType(ThingTypeResponse),
     RoleType(RoleTypeResponse),
     Thing(ThingResponse),
+    Rule(RuleResponse),
     Logic(LogicResponse),
 }
 
@@ -460,6 +462,18 @@ pub(super) enum ThingResponse {
     RelationGetRelating { role_types: Vec<RoleType> },
 
     AttributeGetOwners { owners: Vec<Thing> },
+}
+
+#[derive(Debug)]
+pub(super) enum RuleRequest {
+    Delete { label: String },
+    SetLabel { current_label: String, new_label: String },
+}
+
+#[derive(Debug)]
+pub(super) enum RuleResponse {
+    Delete,
+    SetLabel,
 }
 
 #[derive(Debug)]

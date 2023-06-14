@@ -36,8 +36,8 @@ use crate::{
         Thing, ThingType, Transitivity, Value, ValueType,
     },
     connection::message::{
-        ConceptRequest, ConceptResponse, LogicRequest, LogicResponse, QueryRequest, QueryResponse, ThingTypeRequest,
-        ThingTypeResponse, TransactionRequest, TransactionResponse,
+        ConceptRequest, ConceptResponse, LogicRequest, LogicResponse, QueryRequest, QueryResponse, RuleRequest, RuleResponse,
+        ThingTypeRequest, ThingTypeResponse, TransactionRequest, TransactionResponse,
     },
     error::InternalError,
     logic::Explanation,
@@ -931,6 +931,20 @@ impl TransactionStream {
         }))
     }
 
+    pub(crate) async fn rule_delete(&self, rule: Rule) -> Result {
+        match self.rule_single(RuleRequest::Delete { label: rule.label }).await? {
+            RuleResponse::Delete => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) async fn rule_set_label(&self, rule: Rule, label: String) -> Result {
+        match self.rule_single(RuleRequest::SetLabel { current_label: rule.label, new_label: label }).await? {
+            RuleResponse::SetLabel => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
     pub(crate) async fn put_rule(&self, label: String, when: Conjunction, then: Variable) -> Result<Rule> {
         match self.logic_single(LogicRequest::PutRule { label, when, then }).await? {
             LogicResponse::PutRule { rule } => Ok(rule),
@@ -989,6 +1003,13 @@ impl TransactionStream {
     async fn thing_single(&self, req: ThingRequest) -> Result<ThingResponse> {
         match self.single(TransactionRequest::Thing(req)).await? {
             TransactionResponse::Thing(res) => Ok(res),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    async fn rule_single(&self, req: RuleRequest) -> Result<RuleResponse> {
+        match self.single(TransactionRequest::Rule(req)).await? {
+            TransactionResponse::Rule(res) => Ok(res),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
