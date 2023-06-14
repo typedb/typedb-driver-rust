@@ -36,8 +36,8 @@ use crate::{
         Thing, ThingType, Transitivity, Value, ValueType,
     },
     connection::message::{
-        ConceptRequest, ConceptResponse, LogicRequest, LogicResponse, QueryRequest, QueryResponse, RuleRequest, RuleResponse,
-        ThingTypeRequest, ThingTypeResponse, TransactionRequest, TransactionResponse,
+        ConceptRequest, ConceptResponse, LogicRequest, LogicResponse, QueryRequest, QueryResponse, RuleRequest,
+        RuleResponse, ThingTypeRequest, ThingTypeResponse, TransactionRequest, TransactionResponse,
     },
     error::InternalError,
     logic::{Explanation, Rule},

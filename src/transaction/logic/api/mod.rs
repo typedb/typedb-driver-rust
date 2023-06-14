@@ -21,6 +21,4 @@
 
 mod rule;
 
-pub use self::{
-    rule::{RuleAPI},
-};
+pub use self::rule::RuleAPI;

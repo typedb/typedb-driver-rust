@@ -21,11 +21,7 @@
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
-use typedb_client::{
-    logic::Rule,
-    transaction::logic::api::{RuleAPI},
-    Result as TypeDBResult,
-};
+use typedb_client::{logic::Rule, transaction::logic::api::RuleAPI, Result as TypeDBResult};
 
 use crate::{
     assert_err,

@@ -22,11 +22,7 @@
 use async_trait::async_trait;
 use futures::stream::BoxStream;
 
-use crate::{
-    common::box_stream,
-    logic::Rule,
-    Result, Transaction,
-};
+use crate::{common::box_stream, logic::Rule, Result, Transaction};
 
 #[async_trait]
 pub trait RuleAPI: Clone + Sync + Send {
@@ -49,5 +45,3 @@ impl RuleAPI for Rule {
         transaction.logic().transaction_stream.rule_set_label(self.clone(), new_label).await
     }
 }
-
-
