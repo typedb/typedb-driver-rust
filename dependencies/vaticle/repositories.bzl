@@ -46,7 +46,7 @@ def vaticle_typedb_behaviour():
     git_repository(
         name = "vaticle_typedb_behaviour",
         remote = "https://github.com/vaticle/typedb-behaviour",
-        branch = "api-rearchitecture",
+        commit = "d4947828f570853b71f0eb8aefd34af7b5a485fb",
     )
 
 def vaticle_typeql():
