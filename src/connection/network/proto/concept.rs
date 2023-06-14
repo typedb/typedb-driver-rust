@@ -67,14 +67,8 @@ impl IntoProto<AnnotationProto> for Annotation {
 impl TryFromProto<NumericGroupProto> for NumericGroup {
     fn try_from_proto(proto: NumericGroupProto) -> Result<Self> {
         let NumericGroupProto { owner: owner_proto, number: number_proto } = proto;
-        let owner = match owner_proto {
-            Some(_) => Concept::try_from_proto(owner_proto.unwrap())?,
-            None => return Err(ConnectionError::MissingResponseField("owner").into()),
-        };
-        let numeric = match number_proto {
-            Some(_) => Numeric::try_from_proto(number_proto.unwrap())?,
-            None => return Err(ConnectionError::MissingResponseField("value").into()),
-        };
+        let owner = Concept::try_from_proto(owner_proto.ok_or(ConnectionError::MissingResponseField("owner"))?)?;
+        let numeric = Numeric::try_from_proto(number_proto.ok_or(ConnectionError::MissingResponseField("value"))?)?;
         Ok(Self { owner, numeric })
     }
 }
@@ -94,10 +88,7 @@ impl TryFromProto<NumericProto> for Numeric {
 impl TryFromProto<ConceptMapGroupProto> for ConceptMapGroup {
     fn try_from_proto(proto: ConceptMapGroupProto) -> Result<Self> {
         let ConceptMapGroupProto { owner: owner_proto, concept_maps: concept_maps_proto } = proto;
-        let owner = match owner_proto {
-            Some(_) => Concept::try_from_proto(owner_proto.unwrap())?,
-            None => return Err(ConnectionError::MissingResponseField("owner").into()),
-        };
+        let owner = Concept::try_from_proto(owner_proto.ok_or(ConnectionError::MissingResponseField("owner"))?)?;
         let mut concept_maps = Vec::with_capacity(concept_maps_proto.len());
         for concept_map in concept_maps_proto {
             concept_maps.push(ConceptMap::try_from_proto(concept_map)?);
