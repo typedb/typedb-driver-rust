@@ -74,16 +74,16 @@ impl Transaction<'_> {
         &self.concept
     }
 
+    pub fn logic(&self) -> &LogicManager {
+        &self.logic
+    }
+
     pub async fn commit(self) -> Result {
         self.transaction_stream.commit().await
     }
 
     pub async fn rollback(&self) -> Result {
         self.transaction_stream.rollback().await
-    }
-
-    pub fn logic(&self) -> &LogicManager {
-        &self.logic
     }
 }
 
