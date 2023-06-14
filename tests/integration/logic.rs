@@ -34,8 +34,8 @@ use typedb_client::{
     TransactionType::{Read, Write},
 };
 
-use crate::test_for_each_arg;
 use super::common;
+use crate::test_for_each_arg;
 
 test_for_each_arg! {
     {

@@ -99,12 +99,13 @@ impl TryFromProto<ConceptMapGroupProto> for ConceptMapGroup {
 
 impl TryFromProto<ConceptMapProto> for ConceptMap {
     fn try_from_proto(proto: ConceptMapProto) -> Result<Self> {
-        let mut map = HashMap::with_capacity(proto.map.len());
-        for (k, v) in proto.map {
+        let ConceptMapProto { map: map_proto, explainables: explainables_proto } = proto;
+        let mut map = HashMap::with_capacity(map_proto.len());
+        for (k, v) in map_proto {
             map.insert(k, Concept::try_from_proto(v)?);
         }
-        let Some(proto_explainables) = proto.explainables else { return Err(ConnectionError::MissingResponseField("explainables").into()) };
-        Ok(Self { map, explainables: Explainables::from_proto(proto_explainables) })
+        let Some(explainables) = explainables_proto else { return Err(ConnectionError::MissingResponseField("explainables").into()) };
+        Ok(Self { map, explainables: Explainables::from_proto(explainables) })
     }
 }
 
@@ -291,7 +292,8 @@ impl TryFromProto<EntityProto> for Entity {
 
 impl IntoProto<EntityProto> for Entity {
     fn into_proto(self) -> EntityProto {
-        EntityProto { iid: self.iid.into(), entity_type: Some(self.type_.into_proto()), inferred: self.is_inferred }
+        let Self { iid, type_, is_inferred } = self;
+        EntityProto { iid: iid.into(), entity_type: Some(type_.into_proto()), inferred: is_inferred }
     }
 }
 
@@ -310,7 +312,8 @@ impl TryFromProto<RelationProto> for Relation {
 
 impl IntoProto<RelationProto> for Relation {
     fn into_proto(self) -> RelationProto {
-        RelationProto { iid: self.iid.into(), relation_type: Some(self.type_.into_proto()), inferred: self.is_inferred }
+        let Self { iid, type_, is_inferred } = self;
+        RelationProto { iid: iid.into(), relation_type: Some(type_.into_proto()), inferred: is_inferred }
     }
 }
 
@@ -330,11 +333,12 @@ impl TryFromProto<AttributeProto> for Attribute {
 
 impl IntoProto<AttributeProto> for Attribute {
     fn into_proto(self) -> AttributeProto {
+        let Self { iid, type_, value, is_inferred } = self;
         AttributeProto {
-            iid: self.iid.into(),
-            attribute_type: Some(self.type_.into_proto()),
-            value: Some(self.value.into_proto()),
-            inferred: false, // FIXME
+            iid: iid.into(),
+            attribute_type: Some(type_.into_proto()),
+            value: Some(value.into_proto()),
+            inferred: is_inferred,
         }
     }
 }
@@ -370,16 +374,21 @@ impl IntoProto<ValueProto> for Value {
 
 impl FromProto<ExplainablesProto> for Explainables {
     fn from_proto(proto: ExplainablesProto) -> Self {
-        let mut relations = HashMap::with_capacity(proto.relations.len());
-        for (k, v) in proto.relations {
+        let ExplainablesProto {
+            relations: relations_proto,
+            attributes: attributes_proto,
+            ownerships: ownerships_proto,
+        } = proto;
+        let mut relations = HashMap::with_capacity(relations_proto.len());
+        for (k, v) in relations_proto {
             relations.insert(k, Explainable::from_proto(v));
         }
-        let mut attributes = HashMap::with_capacity(proto.attributes.len());
-        for (k, v) in proto.attributes {
+        let mut attributes = HashMap::with_capacity(attributes_proto.len());
+        for (k, v) in attributes_proto {
             attributes.insert(k, Explainable::from_proto(v));
         }
         let mut ownerships = HashMap::new();
-        for (k1, owned) in proto.ownerships {
+        for (k1, owned) in ownerships_proto {
             for (k2, v) in owned.owned {
                 ownerships.insert((k1.clone(), k2), Explainable::from_proto(v));
             }

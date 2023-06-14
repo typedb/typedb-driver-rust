@@ -30,22 +30,24 @@ use crate::{common::Result, Error, Rule};
 
 impl TryFromProto<RuleProto> for Rule {
     fn try_from_proto(proto: RuleProto) -> Result<Self> {
-        let when = match parse_pattern(&proto.when) {
+        let RuleProto { label: label_proto, when: when_proto, then: then_proto } = proto;
+        let when = match parse_pattern(&when_proto) {
             Ok(Pattern::Conjunction(conjunction)) => conjunction,
             Ok(other) => return Err(Error::Other(format!("When parse error: {other:?}"))),
             Err(error) => return Err(Error::Other(format!("{error:?}"))),
         };
-        let then = match parse_variable(&proto.then) {
+        let then = match parse_variable(&then_proto) {
             Ok(Variable::Thing(thing)) => thing,
             Ok(other) => return Err(Error::Other(format!("Then parse error: {other:?}"))),
             Err(error) => return Err(Error::Other(format!("{error:?}"))),
         };
-        Ok(Self::new(proto.label, when, then))
+        Ok(Self::new(label_proto, when, then))
     }
 }
 
 impl IntoProto<RuleProto> for Rule {
     fn into_proto(self) -> RuleProto {
-        RuleProto { label: self.label, when: self.when.to_string(), then: self.then.to_string() }
+        let Self { label, when, then } = self;
+        RuleProto { label, when: when.to_string(), then: then.to_string() }
     }
 }
