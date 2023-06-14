@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::collections::HashMap;
+use std::{collections::HashMap, default::Default};
 
 use futures::{TryFutureExt, TryStreamExt};
 use serial_test::serial;
@@ -350,8 +350,5 @@ fn apply_mapping(mapping: &HashMap<String, Vec<String>>, complete_map: &ConceptM
             concepts.insert(mapped.to_string(), concept.clone());
         }
     }
-    let relations: HashMap<String, Explainable> = HashMap::new();
-    let attributes: HashMap<String, Explainable> = HashMap::new();
-    let ownerships: HashMap<(String, String), Explainable> = HashMap::new();
-    ConceptMap { map: concepts, explainables: Explainables {relations, attributes, ownerships} }
+    ConceptMap { map: concepts, explainables: Default::default() }
 }

@@ -69,7 +69,7 @@ impl IntoIterator for ConceptMap {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Explainables {
     pub relations: HashMap<String, Explainable>,
     pub attributes: HashMap<String, Explainable>,
