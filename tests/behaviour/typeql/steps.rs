@@ -23,7 +23,9 @@ use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
 use typeql_lang::parse_query;
-use util::{equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_templated_answer};
+use util::{
+    equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_templated_answer,
+};
 
 use crate::{
     assert_err,
