@@ -33,6 +33,7 @@ use futures::future::try_join_all;
 use typedb_client::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Thing},
+    logic::Rule,
     Connection, Database, DatabaseManager, Result as TypeDBResult, Transaction,
 };
 
@@ -155,6 +156,10 @@ impl Context {
 
     pub fn insert_attribute(&mut self, var_name: String, attribute: Option<Attribute>) {
         self.insert_thing(var_name, attribute.map(Thing::Attribute));
+    }
+
+    pub async fn get_rule(&self, label: String) -> TypeDBResult<Rule> {
+        self.transaction().logic().get_rule(label).await
     }
 }
 
