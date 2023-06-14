@@ -40,10 +40,6 @@ impl ConceptMap {
     pub fn concepts(&self) -> impl Iterator<Item = &Concept> {
         self.map.values()
     }
-
-    pub fn concepts_to_vec(&self) -> Vec<&Concept> {
-        self.concepts().collect::<Vec<&Concept>>()
-    }
 }
 
 impl From<ConceptMap> for HashMap<String, Concept> {
