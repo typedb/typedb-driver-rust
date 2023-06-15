@@ -465,7 +465,9 @@ generic_step_impl! {
     #[step(expr = "verifier is initialised")]
     #[step(expr = "verify answers are sound")]
     #[step(expr = "verify answers are complete")]
-    async fn do_nothing(context: &mut Context) {}
+    async fn do_nothing(_context: &mut Context) {
+    //     We don't have a verifier
+    }
 
     #[step(expr = "verify answers are consistent across {int} executions")]
     async fn verify_answers_are_consistent_across_executions(_context: &mut Context, _executions: usize) {
