@@ -20,9 +20,8 @@
  */
 
 use async_trait::async_trait;
-use futures::stream::BoxStream;
 
-use crate::{common::box_stream, logic::Rule, Result, Transaction};
+use crate::{logic::Rule, Result, Transaction};
 
 #[async_trait]
 pub trait RuleAPI: Clone + Sync + Send {

@@ -19,10 +19,8 @@
  * under the License.
  */
 
-use std::collections::{HashMap, HashSet};
-
 use cucumber::{gherkin::Step, given, then, when};
-use futures::{StreamExt, TryFutureExt, TryStreamExt};
+use futures::{TryStreamExt};
 use typedb_client::{answer::Numeric, Result as TypeDBResult, Session, SessionType, TransactionType};
 use typeql_lang::parse_query;
 use util::{
@@ -31,7 +29,7 @@ use util::{
 
 use crate::{
     assert_err,
-    behaviour::{parameter::Comparable, util, Context},
+    behaviour::{util, Context},
     generic_step_impl,
 };
 
@@ -379,7 +377,7 @@ generic_step_impl! {
         let res = stream.unwrap().try_collect::<Vec<_>>().await;
         assert!(res.is_ok(), "{:?}", res.err());
         let answers = res.unwrap();
-        let step_table = iter_map_table(step).collect::<Vec<_>>();
+        let step_table = iter_table_map(step).collect::<Vec<_>>();
         let expected_answers = step_table.len();
         let actual_answers = answers.len();
         assert_eq!(
@@ -414,7 +412,7 @@ generic_step_impl! {
         for session_tracker in &mut context.session_trackers {
             session_tracker.open_transaction(TransactionType::Write).await.unwrap();
         }
-        typeql_define(context, step).await;
+        assert!(typeql_define(context, step).await.is_ok());
         context.take_transaction().commit().await.unwrap();
         context.session_trackers.clear();
     }
@@ -427,7 +425,7 @@ generic_step_impl! {
         for session_tracker in &mut context.session_trackers {
             session_tracker.open_transaction(TransactionType::Write).await.unwrap();
         }
-        typeql_insert(context, step).await;
+        assert!(typeql_insert(context, step).await.is_ok());
         context.take_transaction().commit().await.unwrap();
         context.session_trackers.clear();
     }
@@ -440,7 +438,7 @@ generic_step_impl! {
         for session_tracker in &mut context.session_trackers {
             session_tracker.open_transaction(TransactionType::Read).await.unwrap();
         }
-        get_answers_typeql_match(context, step).await;
+        assert!(get_answers_typeql_match(context, step).await.is_ok());
         context.session_trackers.clear();
     }
 
@@ -470,6 +468,8 @@ generic_step_impl! {
     async fn do_nothing(context: &mut Context) {}
 
     #[step(expr = "verify answers are consistent across {int} executions")]
-    async fn verify_answers_are_consistent_across_executions(context: &mut Context, executions: usize) {}
+    async fn verify_answers_are_consistent_across_executions(_context: &mut Context, _executions: usize) {
+    //     We can't execute previous query again because don't remember the query
+    }
 
 }

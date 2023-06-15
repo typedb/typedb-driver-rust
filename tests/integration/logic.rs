@@ -21,12 +21,11 @@
 
 use std::{collections::HashMap, default::Default};
 
-use futures::{TryFutureExt, TryStreamExt};
+use futures::{TryStreamExt};
 use serial_test::serial;
 use typedb_client::{
-    answer::{ConceptMap, Explainable, Explainables},
+    answer::ConceptMap,
     concept::{Attribute, Concept, Value},
-    logic::Explanation,
     transaction::concept::api::ThingAPI,
     Connection, DatabaseManager, Options, Session,
     SessionType::{Data, Schema},

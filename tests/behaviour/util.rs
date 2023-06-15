@@ -36,8 +36,8 @@ use typedb_client::{
     Result as TypeDBResult,
 };
 use typeql_lang::{
-    parse_pattern, parse_query, parse_rule,
-    pattern::{ThingVariable, Variable},
+    parse_pattern, parse_query,
+    pattern::Variable,
 };
 
 use crate::behaviour::Context;

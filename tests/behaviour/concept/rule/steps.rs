@@ -19,18 +19,13 @@
  * under the License.
  */
 
-use cucumber::{gherkin::Step, given, then, when};
-use futures::TryStreamExt;
-use typedb_client::{logic::Rule, transaction::logic::api::RuleAPI, Result as TypeDBResult};
+use cucumber::{given, then, when};
+use typedb_client::{transaction::logic::api::RuleAPI, Result as TypeDBResult};
 
 use crate::{
     assert_err,
     behaviour::{
-        parameter::{
-            ContainmentParam, LabelParam, OptionalAnnotationsParam, OptionalExplicitParam, OptionalOverrideLabelParam,
-            OptionalOverrideScopedLabelParam, ScopedLabelParam,
-        },
-        util::iter_table,
+        parameter::LabelParam,
         Context,
     },
     generic_step_impl,
