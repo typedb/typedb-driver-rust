@@ -104,5 +104,4 @@ impl UserManager {
         }
         Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
-
 }

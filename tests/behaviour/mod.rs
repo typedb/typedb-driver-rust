@@ -86,8 +86,16 @@ impl Context {
 
     async fn after_scenario(&self) -> TypeDBResult {
         try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
-        try_join_all(self.users.all().await.unwrap().into_iter()
-            .filter(|user| user.username != Context::ADMIN_USERNAME).map(|user| self.users.delete(user.username))).await?;
+        try_join_all(
+            self.users
+                .all()
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(|user| user.username != Context::ADMIN_USERNAME)
+                .map(|user| self.users.delete(user.username)),
+        )
+        .await?;
         Ok(())
     }
 
