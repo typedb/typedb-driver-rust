@@ -307,7 +307,7 @@ async fn assert_single_explainable_explanations(
     transaction: &Transaction<'_>,
 ) {
     check_explainable_vars(ans);
-    let explainables = ans.clone().explainables;
+    let explainables = &ans.explainables;
     let mut all_explainables = explainables.attributes.values().collect::<Vec<_>>();
     all_explainables.extend(explainables.relations.values().collect::<Vec<_>>());
     all_explainables.extend(explainables.ownerships.values().collect::<Vec<_>>());
@@ -331,12 +331,11 @@ async fn assert_single_explainable_explanations(
 }
 
 fn check_explainable_vars(ans: &ConceptMap) {
-    ans.clone().explainables.relations.into_keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
-    ans.clone().explainables.attributes.into_keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
-    ans.clone()
-        .explainables
+    ans.explainables.relations.keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
+    ans.explainables.attributes.keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
+    ans.explainables
         .ownerships
-        .into_keys()
+        .keys()
         .for_each(|(k1, k2)| assert!(ans.map.contains_key(k1.as_str()) && ans.map.contains_key(k2.as_str())));
 }
 
