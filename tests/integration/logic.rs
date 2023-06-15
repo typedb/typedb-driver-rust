@@ -102,7 +102,7 @@ test_for_each_arg! {
         assert!(!with_explainable.explainables.is_empty());
         assert!(without_explainable.explainables.is_empty());
 
-        assert_single_explainable_explanations(with_explainable, 1, 1, &transaction).await;
+        assert_single_explainable_explanations(with_explainable, 1, &transaction).await;
 
         Ok(())
     }
@@ -156,8 +156,8 @@ test_for_each_arg! {
         assert!(!answers.get(0).unwrap().explainables.is_empty());
         assert!(!answers.get(1).unwrap().explainables.is_empty());
 
-        assert_single_explainable_explanations(answers.get(0).unwrap(), 1, 1, &transaction).await;
-        assert_single_explainable_explanations(answers.get(1).unwrap(), 1, 1, &transaction).await;
+        assert_single_explainable_explanations(answers.get(0).unwrap(), 1, &transaction).await;
+        assert_single_explainable_explanations(answers.get(1).unwrap(), 1, &transaction).await;
 
         Ok(())
     }
@@ -219,8 +219,8 @@ test_for_each_arg! {
         assert!(!answers.get(0).unwrap().explainables.is_empty());
         assert!(!answers.get(1).unwrap().explainables.is_empty());
 
-        assert_single_explainable_explanations(answers.get(0).unwrap(), 1, 3, &transaction).await;
-        assert_single_explainable_explanations(answers.get(1).unwrap(), 1, 3, &transaction).await;
+        assert_single_explainable_explanations(answers.get(0).unwrap(), 3, &transaction).await;
+        assert_single_explainable_explanations(answers.get(1).unwrap(), 3, &transaction).await;
 
         Ok(())
     }
@@ -286,9 +286,9 @@ test_for_each_arg! {
                 Concept::Entity(entity) => {
                     let attributes: Vec<Attribute> = entity.get_has(&transaction, vec![age_in_days.clone()], vec![])?.try_collect().await?;
                     if attributes.first().unwrap().value == Value::Long(15) {
-                        assert_single_explainable_explanations(&ans, 1, 1, &transaction).await;
+                        assert_single_explainable_explanations(&ans, 1, &transaction).await;
                     } else {
-                        assert_single_explainable_explanations(&ans, 1, 2, &transaction).await;
+                        assert_single_explainable_explanations(&ans, 2, &transaction).await;
                     }
                 },
                 _ => panic!("Incorrect Concept type: {:?}", ans.map.get("x").unwrap()),
@@ -301,7 +301,6 @@ test_for_each_arg! {
 
 async fn assert_single_explainable_explanations(
     ans: &ConceptMap,
-    explainables_count: usize,
     explanations_count: usize,
     transaction: &Transaction<'_>,
 ) {
@@ -311,7 +310,7 @@ async fn assert_single_explainable_explanations(
     let mut all_explainables = explainables.attributes.values().collect::<Vec<_>>();
     all_explainables.extend(explainables.relations.values().collect::<Vec<_>>());
     all_explainables.extend(explainables.ownerships.values().collect::<Vec<_>>());
-    assert_eq!(explainables_count, all_explainables.len());
+    assert_eq!(1, all_explainables.len());
 
     let explainable = all_explainables.get(0).unwrap();
     let stream = transaction.query().explain(explainable.id);
