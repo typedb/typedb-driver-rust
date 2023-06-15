@@ -306,20 +306,26 @@ async fn assert_single_explainable_explanations(
     explanations_count: usize,
     transaction: &Transaction<'_>,
 ) {
-    check_explainable_vars(ans);
+    assert_explainables_in_concept_map(ans);
+
     let explainables = &ans.explainables;
     let mut all_explainables = explainables.attributes.values().collect::<Vec<_>>();
     all_explainables.extend(explainables.relations.values().collect::<Vec<_>>());
     all_explainables.extend(explainables.ownerships.values().collect::<Vec<_>>());
     assert_eq!(explainables_count, all_explainables.len());
+
     let explainable = all_explainables.get(0).unwrap();
     assert!(explainable.id >= 0);
+
     let stream = transaction.query().explain(explainable.id);
     assert!(stream.is_ok());
+
     let result = stream.unwrap().try_collect::<Vec<_>>().await;
     assert!(result.is_ok());
+
     let explanations = result.unwrap();
     assert_eq!(explanations_count, explanations.len());
+
     for explanation in explanations {
         let mapping = explanation.variable_mapping;
         let projected = apply_mapping(&mapping, ans);
@@ -330,7 +336,7 @@ async fn assert_single_explainable_explanations(
     }
 }
 
-fn check_explainable_vars(ans: &ConceptMap) {
+fn assert_explainables_in_concept_map(ans: &ConceptMap) {
     ans.explainables.relations.keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
     ans.explainables.attributes.keys().for_each(|k| assert!(ans.map.contains_key(k.as_str())));
     ans.explainables
