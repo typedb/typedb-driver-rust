@@ -21,7 +21,7 @@
 
 use std::{collections::HashMap, default::Default};
 
-use futures::{TryStreamExt};
+use futures::TryStreamExt;
 use serial_test::serial;
 use typedb_client::{
     answer::ConceptMap,

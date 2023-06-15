@@ -35,10 +35,7 @@ use typedb_client::{
     transaction::concept::api::ThingAPI,
     Result as TypeDBResult,
 };
-use typeql_lang::{
-    parse_pattern, parse_query,
-    pattern::Variable,
-};
+use typeql_lang::{parse_pattern, parse_query, pattern::Variable};
 
 use crate::behaviour::Context;
 
@@ -179,10 +176,7 @@ fn get_iid(concept: &Concept) -> String {
     iid.to_string()
 }
 
-pub async fn match_answer_rule(
-    answer_identifiers: &HashMap<&String, &String>,
-    answer: &Rule,
-) -> bool {
+pub async fn match_answer_rule(answer_identifiers: &HashMap<&String, &String>, answer: &Rule) -> bool {
     let when_clause = answer_identifiers.get(&String::from("when")).unwrap().trim_end_matches(";").to_string();
     let when = parse_pattern(when_clause.as_str()).unwrap().into_conjunction();
     let then_clause = answer_identifiers

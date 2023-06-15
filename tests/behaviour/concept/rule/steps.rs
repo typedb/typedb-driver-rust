@@ -24,10 +24,7 @@ use typedb_client::{transaction::logic::api::RuleAPI, Result as TypeDBResult};
 
 use crate::{
     assert_err,
-    behaviour::{
-        parameter::LabelParam,
-        Context,
-    },
+    behaviour::{parameter::LabelParam, Context},
     generic_step_impl,
 };
 
