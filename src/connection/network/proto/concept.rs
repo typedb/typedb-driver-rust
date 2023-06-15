@@ -22,6 +22,7 @@
 use std::collections::HashMap;
 
 use chrono::NaiveDateTime;
+use itertools::Itertools;
 use typedb_protocol::{
     attribute::{value::Value as ValueProtoInner, Value as ValueProto},
     attribute_type::ValueType as ValueTypeProto,
@@ -68,7 +69,7 @@ impl TryFromProto<NumericGroupProto> for NumericGroup {
     fn try_from_proto(proto: NumericGroupProto) -> Result<Self> {
         let NumericGroupProto { owner: owner_proto, number: number_proto } = proto;
         let owner = Concept::try_from_proto(owner_proto.ok_or(ConnectionError::MissingResponseField("owner"))?)?;
-        let numeric = Numeric::try_from_proto(number_proto.ok_or(ConnectionError::MissingResponseField("value"))?)?;
+        let numeric = Numeric::try_from_proto(number_proto.ok_or(ConnectionError::MissingResponseField("number"))?)?;
         Ok(Self { owner, numeric })
     }
 }
@@ -89,11 +90,7 @@ impl TryFromProto<ConceptMapGroupProto> for ConceptMapGroup {
     fn try_from_proto(proto: ConceptMapGroupProto) -> Result<Self> {
         let ConceptMapGroupProto { owner: owner_proto, concept_maps: concept_maps_proto } = proto;
         let owner = Concept::try_from_proto(owner_proto.ok_or(ConnectionError::MissingResponseField("owner"))?)?;
-        let mut concept_maps = Vec::with_capacity(concept_maps_proto.len());
-        for concept_map in concept_maps_proto {
-            concept_maps.push(ConceptMap::try_from_proto(concept_map)?);
-        }
-
+        let concept_maps = concept_maps_proto.into_iter().map(ConceptMap::try_from_proto).try_collect()?;
         Ok(Self { owner, concept_maps })
     }
 }
