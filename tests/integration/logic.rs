@@ -314,8 +314,6 @@ async fn assert_single_explainable_explanations(
     assert_eq!(explainables_count, all_explainables.len());
 
     let explainable = all_explainables.get(0).unwrap();
-    assert!(explainable.id >= 0);
-
     let stream = transaction.query().explain(explainable.id);
     assert!(stream.is_ok());
 
