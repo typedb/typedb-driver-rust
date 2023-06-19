@@ -416,7 +416,7 @@ impl FromProto<user_manager::delete::Res> for Response {
 
 impl FromProto<user_manager::get::Res> for Response {
     fn from_proto(proto: user_manager::get::Res) -> Self {
-        Self::UserGet { user: proto.user.and_then(|user| Some(User::from_proto(user))) }
+        Self::UserGet { user: proto.user.map(User::from_proto) }
     }
 }
 
