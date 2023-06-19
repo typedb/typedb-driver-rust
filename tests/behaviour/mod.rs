@@ -26,7 +26,7 @@ mod session_tracker;
 mod typeql;
 mod util;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use cucumber::{StatsWriter, World};
 use futures::future::try_join_all;
@@ -34,7 +34,7 @@ use typedb_client::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Thing},
     logic::Rule,
-    Connection, Database, DatabaseManager, Result as TypeDBResult, Transaction, UserManager,
+    Connection, Credential, Database, DatabaseManager, Result as TypeDBResult, Transaction, UserManager,
 };
 
 use self::session_tracker::SessionTracker;
@@ -57,6 +57,7 @@ impl Context {
     const VALUE_COLUMN_NAME: &'static str = "value";
     const DEFAULT_DATABASE: &'static str = "test";
     const ADMIN_USERNAME: &'static str = "admin";
+    const ADMIN_PASSWORD: &'static str = "password";
 
     async fn test(glob: &'static str) -> bool {
         let default_panic = std::panic::take_hook();
@@ -84,18 +85,37 @@ impl Context {
         t == "ignore" || t == "ignore-typedb" || t == "ignore-client-rust" || t == "ignore-typedb-client-rust"
     }
 
-    async fn after_scenario(&self) -> TypeDBResult {
-        try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
-        try_join_all(
-            self.users
-                .all()
-                .await
-                .unwrap()
-                .into_iter()
-                .filter(|user| user.username != Context::ADMIN_USERNAME)
-                .map(|user| self.users.delete(user.username)),
-        )
-        .await?;
+    async fn after_scenario(&mut self) -> TypeDBResult {
+        if self.connection.server_count() == 1 {
+            try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
+        } else {
+            self.set_connection(
+                Connection::new_encrypted(
+                    &["localhost:11729", "localhost:21729", "localhost:31729"],
+                    Credential::with_tls(
+                        &Context::ADMIN_USERNAME,
+                        &Context::ADMIN_PASSWORD,
+                        Some(&PathBuf::from(
+                            std::env::var("ROOT_CA")
+                                .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
+                        )),
+                    )
+                    .unwrap(),
+                )
+                .unwrap(),
+            );
+            try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
+            try_join_all(
+                self.users
+                    .all()
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .filter(|user| user.username != Context::ADMIN_USERNAME)
+                    .map(|user| self.users.delete(user.username)),
+            )
+            .await?;
+        }
         Ok(())
     }
 

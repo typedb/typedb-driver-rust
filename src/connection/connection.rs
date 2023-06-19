@@ -107,7 +107,7 @@ impl Connection {
         self.background_runtime.force_close()
     }
 
-    pub(crate) fn server_count(&self) -> usize {
+    pub fn server_count(&self) -> usize {
         self.server_connections.len()
     }
 
