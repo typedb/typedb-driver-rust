@@ -185,12 +185,8 @@ pub async fn match_answer_rule(answer_identifiers: &HashMap<&String, &String>, a
         .trim_end_matches(['}', ';', ' '])
         .trim_start_matches("{")
         .to_string();
-    let then_var = parse_pattern(then_clause.as_str()).unwrap().into_variable();
-    if let Variable::Thing(then) = then_var {
-        answer_identifiers.get(&String::from("label")).unwrap().to_string() == answer.label
-            && when == answer.when
-            && then == answer.then
-    } else {
-        false
-    }
+    let then = parse_pattern(then_clause.as_str()).unwrap().into_variable();
+    answer_identifiers.get(&String::from("label")).unwrap().to_string() == answer.label
+        && when == answer.when
+        && then == Variable::Thing(answer.then.clone())
 }

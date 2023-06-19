@@ -100,11 +100,9 @@ impl TryFromProto<ConceptMapGroupProto> for ConceptMapGroup {
 impl TryFromProto<ConceptMapProto> for ConceptMap {
     fn try_from_proto(proto: ConceptMapProto) -> Result<Self> {
         let ConceptMapProto { map: map_proto, explainables: explainables_proto } = proto;
-        let mut map = HashMap::with_capacity(map_proto.len());
-        for (k, v) in map_proto {
-            map.insert(k, Concept::try_from_proto(v)?);
-        }
-        let Some(explainables) = explainables_proto else { return Err(ConnectionError::MissingResponseField("explainables").into()) };
+        let map = map_proto.into_iter().map(|(k, v)| Concept::try_from_proto(v).map(|v| (k, v))).try_collect()?;
+        let explainables = explainables_proto
+            .ok_or::<ConnectionError>(ConnectionError::MissingResponseField("explainables").into())?;
         Ok(Self { map, explainables: Explainables::from_proto(explainables) })
     }
 }
@@ -379,14 +377,8 @@ impl FromProto<ExplainablesProto> for Explainables {
             attributes: attributes_proto,
             ownerships: ownerships_proto,
         } = proto;
-        let mut relations = HashMap::with_capacity(relations_proto.len());
-        for (k, v) in relations_proto {
-            relations.insert(k, Explainable::from_proto(v));
-        }
-        let mut attributes = HashMap::with_capacity(attributes_proto.len());
-        for (k, v) in attributes_proto {
-            attributes.insert(k, Explainable::from_proto(v));
-        }
+        let relations = relations_proto.into_iter().map(|(k, v)| (k, Explainable::from_proto(v))).collect();
+        let attributes = attributes_proto.into_iter().map(|(k, v)| (k, Explainable::from_proto(v))).collect();
         let mut ownerships = HashMap::new();
         for (k1, owned) in ownerships_proto {
             for (k2, v) in owned.owned {
@@ -394,7 +386,7 @@ impl FromProto<ExplainablesProto> for Explainables {
             }
         }
 
-        Self::new(relations, attributes, ownerships)
+        Self { relations, attributes, ownerships }
     }
 }
 
@@ -410,7 +402,7 @@ impl TryFromProto<ExplanationProto> for Explanation {
         let ExplanationProto { rule, conclusion, condition, var_mapping } = proto;
         let mut variable_mapping = HashMap::with_capacity(var_mapping.len());
         for (k, v) in var_mapping {
-            variable_mapping.insert(k, v.vars.clone());
+            variable_mapping.insert(k, v.vars);
         }
 
         Ok(Self {

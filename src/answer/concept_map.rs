@@ -73,14 +73,6 @@ pub struct Explainables {
 }
 
 impl Explainables {
-    pub(crate) fn new(
-        relations: HashMap<String, Explainable>,
-        attributes: HashMap<String, Explainable>,
-        ownerships: HashMap<(String, String), Explainable>,
-    ) -> Self {
-        Self { relations, attributes, ownerships }
-    }
-
     pub fn is_empty(&self) -> bool {
         self.relations.is_empty() && self.attributes.is_empty() && self.ownerships.is_empty()
     }
