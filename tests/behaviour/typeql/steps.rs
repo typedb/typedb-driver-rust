@@ -359,13 +359,13 @@ generic_step_impl! {
         );
     }
 
-    #[step(expr = "rules contain: {word}")]
+    #[step(expr = "rules contain: {label}")]
     async fn rules_contain(context: &mut Context, rule_label: String) {
         let res = context.transaction().logic().get_rule(rule_label).await;
         assert!(res.is_ok(), "{res:?}");
     }
 
-    #[step(expr = "rules do not contain: {word}")]
+    #[step(expr = "rules do not contain: {label}")]
     async fn rules_do_not_contain(context: &mut Context, rule_label: String) {
         let res = context.transaction().logic().get_rule(rule_label).await;
         assert!(res.is_err(), "{res:?}");
