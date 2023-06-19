@@ -474,5 +474,4 @@ generic_step_impl! {
     async fn verify_answers_are_consistent_across_executions(_context: &mut Context, _executions: usize) {
     //     We can't execute previous query again because don't remember the query
     }
-
 }
