@@ -31,10 +31,9 @@ use crate::{common::Result, error::ConnectionError, logic::Rule};
 impl TryFromProto<RuleProto> for Rule {
     fn try_from_proto(proto: RuleProto) -> Result<Self> {
         let RuleProto { label: label_proto, when: when_proto, then: then_proto } = proto;
-        let when = match parse_pattern(&when_proto) {
-            Ok(Pattern::Conjunction(conjunction)) => conjunction,
-            Ok(_) => return Err(ConnectionError::InvalidResponseField("when").into()),
-            Err(error) => return Err(error.into()),
+        let when = match parse_pattern(&when_proto)? {
+            Pattern::Conjunction(conjunction) => conjunction,
+            _ => return Err(ConnectionError::InvalidResponseField("when").into()),
         };
         let then = match parse_variable(&then_proto) {
             Ok(Variable::Thing(thing)) => thing,
