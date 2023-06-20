@@ -24,10 +24,11 @@ use std::{collections::HashMap, default::Default};
 use futures::TryStreamExt;
 use serial_test::serial;
 use typedb_client::{
-    answer::ConceptMap,
+    answer::{ConceptMap, Explainable},
     concept::{Attribute, Concept, Value},
+    logic::Explanation,
     transaction::concept::api::ThingAPI,
-    Connection, DatabaseManager, Options, Session,
+    Connection, DatabaseManager, Options, Result as TypeDBResult, Session,
     SessionType::{Data, Schema},
     Transaction,
     TransactionType::{Read, Write},
@@ -42,7 +43,7 @@ test_for_each_arg! {
         cluster => common::new_cluster_connection().unwrap(),
     }
 
-    async fn test_disjunction_explainable(connection: Connection) -> typedb_client::Result {
+    async fn test_disjunction_explainable(connection: Connection) -> TypeDBResult {
         let schema = r#"define
             person sub entity,
                 owns name,
@@ -92,7 +93,7 @@ test_for_each_arg! {
             if answer.map.contains_key("p2") {
                 assert_eq!(3, answer.map.len());
                 assert!(!answer.explainables.is_empty());
-                assert_single_explainable_explanations(&answer, 1, &transaction).await;
+                assert_explanations_count_and_projection_match(&answer, 1, &transaction).await?;
             } else {
                 assert_eq!(2, answer.map.len());
                 assert!(answer.explainables.is_empty());
@@ -102,7 +103,7 @@ test_for_each_arg! {
         Ok(())
     }
 
-    async fn test_relation_explainable(connection: Connection) -> typedb_client::Result {
+    async fn test_relation_explainable(connection: Connection) -> TypeDBResult {
         let schema = r#"define
             person sub entity,
                 owns name,
@@ -148,13 +149,13 @@ test_for_each_arg! {
 
         for answer in answers {
             assert!(!answer.explainables.is_empty());
-            assert_single_explainable_explanations(&answer, 1, &transaction).await;
+            assert_explanations_count_and_projection_match(&answer, 1, &transaction).await?;
         }
 
         Ok(())
     }
 
-    async fn test_relation_explainable_multiple_ways(connection: Connection) -> typedb_client::Result {
+    async fn test_relation_explainable_multiple_ways(connection: Connection) -> TypeDBResult {
         let schema = r#"define
             person sub entity,
                 owns name,
@@ -206,13 +207,13 @@ test_for_each_arg! {
 
         for answer in answers {
             assert!(!answer.explainables.is_empty());
-            assert_single_explainable_explanations(&answer, 3, &transaction).await;
+            assert_explanations_count_and_projection_match(&answer, 3, &transaction).await?;
         }
 
         Ok(())
     }
 
-    async fn test_has_explicit_explainable_two_ways(connection: Connection) -> typedb_client::Result {
+    async fn test_has_explicit_explainable_two_ways(connection: Connection) -> TypeDBResult {
         let schema = r#"define
             milk sub entity,
                 owns age-in-days,
@@ -266,9 +267,9 @@ test_for_each_arg! {
                 Concept::Entity(entity) => {
                     let attributes: Vec<Attribute> = entity.get_has(&transaction, vec![age_in_days.clone()], vec![])?.try_collect().await?;
                     if attributes.first().unwrap().value == Value::Long(15) {
-                        assert_single_explainable_explanations(&answer, 1, &transaction).await;
+                        assert_explanations_count_and_projection_match(&answer, 1, &transaction).await?;
                     } else {
-                        assert_single_explainable_explanations(&answer, 2, &transaction).await;
+                        assert_explanations_count_and_projection_match(&answer, 2, &transaction).await?;
                     }
                 },
                 _ => panic!("Incorrect Concept type: {:?}", answer.map.get("x").unwrap()),
@@ -279,37 +280,20 @@ test_for_each_arg! {
     }
 }
 
-async fn assert_single_explainable_explanations(
+async fn assert_explanations_count_and_projection_match(
     ans: &ConceptMap,
     explanations_count: usize,
     transaction: &Transaction<'_>,
-) {
+) -> TypeDBResult {
     assert_explainables_in_concept_map(ans);
+    let explainables = all_explainables(ans);
+    assert_eq!(1, explainables.len());
 
-    let explainables = &ans.explainables;
-    let mut all_explainables = explainables.attributes.values().collect::<Vec<_>>();
-    all_explainables.extend(explainables.relations.values().collect::<Vec<_>>());
-    all_explainables.extend(explainables.ownerships.values().collect::<Vec<_>>());
-    assert_eq!(1, all_explainables.len());
-
-    let explainable = all_explainables.get(0).unwrap();
-    let stream = transaction.query().explain(explainable.id);
-    assert!(stream.is_ok());
-
-    let result = stream.unwrap().try_collect::<Vec<_>>().await;
-    assert!(result.is_ok());
-
-    let explanations = result.unwrap();
+    let explanations = get_explanations(explainables[0], transaction).await?;
     assert_eq!(explanations_count, explanations.len());
 
-    for explanation in explanations {
-        let mapping = explanation.variable_mapping;
-        let projected = apply_mapping(&mapping, ans);
-        for var in projected.map.keys() {
-            assert!(explanation.conclusion.map.contains_key(var));
-            assert_eq!(explanation.conclusion.map.get(var), projected.map.get(var));
-        }
-    }
+    assert_explanation_concepts_match_projection(ans, explanations);
+    Ok(())
 }
 
 fn assert_explainables_in_concept_map(ans: &ConceptMap) {
@@ -319,6 +303,31 @@ fn assert_explainables_in_concept_map(ans: &ConceptMap) {
         .ownerships
         .keys()
         .for_each(|(k1, k2)| assert!(ans.map.contains_key(k1.as_str()) && ans.map.contains_key(k2.as_str())));
+}
+
+fn all_explainables(ans: &ConceptMap) -> Vec<&Explainable> {
+    let explainables = &ans.explainables;
+    explainables
+        .attributes
+        .values()
+        .chain(explainables.relations.values())
+        .chain(explainables.ownerships.values())
+        .collect::<Vec<_>>()
+}
+
+async fn get_explanations(explainable: &Explainable, transaction: &Transaction<'_>) -> TypeDBResult<Vec<Explanation>> {
+    transaction.query().explain(explainable.id)?.try_collect::<Vec<_>>().await
+}
+
+fn assert_explanation_concepts_match_projection(ans: &ConceptMap, explanations: Vec<Explanation>) {
+    for explanation in explanations {
+        let mapping = explanation.variable_mapping;
+        let projected = apply_mapping(&mapping, ans);
+        for var in projected.map.keys() {
+            assert!(explanation.conclusion.map.contains_key(var));
+            assert_eq!(explanation.conclusion.map.get(var), projected.map.get(var));
+        }
+    }
 }
 
 fn apply_mapping(mapping: &HashMap<String, Vec<String>>, complete_map: &ConceptMap) -> ConceptMap {
