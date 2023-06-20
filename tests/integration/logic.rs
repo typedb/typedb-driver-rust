@@ -62,11 +62,9 @@ test_for_each_arg! {
             let transaction = session.transaction(Write).await?;
             transaction.logic().put_rule(
                 "marriage-is-friendship".to_string(),
-                typeql_lang::parse_pattern("{ $x isa person; $y isa person; (husband: $x, wife: $y) isa marriage; }")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?
+                typeql_lang::parse_pattern("{ $x isa person; $y isa person; (husband: $x, wife: $y) isa marriage; }")?
                     .into_conjunction(),
-                typeql_lang::parse_variable("(friend: $x, friend: $y) isa friendship")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?,
+                typeql_lang::parse_variable("(friend: $x, friend: $y) isa friendship")?,
             ).await?;
             transaction.commit().await?;
         }
@@ -127,11 +125,9 @@ test_for_each_arg! {
             let transaction = session.transaction(Write).await?;
             transaction.logic().put_rule(
                 "marriage-is-friendship".to_string(),
-                typeql_lang::parse_pattern("{ $x isa person; $y isa person; (husband: $x, wife: $y) isa marriage; }")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?
+                typeql_lang::parse_pattern("{ $x isa person; $y isa person; (husband: $x, wife: $y) isa marriage; }")?
                     .into_conjunction(),
-                typeql_lang::parse_variable("(friend: $x, friend: $y) isa friendship")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?,
+                typeql_lang::parse_variable("(friend: $x, friend: $y) isa friendship")?,
             ).await?;
             transaction.commit().await?;
         }
@@ -182,19 +178,15 @@ test_for_each_arg! {
             let transaction = session.transaction(Write).await?;
             transaction.logic().put_rule(
                 "marriage-is-friendship".to_string(),
-                typeql_lang::parse_pattern("{ $x isa person; $y isa person; (husband: $x, wife: $y) isa marriage; }")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?
+                typeql_lang::parse_pattern("{ $x isa person; $y isa person; (husband: $x, wife: $y) isa marriage; }")?
                     .into_conjunction(),
-                typeql_lang::parse_variable("(friend: $x, friend: $y) isa friendship")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?,
+                typeql_lang::parse_variable("(friend: $x, friend: $y) isa friendship")?,
             ).await?;
             transaction.logic().put_rule(
                 "everyone-is-friends".to_string(),
-                typeql_lang::parse_pattern("{ $x isa person; $y isa person; not { $x is $y; }; }")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?
+                typeql_lang::parse_pattern("{ $x isa person; $y isa person; not { $x is $y; }; }")?
                     .into_conjunction(),
-                typeql_lang::parse_variable("(friend: $x, friend: $y) isa friendship")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?,
+                typeql_lang::parse_variable("(friend: $x, friend: $y) isa friendship")?,
             ).await?;
             transaction.commit().await?;
         }
@@ -240,19 +232,15 @@ test_for_each_arg! {
             let transaction = session.transaction(Write).await?;
             transaction.logic().put_rule(
                 "old-milk-is-not-good".to_string(),
-                typeql_lang::parse_pattern("{ $x isa milk, has age-in-days <= 10; }")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?
+                typeql_lang::parse_pattern("{ $x isa milk, has age-in-days <= 10; }")?
                     .into_conjunction(),
-                typeql_lang::parse_variable("$x has is-still-good true")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?,
+                typeql_lang::parse_variable("$x has is-still-good true")?,
             ).await?;
             transaction.logic().put_rule(
                 "all-milk-is-good".to_string(),
-                typeql_lang::parse_pattern("{ $x isa milk; }")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?
+                typeql_lang::parse_pattern("{ $x isa milk; }")?
                     .into_conjunction(),
-                typeql_lang::parse_variable("$x has is-still-good true")
-                    .map_err(|err| typedb_client::Error::Other(format!("{err:?}")))?,
+                typeql_lang::parse_variable("$x has is-still-good true")?,
             ).await?;
             transaction.commit().await?;
         }
