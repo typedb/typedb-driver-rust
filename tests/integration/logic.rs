@@ -88,19 +88,16 @@ test_for_each_arg! {
 
         assert_eq!(3, answers.len());
 
-        let mut without_explainable = answers.get(0).unwrap();
-        let mut with_explainable = answers.get(1).unwrap();
-        if without_explainable.map.contains_key("p2") {
-            (without_explainable, with_explainable) = (with_explainable, without_explainable);
-        };
-
-        assert_eq!(3, with_explainable.map.len());
-        assert_eq!(2, without_explainable.map.len());
-
-        assert!(!with_explainable.explainables.is_empty());
-        assert!(without_explainable.explainables.is_empty());
-
-        assert_single_explainable_explanations(with_explainable, 1, &transaction).await;
+        for answer in answers {
+            if answer.map.contains_key("p2") {
+                assert_eq!(3, answer.map.len());
+                assert!(!answer.explainables.is_empty());
+                assert_single_explainable_explanations(&answer, 1, &transaction).await;
+            } else {
+                assert_eq!(2, answer.map.len());
+                assert!(answer.explainables.is_empty());
+            }
+        }
 
         Ok(())
     }
@@ -149,11 +146,10 @@ test_for_each_arg! {
 
         assert_eq!(2, answers.len());
 
-        assert!(!answers.get(0).unwrap().explainables.is_empty());
-        assert!(!answers.get(1).unwrap().explainables.is_empty());
-
-        assert_single_explainable_explanations(answers.get(0).unwrap(), 1, &transaction).await;
-        assert_single_explainable_explanations(answers.get(1).unwrap(), 1, &transaction).await;
+        for answer in answers {
+            assert!(!answer.explainables.is_empty());
+            assert_single_explainable_explanations(&answer, 1, &transaction).await;
+        }
 
         Ok(())
     }
@@ -208,11 +204,10 @@ test_for_each_arg! {
 
         assert_eq!(2, answers.len());
 
-        assert!(!answers.get(0).unwrap().explainables.is_empty());
-        assert!(!answers.get(1).unwrap().explainables.is_empty());
-
-        assert_single_explainable_explanations(answers.get(0).unwrap(), 3, &transaction).await;
-        assert_single_explainable_explanations(answers.get(1).unwrap(), 3, &transaction).await;
+        for answer in answers {
+            assert!(!answer.explainables.is_empty());
+            assert_single_explainable_explanations(&answer, 3, &transaction).await;
+        }
 
         Ok(())
     }
@@ -264,22 +259,19 @@ test_for_each_arg! {
 
         assert_eq!(3, answers.len());
 
-        assert!(!answers.get(0).unwrap().explainables.is_empty());
-        assert!(!answers.get(1).unwrap().explainables.is_empty());
-        assert!(!answers.get(2).unwrap().explainables.is_empty());
-
         let age_in_days = transaction.concept().get_attribute_type(String::from("age-in-days")).await?.unwrap();
-        for ans in answers {
-            match ans.map.get("x").unwrap() {
+        for answer in answers {
+            assert!(!answer.explainables.is_empty());
+            match answer.map.get("x").unwrap() {
                 Concept::Entity(entity) => {
                     let attributes: Vec<Attribute> = entity.get_has(&transaction, vec![age_in_days.clone()], vec![])?.try_collect().await?;
                     if attributes.first().unwrap().value == Value::Long(15) {
-                        assert_single_explainable_explanations(&ans, 1, &transaction).await;
+                        assert_single_explainable_explanations(&answer, 1, &transaction).await;
                     } else {
-                        assert_single_explainable_explanations(&ans, 2, &transaction).await;
+                        assert_single_explainable_explanations(&answer, 2, &transaction).await;
                     }
                 },
-                _ => panic!("Incorrect Concept type: {:?}", ans.map.get("x").unwrap()),
+                _ => panic!("Incorrect Concept type: {:?}", answer.map.get("x").unwrap()),
             }
         }
 
