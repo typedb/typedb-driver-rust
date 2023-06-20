@@ -30,7 +30,7 @@ use util::{
 
 use crate::{
     assert_err,
-    behaviour::{util, Context},
+    behaviour::{parameter::LabelParam, util, Context},
     generic_step_impl,
 };
 
@@ -288,13 +288,13 @@ generic_step_impl! {
                 for table_row in &step_table {
                     if match_answer_concept(
                         context,
-                        table_row.get(&Context::GROUP_COLUMN_NAME.to_string()).unwrap(),
+                        table_row.get(&Context::GROUP_COLUMN_NAME).unwrap(),
                         &group.owner,
                     )
                     .await
                     {
                         let mut table_row_wo_owner = table_row.clone();
-                        table_row_wo_owner.remove(&Context::GROUP_COLUMN_NAME.to_string());
+                        table_row_wo_owner.remove(&Context::GROUP_COLUMN_NAME);
                         if match_answer_concept_map(context, &table_row_wo_owner, &ans_row).await {
                             matched_rows += 1;
                             break;
@@ -333,7 +333,7 @@ generic_step_impl! {
             for table_row in &step_table {
                 if match_answer_concept(
                     context,
-                    table_row.get(&Context::GROUP_COLUMN_NAME.to_string()).unwrap(),
+                    table_row.get(&Context::GROUP_COLUMN_NAME).unwrap(),
                     &group.owner,
                 )
                 .await
@@ -344,7 +344,7 @@ generic_step_impl! {
                         Numeric::NaN => panic!("Last answer in NaN while expected answer is not."),
                     };
                     let expected_value: f64 =
-                        table_row.get(&Context::VALUE_COLUMN_NAME.to_string()).unwrap().parse().unwrap();
+                        table_row.get(&Context::VALUE_COLUMN_NAME).unwrap().parse().unwrap();
                     if equals_approximate(answer, expected_value) {
                         matched_rows += 1;
                         break;
@@ -360,14 +360,14 @@ generic_step_impl! {
     }
 
     #[step(expr = "rules contain: {label}")]
-    async fn rules_contain(context: &mut Context, rule_label: String) {
-        let res = context.transaction().logic().get_rule(rule_label).await;
+    async fn rules_contain(context: &mut Context, rule_label: LabelParam) {
+        let res = context.transaction().logic().get_rule(rule_label.name).await;
         assert!(res.is_ok(), "{res:?}");
     }
 
     #[step(expr = "rules do not contain: {label}")]
-    async fn rules_do_not_contain(context: &mut Context, rule_label: String) {
-        let res = context.transaction().logic().get_rule(rule_label).await;
+    async fn rules_do_not_contain(context: &mut Context, rule_label: LabelParam) {
+        let res = context.transaction().logic().get_rule(rule_label.name).await;
         assert!(res.is_err(), "{res:?}");
     }
 
