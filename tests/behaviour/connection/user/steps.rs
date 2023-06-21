@@ -67,4 +67,10 @@ generic_step_impl! {
         assert!(res.is_ok(), "{:?}", res.err());
     }
 
+    #[step(expr = "user expiry-seconds")]
+    async fn user_expiry_seconds(context: &mut Context) {
+        context.connection
+    //     TODO: get current user (not implemented yet) and return his password_expiry_seconds
+    }
+
 }

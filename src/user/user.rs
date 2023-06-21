@@ -26,5 +26,8 @@ pub struct User {
 }
 
 impl User {
-    pub fn password_update(password_old: String, password_new: String) {}
+    pub fn password_update(password_old: String, password_new: String) {
+
+        todo!()
+    }
 }
