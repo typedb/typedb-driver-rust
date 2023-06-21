@@ -26,9 +26,5 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(username: String, password_expiry_seconds: Option<i64>) -> Self {
-        Self { username, password_expiry_seconds }
-    }
-
     pub fn password_update(password_old: String, password_new: String) {}
 }
