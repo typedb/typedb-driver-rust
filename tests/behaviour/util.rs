@@ -179,8 +179,7 @@ fn get_iid(concept: &Concept) -> String {
 pub async fn match_answer_rule(answer_identifiers: &HashMap<&str, &str>, answer: &Rule) -> bool {
     let when_clause = answer_identifiers.get("when").unwrap().to_string();
     let when = parse_patterns(when_clause.as_str()).unwrap()[0].clone().into_conjunction();
-    let then_clause =
-        answer_identifiers.get("then").unwrap().to_string();
+    let then_clause = answer_identifiers.get("then").unwrap().to_string();
     let then = parse_patterns(then_clause.as_str()).unwrap()[0].clone().into_variable();
     answer_identifiers.get("label").unwrap().to_string() == answer.label
         && when == answer.when
