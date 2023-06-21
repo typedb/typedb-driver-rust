@@ -400,11 +400,7 @@ impl FromProto<ExplainableProto> for Explainable {
 impl TryFromProto<ExplanationProto> for Explanation {
     fn try_from_proto(proto: ExplanationProto) -> Result<Self> {
         let ExplanationProto { rule, conclusion, condition, var_mapping } = proto;
-        let mut variable_mapping = HashMap::with_capacity(var_mapping.len());
-        for (k, v) in var_mapping {
-            variable_mapping.insert(k, v.vars);
-        }
-
+        let variable_mapping = var_mapping.iter().map(|(k, v)| (k.clone(), v.clone().vars)).collect();
         Ok(Self {
             rule: Rule::try_from_proto(rule.ok_or(ConnectionError::MissingResponseField("rule"))?)?,
             conclusion: ConceptMap::try_from_proto(

@@ -45,7 +45,7 @@ pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
 
 pub fn iter_table_map(step: &Step) -> impl Iterator<Item = HashMap<&str, &str>> {
     let (keys, rows) = step.table().unwrap().rows.split_first().unwrap();
-    rows.iter().map(|row| keys.iter().map(String::as_str).zip(row.into_iter().map(String::as_str)).collect())
+    rows.iter().map(|row| keys.iter().zip(row).map(|(k, v)| (k.as_str(), v.as_str())).collect())
 }
 
 pub async fn match_answer_concept_map(
