@@ -22,7 +22,7 @@
 use std::path::PathBuf;
 
 use cucumber::{gherkin::Step, given, then, when};
-use typedb_client::{Connection, Credential, Options, TransactionType};
+use typedb_client::{Connection, Credential, Options, Result as TypeDBResult, TransactionType};
 
 use crate::{behaviour::Context, generic_step_impl};
 
@@ -68,9 +68,10 @@ generic_step_impl! {
     }
 
     #[step(expr = "user expiry-seconds")]
-    async fn user_expiry_seconds(context: &mut Context) {
-        context.connection
-    //     TODO: get current user (not implemented yet) and return his password_expiry_seconds
+    async fn user_expiry_seconds(context: &mut Context) -> TypeDBResult {
+        assert!(context.connection.username.is_some());
+        assert!(context.users.get(context.connection.username.clone().unwrap()).await?.password_expiry_seconds.is_some());
+        Ok(())
     }
 
 }
