@@ -35,7 +35,7 @@ use typedb_client::{
     transaction::concept::api::ThingAPI,
     Result as TypeDBResult,
 };
-use typeql_lang::{parse_pattern, parse_query, pattern::Variable};
+use typeql_lang::{parse_patterns, parse_query, pattern::Variable};
 
 use crate::behaviour::Context;
 
@@ -177,11 +177,11 @@ fn get_iid(concept: &Concept) -> String {
 }
 
 pub async fn match_answer_rule(answer_identifiers: &HashMap<&str, &str>, answer: &Rule) -> bool {
-    let when_clause = answer_identifiers.get("when").unwrap().trim_end_matches(";").to_string();
-    let when = parse_pattern(when_clause.as_str()).unwrap().into_conjunction();
+    let when_clause = answer_identifiers.get("when").unwrap().to_string();
+    let when = parse_patterns(when_clause.as_str()).unwrap()[0].clone().into_conjunction();
     let then_clause =
-        answer_identifiers.get("then").unwrap().trim_end_matches(['}', ';', ' ']).trim_start_matches("{").to_string();
-    let then = parse_pattern(then_clause.as_str()).unwrap().into_variable();
+        answer_identifiers.get("then").unwrap().to_string();
+    let then = parse_patterns(then_clause.as_str()).unwrap()[0].clone().into_variable();
     answer_identifiers.get("label").unwrap().to_string() == answer.label
         && when == answer.when
         && then == Variable::Thing(answer.then.clone())
