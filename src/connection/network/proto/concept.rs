@@ -101,8 +101,8 @@ impl TryFromProto<ConceptMapProto> for ConceptMap {
     fn try_from_proto(proto: ConceptMapProto) -> Result<Self> {
         let ConceptMapProto { map: map_proto, explainables: explainables_proto } = proto;
         let map = map_proto.into_iter().map(|(k, v)| Concept::try_from_proto(v).map(|v| (k, v))).try_collect()?;
-        let explainables = explainables_proto
-            .ok_or::<ConnectionError>(ConnectionError::MissingResponseField("explainables").into())?;
+        let explainables =
+            explainables_proto.ok_or::<ConnectionError>(ConnectionError::MissingResponseField("explainables"))?;
         Ok(Self { map, explainables: Explainables::from_proto(explainables) })
     }
 }
