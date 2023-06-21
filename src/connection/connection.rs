@@ -55,6 +55,7 @@ use crate::{
 pub struct Connection {
     server_connections: HashMap<Address, ServerConnection>,
     background_runtime: Arc<BackgroundRuntime>,
+    pub username: Option<String>,
 }
 
 impl Connection {
@@ -62,7 +63,7 @@ impl Connection {
         let address: Address = address.as_ref().parse()?;
         let background_runtime = Arc::new(BackgroundRuntime::new()?);
         let server_connection = ServerConnection::new_plaintext(background_runtime.clone(), address.clone())?;
-        Ok(Self { server_connections: [(address, server_connection)].into(), background_runtime })
+        Ok(Self { server_connections: [(address, server_connection)].into(), background_runtime, username: None })
     }
 
     pub fn new_encrypted<T: AsRef<str> + Sync>(init_addresses: &[T], credential: Credential) -> Result<Self> {
@@ -78,7 +79,7 @@ impl Connection {
             server_connections.insert(address, server_connection);
         }
 
-        Ok(Self { server_connections, background_runtime })
+        Ok(Self { server_connections, background_runtime, username: Some(credential.username().to_string()) })
     }
 
     fn fetch_current_addresses(
