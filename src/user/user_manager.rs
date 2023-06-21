@@ -92,6 +92,19 @@ impl UserManager {
         Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
 
+    pub async fn get(&self, username: String) -> Result<User> {
+        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
+        for server_connection in self.connection.connections() {
+            match server_connection.get_user(username.clone()).await {
+                Ok(user) => {
+                    return Ok(user.unwrap());
+                }
+                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
+            }
+        }
+        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+    }
+
     pub async fn set_password(&self, username: String, password: String) -> Result<()> {
         let mut error_buffer = Vec::with_capacity(self.connection.server_count());
         for server_connection in self.connection.connections() {
