@@ -91,3 +91,12 @@ generic_step_impl! {
     }
 
 }
+
+// Then user password update: new-password, bad-password; throws exception
+// Then users get all; throws exception
+// Then users get user: admin; throws exception
+// Then users create: user3, password; throws exception
+// Then users contains: admin; throws exception
+// Then users delete: admin; throws exception
+// Then users delete: user2; throws exception
+// Then users password set: user2, new-password; throws exception
