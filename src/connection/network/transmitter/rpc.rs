@@ -157,15 +157,15 @@ impl RPCTransmitter {
                 Ok(Response::TransactionOpen { request_sink, response_source })
             }
 
-            Request::UserCreate { .. } => rpc.user_create(request.try_into_proto()?).await.map(Response::from_proto),
-            Request::UserDelete { .. } => rpc.user_delete(request.try_into_proto()?).await.map(Response::from_proto),
-            Request::UserGet { .. } => rpc.user_get(request.try_into_proto()?).await.map(Response::from_proto),
-            Request::UserPasswordSet { .. } => {
-                rpc.user_password_set(request.try_into_proto()?).await.map(Response::from_proto)
-            }
             Request::UsersAll => rpc.users_all(request.try_into_proto()?).await.map(Response::from_proto),
             Request::UsersContain { .. } => {
                 rpc.users_contain(request.try_into_proto()?).await.map(Response::from_proto)
+            }
+            Request::UsersCreate { .. } => rpc.users_create(request.try_into_proto()?).await.map(Response::from_proto),
+            Request::UsersDelete { .. } => rpc.users_delete(request.try_into_proto()?).await.map(Response::from_proto),
+            Request::UsersGet { .. } => rpc.users_get(request.try_into_proto()?).await.map(Response::from_proto),
+            Request::UsersPasswordSet { .. } => {
+                rpc.users_password_set(request.try_into_proto()?).await.map(Response::from_proto)
             }
         }
     }

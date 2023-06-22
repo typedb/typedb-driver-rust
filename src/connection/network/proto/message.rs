@@ -187,7 +187,7 @@ impl TryIntoProto<user_manager::contains::Req> for Request {
 impl TryIntoProto<user_manager::create::Req> for Request {
     fn try_into_proto(self) -> Result<user_manager::create::Req> {
         match self {
-            Self::UserCreate { username, password } => Ok(user_manager::create::Req { username, password }),
+            Self::UsersCreate { username, password } => Ok(user_manager::create::Req { username, password }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
@@ -196,7 +196,7 @@ impl TryIntoProto<user_manager::create::Req> for Request {
 impl TryIntoProto<user_manager::delete::Req> for Request {
     fn try_into_proto(self) -> Result<user_manager::delete::Req> {
         match self {
-            Self::UserDelete { username } => Ok(user_manager::delete::Req { username }),
+            Self::UsersDelete { username } => Ok(user_manager::delete::Req { username }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
@@ -205,7 +205,7 @@ impl TryIntoProto<user_manager::delete::Req> for Request {
 impl TryIntoProto<user_manager::get::Req> for Request {
     fn try_into_proto(self) -> Result<user_manager::get::Req> {
         match self {
-            Self::UserGet { username } => Ok(user_manager::get::Req { username }),
+            Self::UsersGet { username } => Ok(user_manager::get::Req { username }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
@@ -214,7 +214,7 @@ impl TryIntoProto<user_manager::get::Req> for Request {
 impl TryIntoProto<user_manager::password_set::Req> for Request {
     fn try_into_proto(self) -> Result<user_manager::password_set::Req> {
         match self {
-            Self::UserPasswordSet { username, password } => Ok(user_manager::password_set::Req { username, password }),
+            Self::UsersPasswordSet { username, password } => Ok(user_manager::password_set::Req { username, password }),
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
@@ -404,25 +404,25 @@ impl FromProto<user_manager::contains::Res> for Response {
 
 impl FromProto<user_manager::create::Res> for Response {
     fn from_proto(_: user_manager::create::Res) -> Self {
-        Self::UserCreate {}
+        Self::UsersCreate {}
     }
 }
 
 impl FromProto<user_manager::delete::Res> for Response {
     fn from_proto(_: user_manager::delete::Res) -> Self {
-        Self::UserDelete {}
+        Self::UsersDelete {}
     }
 }
 
 impl FromProto<user_manager::get::Res> for Response {
     fn from_proto(proto: user_manager::get::Res) -> Self {
-        Self::UserGet { user: proto.user.map(User::from_proto) }
+        Self::UsersGet { user: proto.user.map(User::from_proto) }
     }
 }
 
 impl FromProto<user_manager::password_set::Res> for Response {
     fn from_proto(_: user_manager::password_set::Res) -> Self {
-        Self::UserPasswordSet {}
+        Self::UsersPasswordSet {}
     }
 }
 

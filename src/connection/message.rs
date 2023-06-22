@@ -58,12 +58,12 @@ pub(super) enum Request {
 
     Transaction(TransactionRequest),
 
-    UserCreate { username: String, password: String },
-    UserDelete { username: String },
-    UserGet { username: String },
-    UserPasswordSet { username: String, password: String },
     UsersAll,
     UsersContain { username: String },
+    UsersCreate { username: String, password: String },
+    UsersDelete { username: String },
+    UsersGet { username: String },
+    UsersPasswordSet { username: String, password: String },
 }
 
 #[derive(Debug)]
@@ -106,18 +106,18 @@ pub(super) enum Response {
         response_source: Streaming<transaction::Server>,
     },
 
-    UserCreate,
-    UserDelete,
-    UserGet {
-        user: Option<User>,
-    },
-    UserPasswordSet,
     UsersAll {
         users: Vec<User>,
     },
     UsersContain {
         contains: bool,
     },
+    UsersCreate,
+    UsersDelete,
+    UsersGet {
+        user: Option<User>,
+    },
+    UsersPasswordSet,
 }
 
 #[derive(Debug)]
