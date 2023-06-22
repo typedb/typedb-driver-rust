@@ -49,7 +49,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "connection delete database: {word}")]
-    async fn connection_delete_database(context: &mut Context, name: String) {
+    pub async fn connection_delete_database(context: &mut Context, name: String) {
         context.databases.get(name).and_then(Database::delete).await.unwrap();
     }
 

@@ -42,7 +42,7 @@ use crate::{
 generic_step_impl! {
     #[step(expr = "reasoning schema")]
     async fn reasoning_schema(context: &mut Context, step: &Step) {
-        if context.databases.all().await.unwrap().is_empty() {
+        if !context.databases.contains(Context::DEFAULT_DATABASE).await.unwrap() {
             connection_create_database(context, Context::DEFAULT_DATABASE.to_string()).await;
         }
         connection_open_schema_session_for_database(context, Context::DEFAULT_DATABASE.to_string()).await;
