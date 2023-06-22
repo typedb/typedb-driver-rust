@@ -267,12 +267,12 @@ impl IntoProto<transaction::Req> for TransactionRequest {
             Self::ThingType(thing_type_request) => transaction::req::Req::TypeReq(thing_type_request.into_proto()),
             Self::RoleType(role_type_request) => transaction::req::Req::TypeReq(role_type_request.into_proto()),
             Self::Thing(thing_request) => transaction::req::Req::ThingReq(thing_request.into_proto()),
+            Self::Rule(rule_request) => transaction::req::Req::RuleReq(rule_request.into_proto()),
+            Self::Logic(logic_request) => transaction::req::Req::LogicManagerReq(logic_request.into_proto()),
             Self::Stream { request_id: req_id } => {
                 request_id = Some(req_id);
                 transaction::req::Req::StreamReq(transaction::stream::Req {})
             }
-            Self::Rule(rule_request) => transaction::req::Req::RuleReq(rule_request.into_proto()),
-            Self::Logic(logic_request) => transaction::req::Req::LogicManagerReq(logic_request.into_proto()),
         };
 
         transaction::Req {

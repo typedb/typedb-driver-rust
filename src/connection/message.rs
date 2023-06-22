@@ -109,9 +109,9 @@ pub(super) enum TransactionRequest {
     ThingType(ThingTypeRequest),
     RoleType(RoleTypeRequest),
     Thing(ThingRequest),
-    Stream { request_id: RequestID },
     Rule(RuleRequest),
     Logic(LogicRequest),
+    Stream { request_id: RequestID },
 }
 
 #[derive(Debug)]
