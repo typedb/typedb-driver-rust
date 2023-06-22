@@ -347,6 +347,18 @@ impl ServerConnection {
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
+
+    pub(crate) async fn update_user_password(
+        &self,
+        username: String,
+        password_old: String,
+        password_new: String,
+    ) -> Result<()> {
+        match self.request_async(Request::UserPasswordUpdate { username, password_old, password_new }).await? {
+            Response::UserPasswordUpdate => Ok(()),
+            other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
 }
 
 impl fmt::Debug for ServerConnection {

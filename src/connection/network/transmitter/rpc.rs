@@ -167,6 +167,10 @@ impl RPCTransmitter {
             Request::UsersPasswordSet { .. } => {
                 rpc.users_password_set(request.try_into_proto()?).await.map(Response::from_proto)
             }
+
+            Request::UserPasswordUpdate { .. } => {
+                rpc.user_password_update(request.try_into_proto()?).await.map(Response::from_proto)
+            }
         }
     }
 }

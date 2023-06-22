@@ -19,6 +19,8 @@
  * under the License.
  */
 
+use crate::{common::Result, error::ConnectionError, Connection};
+
 #[derive(Clone, Debug)]
 pub struct User {
     pub username: String,
@@ -26,8 +28,24 @@ pub struct User {
 }
 
 impl User {
-    pub fn password_update(password_old: String, password_new: String) {
-
-        todo!()
+    pub async fn password_update(
+        &self,
+        connection: &Connection,
+        password_old: String,
+        password_new: String,
+    ) -> Result<()> {
+        let mut error_buffer = Vec::with_capacity(connection.server_count());
+        for server_connection in connection.connections() {
+            match server_connection
+                .update_user_password(self.username.clone(), password_old.clone(), password_new.clone())
+                .await
+            {
+                Ok(()) => {
+                    return Ok(());
+                }
+                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
+            }
+        }
+        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
 }

@@ -24,7 +24,7 @@ use std::time::Duration;
 use itertools::Itertools;
 use typedb_protocol::{
     attribute, attribute_type, concept_manager, database, database_manager, entity_type, logic_manager, query_manager,
-    r#type, relation, relation_type, role_type, rule, server_manager, session, thing, thing_type, transaction, user_manager,
+    r#type, relation, relation_type, role_type, rule, server_manager, session, thing, thing_type, transaction, user, user_manager,
 };
 
 use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
@@ -215,6 +215,17 @@ impl TryIntoProto<user_manager::password_set::Req> for Request {
     fn try_into_proto(self) -> Result<user_manager::password_set::Req> {
         match self {
             Self::UsersPasswordSet { username, password } => Ok(user_manager::password_set::Req { username, password }),
+            other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
+        }
+    }
+}
+
+impl TryIntoProto<user::password_update::Req> for Request {
+    fn try_into_proto(self) -> Result<user::password_update::Req> {
+        match self {
+            Self::UserPasswordUpdate { username, password_old, password_new } => {
+                Ok(user::password_update::Req { username, password_old, password_new })
+            }
             other => Err(InternalError::UnexpectedRequestType(format!("{other:?}")).into()),
         }
     }
@@ -423,6 +434,12 @@ impl FromProto<user_manager::get::Res> for Response {
 impl FromProto<user_manager::password_set::Res> for Response {
     fn from_proto(_: user_manager::password_set::Res) -> Self {
         Self::UsersPasswordSet {}
+    }
+}
+
+impl FromProto<user::password_update::Res> for Response {
+    fn from_proto(_: user::password_update::Res) -> Self {
+        Self::UserPasswordUpdate {}
     }
 }
 

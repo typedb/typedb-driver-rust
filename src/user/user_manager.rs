@@ -19,9 +19,7 @@
  * under the License.
  */
 
-use std::future::Future;
-
-use crate::{common::Result, connection::ServerConnection, error::ConnectionError, Connection, User};
+use crate::{common::Result, error::ConnectionError, Connection, User};
 
 #[derive(Clone, Debug)]
 pub struct UserManager {
@@ -32,13 +30,6 @@ impl UserManager {
     pub fn new(connection: Connection) -> Self {
         Self { connection }
     }
-
-    // pub async fn contains(&self, username: String) -> Result<bool> {
-    //     self.run_failsafe(name.into(), move |database, server_connection, _| async move {
-    //         server_connection.database_exists(database.name().to_owned()).await
-    //     }).await
-    //     self.connection.
-    // }
 
     pub async fn all(&self) -> Result<Vec<User>> {
         let mut error_buffer = Vec::with_capacity(self.connection.server_count());

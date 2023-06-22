@@ -197,6 +197,13 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
         self.single(|this| Box::pin(this.grpc.users_password_set(req.clone()))).await
     }
 
+    pub(super) async fn user_password_update(
+        &mut self,
+        req: user::password_update::Req,
+    ) -> Result<user::password_update::Res> {
+        self.single(|this| Box::pin(this.grpc.user_password_update(req.clone()))).await
+    }
+
     async fn single<F, R>(&mut self, call: F) -> Result<R>
     where
         for<'a> F: Fn(&'a mut Self) -> BoxFuture<'a, TonicResult<R>> + Send + Sync,

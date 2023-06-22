@@ -64,6 +64,8 @@ pub(super) enum Request {
     UsersDelete { username: String },
     UsersGet { username: String },
     UsersPasswordSet { username: String, password: String },
+
+    UserPasswordUpdate { username: String, password_old: String, password_new: String },
 }
 
 #[derive(Debug)]
@@ -118,6 +120,8 @@ pub(super) enum Response {
         user: Option<User>,
     },
     UsersPasswordSet,
+
+    UserPasswordUpdate,
 }
 
 #[derive(Debug)]
