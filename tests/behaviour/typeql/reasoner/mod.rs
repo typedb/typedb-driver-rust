@@ -27,6 +27,7 @@ mod recursion;
 mod relation_inference;
 mod rule_interaction;
 mod schema_queries;
+mod steps;
 mod type_hierarchy;
 mod value_predicate;
 mod variable_roles;

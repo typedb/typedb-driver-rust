@@ -25,5 +25,6 @@ mod get;
 mod insert;
 mod match_;
 mod rule_validation;
+pub(crate) mod steps;
 mod undefine;
 mod update;

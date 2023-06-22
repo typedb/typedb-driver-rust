@@ -21,7 +21,7 @@
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
-use typedb_client::{answer::Numeric, Result as TypeDBResult, Session, SessionType, TransactionType};
+use typedb_client::{answer::Numeric, Result as TypeDBResult};
 use typeql_lang::parse_query;
 use util::{
     equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_answer_rule,
@@ -36,7 +36,7 @@ use crate::{
 
 generic_step_impl! {
     #[step(expr = "typeql define")]
-    async fn typeql_define(context: &mut Context, step: &Step) -> TypeDBResult {
+    pub async fn typeql_define(context: &mut Context, step: &Step) -> TypeDBResult {
         let parsed = parse_query(step.docstring().unwrap())?;
         context.transaction().query().define(&parsed.to_string()).await
     }
@@ -63,7 +63,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "typeql insert")]
-    async fn typeql_insert(context: &mut Context, step: &Step) -> TypeDBResult {
+    pub async fn typeql_insert(context: &mut Context, step: &Step) -> TypeDBResult {
         let parsed = parse_query(step.docstring().unwrap())?;
         context.transaction().query().insert(&parsed.to_string())?.try_collect::<Vec<_>>().await?;
         Ok(())
@@ -103,7 +103,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "get answers of typeql match")]
-    async fn get_answers_typeql_match(context: &mut Context, step: &Step) -> TypeDBResult {
+    pub async fn get_answers_typeql_match(context: &mut Context, step: &Step) -> TypeDBResult {
         let parsed = parse_query(step.docstring().unwrap())?;
         context.answer = context.transaction().query().match_(&parsed.to_string())?.try_collect::<Vec<_>>().await?;
         Ok(())
@@ -117,8 +117,7 @@ generic_step_impl! {
     }
 
     #[step(expr = "answer size is: {int}")]
-    #[step(expr = "verify answer size is: {int}")]
-    async fn answer_size(context: &mut Context, expected_answers: usize) {
+    pub async fn answer_size(context: &mut Context, expected_answers: usize) {
         let actual_answers = context.answer.len();
         assert_eq!(
             actual_answers, expected_answers,
@@ -400,78 +399,5 @@ generic_step_impl! {
             "An identifier entry (row) should match 1-to-1 to an answer, but there are only {matched_rows} \
             matched entries of given {actual_answers}."
         );
-    }
-
-    #[step(expr = "reasoning schema")]
-    async fn reasoning_schema(context: &mut Context, step: &Step) {
-        if context.databases.all().await.unwrap().is_empty() {
-            context.databases.create(Context::DEFAULT_DATABASE).await.unwrap();
-        }
-        context
-            .session_trackers
-            .push(Session::new(context.databases.get(Context::DEFAULT_DATABASE).await.unwrap(), SessionType::Schema).await.unwrap().into());
-        for session_tracker in &mut context.session_trackers {
-            session_tracker.open_transaction(TransactionType::Write).await.unwrap();
-        }
-        assert!(typeql_define(context, step).await.is_ok());
-        context.take_transaction().commit().await.unwrap();
-        context.session_trackers.clear();
-    }
-
-    #[step(expr = "reasoning data")]
-    async fn reasoning_data(context: &mut Context, step: &Step) {
-        context
-            .session_trackers
-            .push(Session::new(context.databases.get(Context::DEFAULT_DATABASE).await.unwrap(), SessionType::Data).await.unwrap().into());
-        for session_tracker in &mut context.session_trackers {
-            session_tracker.open_transaction(TransactionType::Write).await.unwrap();
-        }
-        assert!(typeql_insert(context, step).await.is_ok());
-        context.take_transaction().commit().await.unwrap();
-        context.session_trackers.clear();
-    }
-
-    #[step(expr = "reasoning query")]
-    async fn reasoning_query(context: &mut Context, step: &Step) {
-        context
-            .session_trackers
-            .push(Session::new(context.databases.get(Context::DEFAULT_DATABASE).await.unwrap(), SessionType::Data).await.unwrap().into());
-        for session_tracker in &mut context.session_trackers {
-            session_tracker.open_transaction(TransactionType::Read).await.unwrap();
-        }
-        assert!(get_answers_typeql_match(context, step).await.is_ok());
-        context.session_trackers.clear();
-    }
-
-    #[step(expr = "verify answer set is equivalent for query")]
-    async fn verify_answer_set_is_equivalent_for_query(context: &mut Context, step: &Step) {
-        let prev_answer = context.answer.clone();
-        reasoning_query(context, step).await;
-        let total_rows = context.answer.len();
-        let mut matched_rows = 0;
-        for row_curr in &context.answer {
-            for row_prev in &prev_answer {
-                if row_curr == row_prev {
-                    matched_rows += 1;
-                    break;
-                }
-            }
-        }
-        assert_eq!(
-            matched_rows, total_rows,
-            "There are only {matched_rows} matched entries of given {total_rows}."
-        );
-    }
-
-    #[step(expr = "verifier is initialised")]
-    #[step(expr = "verify answers are sound")]
-    #[step(expr = "verify answers are complete")]
-    async fn do_nothing(_context: &mut Context) {
-    //     We don't have a verifier
-    }
-
-    #[step(expr = "verify answers are consistent across {int} executions")]
-    async fn verify_answers_are_consistent_across_executions(_context: &mut Context, _executions: usize) {
-    //     We can't execute previous query again because don't remember the query
     }
 }
