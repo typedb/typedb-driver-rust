@@ -24,7 +24,7 @@ use std::path::PathBuf;
 use cucumber::{gherkin::Step, given, then, when};
 use typedb_client::{Connection, Credential, Options, Result as TypeDBResult, TransactionType};
 
-use crate::{behaviour::Context, generic_step_impl};
+use crate::{assert_err, behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
 
@@ -50,9 +50,13 @@ generic_step_impl! {
     }
 
     #[step(expr = "users create: {word}, {word}")]
-    async fn users_create(context: &mut Context, username: String, password: String) {
-        let res = context.users.create(username, password).await;
-        assert!(res.is_ok(), "{:?}", res.err());
+    async fn users_create(context: &mut Context, username: String, password: String) -> TypeDBResult {
+        context.users.create(username, password).await
+    }
+
+    #[step(expr = "users create: {word}, {word}; throws exception")]
+    async fn users_create_throws(context: &mut Context, username: String, password: String) {
+        assert_err!(users_create(context, username, password).await);
     }
 
     #[step(expr = "users password set: {word}, {word}")]
@@ -60,6 +64,13 @@ generic_step_impl! {
         let res = context.users.set_password(username, password).await;
         assert!(res.is_ok(), "{:?}", res.err());
     }
+
+    // #[step(expr = "user password update: {word}, {word}")]
+    // async fn user_password_update(context: &mut Context, password_old: String, password_new: String) -> TypeDBResult {
+    //     assert!(context.connection.username.is_some());
+    //     context.users.get(context.connection.username.clone().unwrap()).await?.password_update(context.connection, password_old, password_new).await?);
+    //     assert!(res.is_ok(), "{:?}", res.err());
+    // }
 
     #[step(expr = "users delete: {word}")]
     async fn user_delete(context: &mut Context, username: String) {
@@ -72,6 +83,11 @@ generic_step_impl! {
         assert!(context.connection.username.is_some());
         assert!(context.users.get(context.connection.username.clone().unwrap()).await?.password_expiry_seconds.is_some());
         Ok(())
+    }
+
+    #[step(expr = "get connected user")]
+    async fn get_connected_user(context: &mut Context) {
+        assert!(context.connection.username.is_some());
     }
 
 }

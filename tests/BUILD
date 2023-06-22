@@ -72,7 +72,7 @@ rust_test(
         "@vaticle_typedb_behaviour//typeql/reasoner:type-hierarchy.feature",
         "@vaticle_typedb_behaviour//typeql/reasoner:value-predicate.feature",
         "@vaticle_typedb_behaviour//typeql/reasoner:variable-roles.feature",
-        "behaviour/debug.feature",
+#        "behaviour/debug.feature",
     ],
 )
 
