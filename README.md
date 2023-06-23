@@ -22,43 +22,7 @@ The TypeDB Client for Rust provides a fully async API that supports the [`tokio`
 typedb-client = "0.1.2"
 ```
 2. Make sure the [TypeDB Server](https://docs.vaticle.com/docs/running-typedb/install-and-run#start-the-typedb-server) is running.
-3. Import `typedb_client::TypeDBClient`, instantiate a TypeDB Core client, open a session to a [database](https://docs.vaticle.com/docs/management/database), and run basic insertion and retrieval queries:
-```rust
-use typedb_client::concept::{Concept, Thing};
-use typedb_client::session::Type::Data;
-use typedb_client::transaction::Type::{Read, Write};
-use typedb_client::TypeDBClient;
-```
-```rust
-let mut client = TypeDBClient::new("http://0.0.0.0:1729").await?;
-let session = client.session("social_network", Data).await?;
-{
-    // Transactions (and sessions) get closed on drop, or can be manually closed by calling close()
-    let mut tx = session.transaction(Write).await?;
-    tx.query.insert("insert $x isa person, has email \"x@email.com\";");
-    // To persist changes, a write transaction must always be committed. This also closes the transaction.
-    tx.commit().await?;
-}
-{
-    let mut tx = session.transaction(Read).await?;
-    let mut answer_stream = tx.query.match_("match $p isa person, has email $e; limit 10;");
-    while let Some(result) = answer_stream.next().await {
-        match result {
-            Ok(answer) => {
-                match answer.get("e") {
-                    // The Concept type hierarchy is represented by the Concept enum
-                    Concept::Thing(Thing::Attribute(Attribute::String(value))) => { println!("email: {}", value); }
-                    _ => { panic!(); }
-                }
-            }
-            Err(err) => panic!("An error occurred fetching answers of a Match query: {}", err)
-        }
-    }
-}
-```
-
-## Examples
-More code examples can be found in `tests/queries.rs`.
+3. See `tests/integration` for examples of usage.
 
 ## Build from Source
 > Note: You don't need to compile TypeDB Client from source if you just want to use it in your code. See the _"Quickstart"_ section above.
