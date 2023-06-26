@@ -23,3 +23,4 @@ mod common;
 mod logic;
 mod queries;
 mod runtimes;
+mod user;
