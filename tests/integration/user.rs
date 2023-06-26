@@ -19,11 +19,9 @@
  * under the License.
  */
 
-use std::path::PathBuf;
-
 use futures::future::try_join_all;
 use serial_test::serial;
-use typedb_client::{Connection, Credential, Result as TypeDBResult, UserManager};
+use typedb_client::{Connection, Result as TypeDBResult, UserManager};
 
 use super::common;
 use crate::test_for_each_arg;

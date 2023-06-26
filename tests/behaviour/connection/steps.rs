@@ -22,7 +22,7 @@
 use std::path::PathBuf;
 
 use cucumber::{given, then, when};
-use typedb_client::{Connection, Credential, Options, TransactionType};
+use typedb_client::{Connection, Credential};
 
 use crate::{behaviour::Context, generic_step_impl};
 
