@@ -72,13 +72,23 @@ impl Connection {
         let init_addresses = init_addresses.iter().map(|addr| addr.as_ref().parse()).try_collect()?;
         let addresses = Self::fetch_current_addresses(background_runtime.clone(), init_addresses, credential.clone())?;
 
-        let mut server_connections = HashMap::with_capacity(addresses.len());
+        let mut server_connections = HashMap::new();
+        let mut error_buffer = Vec::new();
         for address in addresses {
             let server_connection =
-                ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone())?;
-            server_connections.insert(address, server_connection);
+                ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone());
+            match server_connection {
+                Ok(server_connection) => {
+                    server_connections.insert(address, server_connection);
+                },
+                Err(err) => {
+                    error_buffer.push(format!("- {}: {}", address, err));
+                },
+            }
         }
-
+        if server_connections.is_empty() {
+            Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+        }
         Ok(Self { server_connections, background_runtime, username: Some(credential.username().to_string()) })
     }
 
