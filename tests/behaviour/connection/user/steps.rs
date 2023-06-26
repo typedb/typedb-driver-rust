@@ -19,10 +19,8 @@
  * under the License.
  */
 
-use std::path::PathBuf;
-
-use cucumber::{gherkin::Step, given, then, when};
-use typedb_client::{Connection, Credential, Options, Result as TypeDBResult, TransactionType};
+use cucumber::{given, then, when};
+use typedb_client::Result as TypeDBResult;
 
 use crate::{assert_err, behaviour::Context, generic_step_impl};
 
@@ -94,12 +92,18 @@ generic_step_impl! {
         assert_err!(users_password_set(context, username, password).await);
     }
 
-    // #[step(expr = "user password update: {word}, {word}")]
-    // async fn user_password_update(context: &mut Context, password_old: String, password_new: String) -> TypeDBResult {
-    //     assert!(context.connection.username.is_some());
-    //     context.users.get(context.connection.username.clone().unwrap()).await?.password_update(context.connection, password_old, password_new).await?);
-    //     assert!(res.is_ok(), "{:?}", res.err());
-    // }
+    // TODO: Add tests for these two steps to BDD
+    #[step(expr = "user password update: {word}, {word}")]
+    async fn user_password_update(context: &mut Context, password_old: String, password_new: String) -> TypeDBResult {
+        let connected_user = context.connection.username.clone();
+        assert!(connected_user.is_some());
+        context.users.get(connected_user.unwrap()).await?.password_update(&context.connection, password_old, password_new).await
+    }
+
+    #[step(expr = "user password update: {word}, {word}; throws exception")]
+    async fn user_password_update_throws(context: &mut Context, password_old: String, password_new: String) {
+        assert_err!(user_password_update(context, password_old, password_new).await);
+    }
 
     #[step(expr = "users delete: {word}")]
     async fn user_delete(context: &mut Context, username: String) -> TypeDBResult {
