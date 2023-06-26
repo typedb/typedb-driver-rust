@@ -190,7 +190,6 @@ impl Context {
         self.insert_thing(var_name, attribute.map(Thing::Attribute));
     }
 
-
     pub async fn get_rule(&self, label: String) -> TypeDBResult<Rule> {
         self.transaction().logic().get_rule(label).await
     }

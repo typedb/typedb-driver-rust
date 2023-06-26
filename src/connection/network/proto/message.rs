@@ -24,7 +24,8 @@ use std::time::Duration;
 use itertools::Itertools;
 use typedb_protocol::{
     attribute, attribute_type, concept_manager, database, database_manager, entity_type, logic_manager, query_manager,
-    r#type, relation, relation_type, role_type, rule, server_manager, session, thing, thing_type, transaction, user, user_manager,
+    r#type, relation, relation_type, role_type, rule, server_manager, session, thing, thing_type, transaction, user,
+    user_manager,
 };
 
 use super::{FromProto, IntoProto, TryFromProto, TryIntoProto};
@@ -1267,26 +1268,26 @@ impl IntoProto<logic_manager::Req> for LogicRequest {
     }
 }
 
-impl IntoProto<user_manager::Req> for UserRequest {
-    fn into_proto(self) -> logic_manager::Req {
-        let req = match self {
-            Self::PutRule { label, when, then } => {
-                logic_manager::req::Req::PutRuleReq(logic_manager::put_rule::Req {
-                    label,
-                    when: when.to_string(),
-                    then: then.to_string(),
-                })
-            }
-            Self::GetRule { label } => {
-                logic_manager::req::Req::GetRuleReq(logic_manager::get_rule::Req { label })
-            }
-            Self::GetRules => {
-                logic_manager::req::Req::GetRulesReq(logic_manager::get_rules::Req {})
-            }
-        };
-        logic_manager::Req { req: Some(req) }
-    }
-}
+// impl IntoProto<user_manager::Req> for UserRequest {
+//     fn into_proto(self) -> logic_manager::Req {
+//         let req = match self {
+//             Self::PutRule { label, when, then } => {
+//                 logic_manager::req::Req::PutRuleReq(logic_manager::put_rule::Req {
+//                     label,
+//                     when: when.to_string(),
+//                     then: then.to_string(),
+//                 })
+//             }
+//             Self::GetRule { label } => {
+//                 logic_manager::req::Req::GetRuleReq(logic_manager::get_rule::Req { label })
+//             }
+//             Self::GetRules => {
+//                 logic_manager::req::Req::GetRulesReq(logic_manager::get_rules::Req {})
+//             }
+//         };
+//         logic_manager::Req { req: Some(req) }
+//     }
+// }
 
 impl TryFromProto<logic_manager::Res> for LogicResponse {
     fn try_from_proto(proto: logic_manager::Res) -> Result<Self> {
