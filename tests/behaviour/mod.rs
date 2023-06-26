@@ -203,7 +203,19 @@ impl Context {
 
 impl Default for Context {
     fn default() -> Self {
-        let connection = Connection::new_plaintext("0.0.0.0:1729").unwrap();
+        let connection = Connection::new_encrypted(
+            &["localhost:11729", "localhost:21729", "localhost:31729"],
+            Credential::with_tls(
+                &Context::ADMIN_USERNAME,
+                &Context::ADMIN_PASSWORD,
+                Some(&PathBuf::from(
+                    std::env::var("ROOT_CA")
+                        .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
+                )),
+            )
+            .unwrap(),
+        )
+        .unwrap();
         let databases = DatabaseManager::new(connection.clone());
         let users = UserManager::new(connection.clone());
         Self {
