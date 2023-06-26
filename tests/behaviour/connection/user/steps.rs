@@ -29,24 +29,49 @@ use crate::{assert_err, behaviour::Context, generic_step_impl};
 generic_step_impl! {
 
     #[step(expr = "users get all")]
-    async fn users_get_all(context: &mut Context) {
-        let res = context.users.all().await;
-        assert!(res.is_ok());
-        panic!("{res:?}");
+    async fn users_get_all(context: &mut Context) -> TypeDBResult {
+        context.users.all().await?;
+        Ok(())
+    }
+
+    #[step(expr = "users get all; throws exception")]
+    async fn users_get_all_throws(context: &mut Context) {
+        assert_err!(users_get_all(context).await);
+    }
+
+    #[step(expr = "users get user: {word}")]
+    async fn users_get_user(context: &mut Context, username: String) -> TypeDBResult {
+        context.users.get(username).await?;
+        Ok(())
+    }
+
+    #[step(expr = "users get user: {word}; throws exception")]
+    async fn users_get_user_throws(context: &mut Context, username: String) {
+        assert_err!(users_get_user(context, username).await);
     }
 
     #[step(expr = "users contains: {word}")]
-    async fn users_contains(context: &mut Context, username: String) {
-        let res = context.users.contains(username).await;
-        assert!(res.is_ok(), "{:?}", res.err());
-        assert!(res.unwrap());
+    async fn users_contains(context: &mut Context, username: String) -> TypeDBResult {
+        let contains = context.users.contains(username).await?;
+        assert!(contains);
+        Ok(())
+    }
+
+    #[step(expr = "users contains: {word}; throws exception")]
+    async fn users_contains_throws(context: &mut Context, username: String) {
+        assert_err!(users_contains(context, username).await);
     }
 
     #[step(expr = "users not contains: {word}")]
-    async fn users_not_contains(context: &mut Context, username: String) {
-        let res = context.users.contains(username).await;
-        assert!(res.is_ok(), "{:?}", res.err());
-        assert!(!res.unwrap());
+    async fn users_not_contains(context: &mut Context, username: String) -> TypeDBResult {
+        let contains = context.users.contains(username).await?;
+        assert!(!contains);
+        Ok(())
+    }
+
+    #[step(expr = "users not contains: {word}; throws exception")]
+    async fn users_not_contains_throws(context: &mut Context, username: String) {
+        assert_err!(users_not_contains(context, username).await);
     }
 
     #[step(expr = "users create: {word}, {word}")]
@@ -60,9 +85,13 @@ generic_step_impl! {
     }
 
     #[step(expr = "users password set: {word}, {word}")]
-    async fn users_password_set(context: &mut Context, username: String, password: String) {
-        let res = context.users.set_password(username, password).await;
-        assert!(res.is_ok(), "{:?}", res.err());
+    async fn users_password_set(context: &mut Context, username: String, password: String) -> TypeDBResult {
+        context.users.set_password(username, password).await
+    }
+
+    #[step(expr = "users password set: {word}, {word}; throws exception")]
+    async fn users_password_set_throws(context: &mut Context, username: String, password: String) {
+        assert_err!(users_password_set(context, username, password).await);
     }
 
     // #[step(expr = "user password update: {word}, {word}")]
@@ -73,9 +102,13 @@ generic_step_impl! {
     // }
 
     #[step(expr = "users delete: {word}")]
-    async fn user_delete(context: &mut Context, username: String) {
-        let res = context.users.delete(username).await;
-        assert!(res.is_ok(), "{:?}", res.err());
+    async fn user_delete(context: &mut Context, username: String) -> TypeDBResult {
+        context.users.delete(username).await
+    }
+
+    #[step(expr = "users delete: {word}; throws exception")]
+    async fn user_delete_throws(context: &mut Context, username: String) {
+        assert_err!(user_delete(context, username).await);
     }
 
     #[step(expr = "user expiry-seconds")]
@@ -93,10 +126,3 @@ generic_step_impl! {
 }
 
 // Then user password update: new-password, bad-password; throws exception
-// Then users get all; throws exception
-// Then users get user: admin; throws exception
-// Then users create: user3, password; throws exception
-// Then users contains: admin; throws exception
-// Then users delete: admin; throws exception
-// Then users delete: user2; throws exception
-// Then users password set: user2, new-password; throws exception
