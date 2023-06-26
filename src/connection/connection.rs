@@ -80,10 +80,10 @@ impl Connection {
             match server_connection {
                 Ok(server_connection) => {
                     server_connections.insert(address, server_connection);
-                },
+                }
                 Err(err) => {
                     error_buffer.push(format!("- {}: {}", address, err));
-                },
+                }
             }
         }
         if server_connections.is_empty() {
