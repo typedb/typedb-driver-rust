@@ -35,7 +35,7 @@ generic_step_impl! {
     #[step(expr = "connection create database: {word}")]
     pub async fn connection_create_database(context: &mut Context, name: String) {
         context.databases.create(name).await.unwrap();
-        sleep(Duration::from_millis(300)).await;
+        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step(expr = "connection create database(s):")]
@@ -43,19 +43,19 @@ generic_step_impl! {
         for name in util::iter_table(step) {
             context.databases.create(name).await.unwrap();
         }
-        sleep(Duration::from_millis(300)).await;
+        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step("connection create databases in parallel:")]
     async fn connection_create_databases_in_parallel(context: &mut Context, step: &Step) {
         try_join_all(util::iter_table(step).map(|name| context.databases.create(name))).await.unwrap();
-        sleep(Duration::from_millis(300)).await;
+        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step(expr = "connection delete database: {word}")]
     pub async fn connection_delete_database(context: &mut Context, name: String) {
         context.databases.get(name).and_then(Database::delete).await.unwrap();
-        sleep(Duration::from_millis(300)).await;
+        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step(expr = "connection delete database(s):")]
@@ -63,7 +63,7 @@ generic_step_impl! {
         for name in util::iter_table(step) {
             context.databases.get(name).and_then(Database::delete).await.unwrap();
         }
-        sleep(Duration::from_millis(300)).await;
+        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step(expr = "connection delete databases in parallel:")]
@@ -71,7 +71,7 @@ generic_step_impl! {
         try_join_all(util::iter_table(step).map(|name| context.databases.get(name).and_then(Database::delete)))
             .await
             .unwrap();
-        sleep(Duration::from_millis(300)).await;
+        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step(expr = "connection delete database; throws exception: {word}")]
