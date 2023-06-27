@@ -86,36 +86,32 @@ impl Context {
     }
 
     async fn after_scenario(&mut self) -> TypeDBResult {
-        if self.connection.server_count() == 1 {
-            try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
-        } else {
-            self.set_connection(
-                Connection::new_encrypted(
-                    &["localhost:11729", "localhost:21729", "localhost:31729"],
-                    Credential::with_tls(
-                        &Context::ADMIN_USERNAME,
-                        &Context::ADMIN_PASSWORD,
-                        Some(&PathBuf::from(
-                            std::env::var("ROOT_CA")
-                                .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
-                        )),
-                    )
-                    .unwrap(),
+        self.set_connection(
+            Connection::new_encrypted(
+                &["localhost:11729", "localhost:21729", "localhost:31729"],
+                Credential::with_tls(
+                    &Context::ADMIN_USERNAME,
+                    &Context::ADMIN_PASSWORD,
+                    Some(&PathBuf::from(
+                        std::env::var("ROOT_CA")
+                            .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
+                    )),
                 )
                 .unwrap(),
-            );
-            try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
-            try_join_all(
-                self.users
-                    .all()
-                    .await
-                    .unwrap()
-                    .into_iter()
-                    .filter(|user| user.username != Context::ADMIN_USERNAME)
-                    .map(|user| self.users.delete(user.username)),
             )
-            .await?;
-        }
+            .unwrap(),
+        );
+        try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
+        try_join_all(
+            self.users
+                .all()
+                .await
+                .unwrap()
+                .into_iter()
+                .filter(|user| user.username != Context::ADMIN_USERNAME)
+                .map(|user| self.users.delete(user.username)),
+        )
+        .await?;
         Ok(())
     }
 
