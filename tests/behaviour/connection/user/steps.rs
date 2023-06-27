@@ -92,7 +92,6 @@ generic_step_impl! {
         assert_err!(users_password_set(context, username, password).await);
     }
 
-    // TODO: Add tests for these two steps to BDD
     #[step(expr = "user password update: {word}, {word}")]
     async fn user_password_update(context: &mut Context, password_old: String, password_new: String) -> TypeDBResult {
         let connected_user = context.connection.username.clone();
