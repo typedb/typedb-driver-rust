@@ -26,24 +26,32 @@ use std::{
 };
 
 use crossbeam::atomic::AtomicCell;
-use futures::{Stream, StreamExt, TryStreamExt};
+use futures::StreamExt;
+#[cfg(not(feature = "sync"))]
+use futures::TryStreamExt;
+#[cfg(feature = "sync")]
+use itertools::Itertools;
 use log::error;
 use prost::Message;
+#[cfg(not(feature = "sync"))]
+use tokio::sync::oneshot::channel as oneshot;
 use tokio::{
     select,
-    sync::{
-        mpsc::{error::SendError, unbounded_channel as unbounded_async, UnboundedReceiver, UnboundedSender},
-        oneshot::channel as oneshot_async,
-    },
+    sync::mpsc::{error::SendError, unbounded_channel as unbounded_async, UnboundedReceiver, UnboundedSender},
     time::{sleep_until, Instant},
 };
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::Streaming;
 use typedb_protocol::transaction::{self, server::Server, stream::State};
 
+#[cfg(feature = "sync")]
+use super::oneshot_blocking as oneshot;
 use super::response_sink::ResponseSink;
 use crate::{
-    common::{error::ConnectionError, RequestID, Result},
+    common::{
+        error::ConnectionError,
+        stream::{NetworkStream, Stream},
+        RequestID, Result,
+    },
     connection::{
         message::{TransactionRequest, TransactionResponse},
         network::proto::{IntoProto, TryFromProto},
@@ -54,6 +62,7 @@ use crate::{
 pub(in crate::connection) struct TransactionTransmitter {
     request_sink: UnboundedSender<(TransactionRequest, Option<ResponseSink<TransactionResponse>>)>,
     is_open: Arc<AtomicCell<bool>>,
+    on_close_register_sink: UnboundedSender<Box<dyn FnOnce(ConnectionError) + Send + Sync>>,
     shutdown_sink: UnboundedSender<()>,
 }
 
@@ -71,6 +80,7 @@ impl TransactionTransmitter {
         response_source: Streaming<transaction::Server>,
     ) -> Self {
         let (buffer_sink, buffer_source) = unbounded_async();
+        let (on_close_register_sink, on_close_register_source) = unbounded_async();
         let (shutdown_sink, shutdown_source) = unbounded_async();
         let is_open = Arc::new(AtomicCell::new(true));
         background_runtime.spawn(Self::start_workers(
@@ -79,20 +89,36 @@ impl TransactionTransmitter {
             request_sink,
             response_source,
             is_open.clone(),
+            on_close_register_source,
             shutdown_source,
         ));
-        Self { request_sink: buffer_sink, is_open, shutdown_sink }
+        Self { request_sink: buffer_sink, is_open, on_close_register_sink, shutdown_sink }
     }
 
     pub(in crate::connection) fn is_open(&self) -> bool {
         self.is_open.load()
     }
 
+    pub(in crate::connection) fn on_close(&self, callback: impl FnOnce(ConnectionError) + Send + Sync + 'static) {
+        self.on_close_register_sink.send(Box::new(callback)).ok();
+    }
+
+    #[cfg(feature = "sync")]
+    pub(in crate::connection) fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
+        if !self.is_open() {
+            return Err(ConnectionError::SessionIsClosed().into());
+        }
+        let (res_sink, recv) = oneshot();
+        self.request_sink.send((req, Some(ResponseSink::BlockingOneShot(res_sink))))?;
+        recv.recv()?
+    }
+
+    #[cfg(not(feature = "sync"))]
     pub(in crate::connection) async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         if !self.is_open() {
             return Err(ConnectionError::SessionIsClosed().into());
         }
-        let (res_sink, recv) = oneshot_async();
+        let (res_sink, recv) = oneshot();
         self.request_sink.send((req, Some(ResponseSink::AsyncOneShot(res_sink))))?;
         recv.await?.map(Into::into)
     }
@@ -106,7 +132,7 @@ impl TransactionTransmitter {
         }
         let (res_part_sink, recv) = unbounded_async();
         self.request_sink.send((req, Some(ResponseSink::Streamed(res_part_sink))))?;
-        Ok(UnboundedReceiverStream::new(recv).map_ok(Into::into))
+        Ok(NetworkStream::new(recv).map_ok(Into::into))
     }
 
     async fn start_workers(
@@ -115,10 +141,22 @@ impl TransactionTransmitter {
         request_sink: UnboundedSender<transaction::Client>,
         response_source: Streaming<transaction::Server>,
         is_open: Arc<AtomicCell<bool>>,
+        on_close_callback_source: UnboundedReceiver<Box<dyn FnOnce(ConnectionError) + Send + Sync>>,
         shutdown_signal: UnboundedReceiver<()>,
     ) {
-        let collector = ResponseCollector { request_sink: queue_sink, callbacks: Default::default(), is_open };
-        tokio::spawn(Self::dispatch_loop(queue_source, request_sink, collector.clone(), shutdown_signal));
+        let collector = ResponseCollector {
+            request_sink: queue_sink,
+            callbacks: Default::default(),
+            is_open,
+            on_close: Default::default(),
+        };
+        tokio::spawn(Self::dispatch_loop(
+            queue_source,
+            request_sink,
+            collector.clone(),
+            on_close_callback_source,
+            shutdown_signal,
+        ));
         tokio::spawn(Self::listen_loop(response_source, collector));
     }
 
@@ -126,6 +164,7 @@ impl TransactionTransmitter {
         mut request_source: UnboundedReceiver<(TransactionRequest, Option<ResponseSink<TransactionResponse>>)>,
         request_sink: UnboundedSender<transaction::Client>,
         mut collector: ResponseCollector,
+        mut on_close_callback_source: UnboundedReceiver<Box<dyn FnOnce(ConnectionError) + Send + Sync>>,
         mut shutdown_signal: UnboundedReceiver<()>,
     ) {
         const MAX_GRPC_MESSAGE_LEN: usize = 1_000_000;
@@ -146,6 +185,11 @@ impl TransactionTransmitter {
                         request_sink.send(request_buffer.take()).unwrap();
                     }
                     next_dispatch = Instant::now() + DISPATCH_INTERVAL;
+                }
+                callback = on_close_callback_source.recv() => {
+                    if let Some(callback) = callback {
+                        collector.on_close.write().unwrap().push(callback)
+                    }
                 }
                 recv = request_source.recv() => {
                     if let Some((request, callback)) = recv {
@@ -209,6 +253,7 @@ struct ResponseCollector {
     request_sink: UnboundedSender<(TransactionRequest, Option<ResponseSink<TransactionResponse>>)>,
     callbacks: Arc<RwLock<HashMap<RequestID, ResponseSink<TransactionResponse>>>>,
     is_open: Arc<AtomicCell<bool>>,
+    on_close: Arc<RwLock<Vec<Box<dyn FnOnce(ConnectionError) + Send + Sync>>>>,
 }
 
 impl ResponseCollector {
@@ -269,6 +314,9 @@ impl ResponseCollector {
         let mut listeners = std::mem::take(&mut *self.callbacks.write().unwrap());
         for (_, listener) in listeners.drain() {
             listener.error(error.clone());
+        }
+        for callback in self.on_close.write().unwrap().drain(..) {
+            callback(error.clone());
         }
     }
 }

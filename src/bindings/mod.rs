@@ -19,14 +19,12 @@
  * under the License.
  */
 
-mod response_sink;
-mod rpc;
+mod common;
+mod concept;
+mod connection;
+mod database;
+mod database_manager;
+mod iterator;
+mod options;
+mod session;
 mod transaction;
-
-use crossbeam::channel::{bounded as bounded_blocking, Receiver as SyncReceiver, Sender as SyncSender};
-
-pub(in crate::connection) use self::{rpc::RPCTransmitter, transaction::TransactionTransmitter};
-
-fn oneshot_blocking<T>() -> (SyncSender<T>, SyncReceiver<T>) {
-    bounded_blocking::<T>(0)
-}

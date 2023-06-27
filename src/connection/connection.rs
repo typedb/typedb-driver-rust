@@ -176,15 +176,23 @@ impl ServerConnection {
         Ok(Self { address, background_runtime, open_sessions: Default::default(), request_transmitter })
     }
 
+    pub(crate) fn validate(&self) -> Result {
+        match self.request_blocking(Request::DatabasesAll)? {
+            Response::DatabasesAll { databases: _ } => Ok(()),
+            _other => Err(ConnectionError::UnableToConnect().into()),
+        }
+    }
+
     pub(crate) fn address(&self) -> &Address {
         &self.address
     }
 
-    async fn request_async(&self, request: Request) -> Result<Response> {
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
+    async fn request(&self, request: Request) -> Result<Response> {
         if !self.background_runtime.is_open() {
             return Err(ConnectionError::ConnectionIsClosed().into());
         }
-        self.request_transmitter.request_async(request).await
+        self.request_transmitter.request(request).await
     }
 
     fn request_blocking(&self, request: Request) -> Result<Response> {
@@ -209,65 +217,67 @@ impl ServerConnection {
         }
     }
 
-    pub(crate) fn validate(&self) -> Result {
-        match self.request_blocking(Request::DatabasesAll)? {
-            Response::DatabasesAll { databases: _ } => Ok(()),
-            _other => Err(ConnectionError::UnableToConnect().into()),
-        }
-    }
-
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn database_exists(&self, database_name: String) -> Result<bool> {
-        match self.request_async(Request::DatabasesContains { database_name }).await? {
+        match self.request(Request::DatabasesContains { database_name }).await? {
             Response::DatabasesContains { contains } => Ok(contains),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn create_database(&self, database_name: String) -> Result {
-        self.request_async(Request::DatabaseCreate { database_name }).await?;
+        self.request(Request::DatabaseCreate { database_name }).await?;
         Ok(())
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn get_database_replicas(&self, database_name: String) -> Result<DatabaseInfo> {
-        match self.request_async(Request::DatabaseGet { database_name }).await? {
+        match self.request(Request::DatabaseGet { database_name }).await? {
             Response::DatabaseGet { database } => Ok(database),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn all_databases(&self) -> Result<Vec<DatabaseInfo>> {
-        match self.request_async(Request::DatabasesAll).await? {
+        match self.request(Request::DatabasesAll).await? {
             Response::DatabasesAll { databases } => Ok(databases),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn database_schema(&self, database_name: String) -> Result<String> {
-        match self.request_async(Request::DatabaseSchema { database_name }).await? {
+        match self.request(Request::DatabaseSchema { database_name }).await? {
             Response::DatabaseSchema { schema } => Ok(schema),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn database_type_schema(&self, database_name: String) -> Result<String> {
-        match self.request_async(Request::DatabaseTypeSchema { database_name }).await? {
+        match self.request(Request::DatabaseTypeSchema { database_name }).await? {
             Response::DatabaseTypeSchema { schema } => Ok(schema),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn database_rule_schema(&self, database_name: String) -> Result<String> {
-        match self.request_async(Request::DatabaseRuleSchema { database_name }).await? {
+        match self.request(Request::DatabaseRuleSchema { database_name }).await? {
             Response::DatabaseRuleSchema { schema } => Ok(schema),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn delete_database(&self, database_name: String) -> Result {
-        self.request_async(Request::DatabaseDelete { database_name }).await?;
+        self.request(Request::DatabaseDelete { database_name }).await?;
         Ok(())
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn open_session(
         &self,
         database_name: String,
@@ -275,19 +285,22 @@ impl ServerConnection {
         options: Options,
     ) -> Result<SessionInfo> {
         let start = Instant::now();
-        match self.request_async(Request::SessionOpen { database_name, session_type, options }).await? {
+        match self.request(Request::SessionOpen { database_name, session_type, options }).await? {
             Response::SessionOpen { session_id, server_duration } => {
+                let (on_close_register_sink, on_close_register_source) = unbounded_async();
                 let (pulse_shutdown_sink, pulse_shutdown_source) = unbounded_async();
                 self.open_sessions.lock().unwrap().insert(session_id.clone(), pulse_shutdown_sink);
                 self.background_runtime.spawn(session_pulse(
                     session_id.clone(),
                     self.request_transmitter.clone(),
+                    on_close_register_source,
                     pulse_shutdown_source,
                 ));
                 Ok(SessionInfo {
                     address: self.address.clone(),
                     session_id,
                     network_latency: start.elapsed() - server_duration,
+                    on_close_register_sink,
                 })
             }
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
@@ -302,6 +315,7 @@ impl ServerConnection {
         Ok(())
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn open_transaction(
         &self,
         session_id: SessionID,
@@ -310,7 +324,7 @@ impl ServerConnection {
         network_latency: Duration,
     ) -> Result<TransactionStream> {
         match self
-            .request_async(Request::Transaction(TransactionRequest::Open {
+            .request(Request::Transaction(TransactionRequest::Open {
                 session_id,
                 transaction_type,
                 options: options.clone(),
@@ -393,10 +407,12 @@ impl fmt::Debug for ServerConnection {
 async fn session_pulse(
     session_id: SessionID,
     request_transmitter: Arc<RPCTransmitter>,
+    mut on_close_callback_source: UnboundedReceiver<Box<dyn FnOnce() + Send>>,
     mut shutdown_source: UnboundedReceiver<()>,
 ) {
     const PULSE_INTERVAL: Duration = Duration::from_secs(5);
     let mut next_pulse = Instant::now();
+    let mut on_close = vec![];
     loop {
         select! {
             _ = sleep_until(next_pulse) => {
@@ -406,7 +422,15 @@ async fn session_pulse(
                     .ok();
                 next_pulse += PULSE_INTERVAL;
             }
+            callback = on_close_callback_source.recv() => {
+                if let Some(callback) = callback {
+                    on_close.push(callback)
+                }
+            }
             _ = shutdown_source.recv() => break,
         }
+    }
+    for callback in on_close {
+        callback();
     }
 }

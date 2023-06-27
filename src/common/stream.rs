@@ -19,8 +19,46 @@
  * under the License.
  */
 
-use futures::{stream::BoxStream, Stream};
+#[cfg(not(feature = "sync"))]
+pub use self::async_::*;
+#[cfg(feature = "sync")]
+pub use self::sync::*;
 
-pub(crate) fn box_stream<'a, T>(stream: impl Stream<Item = T> + Send + 'a) -> BoxStream<'a, T> {
-    Box::pin(stream) as futures::stream::BoxStream<_>
+#[cfg(not(feature = "sync"))]
+mod async_ {
+    pub use futures::{stream::BoxStream, Stream};
+    pub(crate) fn box_stream<'a, T>(stream: impl Stream<Item = T> + Send + 'a) -> BoxStream<'a, T> {
+        Box::pin(stream) as futures::stream::BoxStream<_>
+    }
+    pub use tokio_stream::wrappers::UnboundedReceiverStream as NetworkStream;
+}
+
+#[cfg(feature = "sync")]
+mod sync {
+    pub use std::iter::Iterator as Stream;
+
+    use tokio::sync::mpsc::UnboundedReceiver;
+
+    pub type BoxStream<'a, T> = Box<dyn Iterator<Item = T> + Send + 'a>;
+
+    pub(crate) fn box_stream<'a, T>(stream: impl Iterator<Item = T> + Send + 'a) -> BoxStream<'a, T> {
+        Box::new(stream) as BoxStream<'a, T>
+    }
+
+    pub struct NetworkStream<T> {
+        receiver: UnboundedReceiver<T>,
+    }
+
+    impl<T> NetworkStream<T> {
+        pub fn new(receiver: UnboundedReceiver<T>) -> Self {
+            Self { receiver }
+        }
+    }
+
+    impl<T> Iterator for NetworkStream<T> {
+        type Item = T;
+        fn next(&mut self) -> Option<Self::Item> {
+            self.receiver.blocking_recv()
+        }
+    }
 }

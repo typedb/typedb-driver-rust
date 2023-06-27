@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::fmt;
+use std::{borrow::Borrow, fmt};
 
 //TODO cleanup
 pub use typeql_lang::pattern::Annotation;

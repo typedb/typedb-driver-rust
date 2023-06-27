@@ -19,24 +19,31 @@
  * under the License.
  */
 
-use async_trait::async_trait;
+#[cfg(not(feature = "sync"))]
 use futures::stream::BoxStream;
 use typeql_lang::pattern::Annotation;
 
+#[cfg(feature = "sync")]
+use crate::common::stream::BoxStream;
 use crate::{
     common::{box_stream, IID},
     concept::{Attribute, AttributeType, Entity, Relation, RoleType, Thing, ThingType},
     Result, Transaction,
 };
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait ThingAPI: Clone + Sync + Send {
     fn iid(&self) -> &IID;
 
     fn into_thing(self) -> Thing;
 
+    #[cfg(feature = "sync")]
+    fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
+
+    #[cfg(not(feature = "sync"))]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn delete(&self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().transaction_stream.thing_delete(self.clone().into_thing()).await
     }
@@ -54,10 +61,12 @@ pub trait ThingAPI: Clone + Sync + Send {
             .map(box_stream)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
         transaction.concept().transaction_stream.thing_set_has(self.clone().into_thing(), attribute).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn unset_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
         transaction.concept().transaction_stream.thing_unset_has(self.clone().into_thing(), attribute).await
     }
@@ -79,7 +88,7 @@ pub trait ThingAPI: Clone + Sync + Send {
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl ThingAPI for Entity {
     fn iid(&self) -> &IID {
         &self.iid
@@ -89,18 +98,19 @@ impl ThingAPI for Entity {
         Thing::Entity(self)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
         transaction.concept().transaction_stream.get_entity(self.iid().clone()).await.map(|res| res.is_none())
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait EntityAPI: ThingAPI + Into<Entity> {}
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl EntityAPI for Entity {}
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl ThingAPI for Relation {
     fn iid(&self) -> &IID {
         &self.iid
@@ -110,17 +120,20 @@ impl ThingAPI for Relation {
         Thing::Relation(self)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
         transaction.concept().transaction_stream.get_relation(self.iid().clone()).await.map(|res| res.is_none())
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait RelationAPI: ThingAPI + Into<Relation> {
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn add_role_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
         transaction.concept().transaction_stream.relation_add_role_player(self.clone().into(), role_type, player).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn remove_role_player(&self, transaction: &Transaction<'_>, role_type: RoleType, player: Thing) -> Result {
         transaction
             .concept()
@@ -150,10 +163,10 @@ pub trait RelationAPI: ThingAPI + Into<Relation> {
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl RelationAPI for Relation {}
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl ThingAPI for Attribute {
     fn iid(&self) -> &IID {
         &self.iid
@@ -163,12 +176,13 @@ impl ThingAPI for Attribute {
         Thing::Attribute(self)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
         transaction.concept().transaction_stream.get_attribute(self.iid().clone()).await.map(|res| res.is_none())
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait AttributeAPI: ThingAPI + Into<Attribute> {
     fn get_owners(
         &self,
@@ -179,5 +193,5 @@ pub trait AttributeAPI: ThingAPI + Into<Attribute> {
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl AttributeAPI for Attribute {}

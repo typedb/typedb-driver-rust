@@ -82,6 +82,28 @@ pub enum Error {
     Other(String),
 }
 
+impl Error {
+    pub fn code(&self) -> String {
+        // FIXME
+        match self {
+            Self::Connection(error) => error.to_string().split_once(' ').unwrap().0.to_owned(),
+            Self::Internal(error) => error.to_string().split_once(' ').unwrap().0.to_owned(),
+            Self::TypeQL(error) => error.to_string().split_once(' ').unwrap().0.to_owned(),
+            Self::Other(_error) => "".to_owned(),
+        }
+    }
+
+    pub fn message(&self) -> String {
+        // FIXME
+        match self {
+            Self::Connection(error) => error.to_string().split_once(' ').unwrap().1.to_owned(),
+            Self::Internal(error) => error.to_string().split_once(' ').unwrap().1.to_owned(),
+            Self::TypeQL(error) => error.to_string().split_once(' ').unwrap().1.to_owned(),
+            Self::Other(error) => error.clone(),
+        }
+    }
+}
+
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

@@ -22,6 +22,8 @@
 #![deny(unused_must_use)]
 
 pub mod answer;
+#[cfg(feature = "sync")]
+mod bindings;
 mod common;
 pub mod concept;
 mod connection;
@@ -37,9 +39,3 @@ pub use self::{
     transaction::Transaction,
     user::{User, UserManager},
 };
-
-#[no_mangle]
-pub extern "C" fn hello() {
-	println!("Hello from Rust!");
-}
-

@@ -19,14 +19,17 @@
  * under the License.
  */
 
-mod response_sink;
-mod rpc;
-mod transaction;
+use super::common::{borrow_mut, release_optional, unwrap_optional_or_null};
+use crate::Result;
 
-use crossbeam::channel::{bounded as bounded_blocking, Receiver as SyncReceiver, Sender as SyncSender};
+pub struct CIterator<T: 'static, U: Iterator<Item = T> + 'static>(pub(super) U);
 
-pub(in crate::connection) use self::{rpc::RPCTransmitter, transaction::TransactionTransmitter};
+pub(super) fn iterator_next<T: 'static, U: Iterator<Item = T> + 'static>(it: *mut CIterator<T, U>) -> *mut T {
+    release_optional(borrow_mut(it).0.next())
+}
 
-fn oneshot_blocking<T>() -> (SyncSender<T>, SyncReceiver<T>) {
-    bounded_blocking::<T>(0)
+pub(super) fn iterator_try_next<T: 'static, U: Iterator<Item = Result<T>> + 'static>(
+    it: *mut CIterator<Result<T>, U>,
+) -> *mut T {
+    unwrap_optional_or_null(borrow_mut(it).0.next())
 }

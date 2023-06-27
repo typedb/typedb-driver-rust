@@ -21,10 +21,13 @@
 
 use std::sync::Arc;
 
-use futures::Stream;
 use typeql_lang::pattern::{Conjunction, Variable};
 
-use crate::{common::Result, connection::TransactionStream, logic::Rule};
+use crate::{
+    common::{stream::Stream, Result},
+    connection::TransactionStream,
+    logic::Rule,
+};
 
 #[derive(Clone, Debug)]
 pub struct LogicManager {
@@ -36,10 +39,12 @@ impl LogicManager {
         Self { transaction_stream }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub async fn put_rule(&self, label: String, when: Conjunction, then: Variable) -> Result<Rule> {
         self.transaction_stream.put_rule(label, when, then).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub async fn get_rule(&self, label: String) -> Result<Rule> {
         self.transaction_stream.get_rule(label).await
     }

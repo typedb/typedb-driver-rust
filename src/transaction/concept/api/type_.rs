@@ -19,9 +19,11 @@
  * under the License.
  */
 
-use async_trait::async_trait;
+#[cfg(not(feature = "sync"))]
 use futures::stream::BoxStream;
 
+#[cfg(feature = "sync")]
+use crate::common::stream::BoxStream;
 use crate::{
     common::box_stream,
     concept::{
@@ -31,26 +33,34 @@ use crate::{
     Result, Transaction,
 };
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait ThingTypeAPI: Clone + Sync + Send {
     fn label(&self) -> &String;
 
     fn into_thing_type(self) -> ThingType;
 
+    #[cfg(feature = "sync")]
+    fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
+
+    #[cfg(not(feature = "sync"))]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().transaction_stream.thing_type_delete(self.clone().into_thing_type()).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_label(&mut self, transaction: &Transaction<'_>, new_label: String) -> Result {
         transaction.concept().transaction_stream.thing_type_set_label(self.clone().into_thing_type(), new_label).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_abstract(&mut self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().transaction_stream.thing_type_set_abstract(self.clone().into_thing_type()).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn unset_abstract(&mut self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().transaction_stream.thing_type_unset_abstract(self.clone().into_thing_type()).await
     }
@@ -69,6 +79,7 @@ pub trait ThingTypeAPI: Clone + Sync + Send {
             .map(box_stream)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_owns_overridden(
         &self,
         transaction: &Transaction<'_>,
@@ -81,6 +92,7 @@ pub trait ThingTypeAPI: Clone + Sync + Send {
             .await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_owns(
         &mut self,
         transaction: &Transaction<'_>,
@@ -95,6 +107,7 @@ pub trait ThingTypeAPI: Clone + Sync + Send {
             .await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn unset_owns(&mut self, transaction: &Transaction<'_>, attribute_type: AttributeType) -> Result {
         transaction
             .concept()
@@ -115,6 +128,7 @@ pub trait ThingTypeAPI: Clone + Sync + Send {
             .map(box_stream)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_plays_overridden(
         &self,
         transaction: &Transaction<'_>,
@@ -127,6 +141,7 @@ pub trait ThingTypeAPI: Clone + Sync + Send {
             .await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_plays(
         &mut self,
         transaction: &Transaction<'_>,
@@ -140,16 +155,18 @@ pub trait ThingTypeAPI: Clone + Sync + Send {
             .await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn unset_plays(&mut self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
         transaction.concept().transaction_stream.thing_type_unset_plays(self.clone().into_thing_type(), role_type).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_syntax(&mut self, transaction: &Transaction<'_>) -> Result<String> {
         transaction.concept().transaction_stream.thing_type_get_syntax(self.clone().into_thing_type()).await
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl ThingTypeAPI for EntityType {
     fn label(&self) -> &String {
         &self.label
@@ -159,21 +176,25 @@ impl ThingTypeAPI for EntityType {
         ThingType::EntityType(self)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
         transaction.concept().transaction_stream.get_entity_type(self.label().clone()).await.map(|res| res.is_none())
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait EntityTypeAPI: ThingTypeAPI + Into<EntityType> {
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn create(&self, transaction: &Transaction<'_>) -> Result<Entity> {
         transaction.concept().transaction_stream.entity_type_create(self.clone().into()).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_supertype(&self, transaction: &Transaction<'_>) -> Result<EntityType> {
         transaction.concept().transaction_stream.entity_type_get_supertype(self.clone().into()).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_supertype(&mut self, transaction: &Transaction<'_>, supertype: EntityType) -> Result {
         transaction.concept().transaction_stream.entity_type_set_supertype(self.clone().into(), supertype).await
     }
@@ -199,10 +220,10 @@ pub trait EntityTypeAPI: ThingTypeAPI + Into<EntityType> {
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl EntityTypeAPI for EntityType {}
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl ThingTypeAPI for RelationType {
     fn label(&self) -> &String {
         &self.label
@@ -212,21 +233,25 @@ impl ThingTypeAPI for RelationType {
         ThingType::RelationType(self)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
         transaction.concept().transaction_stream.get_relation_type(self.label().clone()).await.map(|res| res.is_none())
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait RelationTypeAPI: ThingTypeAPI + Into<RelationType> {
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn create(&self, transaction: &Transaction<'_>) -> Result<Relation> {
         transaction.concept().transaction_stream.relation_type_create(self.clone().into()).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_supertype(&self, transaction: &Transaction<'_>) -> Result<RelationType> {
         transaction.concept().transaction_stream.relation_type_get_supertype(self.clone().into()).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_supertype(&mut self, transaction: &Transaction<'_>, supertype: RelationType) -> Result {
         transaction.concept().transaction_stream.relation_type_set_supertype(self.clone().into(), supertype).await
     }
@@ -263,6 +288,7 @@ pub trait RelationTypeAPI: ThingTypeAPI + Into<RelationType> {
             .map(box_stream)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_relates_for_role_label(
         &self,
         transaction: &Transaction<'_>,
@@ -275,6 +301,7 @@ pub trait RelationTypeAPI: ThingTypeAPI + Into<RelationType> {
             .await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_relates_overridden(
         &self,
         transaction: &Transaction<'_>,
@@ -287,6 +314,7 @@ pub trait RelationTypeAPI: ThingTypeAPI + Into<RelationType> {
             .await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_relates(
         &mut self,
         transaction: &Transaction<'_>,
@@ -300,15 +328,16 @@ pub trait RelationTypeAPI: ThingTypeAPI + Into<RelationType> {
             .await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn unset_relates(&mut self, transaction: &Transaction<'_>, role_label: String) -> Result {
         transaction.concept().transaction_stream.relation_type_unset_relates(self.clone().into(), role_label).await
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl RelationTypeAPI for RelationType {}
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl ThingTypeAPI for AttributeType {
     fn label(&self) -> &String {
         &self.label
@@ -318,27 +347,32 @@ impl ThingTypeAPI for AttributeType {
         ThingType::AttributeType(self)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
         transaction.concept().transaction_stream.get_attribute_type(self.label().clone()).await.map(|res| res.is_none())
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait AttributeTypeAPI: ThingTypeAPI + Into<AttributeType> {
     fn value_type(&self) -> ValueType;
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn put(&self, transaction: &Transaction<'_>, value: Value) -> Result<Attribute> {
         transaction.concept().transaction_stream.attribute_type_put(self.clone().into(), value).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get(&self, transaction: &Transaction<'_>, value: Value) -> Result<Option<Attribute>> {
         transaction.concept().transaction_stream.attribute_type_get(self.clone().into(), value).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_supertype(&self, transaction: &Transaction<'_>) -> Result<AttributeType> {
         transaction.concept().transaction_stream.attribute_type_get_supertype(self.clone().into()).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_supertype(&mut self, transaction: &Transaction<'_>, supertype: AttributeType) -> Result {
         transaction.concept().transaction_stream.attribute_type_set_supertype(self.clone().into(), supertype).await
     }
@@ -376,14 +410,17 @@ pub trait AttributeTypeAPI: ThingTypeAPI + Into<AttributeType> {
             .map(box_stream)
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_regex(&self, transaction: &Transaction<'_>) -> Result<String> {
         transaction.concept().transaction_stream.attribute_type_get_regex(self.clone().into()).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_regex(&self, transaction: &Transaction<'_>, regex: String) -> Result {
         transaction.concept().transaction_stream.attribute_type_set_regex(self.clone().into(), regex).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn unset_regex(&self, transaction: &Transaction<'_>) -> Result {
         self.set_regex(transaction, String::new()).await
     }
@@ -402,23 +439,26 @@ pub trait AttributeTypeAPI: ThingTypeAPI + Into<AttributeType> {
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl AttributeTypeAPI for AttributeType {
     fn value_type(&self) -> ValueType {
         self.value_type
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait RoleTypeAPI: Clone + Into<RoleType> + Sync + Send {
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn delete(&self, transaction: &Transaction<'_>) -> Result {
         transaction.concept().transaction_stream.role_type_delete(self.clone().into()).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_label(&self, transaction: &Transaction<'_>, new_label: String) -> Result {
         transaction.concept().transaction_stream.role_type_set_label(self.clone().into(), new_label).await
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_supertype(&self, transaction: &Transaction<'_>) -> Result<RoleType> {
         transaction.concept().transaction_stream.role_type_get_supertype(self.clone().into()).await
     }
@@ -480,5 +520,5 @@ pub trait RoleTypeAPI: Clone + Into<RoleType> + Sync + Send {
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl RoleTypeAPI for RoleType {}
