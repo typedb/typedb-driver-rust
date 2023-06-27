@@ -28,7 +28,7 @@ load("@vaticle_dependencies//distribution:deployment.bzl", "deployment")
 load("@vaticle_dependencies//tool/checkstyle:rules.bzl", "checkstyle_test")
 load("//:deployment.bzl", deployment_github = "deployment")
 load("@vaticle_dependencies//builder/rust:rules.bzl", "rust_cbindgen")
-load("@vaticle_dependencies//tool/swig:rules.bzl", "swig_java")
+load("@vaticle_dependencies//builder/swig:java.bzl", "swig_java")
 
 typedb_client_srcs = glob(["src/**/*.rs"])
 typedb_client_tags = ["crate-name=typedb-client"]
@@ -47,47 +47,49 @@ typedb_client_deps = [
         "@vaticle_typedb_protocol//grpc/rust:typedb_protocol",
         "@vaticle_typeql//rust:typeql_lang",
     ]
+typedb_client_proc_macro_deps = [
+    "@crates//:async-trait",
+    "@crates//:maybe-async",
+]
 
 rust_library(
     name = "typedb_client",
     srcs = typedb_client_srcs,
-    tags = typedb_client_tags,
     deps = typedb_client_deps,
-    proc_macro_deps = [
-        "@crates//:async-trait",
-    ]
+    proc_macro_deps = typedb_client_proc_macro_deps,
+    tags = typedb_client_tags,
 )
 
 rust_static_library(
-    name = "typedb_client_so",
+    name = "typedb_client_clib",
     srcs = typedb_client_srcs,
-    tags = typedb_client_tags,
     deps = typedb_client_deps,
-    proc_macro_deps = [
-        "@crates//:async-trait",
-    ]
+    proc_macro_deps = typedb_client_proc_macro_deps,
+    tags = typedb_client_tags,
+    crate_features = ["sync"],
 )
 
 rust_cbindgen(
     name = "typedb_client_h",
-    lib = ":typedb_client_so",
+    lib = ":typedb_client_clib",
     header_name = "typedb_client.h",
+    config = "cbindgen.toml",
 )
 
 swig_java(
-    name = "typedb_client_java",
+    name = "typedb_client_jni",
     lib = ":typedb_client_h",
     package = "com.vaticle.typedb.client.jni",
+    interface = "typedb_client.i",
+    includes = ["swig/typedb_client_java.swg"],
+    enable_cxx = True,
 )
 
 java_binary(
     name = "jni-test",
     srcs = ["Main.java"],
     main_class = "Main",
-    deps = [
-        ":typedb_client_java",
-        ":libtypedb_client_java.so",
-    ],
+    deps = [":typedb_client_jni"],
 )
 
 assemble_crate(
@@ -158,6 +160,6 @@ filegroup(
     name = "ci",
     data = [
         "@vaticle_dependencies//tool/bazelinstall:remote_cache_setup.sh",
-        "@vaticle_dependencies//tool/cargo:sync",
+        "@vaticle_dependencies//tool/ide:rust_sync",
     ],
 )
