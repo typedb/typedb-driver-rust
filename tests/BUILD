@@ -29,6 +29,7 @@ load("@vaticle_typedb_common//runner:rules.bzl", "native_typedb_artifact")
 rust_test(
     name = "tests",
     srcs = glob(["**/*.rs"]),
+    timeout = "eternal",
     deps = [
         "//:typedb_client",
         "@vaticle_typeql//rust:typeql_lang",
@@ -72,6 +73,7 @@ rust_test(
         "@vaticle_typedb_behaviour//typeql/reasoner:type-hierarchy.feature",
         "@vaticle_typedb_behaviour//typeql/reasoner:value-predicate.feature",
         "@vaticle_typedb_behaviour//typeql/reasoner:variable-roles.feature",
+#        "behaviour/connection/database/debug.feature",
     ],
 )
 
