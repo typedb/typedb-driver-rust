@@ -59,6 +59,8 @@ impl Context {
     const DEFAULT_DATABASE: &'static str = "test";
     const ADMIN_USERNAME: &'static str = "admin";
     const ADMIN_PASSWORD: &'static str = "password";
+    const PAUSE_BETWEEN_STEP_CHECKS_MS: u64 = 500;
+    const PAUSES_LIMIT_BETWEEN_STEP_CHECKS: u64 = 10;
 
     async fn test(glob: &'static str) -> bool {
         let default_panic = std::panic::take_hook();
@@ -113,7 +115,6 @@ impl Context {
                 .map(|user| self.users.delete(user.username)),
         )
         .await?;
-        sleep(Duration::from_millis(2000)).await;
         Ok(())
     }
 

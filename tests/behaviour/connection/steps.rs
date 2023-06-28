@@ -22,6 +22,7 @@
 use std::path::PathBuf;
 
 use cucumber::{given, then, when};
+use tokio::time::{sleep, Duration};
 use typedb_client::{Connection, Credential};
 
 use crate::{behaviour::Context, generic_step_impl};
@@ -55,6 +56,11 @@ generic_step_impl! {
 
     #[step("connection does not have any database")]
     async fn connection_does_not_have_any_database(context: &mut Context) {
+        let mut count_pauses = 0;
+        while !context.databases.all().await.unwrap().is_empty() && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            count_pauses += 1;
+        };
         assert!(context.databases.all().await.unwrap().is_empty());
     }
 

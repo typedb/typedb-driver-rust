@@ -20,6 +20,7 @@
  */
 
 use cucumber::{given, then, when};
+use tokio::time::{sleep, Duration};
 use typedb_client::Result as TypeDBResult;
 
 use crate::{assert_err, behaviour::Context, generic_step_impl};
@@ -50,8 +51,12 @@ generic_step_impl! {
 
     #[step(expr = "users contains: {word}")]
     async fn users_contains(context: &mut Context, username: String) -> TypeDBResult {
-        let contains = context.users.contains(username).await?;
-        assert!(contains);
+        let mut count_pauses = 0;
+        while !context.users.contains(username.clone()).await? && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            count_pauses += 1;
+        };
+        assert!(context.users.contains(username.clone()).await?);
         Ok(())
     }
 
@@ -62,8 +67,12 @@ generic_step_impl! {
 
     #[step(expr = "users not contains: {word}")]
     async fn users_not_contains(context: &mut Context, username: String) -> TypeDBResult {
-        let contains = context.users.contains(username).await?;
-        assert!(!contains);
+        let mut count_pauses = 0;
+        while context.users.contains(username.clone()).await? && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            count_pauses += 1;
+        };
+        assert!(!context.users.contains(username.clone()).await?);
         Ok(())
     }
 

@@ -43,19 +43,16 @@ generic_step_impl! {
         for name in util::iter_table(step) {
             context.databases.create(name).await.unwrap();
         }
-        sleep(Duration::from_millis(2000)).await;
     }
 
-    #[step("connection create databases in parallel:")]
+    #[step(expr = "connection create databases in parallel:")]
     async fn connection_create_databases_in_parallel(context: &mut Context, step: &Step) {
         try_join_all(util::iter_table(step).map(|name| context.databases.create(name))).await.unwrap();
-        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step(expr = "connection delete database: {word}")]
     pub async fn connection_delete_database(context: &mut Context, name: String) {
         context.databases.get(name).and_then(Database::delete).await.unwrap();
-        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step(expr = "connection delete database(s):")]
@@ -63,7 +60,6 @@ generic_step_impl! {
         for name in util::iter_table(step) {
             context.databases.get(name).and_then(Database::delete).await.unwrap();
         }
-        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step(expr = "connection delete databases in parallel:")]
@@ -71,7 +67,6 @@ generic_step_impl! {
         try_join_all(util::iter_table(step).map(|name| context.databases.get(name).and_then(Database::delete)))
             .await
             .unwrap();
-        sleep(Duration::from_millis(2000)).await;
     }
 
     #[step(expr = "connection delete database; throws exception: {word}")]
@@ -88,27 +83,52 @@ generic_step_impl! {
 
     #[step(expr = "connection has database: {word}")]
     async fn connection_has_database(context: &mut Context, name: String) {
-        assert!(context.databases.contains(name).await.unwrap());
+        let mut count_pauses = 0;
+        while !context.databases.contains(name.clone()).await.unwrap() && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            count_pauses += 1;
+        };
+        assert!(context.databases.contains(name.clone()).await.unwrap());
     }
 
     #[step(expr = "connection has database(s):")]
     async fn connection_has_databases(context: &mut Context, step: &Step) {
         let names: HashSet<String> = util::iter_table(step).map(|name| name.to_owned()).collect();
-        let all_databases = context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
+        let mut count_pauses = 0;
+        while context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect::<HashSet<_, _>>() != names && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            count_pauses += 1;
+        };
+        let all_databases: HashSet<_, _> = context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
         assert_eq!(names, all_databases);
     }
 
     #[step(expr = "connection does not have database: {word}")]
     async fn connection_does_not_have_database(context: &mut Context, name: String) {
-        assert!(!context.databases.contains(name).await.unwrap());
+        let mut count_pauses = 0;
+        while context.databases.contains(name.clone()).await.unwrap() && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            count_pauses += 1;
+        };
+        assert!(!context.databases.contains(name.clone()).await.unwrap());
     }
 
     #[step(expr = "connection does not have database(s):")]
     async fn connection_does_not_have_databases(context: &mut Context, step: &Step) {
-        let all_databases: HashSet<String> =
-            context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
-        for name in util::iter_table(step) {
-            assert!(!all_databases.contains(name));
-        }
+        let mut count_pauses = 0;
+        while count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+            let all_databases: HashSet<String> =
+                context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
+            let mut all_not_contained = true;
+            for name in util::iter_table(step) {
+                 all_not_contained &= !all_databases.contains(name);
+            }
+            if all_not_contained {
+                break;
+            }
+            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            count_pauses += 1;
+        };
+        assert!(count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS, "Connection has at least one of these databases.");
     }
 }
