@@ -135,7 +135,12 @@ fn value_equals_str(value: &Value, expected: &str) -> bool {
             expected.parse::<bool>().and_then(|expected| Ok(expected.eq(val))).unwrap_or_else(|_| false)
         }
         Value::DateTime(val) => {
-            return val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%dT%H:%M:%S").unwrap();
+            if expected.contains(":") {
+                val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%dT%H:%M:%S").unwrap();
+            }
+            else {
+                val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%d").unwrap();
+            }
         }
     }
 }
