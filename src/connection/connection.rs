@@ -89,6 +89,12 @@ impl Connection {
         if server_connections.is_empty() {
             Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
         }
+        // let mut server_connections = HashMap::with_capacity(addresses.len());
+        // for address in addresses {
+        //     let server_connection =
+        //         ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone())?;
+        //     server_connections.insert(address, server_connection);
+        // }
         Ok(Self { server_connections, background_runtime, username: Some(credential.username().to_string()) })
     }
 
