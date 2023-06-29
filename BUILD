@@ -69,7 +69,7 @@ deploy_github(
     name = "deploy_github",
     draft = True,
     organisation = deployment_github["github.organisation"],
-    release_description = "//:RELEASE_TEMPLATE.md",
+    release_description = "//:LATEST_RELEASE_NOTES.md",
     repository = deployment_github["github.repository"],
     title = "TypeDB Client Rust",
     title_append_version = True,
