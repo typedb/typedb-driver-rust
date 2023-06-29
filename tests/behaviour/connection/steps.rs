@@ -36,8 +36,20 @@ generic_step_impl! {
 
     #[step(expr = "connection opens with authentication: {word}, {word}")]
     async fn connection_opens_with_authentication(context: &mut Context, login: String, password: String) {
-        context.set_connection(
-            Connection::new_encrypted(
+        let mut connection = Connection::new_encrypted(
+            &["localhost:11729", "localhost:21729", "localhost:31729"],
+            Credential::with_tls(
+                &login.as_str(),
+                &password.as_str(),
+                Some(&PathBuf::from(
+                    std::env::var("ROOT_CA")
+                        .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
+                )),
+            ).unwrap(),
+        );
+        let mut count_pauses = 0;
+        while connection.is_err() && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
+            connection = Connection::new_encrypted(
                 &["localhost:11729", "localhost:21729", "localhost:31729"],
                 Credential::with_tls(
                     &login.as_str(),
@@ -47,8 +59,10 @@ generic_step_impl! {
                             .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
                     )),
                 ).unwrap(),
-            ).unwrap()
-        );
+            );
+            count_pauses += 1;
+        }
+        context.set_connection(connection.unwrap());
     }
 
     #[step("connection has been opened")]
@@ -57,7 +71,7 @@ generic_step_impl! {
     #[step("connection does not have any database")]
     async fn connection_does_not_have_any_database(context: &mut Context) {
         let mut count_pauses = 0;
-        while !context.databases.all().await.unwrap().is_empty() && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+        while !context.databases.all().await.unwrap().is_empty() && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
             count_pauses += 1;
         };
