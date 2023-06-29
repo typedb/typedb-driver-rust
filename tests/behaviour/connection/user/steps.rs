@@ -51,12 +51,12 @@ generic_step_impl! {
 
     #[step(expr = "users contains: {word}")]
     async fn users_contains(context: &mut Context, username: String) -> TypeDBResult {
-        let mut count_pauses = 0;
-        while !context.users.contains(username.clone()).await? && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
+        let mut waiting_iterations = 0;
+        while !context.users.contains(username.clone()).await? && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
-            count_pauses += 1;
+            waiting_iterations += 1;
         };
-        assert!(count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT, "User not exists.");
+        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "User not exists.");
         Ok(())
     }
 
@@ -67,12 +67,12 @@ generic_step_impl! {
 
     #[step(expr = "users not contains: {word}")]
     async fn users_not_contains(context: &mut Context, username: String) -> TypeDBResult {
-        let mut count_pauses = 0;
-        while context.users.contains(username.clone()).await? && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
+        let mut waiting_iterations = 0;
+        while context.users.contains(username.clone()).await? && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
-            count_pauses += 1;
+            waiting_iterations += 1;
         };
-        assert!(count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT, "User exists.");
+        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "User exists.");
         Ok(())
     }
 

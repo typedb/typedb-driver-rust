@@ -47,8 +47,8 @@ generic_step_impl! {
                 )),
             ).unwrap(),
         );
-        // let mut count_pauses = 0;
-        // while connection.is_err() && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
+        // let mut waiting_iterations = 0;
+        // while connection.is_err() && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
         //     connection = Connection::new_encrypted(
         //         &["localhost:11729", "localhost:21729", "localhost:31729"],
         //         Credential::with_tls(
@@ -60,7 +60,7 @@ generic_step_impl! {
         //             )),
         //         ).unwrap(),
         //     );
-        //     count_pauses += 1;
+        //     waiting_iterations += 1;
         //     sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
         // }
         context.set_connection(connection.unwrap());
@@ -71,10 +71,10 @@ generic_step_impl! {
 
     #[step("connection does not have any database")]
     async fn connection_does_not_have_any_database(context: &mut Context) {
-        let mut count_pauses = 0;
-        while !context.databases.all().await.unwrap().is_empty() && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
+        let mut waiting_iterations = 0;
+        while !context.databases.all().await.unwrap().is_empty() && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
-            count_pauses += 1;
+            waiting_iterations += 1;
         };
         assert!(context.databases.all().await.unwrap().is_empty());
     }
