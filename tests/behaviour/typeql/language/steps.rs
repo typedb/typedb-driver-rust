@@ -19,6 +19,8 @@
  * under the License.
  */
 
+use std::env;
+
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
@@ -27,7 +29,6 @@ use util::{
     equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_answer_rule,
     match_templated_answer,
 };
-use std::env;
 
 use crate::{
     assert_err,
