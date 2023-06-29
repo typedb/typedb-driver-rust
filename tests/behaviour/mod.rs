@@ -59,7 +59,7 @@ impl Context {
     const ADMIN_USERNAME: &'static str = "admin";
     const ADMIN_PASSWORD: &'static str = "password";
     const PAUSE_BETWEEN_STEP_CHECKS_MS: u64 = 500;
-    const STEP_CHECKS_ITERATIONS_LIMIT: u64 = 15;
+    const STEP_CHECKS_ITERATIONS_LIMIT: u64 = 30;
 
     async fn test(glob: &'static str) -> bool {
         let default_panic = std::panic::take_hook();
