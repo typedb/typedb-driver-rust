@@ -22,9 +22,10 @@
 use std::collections::HashSet;
 
 use cucumber::{gherkin::Step, given, then, when};
-use futures::{future::try_join_all, TryFutureExt};
+use futures::{future::{join_all, try_join_all}, TryFutureExt};
 use tokio::time::{sleep, Duration};
 use typedb_client::Database;
+use typedb_client::Result as TypeDBResult;
 
 use crate::{
     behaviour::{util, Context},
@@ -34,14 +35,18 @@ use crate::{
 generic_step_impl! {
     #[step(expr = "connection create database: {word}")]
     pub async fn connection_create_database(context: &mut Context, name: String) {
-        context.databases.create(name).await.unwrap();
-        sleep(Duration::from_millis(2000)).await;
+        let mut count_pauses = 0;
+        while context.databases.create(name.clone()).await.is_err() && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
+            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            count_pauses += 1;
+        };
+        assert!(count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Database {name} couldn't be created.");
     }
 
     #[step(expr = "connection create database(s):")]
     async fn connection_create_databases(context: &mut Context, step: &Step) {
         for name in util::iter_table(step) {
-            context.databases.create(name).await.unwrap();
+            connection_create_database(context, name.into()).await;
         }
     }
 
@@ -84,39 +89,38 @@ generic_step_impl! {
     #[step(expr = "connection has database: {word}")]
     async fn connection_has_database(context: &mut Context, name: String) {
         let mut count_pauses = 0;
-        while !context.databases.contains(name.clone()).await.unwrap() && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+        while !context.databases.contains(name.clone()).await.unwrap() && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
             count_pauses += 1;
         };
-        assert!(context.databases.contains(name.clone()).await.unwrap());
+        assert!(count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection doesn't contain database {name}.");
     }
 
     #[step(expr = "connection has database(s):")]
     async fn connection_has_databases(context: &mut Context, step: &Step) {
         let names: HashSet<String> = util::iter_table(step).map(|name| name.to_owned()).collect();
         let mut count_pauses = 0;
-        while context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect::<HashSet<_, _>>() != names && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+        while context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect::<HashSet<_, _>>() != names && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
             count_pauses += 1;
         };
-        let all_databases: HashSet<_, _> = context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
-        assert_eq!(names, all_databases);
+        assert!(count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection doesn't contain at least one of databases.");
     }
 
     #[step(expr = "connection does not have database: {word}")]
     async fn connection_does_not_have_database(context: &mut Context, name: String) {
         let mut count_pauses = 0;
-        while context.databases.contains(name.clone()).await.unwrap() && count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+        while context.databases.contains(name.clone()).await.unwrap() && count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
             count_pauses += 1;
         };
-        assert!(!context.databases.contains(name.clone()).await.unwrap());
+        assert!(count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection contains database {name}.");
     }
 
     #[step(expr = "connection does not have database(s):")]
     async fn connection_does_not_have_databases(context: &mut Context, step: &Step) {
         let mut count_pauses = 0;
-        while count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS {
+        while count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT {
             let all_databases: HashSet<String> =
                 context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect();
             let mut all_not_contained = true;
@@ -129,6 +133,6 @@ generic_step_impl! {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
             count_pauses += 1;
         };
-        assert!(count_pauses < Context::PAUSES_LIMIT_BETWEEN_STEP_CHECKS, "Connection has at least one of these databases.");
+        assert!(count_pauses < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection contains at least one of databases.");
     }
 }
