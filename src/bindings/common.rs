@@ -52,6 +52,10 @@ pub(super) fn borrow_mut<T>(raw: *mut T) -> &'static mut T {
     unsafe { &mut *raw }
 }
 
+pub(super) fn borrow_optional<T>(raw: *const T) -> Option<&'static T> {
+    unsafe { raw.as_ref() }
+}
+
 pub(super) fn take_ownership<T>(raw: *mut T) -> T {
     assert!(!raw.is_null());
     unsafe { *Box::from_raw(raw) }
@@ -61,11 +65,6 @@ pub(super) fn free<T>(raw: *mut T) {
     if !raw.is_null() {
         unsafe { drop(Box::from_raw(raw)) }
     }
-}
-
-pub(super) fn string_array_view(strs: *const *const c_char) -> impl Iterator<Item = &'static str> {
-    assert!(!strs.is_null());
-    unsafe { (0..).map_while(move |i| strs.add(i).as_ref()).map(|p| string_view(*p)) }
 }
 
 pub(super) fn string_view(str: *const c_char) -> &'static str {
@@ -78,6 +77,16 @@ pub extern "C" fn string_free(str: *mut c_char) {
     if !str.is_null() {
         unsafe { drop(CString::from_raw(str)) }
     }
+}
+
+pub(super) fn array_view<T>(ts: *const *const T) -> impl Iterator<Item = &'static T> {
+    assert!(!ts.is_null());
+    unsafe { (0..).map_while(move |i| (*ts.add(i)).as_ref()) }
+}
+
+pub(super) fn string_array_view(strs: *const *const c_char) -> impl Iterator<Item = &'static str> {
+    assert!(!strs.is_null());
+    unsafe { (0..).map_while(move |i| (*strs.add(i)).as_ref()).map(|p| string_view(p)) }
 }
 
 pub(super) fn ok_record<T>(result: Result<T>) -> Option<T> {

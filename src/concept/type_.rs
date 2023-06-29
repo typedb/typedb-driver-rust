@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{borrow::Borrow, fmt};
+use std::fmt;
 
 //TODO cleanup
 pub use typeql_lang::pattern::Annotation;
@@ -72,6 +72,7 @@ pub struct AttributeType {
     pub value_type: ValueType,
 }
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ValueType {
     Object,

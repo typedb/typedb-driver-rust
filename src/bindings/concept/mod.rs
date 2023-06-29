@@ -19,6 +19,7 @@
  * under the License.
  */
 
+mod concept;
 mod manager;
 mod thing;
 mod type_;
@@ -34,49 +35,11 @@ use super::{
 use crate::{
     bindings::iterator::CIterator,
     common::{box_stream, stream::BoxStream},
-    concept::{Attribute, Concept, Relation, RoleType, Thing},
+    concept::{
+        Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
+    },
     Result,
 };
-
-#[no_mangle]
-pub extern "C" fn concept_drop(concept: *mut Concept) {
-    free(concept);
-}
-
-#[no_mangle]
-pub extern "C" fn concept_is_entity(concept: *const Concept) -> bool {
-    matches!(borrow(concept), Concept::Entity(_))
-}
-
-#[no_mangle]
-pub extern "C" fn concept_is_relation(concept: *const Concept) -> bool {
-    matches!(borrow(concept), Concept::Relation(_))
-}
-
-#[no_mangle]
-pub extern "C" fn concept_is_attribute(concept: *const Concept) -> bool {
-    matches!(borrow(concept), Concept::Attribute(_))
-}
-
-#[no_mangle]
-pub extern "C" fn concept_is_entity_type(concept: *const Concept) -> bool {
-    matches!(borrow(concept), Concept::EntityType(_))
-}
-
-#[no_mangle]
-pub extern "C" fn concept_is_relation_type(concept: *const Concept) -> bool {
-    matches!(borrow(concept), Concept::RelationType(_))
-}
-
-#[no_mangle]
-pub extern "C" fn concept_is_attribute_type(concept: *const Concept) -> bool {
-    matches!(borrow(concept), Concept::AttributeType(_))
-}
-
-#[no_mangle]
-pub extern "C" fn concept_is_role_type(concept: *const Concept) -> bool {
-    matches!(borrow(concept), Concept::RoleType(_))
-}
 
 type ConceptIteratorInner = CIterator<Result<Concept>, BoxStream<'static, Result<Concept>>>;
 
@@ -91,12 +54,37 @@ impl ConceptIterator {
         }))))
     }
 
+    fn entities(it: BoxStream<'static, Result<Entity>>) -> Self {
+        Self(CIterator(box_stream(it.map_ok(Concept::Entity))))
+    }
+
     fn relations(it: BoxStream<'static, Result<Relation>>) -> Self {
         Self(CIterator(box_stream(it.map_ok(Concept::Relation))))
     }
 
     fn attributes(it: BoxStream<'static, Result<Attribute>>) -> Self {
         Self(CIterator(box_stream(it.map_ok(Concept::Attribute))))
+    }
+
+    fn thing_types(it: BoxStream<'static, Result<ThingType>>) -> Self {
+        Self(CIterator(box_stream(it.map_ok(|thing_type| match thing_type {
+            ThingType::EntityType(entity_type) => Concept::EntityType(entity_type),
+            ThingType::RelationType(relation_type) => Concept::RelationType(relation_type),
+            ThingType::AttributeType(attribute_type) => Concept::AttributeType(attribute_type),
+            ThingType::RootThingType(root_thing_type) => Concept::RootThingType(root_thing_type),
+        }))))
+    }
+
+    fn entity_types(it: BoxStream<'static, Result<EntityType>>) -> Self {
+        Self(CIterator(box_stream(it.map_ok(Concept::EntityType))))
+    }
+
+    fn relation_types(it: BoxStream<'static, Result<RelationType>>) -> Self {
+        Self(CIterator(box_stream(it.map_ok(Concept::RelationType))))
+    }
+
+    fn attribute_types(it: BoxStream<'static, Result<AttributeType>>) -> Self {
+        Self(CIterator(box_stream(it.map_ok(Concept::AttributeType))))
     }
 
     fn role_types(it: BoxStream<'static, Result<RoleType>>) -> Self {

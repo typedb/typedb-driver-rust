@@ -26,5 +26,6 @@ mod database;
 mod database_manager;
 mod iterator;
 mod options;
+mod query;
 mod session;
 mod transaction;

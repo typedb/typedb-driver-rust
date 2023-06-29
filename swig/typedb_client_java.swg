@@ -13,6 +13,8 @@
     }
 %}
 
+/* ---------------------------------------------------------------------------------------------------- */
+
 /* This tells SWIG to treat char ** as a special case when used as a parameter
       in a function call */
 %typemap(in) char ** (jint size) {
@@ -39,24 +41,6 @@
     free($1);
 }
 
-/* This allows a C function to return a char ** as a Java String array */
-%typemap(out) char ** {
-    int i;
-    int len=0;
-    jstring temp_string;
-    const jclass clazz = jenv->FindClass("java/lang/String");
-
-    while ($1[len]) len++;
-    jresult = jenv->NewObjectArray(len, clazz, NULL);
-    /* error checking omitted */
-
-    for (i=0; i<len; i++) {
-        temp_string = jenv->NewStringUTF(*result++);
-        jenv->SetObjectArrayElement(jresult, i, temp_string);
-        jenv->DeleteLocalRef(temp_string);
-    }
-}
-
 /* These 3 typemaps tell SWIG what JNI and Java types to use */
 %typemap(jni) char ** "jobjectArray"
 %typemap(jtype) char ** "String[]"
@@ -68,6 +52,63 @@
 %typemap(javaout) char ** {
     return $jnicall;
 }
+
+/* ---------------------------------------------------------------------------------------------------- */
+
+/* This tells SWIG to treat Concept ** as a special case when used as a parameter
+      in a function call */
+%typemap(in) Concept ** (jint size) {
+    int i = 0;
+    size = jenv->GetArrayLength($input);
+    $1 = (Concept **) malloc((size+1)*sizeof(Concept *));
+    jlong* array = (jlong*)jenv->GetLongArrayElements($input, JNI_FALSE);
+    /* make a copy of each ptr */
+    for (i = 0; i<size; i++) {
+        $1[i] = (Concept*)array[i];
+    }
+    $1[i] = 0;
+}
+
+/* This cleans up the memory we malloc'd before the function call */
+%typemap(freearg) Concept ** { free($1); }
+
+/* These 3 typemaps tell SWIG what JNI and Java types to use */
+%typemap(jni) Concept ** "jlongArray"
+%typemap(jtype) Concept ** "long[]"
+%typemap(jstype) Concept ** "Concept[]"
+
+/* These 2 typemaps handle the conversion of the jtype to jstype typemap type
+      and vice versa */
+%typemap(javain) Concept ** "java.util.Arrays.stream($javainput).mapToLong(Concept::getCPtr).toArray()"
+%typemap(javaout) Concept ** {
+    return $jnicall;
+}
+
+/* ---------------------------------------------------------------------------------------------------- */
+
+%typemap(in) enum ValueType * {
+    if ($input >= 0) {
+        $1 = (enum ValueType *) malloc(sizeof(enum ValueType));
+        *$1 = (enum ValueType)$input;
+    }
+}
+
+/* This cleans up the memory we malloc'd before the function call */
+%typemap(freearg) enum ValueType * { free($1); }
+
+/* These 3 typemaps tell SWIG what JNI and Java types to use */
+%typemap(jni) enum ValueType * "jlong"
+%typemap(jtype) enum ValueType * "long"
+%typemap(jstype) enum ValueType * "ValueType"
+
+/* These 2 typemaps handle the conversion of the jtype to jstype typemap type
+      and vice versa */
+%typemap(javain) enum ValueType * "$javainput == null ? -1 : $javainput.swigValue()"
+%typemap(javaout) enum ValueType * {
+    return $jnicall;
+}
+
+/* ---------------------------------------------------------------------------------------------------- */
 
 %ignore get_last_error;
 %javaexception("Error") {
@@ -88,7 +129,6 @@
     }
 }
 
-/*
 %nojavaexception ~Connection;
 %nojavaexception ~DatabaseManager;
 %nojavaexception ~Database;
@@ -97,7 +137,6 @@
 %nojavaexception error_message;
 %nojavaexception database_manager_new;
 %nojavaexception database_get_name;
-*/
 
 %typemap(javabase) Error "java.lang.RuntimeException";
 %typemap(javabody) Error %{

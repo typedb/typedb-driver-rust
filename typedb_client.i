@@ -126,6 +126,10 @@ struct Concept {};
 %ignore concept_drop;
 %extend Concept { ~Concept() { concept_drop(self); } }
 
+struct Value {};
+%ignore value_drop;
+%extend Value { ~Value() { value_drop(self); } }
+
 struct RolePlayerIterator {};
 %ignore role_player_iterator_drop;
 %extend RolePlayerIterator { ~RolePlayerIterator() { role_player_iterator_drop(self); } }
