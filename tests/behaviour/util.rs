@@ -136,10 +136,10 @@ fn value_equals_str(value: &Value, expected: &str) -> bool {
         }
         Value::DateTime(val) => {
             if expected.contains(":") {
-                val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%dT%H:%M:%S").unwrap();
+                val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%dT%H:%M:%S").unwrap()
             }
             else {
-                val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%d").unwrap();
+                val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%d").unwrap()
             }
         }
     }
