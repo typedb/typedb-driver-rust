@@ -76,7 +76,7 @@ generic_step_impl! {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
             waiting_iterations += 1;
         };
-        assert!(context.databases.all().await.unwrap().is_empty());
+        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection has at least one database.");
     }
 
     #[step("connection closes")]
