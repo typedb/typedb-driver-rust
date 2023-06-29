@@ -30,7 +30,6 @@ use std::{collections::HashMap, path::PathBuf};
 
 use cucumber::{StatsWriter, World};
 use futures::future::try_join_all;
-use tokio::time::{sleep, Duration};
 use typedb_client::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Thing},

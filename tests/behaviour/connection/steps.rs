@@ -36,7 +36,7 @@ generic_step_impl! {
 
     #[step(expr = "connection opens with authentication: {word}, {word}")]
     async fn connection_opens_with_authentication(context: &mut Context, login: String, password: String) {
-        let mut connection = Connection::new_encrypted(
+        let connection = Connection::new_encrypted(
             &["localhost:11729", "localhost:21729", "localhost:31729"],
             Credential::with_tls(
                 &login.as_str(),
