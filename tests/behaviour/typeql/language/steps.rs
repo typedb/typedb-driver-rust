@@ -27,6 +27,7 @@ use util::{
     equals_approximate, iter_table_map, match_answer_concept, match_answer_concept_map, match_answer_rule,
     match_templated_answer,
 };
+use std::env;
 
 use crate::{
     assert_err,
@@ -399,5 +400,10 @@ generic_step_impl! {
             "An identifier entry (row) should match 1-to-1 to an answer, but there are only {matched_rows} \
             matched entries of given {actual_answers}."
         );
+    }
+
+    #[step(expr = "set time-zone is: {word}")]
+    async fn time_zone_info(context: &mut Context, timezone: String) {
+        env::set_var("TZ", timezone);
     }
 }
