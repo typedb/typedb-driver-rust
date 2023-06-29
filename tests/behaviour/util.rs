@@ -68,6 +68,7 @@ pub async fn match_answer_concept(context: &Context, answer_identifier: &str, an
         "key" => key_values_equal(context, identifiers[1], answer).await,
         "label" => labels_equal(identifiers[1], answer),
         "value" => values_equal(identifiers[1], answer),
+        "attr" => values_equal(identifiers[1], answer),
         _ => unreachable!(),
     }
 }
@@ -134,21 +135,15 @@ fn value_equals_str(value: &Value, expected: &str) -> bool {
         Value::Boolean(val) => {
             expected.parse::<bool>().and_then(|expected| Ok(expected.eq(val))).unwrap_or_else(|_| false)
         }
-        Value::DateTime(val) => format_datetime(val) == expected,
+        Value::DateTime(val) => {
+            return val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%dT%H:%M:%S").unwrap();
+        }
     }
 }
 
 pub fn equals_approximate(first: f64, second: f64) -> bool {
     const EPS: f64 = 1e-4;
     return (first - second).abs() < EPS;
-}
-
-fn format_datetime(datetime: &NaiveDateTime) -> String {
-    if datetime.time() == NaiveTime::from_hms_opt(0, 0, 0).unwrap() {
-        format!("{0}", datetime.date())
-    } else {
-        format!("{0}", datetime)
-    }
 }
 
 pub async fn match_templated_answer(
