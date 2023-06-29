@@ -30,6 +30,7 @@ use std::{collections::HashMap, path::PathBuf};
 
 use cucumber::{StatsWriter, World};
 use futures::future::try_join_all;
+use tokio::time::{sleep, Duration};
 use typedb_client::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
     concept::{Attribute, AttributeType, Entity, EntityType, Relation, RelationType, Thing},
@@ -88,6 +89,7 @@ impl Context {
     }
 
     async fn after_scenario(&mut self) -> TypeDBResult {
+        sleep(Duration::from_millis(3000)).await;
         self.set_connection(
             Connection::new_encrypted(
                 &["localhost:11729", "localhost:21729", "localhost:31729"],
