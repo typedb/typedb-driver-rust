@@ -73,7 +73,8 @@ generic_step_impl! {
     async fn connection_does_not_have_any_database(context: &mut Context) {
         let mut waiting_iterations = 0;
         while !context.databases.all().await.unwrap().is_empty() && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
-            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            // sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            let _ = context.after_scenario().await;
             waiting_iterations += 1;
         };
         assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection has at least one database.");

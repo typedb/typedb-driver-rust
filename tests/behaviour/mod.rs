@@ -88,8 +88,8 @@ impl Context {
         t == "ignore" || t == "ignore-typedb" || t == "ignore-client-rust" || t == "ignore-typedb-client-rust"
     }
 
-    async fn after_scenario(&mut self) -> TypeDBResult {
-        sleep(Duration::from_millis(3000)).await;
+    pub async fn after_scenario(&mut self) -> TypeDBResult {
+        sleep(Duration::from_millis(100)).await;
         self.set_connection(
             Connection::new_encrypted(
                 &["localhost:11729", "localhost:21729", "localhost:31729"],
