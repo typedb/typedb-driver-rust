@@ -28,12 +28,13 @@ use futures::{
     TryFutureExt, TryStreamExt,
 };
 use regex::{Captures, Regex};
+use tokio::time::{sleep, Duration};
 use typedb_client::{
     answer::ConceptMap,
     concept::{Annotation, Attribute, Concept, Entity, Relation, Value},
     logic::Rule,
     transaction::concept::api::ThingAPI,
-    Result as TypeDBResult,
+    DatabaseManager, Result as TypeDBResult,
 };
 use typeql_lang::{parse_patterns, parse_query, pattern::Variable};
 
@@ -184,4 +185,13 @@ pub async fn match_answer_rule(answer_identifiers: &HashMap<&str, &str>, answer:
     answer_identifiers.get("label").unwrap().to_string() == answer.label
         && when == answer.when
         && then == Variable::Thing(answer.then.clone())
+}
+
+pub async fn create_database_with_waiting(databases: &DatabaseManager, name: String) {
+    let mut waiting_iterations = 0;
+    while databases.create(name.clone()).await.is_err() && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
+        sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+        waiting_iterations += 1;
+    }
+    assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Database {name} couldn't be created.");
 }

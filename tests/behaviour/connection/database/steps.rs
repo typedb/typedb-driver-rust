@@ -27,22 +27,17 @@ use futures::{
     TryFutureExt,
 };
 use tokio::time::{sleep, Duration};
-use typedb_client::{Database, Result as TypeDBResult};
+use typedb_client::Database;
 
 use crate::{
-    behaviour::{util, Context},
+    behaviour::{util, util::create_database_with_waiting, Context},
     generic_step_impl,
 };
 
 generic_step_impl! {
     #[step(expr = "connection create database: {word}")]
     pub async fn connection_create_database(context: &mut Context, name: String) {
-        let mut waiting_iterations = 0;
-        while context.databases.create(name.clone()).await.is_err() && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
-            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
-            waiting_iterations += 1;
-        };
-        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Database {name} couldn't be created.");
+        create_database_with_waiting(&context.databases, name).await;
     }
 
     #[step(expr = "connection create database(s):")]
@@ -54,7 +49,8 @@ generic_step_impl! {
 
     #[step(expr = "connection create databases in parallel:")]
     async fn connection_create_databases_in_parallel(context: &mut Context, step: &Step) {
-        try_join_all(util::iter_table(step).map(|name| context.databases.create(name))).await.unwrap();
+        join_all(util::iter_table(step).map(|name| create_database_with_waiting(&context.databases, name.to_string()))).await;
+        // try_join_all(util::iter_table(step).map(|name| context.databases.create(name))).await.unwrap();
     }
 
     #[step(expr = "connection delete database: {word}")]
