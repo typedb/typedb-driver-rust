@@ -22,10 +22,12 @@
 use std::collections::HashSet;
 
 use cucumber::{gherkin::Step, given, then, when};
-use futures::{future::{join_all, try_join_all}, TryFutureExt};
+use futures::{
+    future::{join_all, try_join_all},
+    TryFutureExt,
+};
 use tokio::time::{sleep, Duration};
-use typedb_client::Database;
-use typedb_client::Result as TypeDBResult;
+use typedb_client::{Database, Result as TypeDBResult};
 
 use crate::{
     behaviour::{util, Context},
