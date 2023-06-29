@@ -202,98 +202,58 @@ import static java.util.Spliterators.spliteratorUnknownSize;
     }
 %}
 
-%typemap(javaimports) ConceptIterator "
-import java.util.Spliterator;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-import static java.util.Spliterator.IMMUTABLE;
-import static java.util.Spliterator.NONNULL;
-import static java.util.Spliterator.ORDERED;
-import static java.util.Spliterators.spliteratorUnknownSize;
-"
-%typemap(javainterfaces) ConceptIterator "java.util.Iterator<Concept>";
-%typemap(javacode) ConceptIterator %{
-    private boolean isFinished = false;
-    private Concept next = null;
-
-    private Concept fetchNext() {
-        next = typedb_client_jni.concept_iterator_next(this);
-        return next;
-    }
-
-    @Override
-    public boolean hasNext() {
-        if (isFinished) return false;
-        if (next == null) {
-            if (fetchNext() == null) {
-                isFinished = true;
-                return false;
-            }
-        }
-        assert(next != null);
-        return true;
-    }
-
-    @Override
-    public Concept next() {
-        if (next == null && !hasNext()) return null;
-        Concept ret = next;
-        next = null;
-        return ret;
-    }
-
-    public Stream<Concept> stream() {
-        return StreamSupport.stream(
-            spliteratorUnknownSize(this, NONNULL | IMMUTABLE | ORDERED),
-            false
-        );
-    }
+#define %fooiterator(Foo, foo)                                            \
+%typemap(javaimports) Foo ## Iterator "                                   \
+import java.util.Spliterator;                                             \
+import java.util.stream.Stream;                                           \
+import java.util.stream.StreamSupport;                                    \
+import static java.util.Spliterator.IMMUTABLE;                            \
+import static java.util.Spliterator.NONNULL;                              \
+import static java.util.Spliterator.ORDERED;                              \
+import static java.util.Spliterators.spliteratorUnknownSize;              \
+"                                                                         \
+%typemap(javainterfaces) Foo ## Iterator "java.util.Iterator<Foo>";       \
+%typemap(javacode) Foo ## Iterator %{                                     \
+    private boolean isFinished = false;                                   \
+    private Foo next = null;                                              \
+                                                                          \
+    private Foo fetchNext() {                                             \
+        next = typedb_client_jni.foo ## _iterator_next(this);             \
+        return next;                                                      \
+    }                                                                     \
+                                                                          \
+    @Override                                                             \
+    public boolean hasNext() {                                            \
+        if (isFinished) return false;                                     \
+        if (next == null) {                                               \
+            if (fetchNext() == null) {                                    \
+                isFinished = true;                                        \
+                return false;                                             \
+            }                                                             \
+        }                                                                 \
+        assert(next != null);                                             \
+        return true;                                                      \
+    }                                                                     \
+                                                                          \
+    @Override                                                             \
+    public Foo next() {                                                   \
+        if (next == null && !hasNext()) return null;                      \
+        Foo ret = next;                                                   \
+        next = null;                                                      \
+        return ret;                                                       \
+    }                                                                     \
+                                                                          \
+    public Stream<Foo> stream() {                                         \
+        return StreamSupport.stream(                                      \
+            spliteratorUnknownSize(this, NONNULL | IMMUTABLE | ORDERED),  \
+            false                                                         \
+        );                                                                \
+    }                                                                     \
 %}
 
-%typemap(javaimports) RolePlayerIterator "
-import java.util.Spliterator;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-import static java.util.Spliterator.IMMUTABLE;
-import static java.util.Spliterator.NONNULL;
-import static java.util.Spliterator.ORDERED;
-import static java.util.Spliterators.spliteratorUnknownSize;
-"
-%typemap(javainterfaces) RolePlayerIterator "java.util.Iterator<RolePlayer>";
-%typemap(javacode) RolePlayerIterator %{
-    private boolean isFinished = false;
-    private RolePlayer next = null;
-
-    private RolePlayer fetchNext() {
-        next = typedb_client_jni.role_player_iterator_next(this);
-        return next;
-    }
-
-    @Override
-    public boolean hasNext() {
-        if (isFinished) return false;
-        if (next == null) {
-            if (fetchNext() == null) {
-                isFinished = true;
-                return false;
-            }
-        }
-        assert(next != null);
-        return true;
-    }
-
-    @Override
-    public RolePlayer next() {
-        if (next == null && !hasNext()) return null;
-        RolePlayer ret = next;
-        next = null;
-        return ret;
-    }
-
-    public Stream<RolePlayer> stream() {
-        return StreamSupport.stream(
-            spliteratorUnknownSize(this, NONNULL | IMMUTABLE | ORDERED),
-            false
-        );
-    }
-%}
+%fooiterator(Concept, concept)
+%fooiterator(RolePlayer, role_player) 
+%fooiterator(ConceptMap, concept_map)
+%fooiterator(ConceptMapGroup, concept_map_group)
+%fooiterator(NumericGroup, numeric_group)
+%fooiterator(Explanation, explanation)

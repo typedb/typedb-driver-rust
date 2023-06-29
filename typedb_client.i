@@ -17,37 +17,47 @@ extern "C" {
 
 %nodefaultctor;
 
-struct Connection {};
-%newobject connection_open_plaintext;
-%newobject connection_open_encrypted;
-%ignore connection_close;
-%extend Connection { ~Connection() { connection_close(self); } }
+#define %proxy(Foo, foo)                        \
+struct Foo {};                                  \
+%ignore foo ## _drop;                           \
+%extend Foo { ~Foo() { foo ## _drop(self); } }  \
 
-struct DatabaseManager {};
-%newobject database_manager_new;
-%ignore database_manager_drop;
-%extend DatabaseManager { ~DatabaseManager() { database_manager_drop(self); } }
+#define connection_drop connection_close
 
-%newobject databases_all;
-%newobject databases_get;
+%proxy(Connection, connection)
+%proxy(Session, session)
+%proxy(Transaction, transaction)
 
-struct DatabaseIterator {};
-%ignore database_iterator_drop;
-%extend DatabaseIterator { ~DatabaseIterator() { database_iterator_drop(self); } }
+%proxy(DatabaseManager, database_manager);
 
-%newobject database_iterator_next;
+%proxy(Database, database)
+%proxy(DatabaseIterator, database_iterator)
 
-struct Database {};
-%ignore database_drop;
-%extend Database { ~Database() { database_drop(self); } }
+%proxy(Concept, concept)
+%proxy(ConceptIterator, concept_iterator)
 
-%delobject database_delete;
-%newobject database_get_name;
+%proxy(Value, value)
 
-struct Session {};
-%newobject session_new;
-%ignore session_drop;
-%extend Session { ~Session() { session_drop(self); } }
+%proxy(ConceptMap, concept_map)
+%proxy(ConceptMapIterator, concept_map_iterator)
+
+%proxy(ConceptMapGroup, concept_map_group)
+%proxy(ConceptMapGroupIterator, concept_map_group_iterator)
+
+%proxy(Numeric, numeric)
+
+%proxy(NumericGroup, numeric_group)
+%proxy(NumericGroupIterator, numeric_group_iterator)
+
+%proxy(Explanation, explanation)
+%proxy(ExplanationIterator, explanation_iterator)
+
+%proxy(RolePlayer, role_player)
+%proxy(RolePlayerIterator, role_player_iterator)
+
+%proxy(Error, error)
+
+%proxy(Options, options)
 
 %feature("director") SessionCallbackDirector;
 %inline %{
@@ -105,45 +115,31 @@ void transaction_on_close_wrapper(const Transaction* transaction, TransactionCal
 }
 %}
 
-struct Transaction {};
+%newobject connection_open_plaintext;
+%newobject connection_open_encrypted;
+
+%newobject database_manager_new;
+
+%newobject databases_all;
+%newobject databases_get;
+
+%newobject database_iterator_next;
+
+%delobject database_delete;
+%newobject database_get_name;
+
+%newobject session_new;
+
 %newobject transaction_new;
-%ignore transaction_drop;
-%extend Transaction { ~Transaction() { transaction_drop(self); } }
 %delobject transaction_commit;
 
-struct Options {};
 %newobject options_new;
-%ignore options_drop;
-%extend Options { ~Options() { options_drop(self); } }
-
-struct ConceptIterator {};
-%ignore concept_iterator_drop;
-%extend ConceptIterator { ~ConceptIterator() { concept_iterator_drop(self); } }
 
 %newobject concept_iterator_next;
 
-struct Concept {};
-%ignore concept_drop;
-%extend Concept { ~Concept() { concept_drop(self); } }
-
-struct Value {};
-%ignore value_drop;
-%extend Value { ~Value() { value_drop(self); } }
-
-struct RolePlayerIterator {};
-%ignore role_player_iterator_drop;
-%extend RolePlayerIterator { ~RolePlayerIterator() { role_player_iterator_drop(self); } }
-
 %newobject role_player_iterator_next;
 
-struct RolePlayer {};
-%ignore role_player_drop;
-%extend RolePlayer { ~RolePlayer() { role_player_drop(self); } }
-
-struct Error {};
 %newobject get_last_error;
-%ignore error_drop;
-%extend Error { ~Error() { error_drop(self); } }
 %newobject error_code;
 %newobject error_message;
 
