@@ -22,7 +22,6 @@
 use std::path::PathBuf;
 
 use cucumber::{given, then, when};
-use tokio::time::{sleep, Duration};
 use typedb_client::{Connection, Credential};
 
 use crate::{behaviour::Context, generic_step_impl};
@@ -47,22 +46,6 @@ generic_step_impl! {
                 )),
             ).unwrap(),
         );
-        // let mut waiting_iterations = 0;
-        // while connection.is_err() && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
-        //     connection = Connection::new_encrypted(
-        //         &["localhost:11729", "localhost:21729", "localhost:31729"],
-        //         Credential::with_tls(
-        //             &login.as_str(),
-        //             &password.as_str(),
-        //             Some(&PathBuf::from(
-        //                 std::env::var("ROOT_CA")
-        //                     .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
-        //             )),
-        //         ).unwrap(),
-        //     );
-        //     waiting_iterations += 1;
-        //     sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
-        // }
         context.set_connection(connection.unwrap());
     }
 
@@ -73,7 +56,6 @@ generic_step_impl! {
     async fn connection_does_not_have_any_database(context: &mut Context) {
         let mut waiting_iterations = 0;
         while !context.databases.all().await.unwrap().is_empty() && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
-            // sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
             let _ = context.after_scenario().await;
             waiting_iterations += 1;
         };

@@ -50,7 +50,6 @@ generic_step_impl! {
     #[step(expr = "connection create databases in parallel:")]
     async fn connection_create_databases_in_parallel(context: &mut Context, step: &Step) {
         join_all(util::iter_table(step).map(|name| create_database_with_waiting(&context.databases, name.to_string()))).await;
-        // try_join_all(util::iter_table(step).map(|name| context.databases.create(name))).await.unwrap();
     }
 
     #[step(expr = "connection delete database: {word}")]
@@ -102,7 +101,7 @@ generic_step_impl! {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
             waiting_iterations += 1;
         };
-        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection doesn't contain at least one of databases.");
+        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection doesn't contain at least one of the databases.");
     }
 
     #[step(expr = "connection does not have database: {word}")]
@@ -131,6 +130,6 @@ generic_step_impl! {
             sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
             waiting_iterations += 1;
         };
-        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection contains at least one of databases.");
+        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection contains at least one of the databases.");
     }
 }

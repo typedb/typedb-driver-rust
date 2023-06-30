@@ -59,8 +59,8 @@ impl Context {
     const DEFAULT_DATABASE: &'static str = "test";
     const ADMIN_USERNAME: &'static str = "admin";
     const ADMIN_PASSWORD: &'static str = "password";
-    const PAUSE_BETWEEN_STEP_CHECKS_MS: u64 = 500;
-    const STEP_CHECKS_ITERATIONS_LIMIT: u64 = 30;
+    const PAUSE_BETWEEN_STEP_CHECKS_MS: u64 = 250;
+    const STEP_CHECKS_ITERATIONS_LIMIT: u64 = 20;
 
     async fn test(glob: &'static str) -> bool {
         let default_panic = std::panic::take_hook();
@@ -89,7 +89,7 @@ impl Context {
     }
 
     pub async fn after_scenario(&mut self) -> TypeDBResult {
-        sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
         self.set_connection(
             Connection::new_encrypted(
                 &["localhost:11729", "localhost:21729", "localhost:31729"],
