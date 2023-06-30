@@ -115,6 +115,7 @@ build:
         tools/stop-cluster-servers.sh
         exit $TEST_SUCCESS
     test-behaviour-typeql:
+      machine: 8-core-32-gb
       image: vaticle-ubuntu-22.04
       dependencies:
         - build
