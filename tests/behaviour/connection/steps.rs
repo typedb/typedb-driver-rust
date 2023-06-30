@@ -24,7 +24,7 @@ use std::path::PathBuf;
 use cucumber::{given, then, when};
 use typedb_client::{Connection, Credential};
 
-use crate::{behaviour::Context, generic_step_impl};
+use crate::{assert_with_waiting, behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
     #[step("typedb starts")]

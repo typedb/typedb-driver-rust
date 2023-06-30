@@ -23,7 +23,7 @@ use cucumber::{given, then, when};
 use tokio::time::{sleep, Duration};
 use typedb_client::Result as TypeDBResult;
 
-use crate::{assert_err, behaviour::Context, generic_step_impl};
+use crate::{assert_err, assert_with_waiting, behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
 
@@ -51,12 +51,13 @@ generic_step_impl! {
 
     #[step(expr = "users contains: {word}")]
     async fn users_contains(context: &mut Context, username: String) -> TypeDBResult {
-        let mut waiting_iterations = 0;
-        while !context.users.contains(username.clone()).await? && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
-            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
-            waiting_iterations += 1;
-        };
-        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "User not exists.");
+        assert_with_waiting!(context.users.contains(username.clone()).await?, "User doesn't exist.");
+        // let mut waiting_iterations = 0;
+        // while !context.users.contains(username.clone()).await? && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
+        //     sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+        //     waiting_iterations += 1;
+        // };
+        // assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "User not exists.");
         Ok(())
     }
 
@@ -67,12 +68,7 @@ generic_step_impl! {
 
     #[step(expr = "users not contains: {word}")]
     async fn users_not_contains(context: &mut Context, username: String) -> TypeDBResult {
-        let mut waiting_iterations = 0;
-        while context.users.contains(username.clone()).await? && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
-            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
-            waiting_iterations += 1;
-        };
-        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "User exists.");
+        assert_with_waiting!(!context.users.contains(username.clone()).await?, "User exists.");
         Ok(())
     }
 

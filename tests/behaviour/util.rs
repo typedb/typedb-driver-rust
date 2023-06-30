@@ -38,7 +38,7 @@ use typedb_client::{
 };
 use typeql_lang::{parse_patterns, parse_query, pattern::Variable};
 
-use crate::behaviour::Context;
+use crate::{assert_with_waiting, behaviour::Context};
 
 pub fn iter_table(step: &Step) -> impl Iterator<Item = &str> {
     step.table().unwrap().rows.iter().flatten().map(String::as_str)
@@ -188,10 +188,17 @@ pub async fn match_answer_rule(answer_identifiers: &HashMap<&str, &str>, answer:
 }
 
 pub async fn create_database_with_waiting(databases: &DatabaseManager, name: String) {
-    let mut waiting_iterations = 0;
-    while databases.create(name.clone()).await.is_err() && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
-        sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
-        waiting_iterations += 1;
-    }
-    assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Database {name} couldn't be created.");
+    assert_with_waiting!(!databases.create(name.clone()).await.is_err(), "Database {name} couldn't be created.");
+}
+
+#[macro_export]
+macro_rules! assert_with_waiting {
+    ($expr:expr, $message:expr) => {{
+        let mut waiting_iterations = 0;
+        while !($expr) && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
+            sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+            waiting_iterations += 1;
+        }
+        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, $message);
+    }};
 }
