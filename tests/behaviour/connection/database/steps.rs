@@ -54,7 +54,8 @@ generic_step_impl! {
 
     #[step(expr = "connection create databases in parallel:")]
     async fn connection_create_databases_in_parallel(context: &mut Context, step: &Step) {
-        join_all(util::iter_table(step).map(|name| create_database_with_waiting(&context.databases, name.to_string()))).await;
+        join_all(util::iter_table(step).map(|name| create_database_with_waiting(&context.databases, name.to_string())))
+            .await;
     }
 
     #[step(expr = "connection delete database: {word}")]
@@ -90,24 +91,53 @@ generic_step_impl! {
 
     #[step(expr = "connection has database: {word}")]
     async fn connection_has_database(context: &mut Context, name: String) {
-        assert_with_timeout!(context.databases.contains(name.clone()).await.unwrap(), "Connection doesn't contain database {name}.");
+        assert_with_timeout!(
+            context.databases.contains(name.clone()).await.unwrap(),
+            "Connection doesn't contain database {name}."
+        );
     }
 
     #[step(expr = "connection has database(s):")]
     async fn connection_has_databases(context: &mut Context, step: &Step) {
         let names: HashSet<String> = util::iter_table(step).map(|name| name.to_owned()).collect();
-        assert_with_timeout!(context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect::<HashSet<_, _>>() == names, "Connection doesn't contain at least one of the databases.");
+        assert_with_timeout!(
+            context
+                .databases
+                .all()
+                .await
+                .unwrap()
+                .into_iter()
+                .map(|db| db.name().to_owned())
+                .collect::<HashSet<_, _>>()
+                == names,
+            "Connection doesn't contain at least one of the databases."
+        );
     }
 
     #[step(expr = "connection does not have database: {word}")]
     async fn connection_does_not_have_database(context: &mut Context, name: String) {
-        assert_with_timeout!(!context.databases.contains(name.clone()).await.unwrap(), "Connection contains database {name}.");
+        assert_with_timeout!(
+            !context.databases.contains(name.clone()).await.unwrap(),
+            "Connection contains database {name}."
+        );
     }
 
     #[step(expr = "connection does not have database(s):")]
     async fn connection_does_not_have_databases(context: &mut Context, step: &Step) {
         assert_with_timeout!(
-            stream::iter(iter_table(step)).all(|name| async { !context.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect::<HashSet<_>>().contains(name) }).await,
+            stream::iter(iter_table(step))
+                .all(|name| async {
+                    !context
+                        .databases
+                        .all()
+                        .await
+                        .unwrap()
+                        .into_iter()
+                        .map(|db| db.name().to_owned())
+                        .collect::<HashSet<_>>()
+                        .contains(name)
+                })
+                .await,
             "Connection contains at least one of the databases.",
         )
     }

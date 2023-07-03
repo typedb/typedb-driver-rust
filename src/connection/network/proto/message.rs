@@ -433,14 +433,14 @@ impl FromProto<user_manager::get::Res> for Response {
 }
 
 impl FromProto<user_manager::password_set::Res> for Response {
-    fn from_proto(_: user_manager::password_set::Res) -> Self {
-        Self::UsersPasswordSet {}
+    fn from_proto(_proto: user_manager::password_set::Res) -> Self {
+        Self::UsersPasswordSet
     }
 }
 
 impl FromProto<user::password_update::Res> for Response {
-    fn from_proto(_: user::password_update::Res) -> Self {
-        Self::UserPasswordUpdate {}
+    fn from_proto(_proto: user::password_update::Res) -> Self {
+        Self::UserPasswordUpdate
     }
 }
 
