@@ -32,5 +32,4 @@ async fn test() {
     // @vaticle_typedb_behaviour is stored in a directory that is a sibling to
     // the working directory.
     assert!(Context::test("../vaticle_typedb_behaviour/connection/database.feature").await);
-    // assert!(Context::test("tests/behaviour/connection/database/debug.feature").await);
 }

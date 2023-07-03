@@ -42,11 +42,12 @@ use self::session_tracker::SessionTracker;
 
 #[derive(Debug, World)]
 pub struct Context {
+    pub tls_root_ca: PathBuf,
     pub connection: Connection,
     pub databases: DatabaseManager,
+    pub users: UserManager,
     pub session_trackers: Vec<SessionTracker>,
     pub things: HashMap<String, Option<Thing>>,
-    pub users: UserManager,
     pub answer: Vec<ConceptMap>,
     pub answer_group: Vec<ConceptMapGroup>,
     pub numeric_answer: Option<Numeric>,
@@ -59,8 +60,8 @@ impl Context {
     const DEFAULT_DATABASE: &'static str = "test";
     const ADMIN_USERNAME: &'static str = "admin";
     const ADMIN_PASSWORD: &'static str = "password";
-    const PAUSE_BETWEEN_STEP_CHECKS_MS: u64 = 250;
-    const STEP_CHECKS_ITERATIONS_LIMIT: u64 = 20;
+    const PAUSE_BETWEEN_STEP_CHECKS: Duration = Duration::from_millis(250);
+    const STEP_CHECKS_ITERATIONS_LIMIT: u32 = 20;
 
     async fn test(glob: &'static str) -> bool {
         let default_panic = std::panic::take_hook();
@@ -89,19 +90,12 @@ impl Context {
     }
 
     pub async fn after_scenario(&mut self) -> TypeDBResult {
-        sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
+        sleep(Context::PAUSE_BETWEEN_STEP_CHECKS).await;
         self.set_connection(
             Connection::new_encrypted(
                 &["localhost:11729", "localhost:21729", "localhost:31729"],
-                Credential::with_tls(
-                    &Context::ADMIN_USERNAME,
-                    &Context::ADMIN_PASSWORD,
-                    Some(&PathBuf::from(
-                        std::env::var("ROOT_CA")
-                            .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
-                    )),
-                )
-                .unwrap(),
+                Credential::with_tls(&Context::ADMIN_USERNAME, &Context::ADMIN_PASSWORD, Some(&self.tls_root_ca))
+                    .unwrap(),
             )
             .unwrap(),
         );
@@ -198,32 +192,33 @@ impl Context {
         self.connection = new_connection;
         self.databases = DatabaseManager::new(self.connection.clone());
         self.users = UserManager::new(self.connection.clone());
+        self.session_trackers.clear();
+        self.answer.clear();
+        self.answer_group.clear();
+        self.numeric_answer = None;
+        self.numeric_answer_group.clear();
     }
 }
 
 impl Default for Context {
     fn default() -> Self {
+        let tls_root_ca = PathBuf::from(
+            std::env::var("ROOT_CA").expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
+        );
         let connection = Connection::new_encrypted(
             &["localhost:11729", "localhost:21729", "localhost:31729"],
-            Credential::with_tls(
-                &Context::ADMIN_USERNAME,
-                &Context::ADMIN_PASSWORD,
-                Some(&PathBuf::from(
-                    std::env::var("ROOT_CA")
-                        .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
-                )),
-            )
-            .unwrap(),
+            Credential::with_tls(&Context::ADMIN_USERNAME, &Context::ADMIN_PASSWORD, Some(&tls_root_ca)).unwrap(),
         )
         .unwrap();
         let databases = DatabaseManager::new(connection.clone());
         let users = UserManager::new(connection.clone());
         Self {
+            tls_root_ca,
             connection,
             databases,
+            users,
             session_trackers: Vec::new(),
             things: HashMap::new(),
-            users,
             answer: Vec::new(),
             answer_group: Vec::new(),
             numeric_answer: None,

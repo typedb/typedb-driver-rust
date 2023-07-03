@@ -19,12 +19,10 @@
  * under the License.
  */
 
-use std::path::PathBuf;
-
 use cucumber::{given, then, when};
 use typedb_client::{Connection, Credential};
 
-use crate::{assert_with_waiting, behaviour::Context, generic_step_impl};
+use crate::{behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
     #[step("typedb starts")]
@@ -40,10 +38,7 @@ generic_step_impl! {
             Credential::with_tls(
                 &login.as_str(),
                 &password.as_str(),
-                Some(&PathBuf::from(
-                    std::env::var("ROOT_CA")
-                        .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
-                )),
+                Some(&context.tls_root_ca),
             ).unwrap(),
         );
         context.set_connection(connection.unwrap());

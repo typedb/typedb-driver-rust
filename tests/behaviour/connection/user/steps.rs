@@ -20,13 +20,12 @@
  */
 
 use cucumber::{given, then, when};
-use tokio::time::{sleep, Duration};
+use tokio::time::sleep;
 use typedb_client::Result as TypeDBResult;
 
-use crate::{assert_err, assert_with_waiting, behaviour::Context, generic_step_impl};
+use crate::{assert_err, assert_with_timeout, behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
-
     #[step(expr = "users get all")]
     async fn users_get_all(context: &mut Context) -> TypeDBResult {
         context.users.all().await?;
@@ -51,13 +50,7 @@ generic_step_impl! {
 
     #[step(expr = "users contains: {word}")]
     async fn users_contains(context: &mut Context, username: String) -> TypeDBResult {
-        assert_with_waiting!(context.users.contains(username.clone()).await?, "User doesn't exist.");
-        // let mut waiting_iterations = 0;
-        // while !context.users.contains(username.clone()).await? && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
-        //     sleep(Duration::from_millis(Context::PAUSE_BETWEEN_STEP_CHECKS_MS)).await;
-        //     waiting_iterations += 1;
-        // };
-        // assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "User not exists.");
+        assert_with_timeout!(context.users.contains(username.clone()).await?, "User doesn't exist.");
         Ok(())
     }
 
@@ -68,7 +61,7 @@ generic_step_impl! {
 
     #[step(expr = "users not contains: {word}")]
     async fn users_not_contains(context: &mut Context, username: String) -> TypeDBResult {
-        assert_with_waiting!(!context.users.contains(username.clone()).await?, "User exists.");
+        assert_with_timeout!(!context.users.contains(username.clone()).await?, "User exists.");
         Ok(())
     }
 
@@ -101,7 +94,8 @@ generic_step_impl! {
     async fn user_password_update(context: &mut Context, password_old: String, password_new: String) -> TypeDBResult {
         let connected_user = context.connection.username.clone();
         assert!(connected_user.is_some());
-        context.users.get(connected_user.unwrap()).await?.password_update(&context.connection, password_old, password_new).await
+        context.users.get(connected_user.unwrap()).await?.unwrap()
+            .password_update(&context.connection, password_old, password_new).await
     }
 
     #[step(expr = "user password update: {word}, {word}; throws exception")]
@@ -122,7 +116,7 @@ generic_step_impl! {
     #[step(expr = "user expiry-seconds")]
     async fn user_expiry_seconds(context: &mut Context) -> TypeDBResult {
         assert!(context.connection.username.is_some());
-        assert!(context.users.get(context.connection.username.clone().unwrap()).await?.password_expiry_seconds.is_some());
+        assert!(context.users.get(context.connection.username.clone().unwrap()).await?.unwrap().password_expiry_seconds.is_some());
         Ok(())
     }
 
@@ -130,5 +124,4 @@ generic_step_impl! {
     async fn get_connected_user(context: &mut Context) {
         assert!(context.connection.username.is_some());
     }
-
 }

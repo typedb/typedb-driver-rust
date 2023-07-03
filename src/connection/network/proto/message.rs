@@ -404,7 +404,7 @@ impl TryFromProto<transaction::ResPart> for TransactionResponse {
 
 impl FromProto<user_manager::all::Res> for Response {
     fn from_proto(proto: user_manager::all::Res) -> Self {
-        Self::UsersAll { users: proto.users.iter().map(|user| User::from_proto(user.clone())).collect::<Vec<_>>() }
+        Self::UsersAll { users: proto.users.into_iter().map(User::from_proto).collect() }
     }
 }
 
@@ -415,14 +415,14 @@ impl FromProto<user_manager::contains::Res> for Response {
 }
 
 impl FromProto<user_manager::create::Res> for Response {
-    fn from_proto(_: user_manager::create::Res) -> Self {
-        Self::UsersCreate {}
+    fn from_proto(_proto: user_manager::create::Res) -> Self {
+        Self::UsersCreate
     }
 }
 
 impl FromProto<user_manager::delete::Res> for Response {
-    fn from_proto(_: user_manager::delete::Res) -> Self {
-        Self::UsersDelete {}
+    fn from_proto(_proto: user_manager::delete::Res) -> Self {
+        Self::UsersDelete
     }
 }
 

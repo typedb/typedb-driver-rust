@@ -19,7 +19,9 @@
  * under the License.
  */
 
-use crate::{common::Result, error::ConnectionError, Connection, User};
+use std::future::Future;
+
+use crate::{common::Result, connection::ServerConnection, error::ConnectionError, Connection, User};
 
 #[derive(Clone, Debug)]
 pub struct UserManager {
@@ -45,16 +47,10 @@ impl UserManager {
     }
 
     pub async fn contains(&self, username: String) -> Result<bool> {
-        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
-        for server_connection in self.connection.connections() {
-            match server_connection.contains_user(username.clone()).await {
-                Ok(contains) => {
-                    return Ok(contains);
-                }
-                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
-            }
-        }
-        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+        self.run_on_nodes(username, |server_connection, username| async move {
+            server_connection.contains_user(username).await
+        })
+        .await
     }
 
     pub async fn create(&self, username: String, password: String) -> Result<()> {
@@ -71,29 +67,18 @@ impl UserManager {
     }
 
     pub async fn delete(&self, username: String) -> Result<()> {
-        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
-        for server_connection in self.connection.connections() {
-            match server_connection.delete_user(username.clone()).await {
-                Ok(()) => {
-                    return Ok(());
-                }
-                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
-            }
-        }
-        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+        self.run_on_nodes(username, |server_connection, username| async move {
+            server_connection.delete_user(username).await
+        })
+        .await
     }
 
-    pub async fn get(&self, username: String) -> Result<User> {
-        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
-        for server_connection in self.connection.connections() {
-            match server_connection.get_user(username.clone()).await {
-                Ok(user) => {
-                    return Ok(user.unwrap());
-                }
-                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
-            }
-        }
-        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+    pub async fn get(&self, username: String) -> Result<Option<User>> {
+        self.run_on_nodes(
+            username,
+            |server_connection, username| async move { server_connection.get_user(username).await },
+        )
+        .await
     }
 
     pub async fn set_password(&self, username: String, password: String) -> Result<()> {
@@ -102,6 +87,23 @@ impl UserManager {
             match server_connection.set_user_password(username.clone(), password.clone()).await {
                 Ok(()) => {
                     return Ok(());
+                }
+                Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
+            }
+        }
+        Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
+    }
+
+    async fn run_on_nodes<F, P, R>(&self, username: String, task: F) -> Result<R>
+    where
+        F: Fn(ServerConnection, String) -> P,
+        P: Future<Output = Result<R>>,
+    {
+        let mut error_buffer = Vec::with_capacity(self.connection.server_count());
+        for server_connection in self.connection.connections() {
+            match task(server_connection.clone(), username.clone()).await {
+                Ok(res) => {
+                    return Ok(res);
                 }
                 Err(err) => error_buffer.push(format!("- {}: {}", server_connection.address(), err)),
             }
