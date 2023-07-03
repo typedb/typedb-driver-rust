@@ -26,9 +26,10 @@ use super::{
     iterator::{iterator_try_next, CIterator},
 };
 use crate::{
-    answer::{ConceptMap, Numeric, ConceptMapGroup, NumericGroup},
-    common::{stream::BoxStream, box_stream},
-    Options, Result, Transaction, logic::Explanation,
+    answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
+    common::{box_stream, stream::BoxStream},
+    logic::Explanation,
+    Options, Result, Transaction,
 };
 
 #[no_mangle]
@@ -37,7 +38,11 @@ pub extern "C" fn query_define(transaction: *mut Transaction<'static>, query: *c
 }
 
 #[no_mangle]
-pub extern "C" fn query_undefine(transaction: *mut Transaction<'static>, query: *const c_char, options: *const Options) {
+pub extern "C" fn query_undefine(
+    transaction: *mut Transaction<'static>,
+    query: *const c_char,
+    options: *const Options,
+) {
     unwrap_void(borrow(transaction).query().undefine_with_options(string_view(query), borrow(options).clone()))
 }
 
@@ -48,16 +53,11 @@ pub extern "C" fn query_delete(transaction: *mut Transaction<'static>, query: *c
 
 type ConceptMapIteratorInner = CIterator<Result<ConceptMap>, BoxStream<'static, Result<ConceptMap>>>;
 
-pub struct ConceptMapIterator(ConceptMapIteratorInner);
+pub struct ConceptMapIterator(pub ConceptMapIteratorInner);
 
 #[no_mangle]
 pub extern "C" fn concept_map_iterator_next(it: *mut ConceptMapIterator) -> *mut ConceptMap {
     unsafe { iterator_try_next(addr_of_mut!((*it).0)) }
-}
-
-#[no_mangle]
-pub extern "C" fn concept_map_drop(it: *mut ConceptMap) {
-    free(it);
 }
 
 #[no_mangle]
@@ -108,20 +108,13 @@ pub extern "C" fn query_update(
 }
 
 #[no_mangle]
-pub extern "C" fn numeric_drop(it: *mut Numeric) {
-    free(it);
-}
-
-#[no_mangle]
 pub extern "C" fn query_match_aggregate(
     transaction: *mut Transaction<'static>,
     query: *const c_char,
     options: *const Options,
 ) -> *mut Numeric {
     unwrap_or_null(
-        borrow(transaction)
-            .query()
-            .match_aggregate_with_options(string_view(query), borrow(options).clone())
+        borrow(transaction).query().match_aggregate_with_options(string_view(query), borrow(options).clone()),
     )
 }
 
@@ -132,11 +125,6 @@ pub struct ConceptMapGroupIterator(ConceptMapGroupIteratorInner);
 #[no_mangle]
 pub extern "C" fn concept_map_group_iterator_next(it: *mut ConceptMapGroupIterator) -> *mut ConceptMapGroup {
     unsafe { iterator_try_next(addr_of_mut!((*it).0)) }
-}
-
-#[no_mangle]
-pub extern "C" fn concept_map_group_drop(it: *mut ConceptMapGroup) {
-    free(it);
 }
 
 #[no_mangle]
@@ -168,11 +156,6 @@ pub extern "C" fn numeric_group_iterator_next(it: *mut NumericGroupIterator) -> 
 }
 
 #[no_mangle]
-pub extern "C" fn numeric_group_drop(it: *mut NumericGroup) {
-    free(it);
-}
-
-#[no_mangle]
 pub extern "C" fn numeric_group_iterator_drop(it: *mut NumericGroupIterator) {
     free(it);
 }
@@ -201,11 +184,6 @@ pub extern "C" fn explanation_iterator_next(it: *mut ExplanationIterator) -> *mu
 }
 
 #[no_mangle]
-pub extern "C" fn explanation_drop(it: *mut Explanation) {
-    free(it);
-}
-
-#[no_mangle]
 pub extern "C" fn explanation_iterator_drop(it: *mut ExplanationIterator) {
     free(it);
 }
@@ -219,7 +197,7 @@ pub extern "C" fn query_explain(
     unwrap_or_null(
         borrow(transaction)
             .query()
-			.explain_with_options(explainable_id, borrow(options).clone())
+            .explain_with_options(explainable_id, borrow(options).clone())
             .map(|it| ExplanationIterator(CIterator(box_stream(it)))),
     )
 }

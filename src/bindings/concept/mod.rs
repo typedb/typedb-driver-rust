@@ -43,7 +43,7 @@ use crate::{
 
 type ConceptIteratorInner = CIterator<Result<Concept>, BoxStream<'static, Result<Concept>>>;
 
-pub struct ConceptIterator(ConceptIteratorInner);
+pub struct ConceptIterator(pub ConceptIteratorInner);
 
 impl ConceptIterator {
     fn things(it: BoxStream<'static, Result<Thing>>) -> Self {

@@ -19,6 +19,8 @@
  * under the License.
  */
 
+use std::fmt;
+
 #[derive(Clone, Debug)]
 pub enum Numeric {
     Long(i64),
@@ -53,5 +55,15 @@ impl From<Numeric> for i64 {
 impl From<Numeric> for f64 {
     fn from(n: Numeric) -> Self {
         n.into_f64()
+    }
+}
+
+impl fmt::Display for Numeric {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Long(long) => write!(f, "{}", long),
+            Self::Double(double) => write!(f, "{}", double),
+            Self::NaN => write!(f, "NaN"),
+        }
     }
 }

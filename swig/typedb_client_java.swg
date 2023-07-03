@@ -4,12 +4,15 @@
 %include "enums.swg"
 
 %typemap(javacode) SWIGTYPE %{
+    public long CPtr() {
+        return swigCPtr;
+    }
+
     public $javaclassname released() {
         if (swigCMemOwn) {
             swigCMemOwn = false;
-            return this;
         }
-        return null;
+        return this;
     }
 %}
 
@@ -257,3 +260,6 @@ import static java.util.Spliterators.spliteratorUnknownSize;              \
 %fooiterator(ConceptMapGroup, concept_map_group)
 %fooiterator(NumericGroup, numeric_group)
 %fooiterator(Explanation, explanation)
+%fooiterator(String, string)
+%fooiterator(StringPair, string_pair)
+%fooiterator(Rule, rule)
