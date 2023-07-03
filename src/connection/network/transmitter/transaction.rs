@@ -62,14 +62,14 @@ use crate::{
 pub(in crate::connection) struct TransactionTransmitter {
     request_sink: UnboundedSender<(TransactionRequest, Option<ResponseSink<TransactionResponse>>)>,
     is_open: Arc<AtomicCell<bool>>,
+    error: Arc<RwLock<Option<ConnectionError>>>,
     on_close_register_sink: UnboundedSender<Box<dyn FnOnce(ConnectionError) + Send + Sync>>,
     shutdown_sink: UnboundedSender<()>,
 }
 
 impl Drop for TransactionTransmitter {
     fn drop(&mut self) {
-        self.is_open.store(false);
-        self.shutdown_sink.send(()).ok();
+        self.force_close();
     }
 }
 
@@ -83,20 +83,27 @@ impl TransactionTransmitter {
         let (on_close_register_sink, on_close_register_source) = unbounded_async();
         let (shutdown_sink, shutdown_source) = unbounded_async();
         let is_open = Arc::new(AtomicCell::new(true));
+        let error = Arc::new(RwLock::new(None));
         background_runtime.spawn(Self::start_workers(
             buffer_sink.clone(),
             buffer_source,
             request_sink,
             response_source,
             is_open.clone(),
+            error.clone(),
             on_close_register_source,
             shutdown_source,
         ));
-        Self { request_sink: buffer_sink, is_open, on_close_register_sink, shutdown_sink }
+        Self { request_sink: buffer_sink, is_open, error, on_close_register_sink, shutdown_sink }
     }
 
     pub(in crate::connection) fn is_open(&self) -> bool {
         self.is_open.load()
+    }
+
+    pub(in crate::connection) fn force_close(&self) {
+        self.is_open.store(false);
+        self.shutdown_sink.send(()).ok();
     }
 
     pub(in crate::connection) fn on_close(&self, callback: impl FnOnce(ConnectionError) + Send + Sync + 'static) {
@@ -106,7 +113,9 @@ impl TransactionTransmitter {
     #[cfg(feature = "sync")]
     pub(in crate::connection) fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         if !self.is_open() {
-            return Err(ConnectionError::SessionIsClosed().into());
+            let error = self.error.read().unwrap();
+            assert!(error.is_some());
+            return Err(error.clone().unwrap().into());
         }
         let (res_sink, recv) = oneshot();
         self.request_sink.send((req, Some(ResponseSink::BlockingOneShot(res_sink))))?;
@@ -116,7 +125,9 @@ impl TransactionTransmitter {
     #[cfg(not(feature = "sync"))]
     pub(in crate::connection) async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         if !self.is_open() {
-            return Err(ConnectionError::SessionIsClosed().into());
+            let error = self.error.read().unwrap();
+            assert!(error.is_some());
+            return Err(error.clone().unwrap().into());
         }
         let (res_sink, recv) = oneshot();
         self.request_sink.send((req, Some(ResponseSink::AsyncOneShot(res_sink))))?;
@@ -128,7 +139,9 @@ impl TransactionTransmitter {
         req: TransactionRequest,
     ) -> Result<impl Stream<Item = Result<TransactionResponse>>> {
         if !self.is_open() {
-            return Err(ConnectionError::SessionIsClosed().into());
+            let error = self.error.read().unwrap();
+            assert!(error.is_some());
+            return Err(error.clone().unwrap().into());
         }
         let (res_part_sink, recv) = unbounded_async();
         self.request_sink.send((req, Some(ResponseSink::Streamed(res_part_sink))))?;
@@ -141,6 +154,7 @@ impl TransactionTransmitter {
         request_sink: UnboundedSender<transaction::Client>,
         response_source: Streaming<transaction::Server>,
         is_open: Arc<AtomicCell<bool>>,
+        error: Arc<RwLock<Option<ConnectionError>>>,
         on_close_callback_source: UnboundedReceiver<Box<dyn FnOnce(ConnectionError) + Send + Sync>>,
         shutdown_signal: UnboundedReceiver<()>,
     ) {
@@ -148,6 +162,7 @@ impl TransactionTransmitter {
             request_sink: queue_sink,
             callbacks: Default::default(),
             is_open,
+            error,
             on_close: Default::default(),
         };
         tokio::spawn(Self::dispatch_loop(
@@ -253,6 +268,7 @@ struct ResponseCollector {
     request_sink: UnboundedSender<(TransactionRequest, Option<ResponseSink<TransactionResponse>>)>,
     callbacks: Arc<RwLock<HashMap<RequestID, ResponseSink<TransactionResponse>>>>,
     is_open: Arc<AtomicCell<bool>>,
+    error: Arc<RwLock<Option<ConnectionError>>>,
     on_close: Arc<RwLock<Vec<Box<dyn FnOnce(ConnectionError) + Send + Sync>>>>,
 }
 
@@ -311,6 +327,7 @@ impl ResponseCollector {
 
     async fn close(self, error: ConnectionError) {
         self.is_open.store(false);
+        *self.error.write().unwrap() = Some(error.clone());
         let mut listeners = std::mem::take(&mut *self.callbacks.write().unwrap());
         for (_, listener) in listeners.drain() {
             listener.error(error.clone());

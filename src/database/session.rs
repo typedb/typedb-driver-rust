@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use crossbeam::atomic::AtomicCell;
 use log::warn;
@@ -137,6 +137,12 @@ impl Session {
             .await?;
 
         *self.server_session_info.write().unwrap() = session_info;
+
+        let transaction_stream = Arc::new(transaction_stream);
+        self.on_close({
+            let transaction_stream = transaction_stream.clone();
+            move || transaction_stream.force_close()
+        });
         Ok(Transaction::new(transaction_stream))
     }
 }

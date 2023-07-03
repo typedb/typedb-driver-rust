@@ -67,6 +67,10 @@ impl TransactionStream {
         self.transaction_transmitter.is_open()
     }
 
+    pub(crate) fn force_close(&self) {
+        self.transaction_transmitter.force_close();
+    }
+
     pub(crate) fn type_(&self) -> TransactionType {
         self.type_
     }
@@ -1014,7 +1018,7 @@ impl TransactionStream {
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
-    pub(crate) async fn get_rule(&self, label: String) -> Result<Rule> {
+    pub(crate) async fn get_rule(&self, label: String) -> Result<Option<Rule>> {
         match self.logic_single(LogicRequest::GetRule { label }).await? {
             LogicResponse::GetRule { rule } => Ok(rule),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),

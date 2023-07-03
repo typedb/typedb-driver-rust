@@ -46,8 +46,7 @@ pub struct Transaction<'a> {
 }
 
 impl Transaction<'_> {
-    pub(super) fn new(transaction_stream: TransactionStream) -> Self {
-        let transaction_stream = Arc::new(transaction_stream);
+    pub(super) fn new(transaction_stream: Arc<TransactionStream>) -> Self {
         Transaction {
             type_: transaction_stream.type_(),
             options: transaction_stream.options().clone(),
