@@ -45,7 +45,7 @@ impl LogicManager {
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
-    pub async fn get_rule(&self, label: String) -> Result<Rule> {
+    pub async fn get_rule(&self, label: String) -> Result<Option<Rule>> {
         self.transaction_stream.get_rule(label).await
     }
 
