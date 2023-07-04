@@ -20,9 +20,10 @@
  */
 
 use cucumber::{given, then, when};
-use typedb_client::{Connection, Credential};
+use tokio::time::sleep;
+use typedb_client::{Connection, Credential, Result as TypeDBResult};
 
-use crate::{behaviour::Context, generic_step_impl};
+use crate::{assert_with_timeout, behaviour::Context, generic_step_impl};
 
 generic_step_impl! {
     #[step("typedb starts")]
@@ -48,13 +49,20 @@ generic_step_impl! {
     async fn connection_has_been_opened(_: &mut Context) {}
 
     #[step("connection does not have any database")]
-    async fn connection_does_not_have_any_database(context: &mut Context) {
-        let mut waiting_iterations = 0;
-        while !context.databases.all().await.unwrap().is_empty() && waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT {
-            let _ = context.after_scenario().await;
-            waiting_iterations += 1;
-        };
-        assert!(waiting_iterations < Context::STEP_CHECKS_ITERATIONS_LIMIT, "Connection has at least one database.");
+    async fn connection_does_not_have_any_database(context: &mut Context) -> TypeDBResult {
+        assert_with_timeout!(
+            {
+                if context.databases.all().await.unwrap().is_empty() {
+                    true
+                } else {
+                    context.cleanup_databases().await?;
+                    context.cleanup_users().await?;
+                    false
+                }
+            },
+            "Connection has at least one database.",
+        );
+        Ok(())
     }
 
     #[step("connection closes")]

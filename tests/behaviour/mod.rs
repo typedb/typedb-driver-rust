@@ -99,7 +99,16 @@ impl Context {
             )
             .unwrap(),
         );
+        self.cleanup_databases().await?;
+        self.cleanup_users().await
+    }
+
+    pub async fn cleanup_databases(&mut self) -> TypeDBResult {
         try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
+        Ok(())
+    }
+
+    pub async fn cleanup_users(&mut self) -> TypeDBResult {
         try_join_all(
             self.users
                 .all()
