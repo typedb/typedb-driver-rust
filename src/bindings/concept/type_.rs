@@ -408,7 +408,7 @@ pub extern "C" fn relation_type_unset_relates(
 }
 
 #[no_mangle]
-pub extern "C" fn attribute_type_value_type(attribute_type: *const Concept) -> ValueType {
+pub extern "C" fn attribute_type_get_value_type(attribute_type: *const Concept) -> ValueType {
     borrow_as_attribute_type(attribute_type).value_type()
 }
 
@@ -577,6 +577,16 @@ pub extern "C" fn role_type_get_relation_type(
 #[no_mangle]
 pub extern "C" fn role_type_delete(transaction: *mut Transaction<'static>, role_type: *const Concept) {
     unwrap_void(borrow_as_role_type(role_type).delete(borrow(transaction)))
+}
+
+#[no_mangle]
+pub extern "C" fn role_type_get_scope(role_type: *const Concept) -> *mut c_char {
+    release_string(borrow_as_role_type(role_type).label.scope.clone())
+}
+
+#[no_mangle]
+pub extern "C" fn role_type_get_name(role_type: *const Concept) -> *mut c_char {
+    release_string(borrow_as_role_type(role_type).label.name.clone())
 }
 
 #[no_mangle]

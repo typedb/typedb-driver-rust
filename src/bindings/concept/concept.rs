@@ -130,6 +130,11 @@ pub extern "C" fn value_drop(value: *mut Value) {
 }
 
 #[no_mangle]
+pub extern "C" fn concept_equals(lhs: *const Concept, rhs: *const Concept) -> bool {
+    borrow(lhs) == borrow(rhs)
+}
+
+#[no_mangle]
 pub extern "C" fn concept_drop(concept: *mut Concept) {
     free(concept);
 }
