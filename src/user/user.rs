@@ -28,12 +28,7 @@ pub struct User {
 }
 
 impl User {
-    pub async fn password_update(
-        &self,
-        connection: &Connection,
-        password_old: String,
-        password_new: String,
-    ) -> Result<()> {
+    pub async fn password_update(&self, connection: &Connection, password_old: String, password_new: String) -> Result {
         let mut error_buffer = Vec::with_capacity(connection.server_count());
         for server_connection in connection.connections() {
             match server_connection

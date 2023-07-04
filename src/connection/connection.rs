@@ -335,14 +335,14 @@ impl ServerConnection {
         }
     }
 
-    pub(crate) async fn create_user(&self, username: String, password: String) -> Result<()> {
+    pub(crate) async fn create_user(&self, username: String, password: String) -> Result {
         match self.request_async(Request::UsersCreate { username, password }).await? {
             Response::UsersCreate => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
-    pub(crate) async fn delete_user(&self, username: String) -> Result<()> {
+    pub(crate) async fn delete_user(&self, username: String) -> Result {
         match self.request_async(Request::UsersDelete { username }).await? {
             Response::UsersDelete => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
@@ -356,7 +356,7 @@ impl ServerConnection {
         }
     }
 
-    pub(crate) async fn set_user_password(&self, username: String, password: String) -> Result<()> {
+    pub(crate) async fn set_user_password(&self, username: String, password: String) -> Result {
         match self.request_async(Request::UsersPasswordSet { username, password }).await? {
             Response::UsersPasswordSet => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
@@ -368,7 +368,7 @@ impl ServerConnection {
         username: String,
         password_old: String,
         password_new: String,
-    ) -> Result<()> {
+    ) -> Result {
         match self.request_async(Request::UserPasswordUpdate { username, password_old, password_new }).await? {
             Response::UserPasswordUpdate => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),

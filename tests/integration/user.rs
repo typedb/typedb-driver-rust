@@ -32,16 +32,7 @@ async fn create_and_delete_user() -> TypeDBResult {
     let connection = common::new_cluster_connection()?;
     let users = UserManager::new(connection);
 
-    try_join_all(
-        users
-            .all()
-            .await
-            .unwrap()
-            .into_iter()
-            .filter(|user| &user.username != "admin")
-            .map(|user| users.delete(user.username)),
-    )
-    .await?;
+    cleanup_users(&users).await?;
     sleep(Duration::from_millis(2000)).await;
 
     users.create(String::from("user"), String::from("password")).await?;
@@ -57,16 +48,7 @@ async fn create_users_and_purge() -> TypeDBResult {
     let connection = common::new_cluster_connection()?;
     let users = UserManager::new(connection);
 
-    try_join_all(
-        users
-            .all()
-            .await
-            .unwrap()
-            .into_iter()
-            .filter(|user| &user.username != "admin")
-            .map(|user| users.delete(user.username)),
-    )
-    .await?;
+    cleanup_users(&users).await?;
     sleep(Duration::from_millis(2000)).await;
 
     users.create(String::from("user"), String::from("password")).await?;
@@ -74,16 +56,7 @@ async fn create_users_and_purge() -> TypeDBResult {
     users.create(String::from("user2"), String::from("password2")).await?;
     assert_eq!(3, users.all().await?.len());
 
-    try_join_all(
-        users
-            .all()
-            .await
-            .unwrap()
-            .into_iter()
-            .filter(|user| &user.username != "admin")
-            .map(|user| users.delete(user.username)),
-    )
-    .await?;
+    cleanup_users(&users).await?;
     sleep(Duration::from_millis(2000)).await;
 
     assert_eq!(1, users.all().await?.len());
@@ -96,16 +69,7 @@ async fn create_users_reconnect_and_purge() -> TypeDBResult {
     let connection = common::new_cluster_connection()?;
     let users = UserManager::new(connection);
 
-    try_join_all(
-        users
-            .all()
-            .await
-            .unwrap()
-            .into_iter()
-            .filter(|user| &user.username != "admin")
-            .map(|user| users.delete(user.username)),
-    )
-    .await?;
+    cleanup_users(&users).await?;
     sleep(Duration::from_millis(2000)).await;
 
     users.create(String::from("user"), String::from("password")).await?;
@@ -116,6 +80,15 @@ async fn create_users_reconnect_and_purge() -> TypeDBResult {
     let connection = common::new_cluster_connection().unwrap();
     let users = UserManager::new(connection);
     assert_eq!(3, users.all().await?.len());
+
+    cleanup_users(&users).await?;
+    sleep(Duration::from_millis(2000)).await;
+
+    assert_eq!(1, users.all().await?.len());
+    Ok(())
+}
+
+async fn cleanup_users(users: &UserManager) -> TypeDBResult {
     try_join_all(
         users
             .all()
@@ -126,8 +99,5 @@ async fn create_users_reconnect_and_purge() -> TypeDBResult {
             .map(|user| users.delete(user.username)),
     )
     .await?;
-    sleep(Duration::from_millis(2000)).await;
-
-    assert_eq!(1, users.all().await?.len());
     Ok(())
 }
