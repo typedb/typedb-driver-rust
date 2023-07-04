@@ -33,7 +33,7 @@ use crate::{
     assert_with_timeout,
     behaviour::{
         util,
-        util::{create_database_with_waiting, iter_table},
+        util::{create_database_with_timeout, iter_table},
         Context,
     },
     generic_step_impl,
@@ -42,7 +42,7 @@ use crate::{
 generic_step_impl! {
     #[step(expr = "connection create database: {word}")]
     pub async fn connection_create_database(context: &mut Context, name: String) {
-        create_database_with_waiting(&context.databases, name).await;
+        create_database_with_timeout(&context.databases, name).await;
     }
 
     #[step(expr = "connection create database(s):")]
@@ -54,7 +54,7 @@ generic_step_impl! {
 
     #[step(expr = "connection create databases in parallel:")]
     async fn connection_create_databases_in_parallel(context: &mut Context, step: &Step) {
-        join_all(util::iter_table(step).map(|name| create_database_with_waiting(&context.databases, name.to_string())))
+        join_all(util::iter_table(step).map(|name| create_database_with_timeout(&context.databases, name.to_string())))
             .await;
     }
 
@@ -101,15 +101,7 @@ generic_step_impl! {
     async fn connection_has_databases(context: &mut Context, step: &Step) {
         let names: HashSet<String> = util::iter_table(step).map(|name| name.to_owned()).collect();
         assert_with_timeout!(
-            context
-                .databases
-                .all()
-                .await
-                .unwrap()
-                .into_iter()
-                .map(|db| db.name().to_owned())
-                .collect::<HashSet<_, _>>()
-                == names,
+            context.all_databases().await == names,
             "Connection doesn't contain at least one of the databases."
         );
     }
@@ -127,15 +119,7 @@ generic_step_impl! {
         assert_with_timeout!(
             stream::iter(iter_table(step))
                 .all(|name| async {
-                    !context
-                        .databases
-                        .all()
-                        .await
-                        .unwrap()
-                        .into_iter()
-                        .map(|db| db.name().to_owned())
-                        .collect::<HashSet<_>>()
-                        .contains(name)
+                    !context.all_databases().await.contains(name)
                 })
                 .await,
             "Connection contains at least one of the databases.",

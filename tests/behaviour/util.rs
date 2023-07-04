@@ -187,7 +187,7 @@ pub async fn match_answer_rule(answer_identifiers: &HashMap<&str, &str>, answer:
         && then == Variable::Thing(answer.then.clone())
 }
 
-pub async fn create_database_with_waiting(databases: &DatabaseManager, name: String) {
+pub async fn create_database_with_timeout(databases: &DatabaseManager, name: String) {
     assert_with_timeout!(databases.create(name.clone()).await.is_ok(), "Database {name} couldn't be created.", name);
 }
 

@@ -50,7 +50,7 @@ generic_step_impl! {
 
     #[step(expr = "users contains: {word}")]
     async fn users_contains(context: &mut Context, username: String) -> TypeDBResult {
-        assert_with_timeout!(context.users.contains(username.clone()).await?, "User doesn't exist.");
+        assert_with_timeout!(context.users.contains(username.clone()).await?, "User {username} doesn't exist.");
         Ok(())
     }
 
@@ -61,7 +61,7 @@ generic_step_impl! {
 
     #[step(expr = "users not contains: {word}")]
     async fn users_not_contains(context: &mut Context, username: String) -> TypeDBResult {
-        assert_with_timeout!(!context.users.contains(username.clone()).await?, "User exists.");
+        assert_with_timeout!(!context.users.contains(username.clone()).await?, "User {username} exists.");
         Ok(())
     }
 

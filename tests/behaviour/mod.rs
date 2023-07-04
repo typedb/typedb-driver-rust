@@ -26,7 +26,10 @@ mod session_tracker;
 mod typeql;
 mod util;
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 
 use cucumber::{StatsWriter, World};
 use futures::future::try_join_all;
@@ -101,6 +104,10 @@ impl Context {
         );
         self.cleanup_databases().await?;
         self.cleanup_users().await
+    }
+
+    pub async fn all_databases(&self) -> HashSet<String> {
+        self.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect::<HashSet<_>>()
     }
 
     pub async fn cleanup_databases(&mut self) -> TypeDBResult {
