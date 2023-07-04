@@ -188,12 +188,12 @@ pub async fn match_answer_rule(answer_identifiers: &HashMap<&str, &str>, answer:
 }
 
 pub async fn create_database_with_timeout(databases: &DatabaseManager, name: String) {
-    assert_with_timeout!(databases.create(name.clone()).await.is_ok(), "Database {name} couldn't be created.", name);
+    assert_with_timeout!(databases.create(name.clone()).await.is_ok(), "Database {} couldn't be created.", name);
 }
 
 #[macro_export]
 macro_rules! assert_with_timeout {
-    ($expr:expr, $message:expr $(, $($arg:expr),*)?) => {{
+    ($expr:expr, $message:expr $(, $($arg:expr),+)? $(,)?) => {{
         't: {
             for _ in 0..Context::STEP_CHECKS_ITERATIONS_LIMIT {
                 if $expr {
@@ -201,7 +201,7 @@ macro_rules! assert_with_timeout {
                 }
                 sleep(Context::PAUSE_BETWEEN_STEP_CHECKS).await;
             }
-            panic!($message);
+            panic!(concat!("Timed out: ", $message) $(, $($arg),+)?);
         }
     }};
 }

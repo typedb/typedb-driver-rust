@@ -93,7 +93,8 @@ generic_step_impl! {
     async fn connection_has_database(context: &mut Context, name: String) {
         assert_with_timeout!(
             context.databases.contains(name.clone()).await.unwrap(),
-            "Connection doesn't contain database {name}."
+            "Connection doesn't contain database {}.",
+            name,
         );
     }
 
@@ -110,7 +111,8 @@ generic_step_impl! {
     async fn connection_does_not_have_database(context: &mut Context, name: String) {
         assert_with_timeout!(
             !context.databases.contains(name.clone()).await.unwrap(),
-            "Connection contains database {name}."
+            "Connection contains database {}.",
+            name,
         );
     }
 
