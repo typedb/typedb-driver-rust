@@ -55,7 +55,7 @@ use crate::{
 pub struct Connection {
     server_connections: HashMap<Address, ServerConnection>,
     background_runtime: Arc<BackgroundRuntime>,
-    pub username: Option<String>,
+    username: Option<String>,
 }
 
 impl Connection {
@@ -119,7 +119,7 @@ impl Connection {
         self.background_runtime.force_close()
     }
 
-    pub fn server_count(&self) -> usize {
+    pub(crate) fn server_count(&self) -> usize {
         self.server_connections.len()
     }
 
@@ -135,6 +135,10 @@ impl Connection {
 
     pub(crate) fn connections(&self) -> impl Iterator<Item = &ServerConnection> + '_ {
         self.server_connections.values()
+    }
+
+    pub fn user(&self) -> Option<String> {
+        self.username.clone()
     }
 
     pub(crate) fn unable_to_connect_error(&self) -> Error {

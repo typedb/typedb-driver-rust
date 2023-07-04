@@ -92,7 +92,7 @@ generic_step_impl! {
 
     #[step(expr = "user password update: {word}, {word}")]
     async fn user_password_update(context: &mut Context, password_old: String, password_new: String) -> TypeDBResult {
-        let connected_user = context.connection.username.clone();
+        let connected_user = context.connection.user();
         assert!(connected_user.is_some());
         context.users.get(connected_user.unwrap()).await?.unwrap()
             .password_update(&context.connection, password_old, password_new).await
@@ -115,13 +115,13 @@ generic_step_impl! {
 
     #[step(expr = "user expiry-seconds")]
     async fn user_expiry_seconds(context: &mut Context) -> TypeDBResult {
-        assert!(context.connection.username.is_some());
-        assert!(context.users.get(context.connection.username.clone().unwrap()).await?.unwrap().password_expiry_seconds.is_some());
+        assert!(context.connection.user().is_some());
+        assert!(context.users.get(context.connection.user().unwrap()).await?.unwrap().password_expiry_seconds.is_some());
         Ok(())
     }
 
     #[step(expr = "get connected user")]
     async fn get_connected_user(context: &mut Context) {
-        assert!(context.connection.username.is_some());
+        assert!(context.connection.user().is_some());
     }
 }

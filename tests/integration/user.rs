@@ -94,7 +94,6 @@ async fn create_users_and_purge() -> TypeDBResult {
 #[serial]
 async fn create_users_reconnect_and_purge() -> TypeDBResult {
     let connection = common::new_cluster_connection()?;
-    assert_eq!(3, connection.server_count());
     let users = UserManager::new(connection);
 
     try_join_all(
