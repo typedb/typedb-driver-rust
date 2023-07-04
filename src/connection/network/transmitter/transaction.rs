@@ -102,8 +102,9 @@ impl TransactionTransmitter {
     }
 
     pub(in crate::connection) fn force_close(&self) {
-        self.is_open.store(false);
-        self.shutdown_sink.send(()).ok();
+        if self.is_open.compare_exchange(true, false).is_ok() {
+            self.shutdown_sink.send(()).ok();
+        }
     }
 
     pub(in crate::connection) fn on_close(&self, callback: impl FnOnce(ConnectionError) + Send + Sync + 'static) {

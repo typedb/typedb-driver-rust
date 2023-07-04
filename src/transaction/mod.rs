@@ -45,6 +45,13 @@ pub struct Transaction<'a> {
     _lifetime_guard: PhantomData<&'a ()>,
 }
 
+impl Drop for Transaction<'_> {
+    // FIXME remove when session fixme is addressed
+    fn drop(&mut self) {
+        self.force_close()
+    }
+}
+
 impl Transaction<'_> {
     pub(super) fn new(transaction_stream: Arc<TransactionStream>) -> Self {
         Transaction {
@@ -80,6 +87,10 @@ impl Transaction<'_> {
 
     pub fn on_close(&self, callback: impl FnOnce(ConnectionError) + Send + Sync + 'static) {
         self.transaction_stream.on_close(callback)
+    }
+
+    pub fn force_close(&self) {
+        self.transaction_stream.force_close();
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]

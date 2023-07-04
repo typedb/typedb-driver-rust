@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use super::common::{borrow, free, release, take_ownership, unwrap_or_null, unwrap_void};
+use super::common::{borrow, borrow_mut, free, release, take_ownership, unwrap_or_null, unwrap_void};
 use crate::{Error, Options, Session, Transaction, TransactionType};
 
 #[no_mangle]
@@ -34,6 +34,11 @@ pub extern "C" fn transaction_new(
 #[no_mangle]
 pub extern "C" fn transaction_drop(txn: *mut Transaction<'static>) {
     free(txn);
+}
+
+#[no_mangle]
+pub extern "C" fn transaction_force_close(txn: *mut Transaction<'static>) {
+    borrow_mut(txn).force_close();
 }
 
 #[no_mangle]
