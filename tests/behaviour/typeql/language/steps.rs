@@ -19,7 +19,6 @@
  * under the License.
  */
 
-use std::env;
 
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
@@ -401,10 +400,5 @@ generic_step_impl! {
             "An identifier entry (row) should match 1-to-1 to an answer, but there are only {matched_rows} \
             matched entries of given {actual_answers}."
         );
-    }
-
-    #[step(expr = "set time-zone is: {word}")]
-    async fn set_time_zone(context: &mut Context, timezone: String) {
-        env::set_var("TZ", timezone);
     }
 }
