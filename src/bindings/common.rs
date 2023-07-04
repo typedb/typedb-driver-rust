@@ -130,7 +130,7 @@ pub(super) fn unwrap_void(result: Result) {
 }
 
 fn record_error(err: Error) {
-    LAST_ERROR.with(|prev| *prev.borrow_mut() = Some(dbg!(err)));
+    LAST_ERROR.with(|prev| *prev.borrow_mut() = Some(err));
 }
 
 #[no_mangle]
