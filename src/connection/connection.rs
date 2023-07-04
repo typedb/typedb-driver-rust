@@ -63,6 +63,7 @@ impl Connection {
         let address: Address = address.as_ref().parse()?;
         let background_runtime = Arc::new(BackgroundRuntime::new()?);
         let server_connection = ServerConnection::new_plaintext(background_runtime.clone(), address.clone())?;
+        // TODO fetch and store server's advertised address
         Ok(Self { server_connections: [(address, server_connection)].into(), background_runtime, username: None })
     }
 
