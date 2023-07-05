@@ -85,13 +85,6 @@ swig_java(
     enable_cxx = True,
 )
 
-java_binary(
-    name = "jni-test",
-    srcs = ["Main.java"],
-    main_class = "Main",
-    deps = [":typedb_client_jni"],
-)
-
 assemble_crate(
     name = "assemble_crate",
     description = "TypeDB Client API for Rust",

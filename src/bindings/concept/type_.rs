@@ -42,6 +42,11 @@ use crate::{
 };
 
 #[no_mangle]
+pub extern "C" fn thing_type_is_abstract(thing_type: *const Concept) -> bool {
+	borrow_as_thing_type(thing_type).is_abstract()
+}
+
+#[no_mangle]
 pub extern "C" fn thing_type_get_label(thing_type: *const Concept) -> *mut c_char {
     release_string(borrow_as_thing_type(thing_type).label().to_owned())
 }
@@ -553,6 +558,11 @@ pub extern "C" fn attribute_type_get_owners(
             .get_owners(borrow(transaction), transitivity, annotations)
             .map(ConceptIterator::thing_types),
     )
+}
+
+#[no_mangle]
+pub extern "C" fn role_type_is_abstract(role_type: *const Concept) -> bool {
+	borrow_as_role_type(role_type).is_abstract()
 }
 
 #[no_mangle]
