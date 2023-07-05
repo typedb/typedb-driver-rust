@@ -44,9 +44,8 @@ pub(super) struct RPCStub<Channel: GRPCChannel> {
 
 impl<Channel: GRPCChannel> RPCStub<Channel> {
     pub(super) async fn new(channel: Channel, call_credentials: Option<Arc<CallCredentials>>) -> Result<Self> {
-        let this = Self { grpc: GRPC::new(channel), call_credentials };
-        let mut this = this.validated().await?;
-        this.renew_token().await?;
+        let mut this = Self { grpc: GRPC::new(channel), call_credentials };
+        let _ = this.renew_token().await.is_ok();
         Ok(this)
     }
 

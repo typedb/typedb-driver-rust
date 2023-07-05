@@ -72,33 +72,18 @@ impl Connection {
         let init_addresses = init_addresses.iter().map(|addr| addr.as_ref().parse()).try_collect()?;
         let addresses = Self::fetch_current_addresses(background_runtime.clone(), init_addresses, credential.clone())?;
 
-        // FIXME: switch to connecting to all servers (not at least one) when the issues with auth in Cluster will be fixed (PR#482)
-        // let mut server_connections = HashMap::new();
-        // let mut error_buffer = Vec::new();
-        // for address in addresses {
-        //     let server_connection =
-        //         ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone());
-        //     match server_connection {
-        //         Ok(server_connection) => {
-        //             server_connections.insert(address, server_connection);
-        //         }
-        //         Err(err) => {
-        //             error_buffer.push(format!("- {}: {}", address, err));
-        //         }
-        //     }
-        // }
-        // if server_connections.is_empty() {
-        //     Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
-        // }
         let mut server_connections = HashMap::with_capacity(addresses.len());
         for address in addresses {
             let server_connection =
                 ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone())?;
             server_connections.insert(address, server_connection);
-            if server_connection.
         }
-
-        Ok(Self { server_connections, background_runtime, username: Some(credential.username().to_string()) })
+        let (ok, errors): (Vec<_>, Vec<_>) = server_connections.clone().into_iter().map(|(_addr, conn)| conn.validate()).partition(Result::is_ok);
+        if ok.is_empty() {
+            Err(ConnectionError::ClusterAllNodesFailed(errors.into_iter().map(|err| err.unwrap_err().to_string()).collect::<Vec<_>>().join("\n")))?
+        } else {
+            Ok(Self { server_connections, background_runtime, username: Some(credential.username().to_string()) })
+        }
     }
 
     fn fetch_current_addresses(
@@ -216,6 +201,13 @@ impl ServerConnection {
         match self.request_blocking(Request::ServersAll)? {
             Response::ServersAll { servers } => Ok(servers),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
+        }
+    }
+
+    pub(crate) fn validate(&self) -> Result {
+        match self.request_blocking(Request::DatabasesAll)? {
+            Response::DatabasesAll { databases: _ } => Ok(()),
+            _other => Err(ConnectionError::UnableToConnect().into()),
         }
     }
 

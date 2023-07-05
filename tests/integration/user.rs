@@ -101,7 +101,7 @@ async fn create_user_and_connect() -> TypeDBResult {
     users.create(String::from("user"), String::from("password")).await?;
     assert_eq!(2, users.all().await?.len());
 
-    let connection = Connection::new_encrypted(
+    Connection::new_encrypted(
         &["localhost:11729", "localhost:21729", "localhost:31729"],
         Credential::with_tls(
             "user",
@@ -112,7 +112,6 @@ async fn create_user_and_connect() -> TypeDBResult {
             )),
         )?,
     )?;
-    let users = UserManager::new(connection);
 
     let connection = common::new_cluster_connection()?;
     let users = UserManager::new(connection);
