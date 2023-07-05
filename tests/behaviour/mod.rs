@@ -94,12 +94,10 @@ impl Context {
 
     pub async fn after_scenario(&mut self) -> TypeDBResult {
         sleep(Context::PAUSE_BETWEEN_STEP_CHECKS).await;
-        self.set_connection(
-            Connection::new_encrypted(
-                &["localhost:11729", "localhost:21729", "localhost:31729"],
-                Credential::with_tls(&Context::ADMIN_USERNAME, &Context::ADMIN_PASSWORD, Some(&self.tls_root_ca))?,
-            )?,
-        );
+        self.set_connection(Connection::new_encrypted(
+            &["localhost:11729", "localhost:21729", "localhost:31729"],
+            Credential::with_tls(&Context::ADMIN_USERNAME, &Context::ADMIN_PASSWORD, Some(&self.tls_root_ca))?,
+        )?);
         self.cleanup_databases().await;
         self.cleanup_users().await;
         Ok(())

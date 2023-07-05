@@ -133,8 +133,8 @@ impl Connection {
         self.server_connections.values()
     }
 
-    pub(crate) fn username(&self) -> Option<String> {
-        self.username.clone()
+    pub(crate) fn username(&self) -> Option<&str> {
+        self.username.as_ref().and_then(|s| Some(s.as_ref()))
     }
 
     pub(crate) fn unable_to_connect_error(&self) -> Error {
