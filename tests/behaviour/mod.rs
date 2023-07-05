@@ -108,11 +108,11 @@ impl Context {
     }
 
     pub async fn cleanup_databases(&mut self) {
-        let _ = try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await;
+        try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await.ok();
     }
 
     pub async fn cleanup_users(&mut self) {
-        let _ = try_join_all(
+        try_join_all(
             self.users
                 .all()
                 .await
@@ -121,7 +121,8 @@ impl Context {
                 .filter(|user| user.username != Context::ADMIN_USERNAME)
                 .map(|user| self.users.delete(user.username)),
         )
-        .await;
+        .await
+        .ok();
     }
 
     pub fn transaction(&self) -> &Transaction {
