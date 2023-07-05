@@ -1,4 +1,5 @@
 use std::env;
+
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
@@ -6,7 +7,7 @@ use typeql_lang::parse_query;
 
 use crate::{
     behaviour::{parameter::LabelParam, util, Context},
-    generic_step_impl
+    generic_step_impl,
 };
 
 generic_step_impl! {

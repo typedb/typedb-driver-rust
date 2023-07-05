@@ -19,7 +19,6 @@
  * under the License.
  */
 
-
 use cucumber::{gherkin::Step, given, then, when};
 use futures::TryStreamExt;
 use typedb_client::{answer::Numeric, Result as TypeDBResult};
