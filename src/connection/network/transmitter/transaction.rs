@@ -92,6 +92,7 @@ impl TransactionTransmitter {
             is_open.clone(),
             error.clone(),
             on_close_register_source,
+            shutdown_sink.clone(),
             shutdown_source,
         ));
         Self { request_sink: buffer_sink, is_open, error, on_close_register_sink, shutdown_sink }
@@ -157,6 +158,7 @@ impl TransactionTransmitter {
         is_open: Arc<AtomicCell<bool>>,
         error: Arc<RwLock<Option<ConnectionError>>>,
         on_close_callback_source: UnboundedReceiver<Box<dyn FnOnce(ConnectionError) + Send + Sync>>,
+        shutdown_sink: UnboundedSender<()>,
         shutdown_signal: UnboundedReceiver<()>,
     ) {
         let collector = ResponseCollector {
@@ -173,7 +175,7 @@ impl TransactionTransmitter {
             on_close_callback_source,
             shutdown_signal,
         ));
-        tokio::spawn(Self::listen_loop(response_source, collector));
+        tokio::spawn(Self::listen_loop(response_source, collector, shutdown_sink));
     }
 
     async fn dispatch_loop(
@@ -225,7 +227,11 @@ impl TransactionTransmitter {
         }
     }
 
-    async fn listen_loop(mut grpc_source: Streaming<transaction::Server>, collector: ResponseCollector) {
+    async fn listen_loop(
+        mut grpc_source: Streaming<transaction::Server>,
+        collector: ResponseCollector,
+        shutdown_sink: UnboundedSender<()>,
+    ) {
         loop {
             match grpc_source.next().await {
                 Some(Ok(message)) => collector.collect(message).await,
@@ -235,6 +241,7 @@ impl TransactionTransmitter {
                 None => break collector.close(ConnectionError::TransactionIsClosed()).await,
             }
         }
+        shutdown_sink.send(()).ok();
     }
 }
 
