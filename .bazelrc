@@ -20,5 +20,3 @@
 #
 
 try-import ./.bazel-remote-cache.rc
-
-run --java_runtime_version=remotejdk_11
