@@ -93,8 +93,7 @@ generic_step_impl! {
     async fn connection_has_database(context: &mut Context, name: String) {
         assert_with_timeout!(
             context.databases.contains(name.clone()).await.unwrap(),
-            "Connection doesn't contain database {}.",
-            name,
+            "Connection doesn't contain database {name}.",
         );
     }
 
@@ -103,7 +102,7 @@ generic_step_impl! {
         let names: HashSet<String> = util::iter_table(step).map(|name| name.to_owned()).collect();
         assert_with_timeout!(
             context.all_databases().await == names,
-            "Connection doesn't contain at least one of the databases."
+            "Connection doesn't contain at least one of the databases.",
         );
     }
 
@@ -111,8 +110,7 @@ generic_step_impl! {
     async fn connection_does_not_have_database(context: &mut Context, name: String) {
         assert_with_timeout!(
             !context.databases.contains(name.clone()).await.unwrap(),
-            "Connection contains database {}.",
-            name,
+            "Connection contains database {name}.",
         );
     }
 
