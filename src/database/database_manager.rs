@@ -74,14 +74,6 @@ impl DatabaseManager {
         Err(ConnectionError::ClusterAllNodesFailed(error_buffer.join("\n")))?
     }
 
-    #[cfg(feature = "sync")]
-    fn run_failsafe<F, R>(&self, name: String, task: F) -> Result<R>
-    where
-        F: Fn(ServerDatabase, ServerConnection, bool) -> Result<R>,
-    {
-        Database::get(name, self.connection.clone())?.run_failsafe(&task)
-    }
-
     #[cfg(not(feature = "sync"))]
     async fn run_failsafe<F, P, R>(&self, name: String, task: F) -> Result<R>
     where
@@ -89,5 +81,13 @@ impl DatabaseManager {
         P: Future<Output = Result<R>>,
     {
         Database::get(name, self.connection.clone()).await?.run_failsafe(&task).await
+    }
+
+    #[cfg(feature = "sync")]
+    fn run_failsafe<F, R>(&self, name: String, task: F) -> Result<R>
+    where
+        F: Fn(ServerDatabase, ServerConnection, bool) -> Result<R>,
+    {
+        Database::get(name, self.connection.clone())?.run_failsafe(&task)
     }
 }
