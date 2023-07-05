@@ -22,7 +22,7 @@
 use std::sync::Arc;
 
 use futures::{future::BoxFuture, FutureExt, TryFutureExt};
-use log::{debug, trace};
+use log::{debug, trace, warn};
 use tokio::sync::mpsc::{unbounded_channel as unbounded_async, UnboundedSender};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::{Response, Status, Streaming};
@@ -46,14 +46,9 @@ impl<Channel: GRPCChannel> RPCStub<Channel> {
     pub(super) async fn new(channel: Channel, call_credentials: Option<Arc<CallCredentials>>) -> Self {
         let mut this = Self { grpc: GRPC::new(channel), call_credentials };
         if let Err(err) = this.renew_token().await {
-            debug!("{err:?}");
+            warn!("{err:?}");
         }
         this
-    }
-
-    pub(super) async fn validated(mut self) -> Result<Self> {
-        self.databases_all(database_manager::all::Req {}).await?;
-        Ok(self)
     }
 
     async fn call_with_auto_renew_token<F, R>(&mut self, call: F) -> Result<R>

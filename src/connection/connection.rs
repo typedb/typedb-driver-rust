@@ -76,12 +76,12 @@ impl Connection {
             .into_iter()
             .map(|address| {
                 ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone())
-                    .map(|result| (address, result))
+                    .map(|server_connection| (address, server_connection))
             })
             .try_collect()?;
 
         let errors: Vec<Error> =
-            server_connections.iter().map(|(_addr, conn)| conn.validate()).filter_map(Result::err).collect();
+            server_connections.values().map(|conn| conn.validate()).filter_map(Result::err).collect();
         if errors.len() == server_connections.len() {
             Err(ConnectionError::ClusterAllNodesFailed(
                 errors.into_iter().map(|err| err.to_string()).collect::<Vec<_>>().join("\n"),
@@ -136,7 +136,7 @@ impl Connection {
     }
 
     pub(crate) fn username(&self) -> Option<&str> {
-        self.username.as_ref().and_then(|s| Some(s.as_ref()))
+        self.username.as_ref().map(|s| s.as_ref())
     }
 
     pub(crate) fn unable_to_connect_error(&self) -> Error {

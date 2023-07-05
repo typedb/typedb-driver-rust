@@ -35,7 +35,7 @@ impl UserManager {
 
     pub async fn current_user(&self) -> Result<Option<User>> {
         match self.connection.username() {
-            Some(username) => self.get(username.to_string()).await,
+            Some(username) => self.get(username.to_owned()).await,
             None => Ok(None),
         }
     }
