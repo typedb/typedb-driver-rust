@@ -97,26 +97,24 @@ impl Context {
         self.set_connection(
             Connection::new_encrypted(
                 &["localhost:11729", "localhost:21729", "localhost:31729"],
-                Credential::with_tls(&Context::ADMIN_USERNAME, &Context::ADMIN_PASSWORD, Some(&self.tls_root_ca))
-                    .unwrap(),
-            )
-            .unwrap(),
+                Credential::with_tls(&Context::ADMIN_USERNAME, &Context::ADMIN_PASSWORD, Some(&self.tls_root_ca))?,
+            )?,
         );
-        self.cleanup_databases().await?;
-        self.cleanup_users().await
+        self.cleanup_databases().await;
+        self.cleanup_users().await;
+        Ok(())
     }
 
     pub async fn all_databases(&self) -> HashSet<String> {
         self.databases.all().await.unwrap().into_iter().map(|db| db.name().to_owned()).collect::<HashSet<_>>()
     }
 
-    pub async fn cleanup_databases(&mut self) -> TypeDBResult {
-        try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await?;
-        Ok(())
+    pub async fn cleanup_databases(&mut self) {
+        let _ = try_join_all(self.databases.all().await.unwrap().into_iter().map(Database::delete)).await;
     }
 
-    pub async fn cleanup_users(&mut self) -> TypeDBResult {
-        try_join_all(
+    pub async fn cleanup_users(&mut self) {
+        let _ = try_join_all(
             self.users
                 .all()
                 .await
@@ -125,8 +123,7 @@ impl Context {
                 .filter(|user| user.username != Context::ADMIN_USERNAME)
                 .map(|user| self.users.delete(user.username)),
         )
-        .await?;
-        Ok(())
+        .await;
     }
 
     pub fn transaction(&self) -> &Transaction {

@@ -50,18 +50,16 @@ generic_step_impl! {
 
     #[step("connection does not have any database")]
     async fn connection_does_not_have_any_database(context: &mut Context) -> TypeDBResult {
-        assert_with_timeout!(
-            {
-                if context.databases.all().await.unwrap().is_empty() {
-                    true
-                } else {
-                    context.cleanup_databases().await?;
-                    context.cleanup_users().await?;
-                    false
-                }
-            },
-            "Connection has at least one database.",
-        );
+        if context.databases.all().await?.is_empty() {
+            assert_with_timeout!(
+                {
+                    context.cleanup_databases().await;
+                    context.cleanup_users().await;
+                    context.databases.all().await?.is_empty()
+                },
+                "Connection has at least one database.",
+            );
+        }
         Ok(())
     }
 
