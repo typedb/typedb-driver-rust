@@ -25,22 +25,22 @@ use crate::{logic::Rule, Result, Transaction};
 pub trait RuleAPI: Clone + Sync + Send {
     fn label(&self) -> &String;
 
-    #[cfg(feature = "sync")]
-    fn delete(&mut self, transaction: &Transaction<'_>) -> Result;
-
     #[cfg(not(feature = "sync"))]
     async fn delete(&mut self, transaction: &Transaction<'_>) -> Result;
+
+    #[cfg(feature = "sync")]
+    fn delete(&mut self, transaction: &Transaction<'_>) -> Result;
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
         transaction.logic().get_rule(self.label().to_owned()).await.map(|rule| rule.is_none())
     }
 
-    #[cfg(feature = "sync")]
-    fn set_label(&mut self, transaction: &Transaction<'_>, new_label: String) -> Result;
-
     #[cfg(not(feature = "sync"))]
     async fn set_label(&mut self, transaction: &Transaction<'_>, new_label: String) -> Result;
+
+    #[cfg(feature = "sync")]
+    fn set_label(&mut self, transaction: &Transaction<'_>, new_label: String) -> Result;
 }
 
 #[cfg_attr(not(feature = "sync"), async_trait::async_trait)]

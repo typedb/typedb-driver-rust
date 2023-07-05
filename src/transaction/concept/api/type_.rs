@@ -36,11 +36,11 @@ pub trait ThingTypeAPI: Sync + Send {
 
     fn into_thing_type_cloned(&self) -> ThingType;
 
-    #[cfg(feature = "sync")]
-    fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
-
     #[cfg(not(feature = "sync"))]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
+
+    #[cfg(feature = "sync")]
+    fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
