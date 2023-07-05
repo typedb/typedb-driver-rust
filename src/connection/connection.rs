@@ -78,9 +78,12 @@ impl Connection {
                 ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone())?;
             server_connections.insert(address, server_connection);
         }
-        let (ok, errors): (Vec<_>, Vec<_>) = server_connections.clone().into_iter().map(|(_addr, conn)| conn.validate()).partition(Result::is_ok);
+        let (ok, errors): (Vec<_>, Vec<_>) =
+            server_connections.clone().into_iter().map(|(_addr, conn)| conn.validate()).partition(Result::is_ok);
         if ok.is_empty() {
-            Err(ConnectionError::ClusterAllNodesFailed(errors.into_iter().map(|err| err.unwrap_err().to_string()).collect::<Vec<_>>().join("\n")))?
+            Err(ConnectionError::ClusterAllNodesFailed(
+                errors.into_iter().map(|err| err.unwrap_err().to_string()).collect::<Vec<_>>().join("\n"),
+            ))?
         } else {
             Ok(Self { server_connections, background_runtime, username: Some(credential.username().to_string()) })
         }
