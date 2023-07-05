@@ -19,14 +19,10 @@
  * under the License.
  */
 
-#[cfg(not(feature = "sync"))]
-use futures::stream::BoxStream;
 use typeql_lang::pattern::Annotation;
 
-#[cfg(feature = "sync")]
-use crate::common::stream::BoxStream;
 use crate::{
-    common::{box_stream, IID},
+    common::{box_stream, stream::BoxStream, IID},
     concept::{Attribute, AttributeType, Entity, Relation, RoleType, Thing, ThingType},
     Result, Transaction,
 };

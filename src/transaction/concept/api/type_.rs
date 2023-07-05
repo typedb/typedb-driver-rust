@@ -19,13 +19,8 @@
  * under the License.
  */
 
-#[cfg(not(feature = "sync"))]
-use futures::stream::BoxStream;
-
-#[cfg(feature = "sync")]
-use crate::common::stream::BoxStream;
 use crate::{
-    common::box_stream,
+    common::{box_stream, stream::BoxStream},
     concept::{
         Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
         Transitivity, Value, ValueType,
