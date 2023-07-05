@@ -92,10 +92,9 @@ generic_step_impl! {
 
     #[step(expr = "user password update: {word}, {word}")]
     async fn user_password_update(context: &mut Context, password_old: String, password_new: String) -> TypeDBResult {
-        let connected_user = context.connection.username();
+        let connected_user = context.users.current_user().await?;
         assert!(connected_user.is_some());
-        context.users.get(connected_user.unwrap()).await?.unwrap()
-            .password_update(&context.connection, password_old, password_new).await
+        connected_user.unwrap().password_update(&context.connection, password_old, password_new).await
     }
 
     #[step(expr = "user password update: {word}, {word}; throws exception")]
@@ -115,13 +114,15 @@ generic_step_impl! {
 
     #[step(expr = "user expiry-seconds")]
     async fn user_expiry_seconds(context: &mut Context) -> TypeDBResult {
-        assert!(context.connection.username().is_some());
-        assert!(context.users.get(context.connection.username().unwrap()).await?.unwrap().password_expiry_seconds.is_some());
+        let connected_user = context.users.current_user().await?;
+        assert!(connected_user.is_some());
+        assert!(connected_user.unwrap().password_expiry_seconds.is_some());
         Ok(())
     }
 
     #[step(expr = "get connected user")]
-    async fn get_connected_user(context: &mut Context) {
-        assert!(context.connection.username().is_some());
+    async fn get_connected_user(context: &mut Context) -> TypeDBResult {
+        assert!(context.users.current_user().await?.is_some());
+        Ok(())
     }
 }

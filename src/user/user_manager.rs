@@ -33,6 +33,13 @@ impl UserManager {
         Self { connection }
     }
 
+    pub async fn current_user(&self) -> Result<Option<User>> {
+        match self.connection.username() {
+            Some(username) => self.get(username).await,
+            None => Ok(None),
+        }
+    }
+
     pub async fn all(&self) -> Result<Vec<User>> {
         self.run_any_node(|server_connection: ServerConnection| async move { server_connection.all_users().await })
             .await

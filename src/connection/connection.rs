@@ -133,7 +133,7 @@ impl Connection {
         self.server_connections.values()
     }
 
-    pub fn username(&self) -> Option<String> {
+    pub(crate) fn username(&self) -> Option<String> {
         self.username.clone()
     }
 
