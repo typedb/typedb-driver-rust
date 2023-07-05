@@ -72,17 +72,19 @@ impl Connection {
         let init_addresses = init_addresses.iter().map(|addr| addr.as_ref().parse()).try_collect()?;
         let addresses = Self::fetch_current_addresses(background_runtime.clone(), init_addresses, credential.clone())?;
 
-        let mut server_connections = HashMap::with_capacity(addresses.len());
-        for address in addresses {
-            let server_connection =
-                ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone())?;
-            server_connections.insert(address, server_connection);
-        }
-        let (ok, errors): (Vec<_>, Vec<_>) =
-            server_connections.clone().into_iter().map(|(_addr, conn)| conn.validate()).partition(Result::is_ok);
-        if ok.is_empty() {
+        let server_connections: HashMap<Address, ServerConnection> = addresses
+            .into_iter()
+            .map(|address| {
+                ServerConnection::new_encrypted(background_runtime.clone(), address.clone(), credential.clone())
+                    .map(|result| (address, result))
+            })
+            .try_collect()?;
+
+        let errors: Vec<Error> =
+            server_connections.iter().map(|(_addr, conn)| conn.validate()).filter_map(Result::err).collect();
+        if errors.len() == server_connections.len() {
             Err(ConnectionError::ClusterAllNodesFailed(
-                errors.into_iter().map(|err| err.unwrap_err().to_string()).collect::<Vec<_>>().join("\n"),
+                errors.into_iter().map(|err| err.to_string()).collect::<Vec<_>>().join("\n"),
             ))?
         } else {
             Ok(Self { server_connections, background_runtime, username: Some(credential.username().to_string()) })
