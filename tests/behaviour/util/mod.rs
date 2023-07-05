@@ -69,7 +69,7 @@ pub async fn match_answer_concept(context: &Context, answer_identifier: &str, an
     match identifiers[0] {
         "key" => key_values_equal(context, identifiers[1], answer).await,
         "label" => labels_equal(identifiers[1], answer),
-        "value" => values_equal(identifiers[1], answer)
+        "value" => values_equal(identifiers[1], answer),
         "attr" => values_equal(identifiers[1], answer),
         _ => unreachable!(),
     }
