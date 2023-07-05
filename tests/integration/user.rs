@@ -19,10 +19,11 @@
  * under the License.
  */
 
+use std::path::PathBuf;
 use futures::future::try_join_all;
 use serial_test::serial;
 use tokio::time::{sleep, Duration};
-use typedb_client::{Result as TypeDBResult, UserManager};
+use typedb_client::{Connection, Credential, Result as TypeDBResult, UserManager};
 
 use super::common;
 
@@ -81,6 +82,40 @@ async fn create_users_reconnect_and_purge() -> TypeDBResult {
     let users = UserManager::new(connection);
     assert_eq!(3, users.all().await?.len());
 
+    cleanup_users(&users).await?;
+    sleep(Duration::from_millis(2000)).await;
+
+    assert_eq!(1, users.all().await?.len());
+    Ok(())
+}
+
+#[tokio::test]
+#[serial]
+async fn create_user_and_connect() -> TypeDBResult {
+    let connection = common::new_cluster_connection()?;
+    let users = UserManager::new(connection);
+
+    cleanup_users(&users).await?;
+    sleep(Duration::from_millis(2000)).await;
+
+    users.create(String::from("user"), String::from("password")).await?;
+    assert_eq!(2, users.all().await?.len());
+
+    let connection = Connection::new_encrypted(
+        &["localhost:11729", "localhost:21729", "localhost:31729"],
+        Credential::with_tls(
+            "user",
+            "password",
+            Some(&PathBuf::from(
+                std::env::var("ROOT_CA")
+                    .expect("ROOT_CA environment variable needs to be set for cluster tests to run"),
+            )),
+        )?,
+    )?;
+    let users = UserManager::new(connection);
+
+    let connection = common::new_cluster_connection()?;
+    let users = UserManager::new(connection);
     cleanup_users(&users).await?;
     sleep(Duration::from_millis(2000)).await;
 
