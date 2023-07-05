@@ -174,9 +174,9 @@ impl ThingTypeAPI for EntityType {
         &self.label
     }
 
-	fn is_abstract(&self) -> bool {
-	    self.is_abstract
-	}
+    fn is_abstract(&self) -> bool {
+        self.is_abstract
+    }
 
     fn into_thing_type_cloned(&self) -> ThingType {
         ThingType::EntityType(self.clone())
@@ -243,9 +243,9 @@ impl ThingTypeAPI for RelationType {
         &self.label
     }
 
-	fn is_abstract(&self) -> bool {
-	    self.is_abstract
-	}
+    fn is_abstract(&self) -> bool {
+        self.is_abstract
+    }
 
     fn into_thing_type_cloned(&self) -> ThingType {
         ThingType::RelationType(self.clone())
@@ -369,9 +369,9 @@ impl ThingTypeAPI for AttributeType {
         &self.label
     }
 
-	fn is_abstract(&self) -> bool {
-	    self.is_abstract
-	}
+    fn is_abstract(&self) -> bool {
+        self.is_abstract
+    }
 
     fn into_thing_type_cloned(&self) -> ThingType {
         ThingType::AttributeType(self.clone())
@@ -487,7 +487,7 @@ impl AttributeTypeAPI for AttributeType {
 
 #[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait RoleTypeAPI: Clone + Into<RoleType> + Sync + Send {
-	fn is_abstract(&self) -> bool;
+    fn is_abstract(&self) -> bool;
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn delete(&self, transaction: &Transaction<'_>) -> Result {
@@ -575,9 +575,9 @@ pub trait RoleTypeAPI: Clone + Into<RoleType> + Sync + Send {
 
 #[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl RoleTypeAPI for RoleType {
-	fn is_abstract(&self) -> bool {
-	    self.is_abstract
-	}
+    fn is_abstract(&self) -> bool {
+        self.is_abstract
+    }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_relation_type(&self, transaction: &Transaction<'_>) -> Result<Option<RelationType>> {

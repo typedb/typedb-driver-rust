@@ -43,7 +43,7 @@ use crate::{
 
 #[no_mangle]
 pub extern "C" fn thing_type_is_abstract(thing_type: *const Concept) -> bool {
-	borrow_as_thing_type(thing_type).is_abstract()
+    borrow_as_thing_type(thing_type).is_abstract()
 }
 
 #[no_mangle]
@@ -562,7 +562,7 @@ pub extern "C" fn attribute_type_get_owners(
 
 #[no_mangle]
 pub extern "C" fn role_type_is_abstract(role_type: *const Concept) -> bool {
-	borrow_as_role_type(role_type).is_abstract()
+    borrow_as_role_type(role_type).is_abstract()
 }
 
 #[no_mangle]
