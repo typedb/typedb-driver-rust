@@ -33,20 +33,20 @@ load("@vaticle_dependencies//builder/swig:java.bzl", "swig_java")
 typedb_client_srcs = glob(["src/**/*.rs"])
 typedb_client_tags = ["crate-name=typedb-client"]
 typedb_client_deps = [
-        "@crates//:chrono",
-        "@crates//:crossbeam",
-        "@crates//:futures",
-        "@crates//:http",
-        "@crates//:itertools",
-        "@crates//:log",
-        "@crates//:prost",
-        "@crates//:tokio",
-        "@crates//:tokio-stream",
-        "@crates//:tonic",
-        "@crates//:uuid",
-        "@vaticle_typedb_protocol//grpc/rust:typedb_protocol",
-        "@vaticle_typeql//rust:typeql_lang",
-    ]
+    "@crates//:chrono",
+    "@crates//:crossbeam",
+    "@crates//:futures",
+    "@crates//:http",
+    "@crates//:itertools",
+    "@crates//:log",
+    "@crates//:prost",
+    "@crates//:tokio",
+    "@crates//:tokio-stream",
+    "@crates//:tonic",
+    "@crates//:uuid",
+    "@vaticle_typedb_protocol//grpc/rust:typedb_protocol",
+    "@vaticle_typeql//rust:typeql_lang",
+]
 typedb_client_proc_macro_deps = [
     "@crates//:async-trait",
     "@crates//:maybe-async",
