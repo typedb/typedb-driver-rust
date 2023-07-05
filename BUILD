@@ -117,6 +117,7 @@ checkstyle_test(
     include = glob([
         "*",
         "src/**/*",
+        "swig/*",
         "tools/*",
         ".factory/*",
     ]),
