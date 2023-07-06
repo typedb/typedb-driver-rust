@@ -39,11 +39,12 @@ pub extern "C" fn connection_open_encrypted(addresses: *const *const c_char) -> 
 }
 
 #[no_mangle]
+pub extern "C" fn connection_close(connection: *mut Connection) {
+    free(connection);
+}
+
+#[no_mangle]
 pub extern "C" fn connection_force_close(connection: *mut Connection) {
     unwrap_void(take_ownership(connection).force_close());
 }
 
-#[no_mangle]
-pub extern "C" fn connection_close(connection: *mut Connection) {
-    free(connection);
-}

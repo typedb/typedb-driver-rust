@@ -34,11 +34,6 @@ use crate::{
     logic::{Explanation, Rule},
 };
 
-#[no_mangle]
-pub extern "C" fn concept_map_drop(concept_map: *mut ConceptMap) {
-    free(concept_map);
-}
-
 type StringIteratorInner = CIterator<String, BoxStream<'static, String>>;
 
 pub struct StringIterator(StringIteratorInner);
@@ -86,6 +81,11 @@ pub extern "C" fn string_pair_iterator_next(it: *mut StringPairIterator) -> *mut
 #[no_mangle]
 pub extern "C" fn string_pair_iterator_drop(it: *mut StringPairIterator) {
     free(it);
+}
+
+#[no_mangle]
+pub extern "C" fn concept_map_drop(concept_map: *mut ConceptMap) {
+    free(concept_map);
 }
 
 #[no_mangle]
