@@ -79,7 +79,7 @@ rust_static_library(
 )
 
 rust_cbindgen(
-    name = "typedb_client_h",
+    name = "typedb_client_clib_headers",
     lib = ":typedb_client_clib",
     header_name = "typedb_client.h",
     config = "cbindgen.toml",
@@ -87,7 +87,7 @@ rust_cbindgen(
 
 swig_java(
     name = "typedb_client_jni",
-    lib = ":typedb_client_h",
+    lib = ":typedb_client_clib_headers",
     package = "com.vaticle.typedb.client.jni",
     interface = "typedb_client.i",
     includes = ["swig/typedb_client_java.swg"],
