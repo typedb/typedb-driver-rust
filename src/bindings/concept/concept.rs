@@ -179,6 +179,11 @@ pub extern "C" fn concept_is_role_type(concept: *const Concept) -> bool {
     matches!(borrow(concept), Concept::RoleType(_))
 }
 
+#[no_mangle]
+pub extern "C" fn concept_to_string(concept: *const Concept) -> *mut c_char {
+	release_string(format!("{:?}", borrow(concept)))
+}
+
 pub(super) fn borrow_as_thing(concept: *const Concept) -> &'static dyn ThingAPI {
     match borrow(concept) {
         Concept::Entity(entity) => entity,

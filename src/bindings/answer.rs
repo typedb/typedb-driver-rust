@@ -61,6 +61,11 @@ pub extern "C" fn concept_map_get_explainables(concept_map: *const ConceptMap) -
 }
 
 #[no_mangle]
+pub extern "C" fn concept_map_to_string(concept_map: *const ConceptMap) -> *mut c_char {
+    release_string(format!("{:?}", borrow(concept_map)))
+}
+
+#[no_mangle]
 pub extern "C" fn explainables_drop(explainables: *mut Explainables) {
     free(explainables);
 }
