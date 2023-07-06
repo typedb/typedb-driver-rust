@@ -60,6 +60,15 @@ rust_library(
     tags = typedb_client_tags,
 )
 
+rust_library(
+    name = "typedb_client_sync",
+    srcs = typedb_client_srcs,
+    deps = typedb_client_deps,
+    proc_macro_deps = typedb_client_proc_macro_deps,
+    tags = typedb_client_tags,
+    crate_features = ["sync"],
+)
+
 rust_static_library(
     name = "typedb_client_clib",
     srcs = typedb_client_srcs,
