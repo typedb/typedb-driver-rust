@@ -19,7 +19,10 @@
  * under the License.
  */
 
-use super::common::{borrow, borrow_mut, free, release, take_ownership, unwrap_or_null, unwrap_void};
+use super::{
+    error::{unwrap_or_null, unwrap_void},
+    memory::{borrow, borrow_mut, free, release, take_ownership},
+};
 use crate::{Error, Options, Session, Transaction, TransactionType};
 
 #[no_mangle]

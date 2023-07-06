@@ -22,11 +22,9 @@
 use std::{ffi::c_char, ptr::addr_of_mut};
 
 use super::{
-    common::{
-        borrow, borrow_mut, free, release_string, string_view, unwrap_optional_or_null, unwrap_or_default,
-        unwrap_or_null, unwrap_void,
-    },
+    error::{unwrap_optional_or_null, unwrap_or_default, unwrap_or_null, unwrap_void},
     iterator::{iterator_try_next, CIterator},
+    memory::{borrow, borrow_mut, free, release_string, string_view},
 };
 use crate::{
     common::{box_stream, stream::BoxStream},

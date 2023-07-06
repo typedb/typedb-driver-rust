@@ -32,9 +32,9 @@ use super::{
     ConceptIterator,
 };
 use crate::{
-    bindings::common::{
-        borrow, borrow_optional, ok_record_flatten, release_optional, release_string, string_array_view, string_view,
-        unwrap_or_default, unwrap_or_null, unwrap_to_c_string, unwrap_void,
+    bindings::{
+        error::{ok_record_flatten, unwrap_or_default, unwrap_or_null, unwrap_to_c_string, unwrap_void},
+        memory::{borrow, borrow_optional, release_optional, release_string, string_array_view, string_view},
     },
     concept::{Concept, Transitivity, Value, ValueType},
     transaction::concept::api::{AttributeTypeAPI, EntityTypeAPI, RelationTypeAPI, RoleTypeAPI},

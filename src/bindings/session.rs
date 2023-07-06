@@ -21,7 +21,10 @@
 
 use std::ffi::c_char;
 
-use super::common::{borrow, free, release_string, take_ownership, unwrap_or_null};
+use super::{
+    error::unwrap_or_null,
+    memory::{borrow, free, release_string, take_ownership},
+};
 use crate::{Database, Options, Session, SessionType};
 
 #[no_mangle]

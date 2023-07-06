@@ -20,13 +20,14 @@
  */
 
 mod answer;
-mod common;
 mod concept;
 mod connection;
 mod database;
 mod database_manager;
+mod error;
 mod iterator;
 mod logic;
+mod memory;
 mod options;
 mod query;
 mod session;

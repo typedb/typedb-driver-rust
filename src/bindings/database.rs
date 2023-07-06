@@ -21,7 +21,10 @@
 
 use std::ffi::c_char;
 
-use super::common::{borrow, borrow_mut, free, release_string, take_ownership, unwrap_to_c_string, unwrap_void};
+use super::{
+    error::{unwrap_to_c_string, unwrap_void},
+    memory::{borrow, borrow_mut, free, release_string, take_ownership},
+};
 use crate::Database;
 
 #[no_mangle]

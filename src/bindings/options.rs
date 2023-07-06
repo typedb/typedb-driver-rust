@@ -21,7 +21,7 @@
 
 use std::time::Duration;
 
-use super::common::{borrow, borrow_mut, free, release};
+use super::memory::{borrow, borrow_mut, free, release};
 use crate::Options;
 
 #[no_mangle]

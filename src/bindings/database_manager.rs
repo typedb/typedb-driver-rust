@@ -22,13 +22,11 @@
 use std::{ffi::c_char, ptr::addr_of_mut};
 
 use super::{
-    common::{free, release, string_view},
+    error::{unwrap_or_default, unwrap_or_null, unwrap_void},
     iterator::{iterator_next, CIterator},
+    memory::{borrow, borrow_mut, free, release, string_view},
 };
-use crate::{
-    bindings::common::{borrow, borrow_mut, unwrap_or_default, unwrap_or_null, unwrap_void},
-    Connection, Database, DatabaseManager,
-};
+use crate::{Connection, Database, DatabaseManager};
 
 #[no_mangle]
 pub extern "C" fn database_manager_new(connection: *const Connection) -> *mut DatabaseManager {

@@ -19,7 +19,10 @@
  * under the License.
  */
 
-use super::common::{borrow_mut, release_optional, unwrap_optional_or_null};
+use super::{
+    error::unwrap_optional_or_null,
+    memory::{borrow_mut, release_optional},
+};
 use crate::Result;
 
 pub struct CIterator<T: 'static, U: Iterator<Item = T> + 'static>(pub(super) U);

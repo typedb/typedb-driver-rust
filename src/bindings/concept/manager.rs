@@ -22,7 +22,10 @@
 use std::ffi::c_char;
 
 use crate::{
-    bindings::common::{borrow, ok_record_flatten, release_optional, string_view, unwrap_or_null},
+    bindings::{
+        error::{ok_record_flatten, unwrap_or_null},
+        memory::{borrow, release_optional, string_view},
+    },
     common::IID,
     concept::{Concept, ValueType},
     Transaction,

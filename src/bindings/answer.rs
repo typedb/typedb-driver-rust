@@ -22,9 +22,9 @@
 use std::{ffi::c_char, ptr::null_mut};
 
 use super::{
-    common::{borrow, borrow_mut, free, release, release_optional, release_string, string_free, string_view},
     concept::ConceptIterator,
     iterator::CIterator,
+    memory::{borrow, borrow_mut, free, release, release_optional, release_string, string_free, string_view},
     query::ConceptMapIterator,
 };
 use crate::{

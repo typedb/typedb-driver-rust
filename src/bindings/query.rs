@@ -22,8 +22,9 @@
 use std::{ffi::c_char, ptr::addr_of_mut};
 
 use super::{
-    common::{borrow, free, string_view, unwrap_or_null, unwrap_void},
+    error::{unwrap_or_null, unwrap_void},
     iterator::{iterator_try_next, CIterator},
+    memory::{borrow, free, string_view},
 };
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},

@@ -24,7 +24,7 @@ use std::ffi::c_char;
 use chrono::NaiveDateTime;
 
 use crate::{
-    bindings::common::{borrow, borrow_mut, free, release, release_string, string_view},
+    bindings::memory::{borrow, borrow_mut, free, release, release_string, string_view},
     concept::{Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, Value},
     transaction::concept::api::{ThingAPI, ThingTypeAPI},
 };

@@ -29,8 +29,8 @@ use std::ptr::addr_of_mut;
 use itertools::Itertools;
 
 use super::{
-    common::{borrow, free, release},
     iterator::iterator_try_next,
+    memory::{borrow, free, release},
 };
 use crate::{
     bindings::iterator::CIterator,

@@ -21,8 +21,11 @@
 
 use std::ffi::c_char;
 
-use super::common::{free, string_view, take_ownership, unwrap_or_null, unwrap_void};
-use crate::{bindings::common::string_array_view, Connection, Credential};
+use super::{
+    error::{unwrap_or_null, unwrap_void},
+    memory::{free, string_array_view, string_view, take_ownership},
+};
+use crate::{Connection, Credential};
 
 #[no_mangle]
 pub extern "C" fn connection_open_plaintext(address: *const c_char) -> *mut Connection {

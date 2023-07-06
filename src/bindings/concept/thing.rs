@@ -31,8 +31,9 @@ use super::{
     ConceptIterator, RolePlayerIterator,
 };
 use crate::{
-    bindings::common::{
-        array_view, borrow, release, release_string, string_array_view, unwrap_or_default, unwrap_or_null, unwrap_void,
+    bindings::{
+        error::{unwrap_or_default, unwrap_or_null, unwrap_void},
+        memory::{array_view, borrow, release, release_string, string_array_view},
     },
     concept::{Concept, Value},
     transaction::concept::api::{AttributeAPI, RelationAPI},
