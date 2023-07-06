@@ -21,41 +21,11 @@
 
 use std::fmt;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Numeric {
     Long(i64),
     Double(f64),
     NaN,
-}
-
-impl Numeric {
-    pub fn into_i64(self) -> i64 {
-        if let Self::Long(value) = self {
-            value
-        } else {
-            panic!()
-        }
-    }
-
-    pub fn into_f64(self) -> f64 {
-        if let Self::Double(value) = self {
-            value
-        } else {
-            panic!()
-        }
-    }
-}
-
-impl From<Numeric> for i64 {
-    fn from(n: Numeric) -> Self {
-        n.into_i64()
-    }
-}
-
-impl From<Numeric> for f64 {
-    fn from(n: Numeric) -> Self {
-        n.into_f64()
-    }
 }
 
 impl fmt::Display for Numeric {
