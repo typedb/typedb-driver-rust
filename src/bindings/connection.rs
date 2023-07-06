@@ -47,4 +47,3 @@ pub extern "C" fn connection_close(connection: *mut Connection) {
 pub extern "C" fn connection_force_close(connection: *mut Connection) {
     unwrap_void(take_ownership(connection).force_close());
 }
-

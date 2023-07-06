@@ -28,7 +28,7 @@ use super::{
 };
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Numeric, NumericGroup},
-    common::{box_stream, stream::BoxStream},
+    common::box_stream,
     logic::Explanation,
     Options, Result, Transaction,
 };
@@ -52,9 +52,7 @@ pub extern "C" fn query_delete(transaction: *mut Transaction<'static>, query: *c
     unwrap_void(borrow(transaction).query().delete_with_options(string_view(query), borrow(options).clone()))
 }
 
-type ConceptMapIteratorInner = CIterator<Result<ConceptMap>, BoxStream<'static, Result<ConceptMap>>>;
-
-pub struct ConceptMapIterator(pub ConceptMapIteratorInner);
+pub struct ConceptMapIterator(pub CIterator<Result<ConceptMap>>);
 
 #[no_mangle]
 pub extern "C" fn concept_map_iterator_next(it: *mut ConceptMapIterator) -> *mut ConceptMap {
@@ -119,9 +117,7 @@ pub extern "C" fn query_match_aggregate(
     )
 }
 
-type ConceptMapGroupIteratorInner = CIterator<Result<ConceptMapGroup>, BoxStream<'static, Result<ConceptMapGroup>>>;
-
-pub struct ConceptMapGroupIterator(ConceptMapGroupIteratorInner);
+pub struct ConceptMapGroupIterator(CIterator<Result<ConceptMapGroup>>);
 
 #[no_mangle]
 pub extern "C" fn concept_map_group_iterator_next(it: *mut ConceptMapGroupIterator) -> *mut ConceptMapGroup {
@@ -147,9 +143,7 @@ pub extern "C" fn query_match_group(
     )
 }
 
-type NumericGroupIteratorInner = CIterator<Result<NumericGroup>, BoxStream<'static, Result<NumericGroup>>>;
-
-pub struct NumericGroupIterator(NumericGroupIteratorInner);
+pub struct NumericGroupIterator(CIterator<Result<NumericGroup>>);
 
 #[no_mangle]
 pub extern "C" fn numeric_group_iterator_next(it: *mut NumericGroupIterator) -> *mut NumericGroup {
@@ -175,9 +169,7 @@ pub extern "C" fn query_match_group_aggregate(
     )
 }
 
-type ExplanationIteratorInner = CIterator<Result<Explanation>, BoxStream<'static, Result<Explanation>>>;
-
-pub struct ExplanationIterator(ExplanationIteratorInner);
+pub struct ExplanationIterator(CIterator<Result<Explanation>>);
 
 #[no_mangle]
 pub extern "C" fn explanation_iterator_next(it: *mut ExplanationIterator) -> *mut Explanation {

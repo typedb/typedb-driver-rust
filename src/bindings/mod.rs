@@ -20,6 +20,7 @@
  */
 
 mod answer;
+mod common;
 mod concept;
 mod connection;
 mod database;

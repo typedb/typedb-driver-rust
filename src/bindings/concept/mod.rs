@@ -41,9 +41,7 @@ use crate::{
     Result,
 };
 
-type ConceptIteratorInner = CIterator<Result<Concept>, BoxStream<'static, Result<Concept>>>;
-
-pub struct ConceptIterator(pub ConceptIteratorInner);
+pub struct ConceptIterator(pub CIterator<Result<Concept>>);
 
 impl ConceptIterator {
     fn things(it: BoxStream<'static, Result<Thing>>) -> Self {
@@ -102,7 +100,7 @@ pub extern "C" fn concept_iterator_drop(it: *mut ConceptIterator) {
     free(it);
 }
 
-type RolePlayerIteratorInner = CIterator<Result<RolePlayer>, BoxStream<'static, Result<RolePlayer>>>;
+type RolePlayerIteratorInner = CIterator<Result<RolePlayer>>;
 
 pub struct RolePlayerIterator(RolePlayerIteratorInner);
 

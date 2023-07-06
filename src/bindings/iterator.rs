@@ -23,16 +23,14 @@ use super::{
     error::unwrap_optional_or_null,
     memory::{borrow_mut, release_optional},
 };
-use crate::Result;
+use crate::{common::stream::BoxStream, Result};
 
-pub struct CIterator<T: 'static, U: Iterator<Item = T> + 'static>(pub(super) U);
+pub struct CIterator<T: 'static>(pub(super) BoxStream<'static, T>);
 
-pub(super) fn iterator_next<T: 'static, U: Iterator<Item = T> + 'static>(it: *mut CIterator<T, U>) -> *mut T {
+pub(super) fn iterator_next<T: 'static>(it: *mut CIterator<T>) -> *mut T {
     release_optional(borrow_mut(it).0.next())
 }
 
-pub(super) fn iterator_try_next<T: 'static, U: Iterator<Item = Result<T>> + 'static>(
-    it: *mut CIterator<Result<T>, U>,
-) -> *mut T {
+pub(super) fn iterator_try_next<T: 'static>(it: *mut CIterator<Result<T>>) -> *mut T {
     unwrap_optional_or_null(borrow_mut(it).0.next())
 }

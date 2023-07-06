@@ -19,69 +19,21 @@
  * under the License.
  */
 
-use std::{ffi::c_char, ptr::null_mut};
+use std::ffi::c_char;
 
 use super::{
+    common::{StringIterator, StringPairIterator},
     concept::ConceptIterator,
     iterator::CIterator,
-    memory::{borrow, borrow_mut, free, release, release_optional, release_string, string_free, string_view},
+    memory::{borrow, free, release, release_optional, release_string, string_view},
     query::ConceptMapIterator,
 };
 use crate::{
     answer::{ConceptMap, ConceptMapGroup, Explainable, Explainables, Numeric, NumericGroup},
-    common::{box_stream, stream::BoxStream},
+    common::box_stream,
     concept::Concept,
     logic::{Explanation, Rule},
 };
-
-type StringIteratorInner = CIterator<String, BoxStream<'static, String>>;
-
-pub struct StringIterator(StringIteratorInner);
-
-#[no_mangle]
-pub extern "C" fn string_iterator_next(it: *mut StringIterator) -> *mut c_char {
-    borrow_mut(it).0 .0.next().map(release_string).unwrap_or(null_mut())
-}
-
-#[no_mangle]
-pub extern "C" fn string_iterator_drop(it: *mut StringIterator) {
-    free(it);
-}
-
-#[repr(C)]
-pub struct StringPair(*mut c_char, *mut c_char);
-
-impl From<(String, String)> for StringPair {
-    fn from((left, right): (String, String)) -> Self {
-        Self(release_string(left), release_string(right))
-    }
-}
-
-impl Drop for StringPair {
-    fn drop(&mut self) {
-        string_free(self.0);
-        string_free(self.1);
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn string_pair_drop(string_pair: *mut StringPair) {
-    free(string_pair);
-}
-
-type StringPairIteratorInner = CIterator<(String, String), BoxStream<'static, (String, String)>>;
-
-pub struct StringPairIterator(StringPairIteratorInner);
-
-#[no_mangle]
-pub extern "C" fn string_pair_iterator_next(it: *mut StringPairIterator) -> *mut StringPair {
-    release_optional(borrow_mut(it).0 .0.next().map(Into::into))
-}
-
-#[no_mangle]
-pub extern "C" fn string_pair_iterator_drop(it: *mut StringPairIterator) {
-    free(it);
-}
 
 #[no_mangle]
 pub extern "C" fn concept_map_drop(concept_map: *mut ConceptMap) {

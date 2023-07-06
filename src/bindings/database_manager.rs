@@ -26,7 +26,7 @@ use super::{
     iterator::{iterator_next, CIterator},
     memory::{borrow, borrow_mut, free, release, string_view},
 };
-use crate::{Connection, Database, DatabaseManager};
+use crate::{common::box_stream, Connection, Database, DatabaseManager};
 
 #[no_mangle]
 pub extern "C" fn database_manager_new(connection: *const Connection) -> *mut DatabaseManager {
@@ -39,9 +39,7 @@ pub extern "C" fn database_manager_drop(databases: *mut DatabaseManager) {
     free(databases);
 }
 
-type DatabaseIteratorInner = CIterator<Database, <Vec<Database> as IntoIterator>::IntoIter>;
-
-pub struct DatabaseIterator(DatabaseIteratorInner);
+pub struct DatabaseIterator(CIterator<Database>);
 
 #[no_mangle]
 pub extern "C" fn database_iterator_next(it: *mut DatabaseIterator) -> *mut Database {
@@ -55,7 +53,7 @@ pub extern "C" fn database_iterator_drop(it: *mut DatabaseIterator) {
 
 #[no_mangle]
 pub extern "C" fn databases_all(databases: *mut DatabaseManager) -> *mut DatabaseIterator {
-    unwrap_or_null(borrow_mut(databases).all().map(|dbs| DatabaseIterator(CIterator(dbs.into_iter()))))
+    unwrap_or_null(borrow_mut(databases).all().map(|dbs| DatabaseIterator(CIterator(box_stream(dbs.into_iter())))))
 }
 
 #[no_mangle]

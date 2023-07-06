@@ -26,12 +26,7 @@ use super::{
     iterator::{iterator_try_next, CIterator},
     memory::{borrow, borrow_mut, free, release_string, string_view},
 };
-use crate::{
-    common::{box_stream, stream::BoxStream},
-    logic::Rule,
-    transaction::logic::api::RuleAPI,
-    Result, Transaction,
-};
+use crate::{common::box_stream, logic::Rule, transaction::logic::api::RuleAPI, Result, Transaction};
 
 #[no_mangle]
 pub extern "C" fn rule_drop(rule: *mut Rule) {
@@ -93,9 +88,7 @@ pub extern "C" fn logic_manager_get_rule(transaction: *mut Transaction<'static>,
     unwrap_optional_or_null(borrow(transaction).logic().get_rule(string_view(label).to_owned()).transpose())
 }
 
-type RuleIteratorInner = CIterator<Result<Rule>, BoxStream<'static, Result<Rule>>>;
-
-pub struct RuleIterator(RuleIteratorInner);
+pub struct RuleIterator(CIterator<Result<Rule>>);
 
 #[no_mangle]
 pub extern "C" fn rule_iterator_next(it: *mut RuleIterator) -> *mut Rule {
