@@ -24,6 +24,8 @@ use std::{
     ffi::{c_char, CStr, CString},
 };
 
+use log::trace;
+
 use crate::{Error, Result};
 
 thread_local! {
@@ -31,7 +33,9 @@ thread_local! {
 }
 
 pub(super) fn release<T>(t: T) -> *mut T {
-    Box::into_raw(Box::new(t))
+    let raw = Box::into_raw(Box::new(t));
+    trace!("Releasing ownership of <{}> @ {:?}", std::any::type_name::<T>(), raw);
+    raw
 }
 
 pub(super) fn release_optional<T>(t: Option<T>) -> *mut T {
@@ -39,29 +43,36 @@ pub(super) fn release_optional<T>(t: Option<T>) -> *mut T {
 }
 
 pub(super) fn release_string(str: String) -> *mut c_char {
-    CString::new(str).unwrap().into_raw()
+    let raw = CString::new(str).unwrap().into_raw();
+    trace!("Releasing ownership of <CString> @ {:?}", raw);
+    raw
 }
 
 pub(super) fn borrow<T>(raw: *const T) -> &'static T {
+    trace!("Borrowing <{}> @ {:?}", std::any::type_name::<T>(), raw);
     assert!(!raw.is_null());
     unsafe { &*raw }
 }
 
 pub(super) fn borrow_mut<T>(raw: *mut T) -> &'static mut T {
+    trace!("Borrowing (mut) <{}> @ {:?}", std::any::type_name::<T>(), raw);
     assert!(!raw.is_null());
     unsafe { &mut *raw }
 }
 
 pub(super) fn borrow_optional<T>(raw: *const T) -> Option<&'static T> {
+    trace!("Borrowing optional (null ok) <{}> @ {:?}", std::any::type_name::<T>(), raw);
     unsafe { raw.as_ref() }
 }
 
 pub(super) fn take_ownership<T>(raw: *mut T) -> T {
+    trace!("Taking ownership of <{}> @ {:?}", std::any::type_name::<T>(), raw);
     assert!(!raw.is_null());
     unsafe { *Box::from_raw(raw) }
 }
 
 pub(super) fn free<T>(raw: *mut T) {
+    trace!("Freeing <{}> @ {:?}", std::any::type_name::<T>(), raw);
     if !raw.is_null() {
         unsafe { drop(Box::from_raw(raw)) }
     }
@@ -74,6 +85,7 @@ pub(super) fn string_view(str: *const c_char) -> &'static str {
 
 #[no_mangle]
 pub extern "C" fn string_free(str: *mut c_char) {
+    trace!("Freeing <CString> @ {:?}", str);
     if !str.is_null() {
         unsafe { drop(CString::from_raw(str)) }
     }
@@ -130,6 +142,7 @@ pub(super) fn unwrap_void(result: Result) {
 }
 
 fn record_error(err: Error) {
+    trace!("Encountered error {err} in typedb-client-rust");
     LAST_ERROR.with(|prev| *prev.borrow_mut() = Some(err));
 }
 
