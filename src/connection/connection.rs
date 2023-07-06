@@ -62,9 +62,17 @@ impl Connection {
     pub fn new_plaintext(address: impl AsRef<str>) -> Result<Self> {
         let address: Address = address.as_ref().parse()?;
         let background_runtime = Arc::new(BackgroundRuntime::new()?);
+        let address = Self::fetch_advertised_address(background_runtime.clone(), address)?;
         let server_connection = ServerConnection::new_plaintext(background_runtime.clone(), address.clone())?;
         // TODO fetch and store server's advertised address
         Ok(Self { server_connections: [(address, server_connection)].into(), background_runtime, username: None })
+    }
+
+    fn fetch_advertised_address(background_runtime: Arc<BackgroundRuntime>, address: Address) -> Result<Address> {
+        match ServerConnection::new_plaintext(background_runtime, address)?.servers_all()?.into_iter().exactly_one() {
+            Ok(address) => Ok(address),
+            Err(_) => Err(ConnectionError::UnableToConnect().into()),
+        }
     }
 
     pub fn new_encrypted<T: AsRef<str> + Sync>(init_addresses: &[T], credential: Credential) -> Result<Self> {
