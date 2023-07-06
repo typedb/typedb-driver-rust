@@ -195,11 +195,11 @@ pub async fn create_database_with_timeout(databases: &DatabaseManager, name: Str
 macro_rules! assert_with_timeout {
     ($expr:expr, $message:expr $(, $arg:expr)* $(,)?) => {{
         't: {
-            for _ in 0..Context::STEP_CHECKS_ITERATIONS_LIMIT {
+            for _ in 0..Context::STEP_REATTEMPT_LIMIT {
                 if $expr {
                     break 't;
                 }
-                sleep(Context::PAUSE_BETWEEN_STEP_CHECKS).await;
+                sleep(Context::STEP_REATTEMPT_SLEEP).await;
             }
             panic!($message $(, $arg)*);
         }
