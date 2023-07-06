@@ -45,6 +45,7 @@ struct Foo {};                                  \
 
 %proxy(Error, error)
 
+%proxy(Credential, credential)
 %proxy(Options, options)
 
 #define connection_drop connection_close
@@ -162,6 +163,7 @@ void transaction_on_close_wrapper(const Transaction* transaction, TransactionCal
 %newobject transaction_new;
 %delobject transaction_commit;
 
+%newobject credential_new;
 %newobject options_new;
 
 %newobject get_last_error;

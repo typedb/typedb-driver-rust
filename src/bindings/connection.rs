@@ -19,11 +19,11 @@
  * under the License.
  */
 
-use std::ffi::c_char;
+use std::{ffi::c_char, path::Path};
 
 use super::{
     error::{unwrap_or_null, unwrap_void},
-    memory::{free, string_array_view, string_view, take_ownership},
+    memory::{borrow, free, release, string_array_view, string_view, take_ownership},
 };
 use crate::{Connection, Credential};
 
@@ -33,9 +33,12 @@ pub extern "C" fn connection_open_plaintext(address: *const c_char) -> *mut Conn
 }
 
 #[no_mangle]
-pub extern "C" fn connection_open_encrypted(addresses: *const *const c_char) -> *mut Connection {
+pub extern "C" fn connection_open_encrypted(
+    addresses: *const *const c_char,
+    credential: *const Credential,
+) -> *mut Connection {
     let addresses: Vec<&str> = string_array_view(addresses).collect();
-    unwrap_or_null(Connection::new_encrypted(&addresses, Credential::without_tls("admin", "password")))
+    unwrap_or_null(Connection::new_encrypted(&addresses, borrow(credential).clone()))
 }
 
 #[no_mangle]
@@ -46,4 +49,26 @@ pub extern "C" fn connection_close(connection: *mut Connection) {
 #[no_mangle]
 pub extern "C" fn connection_force_close(connection: *mut Connection) {
     unwrap_void(take_ownership(connection).force_close());
+}
+
+#[no_mangle]
+pub extern "C" fn credential_new(
+    username: *const c_char,
+    password: *const c_char,
+    tls_root_ca: *const c_char,
+    with_tls: bool,
+) -> *mut Credential {
+    let username = string_view(username);
+    let password = string_view(password);
+    if with_tls {
+        let tls_root_ca = unsafe { tls_root_ca.as_ref().map(|str| Path::new(string_view(str))) };
+        unwrap_or_null(Credential::with_tls(username, password, tls_root_ca))
+    } else {
+        release(Credential::without_tls(username, password))
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn credential_drop(credential: *mut Credential) {
+    free(credential);
 }
