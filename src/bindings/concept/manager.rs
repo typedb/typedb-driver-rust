@@ -23,8 +23,8 @@ use std::ffi::c_char;
 
 use crate::{
     bindings::{
-        error::{ok_record_flatten, unwrap_or_null},
-        memory::{borrow, release_optional, string_view},
+        error::{unwrap_optional_map, unwrap_or_null},
+        memory::{borrow, string_view},
     },
     common::IID,
     concept::{Concept, ValueType},
@@ -36,9 +36,9 @@ pub extern "C" fn concepts_get_entity_type(
     transaction: *const Transaction<'static>,
     label: *const c_char,
 ) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(borrow(transaction).concept().get_entity_type(string_view(label).to_owned()))
-            .map(Concept::EntityType),
+    unwrap_optional_map(
+        borrow(transaction).concept().get_entity_type(string_view(label).to_owned()).transpose(),
+        Concept::EntityType,
     )
 }
 
@@ -47,9 +47,9 @@ pub extern "C" fn concepts_get_relation_type(
     transaction: *const Transaction<'static>,
     label: *const c_char,
 ) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(borrow(transaction).concept().get_relation_type(string_view(label).to_owned()))
-            .map(Concept::RelationType),
+    unwrap_optional_map(
+        borrow(transaction).concept().get_relation_type(string_view(label).to_owned()).transpose(),
+        Concept::RelationType,
     )
 }
 
@@ -58,9 +58,9 @@ pub extern "C" fn concepts_get_attribute_type(
     transaction: *const Transaction<'static>,
     label: *const c_char,
 ) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(borrow(transaction).concept().get_attribute_type(string_view(label).to_owned()))
-            .map(Concept::AttributeType),
+    unwrap_optional_map(
+        borrow(transaction).concept().get_attribute_type(string_view(label).to_owned()).transpose(),
+        Concept::AttributeType,
     )
 }
 
@@ -104,25 +104,25 @@ fn iid_from_str(str: &str) -> IID {
 
 #[no_mangle]
 pub extern "C" fn concepts_get_entity(transaction: *const Transaction<'static>, iid: *const c_char) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(borrow(transaction).concept().get_entity(iid_from_str(string_view(iid))))
-            .map(Concept::Entity),
+    unwrap_optional_map(
+        borrow(transaction).concept().get_entity(iid_from_str(string_view(iid))).transpose(),
+        Concept::Entity,
     )
 }
 
 #[no_mangle]
 pub extern "C" fn concepts_get_relation(transaction: *const Transaction<'static>, iid: *const c_char) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(borrow(transaction).concept().get_relation(iid_from_str(string_view(iid))))
-            .map(Concept::Relation),
+    unwrap_optional_map(
+        borrow(transaction).concept().get_relation(iid_from_str(string_view(iid))).transpose(),
+        Concept::Relation,
     )
 }
 
 #[no_mangle]
 pub extern "C" fn concepts_get_attribute(transaction: *const Transaction<'static>, iid: *const c_char) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(borrow(transaction).concept().get_attribute(iid_from_str(string_view(iid))))
-            .map(Concept::Attribute),
+    unwrap_optional_map(
+        borrow(transaction).concept().get_attribute(iid_from_str(string_view(iid))).transpose(),
+        Concept::Attribute,
     )
 }
 

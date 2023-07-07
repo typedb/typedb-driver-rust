@@ -22,7 +22,7 @@
 use std::{ffi::c_char, ptr::addr_of_mut};
 
 use super::{
-    error::{unwrap_optional_or_null, unwrap_or_default, unwrap_or_null, unwrap_void},
+    error::{unwrap_optional, unwrap_or_default, unwrap_or_null, unwrap_void},
     iterator::{iterator_try_next, CIterator},
     memory::{borrow, borrow_mut, free, release_string, string_view},
 };
@@ -85,7 +85,7 @@ pub extern "C" fn logic_manager_put_rule(
 
 #[no_mangle]
 pub extern "C" fn logic_manager_get_rule(transaction: *mut Transaction<'static>, label: *mut c_char) -> *mut Rule {
-    unwrap_optional_or_null(borrow(transaction).logic().get_rule(string_view(label).to_owned()).transpose())
+    unwrap_optional(borrow(transaction).logic().get_rule(string_view(label).to_owned()).transpose())
 }
 
 pub struct RuleIterator(CIterator<Result<Rule>>);

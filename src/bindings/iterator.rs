@@ -20,7 +20,7 @@
  */
 
 use super::{
-    error::unwrap_optional_or_null,
+    error::unwrap_optional,
     memory::{borrow_mut, release_optional},
 };
 use crate::{common::stream::BoxStream, Result};
@@ -32,5 +32,5 @@ pub(super) fn iterator_next<T: 'static>(it: *mut CIterator<T>) -> *mut T {
 }
 
 pub(super) fn iterator_try_next<T: 'static>(it: *mut CIterator<Result<T>>) -> *mut T {
-    unwrap_optional_or_null(borrow_mut(it).0.next())
+    unwrap_optional(borrow_mut(it).0.next())
 }

@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{ffi::c_char, ptr::null_mut};
+use std::ffi::c_char;
 
 use typeql_lang::pattern::Annotation;
 
@@ -33,8 +33,10 @@ use super::{
 };
 use crate::{
     bindings::{
-        error::{ok_record_flatten, unwrap_or_default, unwrap_or_null, unwrap_to_c_string, unwrap_void},
-        memory::{borrow, borrow_optional, release_optional, release_string, string_array_view, string_view},
+        error::{
+            unwrap_optional_map, unwrap_optional_string, unwrap_or_default, unwrap_or_null, unwrap_string, unwrap_void,
+        },
+        memory::{borrow, borrow_optional, release_string, string_array_view, string_view},
     },
     concept::{Concept, Transitivity, Value, ValueType},
     transaction::concept::api::{AttributeTypeAPI, EntityTypeAPI, RelationTypeAPI, RoleTypeAPI},
@@ -109,12 +111,11 @@ pub extern "C" fn thing_type_get_owns_overridden(
     thing_type: *const Concept,
     overridden_attribute_type: *const Concept,
 ) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(
-            borrow_as_thing_type(thing_type)
-                .get_owns_overridden(borrow(transaction), borrow_as_attribute_type(overridden_attribute_type).clone()),
-        )
-        .map(Concept::AttributeType),
+    unwrap_optional_map(
+        borrow_as_thing_type(thing_type)
+            .get_owns_overridden(borrow(transaction), borrow_as_attribute_type(overridden_attribute_type).clone())
+            .transpose(),
+        Concept::AttributeType,
     )
 }
 
@@ -171,12 +172,11 @@ pub extern "C" fn thing_type_get_plays_overridden(
     thing_type: *const Concept,
     overridden_role_type: *const Concept,
 ) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(
-            borrow_as_thing_type(thing_type)
-                .get_plays_overridden(borrow(transaction), borrow_as_role_type(overridden_role_type).clone()),
-        )
-        .map(Concept::RoleType),
+    unwrap_optional_map(
+        borrow_as_thing_type(thing_type)
+            .get_plays_overridden(borrow(transaction), borrow_as_role_type(overridden_role_type).clone())
+            .transpose(),
+        Concept::RoleType,
     )
 }
 
@@ -210,7 +210,7 @@ pub extern "C" fn thing_type_get_syntax(
     transaction: *const Transaction<'static>,
     thing_type: *const Concept,
 ) -> *mut c_char {
-    unwrap_to_c_string(borrow_as_thing_type(thing_type).get_syntax(borrow(transaction)))
+    unwrap_string(borrow_as_thing_type(thing_type).get_syntax(borrow(transaction)))
 }
 
 #[no_mangle]
@@ -360,12 +360,11 @@ pub extern "C" fn relation_type_get_relates_for_role_label(
     relation_type: *const Concept,
     role_label: *const c_char,
 ) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(
-            borrow_as_relation_type(relation_type)
-                .get_relates_for_role_label(borrow(transaction), string_view(role_label).to_owned()),
-        )
-        .map(Concept::RoleType),
+    unwrap_optional_map(
+        borrow_as_relation_type(relation_type)
+            .get_relates_for_role_label(borrow(transaction), string_view(role_label).to_owned())
+            .transpose(),
+        Concept::RoleType,
     )
 }
 
@@ -375,12 +374,11 @@ pub extern "C" fn relation_type_get_relates_overridden(
     relation_type: *const Concept,
     overridden_role_label: *const c_char,
 ) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(
-            borrow_as_relation_type(relation_type)
-                .get_relates_overridden(borrow(transaction), string_view(overridden_role_label).to_owned()),
-        )
-        .map(Concept::RoleType),
+    unwrap_optional_map(
+        borrow_as_relation_type(relation_type)
+            .get_relates_overridden(borrow(transaction), string_view(overridden_role_label).to_owned())
+            .transpose(),
+        Concept::RoleType,
     )
 }
 
@@ -436,9 +434,9 @@ pub extern "C" fn attribute_type_get(
     attribute_type: *const Concept,
     value: *const Value,
 ) -> *mut Concept {
-    release_optional(
-        ok_record_flatten(borrow_as_attribute_type(attribute_type).get(borrow(transaction), borrow(value).clone()))
-            .map(Concept::Attribute),
+    unwrap_optional_map(
+        borrow_as_attribute_type(attribute_type).get(borrow(transaction), borrow(value).clone()).transpose(),
+        Concept::Attribute,
     )
 }
 
@@ -521,9 +519,7 @@ pub extern "C" fn attribute_type_get_regex(
     transaction: *mut Transaction<'static>,
     attribute_type: *const Concept,
 ) -> *mut c_char {
-    ok_record_flatten(borrow_as_attribute_type(attribute_type).get_regex(borrow(transaction)))
-        .map(release_string)
-        .unwrap_or_else(null_mut)
+    unwrap_optional_string(borrow_as_attribute_type(attribute_type).get_regex(borrow(transaction)).transpose())
 }
 
 #[no_mangle]

@@ -30,7 +30,7 @@ thread_local! {
     static LAST_ERROR: RefCell<Option<Error>> = RefCell::new(None);
 }
 
-pub(super) fn ok_record<T>(result: Result<T>) -> Option<T> {
+fn ok_record<T>(result: Result<T>) -> Option<T> {
     match result {
         Ok(value) => Some(value),
         Err(err) => {
@@ -40,26 +40,28 @@ pub(super) fn ok_record<T>(result: Result<T>) -> Option<T> {
     }
 }
 
-pub(super) fn ok_record_flatten<T>(result: Result<Option<T>>) -> Option<T> {
-    match result {
-        Ok(value) => value,
-        Err(err) => {
-            record_error(err);
-            None
-        }
-    }
+fn ok_record_flatten<T>(result: Option<Result<T>>) -> Option<T> {
+    result.map(ok_record).flatten()
 }
 
 pub(super) fn unwrap_or_null<T>(result: Result<T>) -> *mut T {
     release_optional(ok_record(result))
 }
 
-pub(super) fn unwrap_optional_or_null<T>(result: Option<Result<T>>) -> *mut T {
-    release_optional(ok_record_flatten(result.transpose()))
+pub(super) fn unwrap_optional_map<T, U>(result: Option<Result<T>>, f: impl FnOnce(T) -> U) -> *mut U {
+    release_optional(ok_record_flatten(result).map(f))
 }
 
-pub(super) fn unwrap_to_c_string(result: Result<String>) -> *mut c_char {
+pub(super) fn unwrap_optional<T>(result: Option<Result<T>>) -> *mut T {
+    release_optional(ok_record_flatten(result))
+}
+
+pub(super) fn unwrap_string(result: Result<String>) -> *mut c_char {
     ok_record(result).map(release_string).unwrap_or_else(null_mut)
+}
+
+pub(super) fn unwrap_optional_string(result: Option<Result<String>>) -> *mut c_char {
+    ok_record_flatten(result).map(release_string).unwrap_or_else(null_mut)
 }
 
 pub(super) fn unwrap_or_default<T: Copy + Default>(result: Result<T>) -> T {

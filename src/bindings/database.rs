@@ -22,7 +22,7 @@
 use std::ffi::c_char;
 
 use super::{
-    error::{unwrap_to_c_string, unwrap_void},
+    error::{unwrap_string, unwrap_void},
     memory::{borrow, borrow_mut, free, release_string, take_ownership},
 };
 use crate::Database;
@@ -44,15 +44,15 @@ pub extern "C" fn database_delete(database: *mut Database) {
 
 #[no_mangle]
 pub extern "C" fn database_schema(database: *mut Database) -> *mut c_char {
-    unwrap_to_c_string(borrow_mut(database).schema())
+    unwrap_string(borrow_mut(database).schema())
 }
 
 #[no_mangle]
 pub extern "C" fn database_type_schema(database: *mut Database) -> *mut c_char {
-    unwrap_to_c_string(borrow_mut(database).type_schema())
+    unwrap_string(borrow_mut(database).type_schema())
 }
 
 #[no_mangle]
 pub extern "C" fn database_rule_schema(database: *mut Database) -> *mut c_char {
-    unwrap_to_c_string(borrow_mut(database).rule_schema())
+    unwrap_string(borrow_mut(database).rule_schema())
 }
