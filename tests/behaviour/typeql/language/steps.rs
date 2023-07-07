@@ -352,12 +352,13 @@ generic_step_impl! {
     async fn rules_contain(context: &mut Context, rule_label: LabelParam) {
         let res = context.transaction().logic().get_rule(rule_label.name).await;
         assert!(res.is_ok(), "{res:?}");
+        assert!(res.as_ref().unwrap().is_some(), "{res:?}");
     }
 
     #[step(expr = "rules do not contain: {label}")]
     async fn rules_do_not_contain(context: &mut Context, rule_label: LabelParam) {
         let res = context.transaction().logic().get_rule(rule_label.name).await;
-        assert!(res.is_err(), "{res:?}");
+        assert_eq!(res, Ok(None), "{res:?}");
     }
 
     #[step(expr = "rules are")]
