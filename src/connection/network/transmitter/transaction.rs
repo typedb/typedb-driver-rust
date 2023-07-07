@@ -112,18 +112,6 @@ impl TransactionTransmitter {
         self.on_close_register_sink.send(Box::new(callback)).ok();
     }
 
-    #[cfg(feature = "sync")]
-    pub(in crate::connection) fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
-        if !self.is_open() {
-            let error = self.error.read().unwrap();
-            assert!(error.is_some());
-            return Err(error.clone().unwrap().into());
-        }
-        let (res_sink, recv) = oneshot();
-        self.request_sink.send((req, Some(ResponseSink::BlockingOneShot(res_sink))))?;
-        recv.recv()?
-    }
-
     #[cfg(not(feature = "sync"))]
     pub(in crate::connection) async fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
         if !self.is_open() {
@@ -134,6 +122,18 @@ impl TransactionTransmitter {
         let (res_sink, recv) = oneshot();
         self.request_sink.send((req, Some(ResponseSink::AsyncOneShot(res_sink))))?;
         recv.await?.map(Into::into)
+    }
+
+    #[cfg(feature = "sync")]
+    pub(in crate::connection) fn single(&self, req: TransactionRequest) -> Result<TransactionResponse> {
+        if !self.is_open() {
+            let error = self.error.read().unwrap();
+            assert!(error.is_some());
+            return Err(error.clone().unwrap().into());
+        }
+        let (res_sink, recv) = oneshot();
+        self.request_sink.send((req, Some(ResponseSink::BlockingOneShot(res_sink))))?;
+        recv.recv()?
     }
 
     pub(in crate::connection) fn stream(
