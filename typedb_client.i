@@ -145,55 +145,51 @@ void transaction_on_close_wrapper(const Transaction* transaction, TransactionCal
 }
 %}
 
-%newobject connection_open_plaintext;
-%newobject connection_open_encrypted;
-
-%newobject database_manager_new;
-
-%newobject databases_all;
-%newobject databases_get;
-
-%newobject database_iterator_next;
-
 %delobject database_delete;
-%newobject database_get_name;
 
-%newobject session_new;
-
-%newobject transaction_new;
 %delobject transaction_commit;
-
-%newobject credential_new;
-%newobject options_new;
-
-%newobject get_last_error;
-%newobject error_code;
-%newobject error_message;
 
 %typemap(newfree) char* "string_free($1);";
 %ignore string_free;
 
-%newobject concept_map_iterator_next;
-%newobject query_match;
-%newobject query_insert;
-%newobject query_update;
-%newobject query_match_aggregate;
-%newobject concept_map_group_iterator_next;
-%newobject query_match_group;
-%newobject numeric_group_iterator_next;
-%newobject query_match_group_aggregate;
-%newobject explanation_iterator_next;
-%newobject query_explain;
-%newobject concept_iterator_next;
-%newobject role_player_iterator_next;
-%newobject role_player_get_role_type;
-%newobject role_player_get_player;
+%newobject concept_map_get_variables;
+%newobject concept_map_get_values;
+%newobject concept_map_get;
+%newobject concept_map_get_explainables;
+%newobject concept_map_to_string;
+
+%newobject explainables_get_relation;
+%newobject explainables_get_attribute;
+%newobject explainables_get_ownership;
+%newobject explainables_get_relations_keys;
+%newobject explainables_get_attributes_keys;
+%newobject explainables_get_ownerships_keys;
+
+%newobject explainable_get_conjunction;
+
+%newobject explanation_get_rule;
+%newobject explanation_get_conclusion;
+%newobject explanation_get_condition;
+
+%newobject concept_map_group_get_owner;
+%newobject concept_map_group_get_concept_maps;
+
+%newobject numeric_group_get_owner;
+%newobject numeric_group_get_numeric;
+
+%newobject string_iterator_next;
+
+%newobject string_pair_iterator_next;
+
 %newobject value_new_boolean;
 %newobject value_new_long;
 %newobject value_new_double;
 %newobject value_new_string;
 %newobject value_new_date_time_from_millis;
 %newobject value_get_string;
+
+%newobject concept_to_string;
+
 %newobject concepts_get_entity_type;
 %newobject concepts_get_relation_type;
 %newobject concepts_get_attribute_type;
@@ -203,60 +199,45 @@ void transaction_on_close_wrapper(const Transaction* transaction, TransactionCal
 %newobject concepts_get_entity;
 %newobject concepts_get_relation;
 %newobject concepts_get_attribute;
+
+%newobject concept_iterator_next;
+
+%newobject role_player_iterator_next;
+
+%newobject role_player_get_role_type;
+%newobject role_player_get_player;
+
 %newobject thing_get_iid;
+
 %newobject entity_get_type;
 %newobject relation_get_type;
 %newobject attribute_get_type;
+
 %newobject attribute_get_value;
+
 %newobject thing_get_has;
 %newobject thing_get_relations;
 %newobject thing_get_playing;
+
 %newobject relation_get_players_by_role_type;
 %newobject relation_get_role_players;
 %newobject relation_get_relating;
+
 %newobject attribute_get_owners;
-%newobject database_schema;
-%newobject database_type_schema;
-%newobject database_rule_schema;
-%newobject string_iterator_next;
-%newobject string_pair_iterator_next;
-%newobject concept_map_get_variables;
-%newobject concept_map_get_values;
-%newobject concept_map_get;
-%newobject concept_map_get_explainables;
-%newobject explainables_get_relation;
-%newobject explainables_get_attribute;
-%newobject explainables_get_ownership;
-%newobject explainables_get_relations_keys;
-%newobject explainables_get_attributes_keys;
-%newobject explainables_get_ownerships_keys;
-%newobject explainable_get_conjunction;
-%newobject explanation_get_rule;
-%newobject explanation_get_conclusion;
-%newobject explanation_get_condition;
-%newobject concept_map_group_get_owner;
-%newobject concept_map_group_get_concept_maps;
-%newobject numeric_group_get_owner;
-%newobject numeric_group_get_numeric;
-%newobject session_get_database_name;
-%newobject rule_get_label;
-%newobject rule_get_when;
-%newobject rule_get_then;
-%newobject logic_manager_put_rule;
-%newobject logic_manager_get_rule;
-%newobject rule_iterator_next;
-%newobject logic_manager_get_rules;
+
 %newobject thing_type_get_label;
 %newobject thing_type_get_owns;
 %newobject thing_type_get_owns_overridden;
 %newobject thing_type_get_plays;
 %newobject thing_type_get_plays_overridden;
 %newobject thing_type_get_syntax;
+
 %newobject entity_type_create;
 %newobject entity_type_get_supertype;
 %newobject entity_type_get_supertypes;
 %newobject entity_type_get_subtypes;
 %newobject entity_type_get_instances;
+
 %newobject relation_type_create;
 %newobject relation_type_get_supertype;
 %newobject relation_type_get_supertypes;
@@ -265,6 +246,7 @@ void transaction_on_close_wrapper(const Transaction* transaction, TransactionCal
 %newobject relation_type_get_relates;
 %newobject relation_type_get_relates_for_role_label;
 %newobject relation_type_get_relates_overridden;
+
 %newobject attribute_type_put;
 %newobject attribute_type_get;
 %newobject attribute_type_get_supertype;
@@ -274,7 +256,10 @@ void transaction_on_close_wrapper(const Transaction* transaction, TransactionCal
 %newobject attribute_type_get_instances;
 %newobject attribute_type_get_regex;
 %newobject attribute_type_get_owners;
+
 %newobject role_type_get_relation_type;
+%newobject role_type_get_scope;
+%newobject role_type_get_name;
 %newobject role_type_get_supertype;
 %newobject role_type_get_supertypes;
 %newobject role_type_get_subtypes;
@@ -282,5 +267,56 @@ void transaction_on_close_wrapper(const Transaction* transaction, TransactionCal
 %newobject role_type_get_player_types;
 %newobject role_type_get_relation_instances;
 %newobject role_type_get_player_instances;
+
+%newobject connection_open_plaintext;
+%newobject connection_open_encrypted;
+
+%newobject credential_new;
+
+%newobject database_get_name;
+%newobject database_schema;
+%newobject database_type_schema;
+%newobject database_rule_schema;
+%newobject database_manager_new;
+%newobject database_iterator_next;
+
+%newobject databases_all;
+%newobject databases_get;
+
+%newobject get_last_error;
+%newobject error_code;
+%newobject error_message;
+
+%newobject rule_get_label;
+%newobject rule_get_when;
+%newobject rule_get_then;
+
+%newobject logic_manager_put_rule;
+%newobject logic_manager_get_rule;
+
+%newobject rule_iterator_next;
+
+%newobject logic_manager_get_rules;
+
+%newobject options_new;
+
+%newobject concept_map_iterator_next;
+
+%newobject query_match;
+%newobject query_insert;
+%newobject query_update;
+%newobject query_match_aggregate;
+%newobject query_match_group;
+%newobject query_match_group_aggregate;
+%newobject query_explain;
+
+%newobject concept_map_group_iterator_next;
+%newobject numeric_group_iterator_next;
+%newobject explanation_iterator_next;
+
+%newobject session_new;
+%newobject session_get_database_name;
+
+%newobject transaction_new;
 
 %include "typedb_client.h"
