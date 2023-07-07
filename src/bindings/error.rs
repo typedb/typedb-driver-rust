@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::{cell::RefCell, ffi::c_char};
+use std::{cell::RefCell, ffi::c_char, ptr::null_mut};
 
 use log::trace;
 
@@ -59,7 +59,7 @@ pub(super) fn unwrap_optional_or_null<T>(result: Option<Result<T>>) -> *mut T {
 }
 
 pub(super) fn unwrap_to_c_string(result: Result<String>) -> *mut c_char {
-    ok_record(result).map(release_string).unwrap_or_else(std::ptr::null_mut)
+    ok_record(result).map(release_string).unwrap_or_else(null_mut)
 }
 
 pub(super) fn unwrap_or_default<T: Copy + Default>(result: Result<T>) -> T {

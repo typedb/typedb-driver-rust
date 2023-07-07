@@ -22,6 +22,7 @@
 use std::{
     cell::RefCell,
     ffi::{c_char, CStr, CString},
+    ptr::null_mut,
 };
 
 use log::trace;
@@ -39,7 +40,7 @@ pub(super) fn release<T>(t: T) -> *mut T {
 }
 
 pub(super) fn release_optional<T>(t: Option<T>) -> *mut T {
-    t.map(release).unwrap_or(std::ptr::null_mut())
+    t.map(release).unwrap_or_else(null_mut)
 }
 
 pub(super) fn release_string(str: String) -> *mut c_char {

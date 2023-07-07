@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::ffi::c_char;
+use std::{ffi::c_char, ptr::null_mut};
 
 use typeql_lang::pattern::Annotation;
 

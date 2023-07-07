@@ -30,7 +30,7 @@ pub struct StringIterator(pub CIterator<String>);
 
 #[no_mangle]
 pub extern "C" fn string_iterator_next(it: *mut StringIterator) -> *mut c_char {
-    borrow_mut(it).0 .0.next().map(release_string).unwrap_or(null_mut())
+    borrow_mut(it).0 .0.next().map(release_string).unwrap_or_else(null_mut)
 }
 
 #[no_mangle]
