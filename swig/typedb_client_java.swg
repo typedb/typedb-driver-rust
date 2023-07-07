@@ -28,10 +28,6 @@
 #define PACKAGE_PATH_ "com/vaticle/typedb/client/jni"
 
 %typemap(javacode) SWIGTYPE %{
-    public long CPtr() {
-        return swigCPtr;
-    }
-
     public $javaclassname released() {
         if (swigCMemOwn) {
             swigCMemOwn = false;
