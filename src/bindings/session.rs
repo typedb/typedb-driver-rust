@@ -47,7 +47,6 @@ pub extern "C" fn session_get_database_name(session: *const Session) -> *mut c_c
 }
 
 #[no_mangle]
-pub extern "C" fn session_on_close(session: *const Session, callback: extern "C" fn(usize)) {
-    let session_addr = session as usize;
-    borrow(session).on_close(move || callback(session_addr));
+pub extern "C" fn session_on_close(session: *const Session, callback_id: usize, callback: extern "C" fn(usize)) {
+    borrow(session).on_close(move || callback(callback_id));
 }

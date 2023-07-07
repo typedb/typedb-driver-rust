@@ -60,7 +60,10 @@ pub extern "C" fn transaction_is_open(txn: *const Transaction<'static>) -> bool 
 }
 
 #[no_mangle]
-pub extern "C" fn transaction_on_close(txn: *const Transaction<'static>, callback: extern "C" fn(usize, *mut Error)) {
-    let txn_addr = txn as usize;
-    borrow(txn).on_close(move |error| callback(txn_addr, release(error.into())));
+pub extern "C" fn transaction_on_close(
+    txn: *const Transaction<'static>,
+    callback_id: usize,
+    callback: extern "C" fn(usize, *mut Error),
+) {
+    borrow(txn).on_close(move |error| callback(callback_id, release(error.into())));
 }

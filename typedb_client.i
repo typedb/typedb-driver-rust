@@ -103,19 +103,22 @@ struct SessionCallbackDirector {
 %{
 #include <memory>
 #include <unordered_map>
-static std::unordered_map<size_t, SessionCallbackDirector*> registeredSessionCallbacks {};
-static void session_callback_helper(size_t address) {
-    registeredSessionCallbacks.at(address)->callback();
-    registeredSessionCallbacks.erase(address);
+static std::unordered_map<size_t, SessionCallbackDirector*> sessionOnCloseCallbacks {};
+static void session_callback_execute(size_t ID) {
+    sessionOnCloseCallbacks.at(ID)->callback();
+    sessionOnCloseCallbacks.erase(ID);
 }
 %}
 
-%rename(session_on_close) session_on_close_wrapper;
+%rename(session_on_close) session_on_close_register;
 %ignore session_on_close;
 %inline %{
-void session_on_close_wrapper(const Session* session, SessionCallbackDirector* handler) {
-    registeredSessionCallbacks.insert({(size_t)session, handler});
-    session_on_close(session, &session_callback_helper);
+#include <atomic>
+void session_on_close_register(const Session* session, SessionCallbackDirector* handler) {
+    static std::atomic_size_t nextID;
+    std::size_t ID = nextID.fetch_add(1);
+    sessionOnCloseCallbacks.insert({ID, handler});
+    session_on_close(session, ID, &session_callback_execute);
 }
 %}
 
@@ -131,19 +134,22 @@ struct TransactionCallbackDirector {
 %{
 #include <memory>
 #include <unordered_map>
-static std::unordered_map<size_t, TransactionCallbackDirector*> registeredTransactionCallbacks {};
-static void transaction_callback_helper(size_t address, Error* error) {
-    registeredTransactionCallbacks.at(address)->callback(error);
-    registeredTransactionCallbacks.erase(address);
+static std::unordered_map<size_t, TransactionCallbackDirector*> transactionOnCloseCallbacks {};
+static void transaction_callback_execute(size_t ID, Error* error) {
+    transactionOnCloseCallbacks.at(ID)->callback(error);
+    transactionOnCloseCallbacks.erase(ID);
 }
 %}
 
-%rename(transaction_on_close) transaction_on_close_wrapper;
+%rename(transaction_on_close) transaction_on_close_register;
 %ignore transaction_on_close;
 %inline %{
-void transaction_on_close_wrapper(const Transaction* transaction, TransactionCallbackDirector* handler) {
-    registeredTransactionCallbacks.insert({(size_t)transaction, handler});
-    transaction_on_close(transaction, &transaction_callback_helper);
+#include <atomic>
+void transaction_on_close_register(const Transaction* transaction, TransactionCallbackDirector* handler) {
+    static std::atomic_size_t nextID;
+    std::size_t ID = nextID.fetch_add(1);
+    transactionOnCloseCallbacks.insert({ID, handler});
+    transaction_on_close(transaction, ID, &transaction_callback_execute);
 }
 %}
 
