@@ -349,55 +349,62 @@ impl ServerConnection {
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn all_users(&self) -> Result<Vec<User>> {
-        match self.request_async(Request::UsersAll).await? {
+        match self.request(Request::UsersAll).await? {
             Response::UsersAll { users } => Ok(users),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn contains_user(&self, username: String) -> Result<bool> {
-        match self.request_async(Request::UsersContain { username }).await? {
+        match self.request(Request::UsersContain { username }).await? {
             Response::UsersContain { contains } => Ok(contains),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn create_user(&self, username: String, password: String) -> Result {
-        match self.request_async(Request::UsersCreate { username, password }).await? {
+        match self.request(Request::UsersCreate { username, password }).await? {
             Response::UsersCreate => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn delete_user(&self, username: String) -> Result {
-        match self.request_async(Request::UsersDelete { username }).await? {
+        match self.request(Request::UsersDelete { username }).await? {
             Response::UsersDelete => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn get_user(&self, username: String) -> Result<Option<User>> {
-        match self.request_async(Request::UsersGet { username }).await? {
+        match self.request(Request::UsersGet { username }).await? {
             Response::UsersGet { user } => Ok(user),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn set_user_password(&self, username: String, password: String) -> Result {
-        match self.request_async(Request::UsersPasswordSet { username, password }).await? {
+        match self.request(Request::UsersPasswordSet { username, password }).await? {
             Response::UsersPasswordSet => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
     }
 
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub(crate) async fn update_user_password(
         &self,
         username: String,
         password_old: String,
         password_new: String,
     ) -> Result {
-        match self.request_async(Request::UserPasswordUpdate { username, password_old, password_new }).await? {
+        match self.request(Request::UserPasswordUpdate { username, password_old, password_new }).await? {
             Response::UserPasswordUpdate => Ok(()),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }
