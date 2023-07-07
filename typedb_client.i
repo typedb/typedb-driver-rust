@@ -35,10 +35,11 @@ extern "C" {
 
 %nodefaultctor;
 
-#define %proxy(Foo, foo)                        \
-struct Foo {};                                  \
-%ignore foo ## _drop;                           \
-%extend Foo { ~Foo() { foo ## _drop(self); } }  \
+%define %proxy(Foo, foo)
+struct Foo {};
+%ignore foo ## _drop;
+%extend Foo { ~Foo() { foo ## _drop(self); } }
+%enddef
 
 %proxy(Error, error)
 
