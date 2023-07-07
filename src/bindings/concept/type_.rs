@@ -521,7 +521,9 @@ pub extern "C" fn attribute_type_get_regex(
     transaction: *mut Transaction<'static>,
     attribute_type: *const Concept,
 ) -> *mut c_char {
-    unwrap_to_c_string(borrow_as_attribute_type(attribute_type).get_regex(borrow(transaction)))
+    ok_record_flatten(borrow_as_attribute_type(attribute_type).get_regex(borrow(transaction)))
+        .map(release_string)
+        .unwrap_or_else(null_mut)
 }
 
 #[no_mangle]

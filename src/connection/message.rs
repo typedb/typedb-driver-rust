@@ -422,7 +422,7 @@ pub(super) enum ThingTypeResponse {
     AttributeTypeGetSupertypes { attribute_types: Vec<AttributeType> },
     AttributeTypeGetSubtypes { attribute_types: Vec<AttributeType> },
     AttributeTypeGetInstances { attributes: Vec<Attribute> },
-    AttributeTypeGetRegex { regex: String },
+    AttributeTypeGetRegex { regex: Option<String> },
     AttributeTypeSetRegex,
     AttributeTypeGetOwners { thing_types: Vec<ThingType> },
 }

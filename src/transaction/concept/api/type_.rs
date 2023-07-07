@@ -445,7 +445,7 @@ pub trait AttributeTypeAPI: ThingTypeAPI + Clone + Into<AttributeType> {
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
-    async fn get_regex(&self, transaction: &Transaction<'_>) -> Result<String> {
+    async fn get_regex(&self, transaction: &Transaction<'_>) -> Result<Option<String>> {
         transaction.concept().transaction_stream.attribute_type_get_regex(self.clone().into()).await
     }
 

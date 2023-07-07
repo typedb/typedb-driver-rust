@@ -918,7 +918,7 @@ impl TryFromProto<thing_type::Res> for ThingTypeResponse {
             }),
             Some(thing_type::res::Res::AttributeTypeSetSupertypeRes(_)) => Ok(Self::AttributeTypeSetSupertype),
             Some(thing_type::res::Res::AttributeTypeGetRegexRes(attribute_type::get_regex::Res { regex })) => {
-                Ok(Self::AttributeTypeGetRegex { regex })
+                Ok(Self::AttributeTypeGetRegex { regex: Some(regex).filter(|s| !s.is_empty()) })
             }
             Some(thing_type::res::Res::AttributeTypeSetRegexRes(_)) => Ok(Self::AttributeTypeSetRegex),
             None => Err(ConnectionError::MissingResponseField("res").into()),

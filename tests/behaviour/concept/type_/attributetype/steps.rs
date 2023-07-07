@@ -438,7 +438,7 @@ generic_step_impl! {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
         assert_eq!(attribute_type.value_type, value_type.value_type);
-        assert_eq!(attribute_type.get_regex(tx).await?, regex);
+        assert_eq!(attribute_type.get_regex(tx).await?, Some(regex));
         Ok(())
     }
 
@@ -451,7 +451,7 @@ generic_step_impl! {
         let tx = context.transaction();
         let attribute_type = context.get_attribute_type(type_label.name).await?;
         assert_eq!(attribute_type.value_type, value_type.value_type);
-        assert!(attribute_type.get_regex(tx).await?.is_empty());
+        assert!(attribute_type.get_regex(tx).await?.is_none());
         Ok(())
     }
 

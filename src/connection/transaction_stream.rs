@@ -722,7 +722,7 @@ impl TransactionStream {
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
-    pub(crate) async fn attribute_type_get_regex(&self, attribute_type: AttributeType) -> Result<String> {
+    pub(crate) async fn attribute_type_get_regex(&self, attribute_type: AttributeType) -> Result<Option<String>> {
         match self.thing_type_single(ThingTypeRequest::AttributeTypeGetRegex { attribute_type }).await? {
             ThingTypeResponse::AttributeTypeGetRegex { regex } => Ok(regex),
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
