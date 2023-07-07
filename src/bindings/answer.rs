@@ -61,6 +61,11 @@ pub extern "C" fn concept_map_get_explainables(concept_map: *const ConceptMap) -
 }
 
 #[no_mangle]
+pub extern "C" fn concept_map_equals(lhs: *const ConceptMap, rhs: *const ConceptMap) -> bool {
+    borrow(lhs) == borrow(rhs)
+}
+
+#[no_mangle]
 pub extern "C" fn concept_map_to_string(concept_map: *const ConceptMap) -> *mut c_char {
     release_string(format!("{:?}", borrow(concept_map)))
 }
@@ -164,6 +169,11 @@ pub extern "C" fn concept_map_group_get_concept_maps(
     release(ConceptMapIterator(CIterator(box_stream(
         borrow(concept_map_group).concept_maps.clone().into_iter().map(Ok),
     ))))
+}
+
+#[no_mangle]
+pub extern "C" fn concept_map_group_equals(lhs: *const ConceptMapGroup, rhs: *const ConceptMapGroup) -> bool {
+    borrow(lhs) == borrow(rhs)
 }
 
 #[no_mangle]
