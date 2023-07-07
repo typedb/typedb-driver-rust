@@ -44,23 +44,23 @@ fn ok_record_flatten<T>(result: Option<Result<T>>) -> Option<T> {
     result.map(ok_record).flatten()
 }
 
-pub(super) fn unwrap_or_null<T>(result: Result<T>) -> *mut T {
+pub(super) fn try_release<T>(result: Result<T>) -> *mut T {
     release_optional(ok_record(result))
 }
 
-pub(super) fn unwrap_optional_map<T, U>(result: Option<Result<T>>, f: impl FnOnce(T) -> U) -> *mut U {
+pub(super) fn try_release_map_optional<T, U>(result: Option<Result<T>>, f: impl FnOnce(T) -> U) -> *mut U {
     release_optional(ok_record_flatten(result).map(f))
 }
 
-pub(super) fn unwrap_optional<T>(result: Option<Result<T>>) -> *mut T {
+pub(super) fn try_release_optional<T>(result: Option<Result<T>>) -> *mut T {
     release_optional(ok_record_flatten(result))
 }
 
-pub(super) fn unwrap_string(result: Result<String>) -> *mut c_char {
+pub(super) fn try_release_string(result: Result<String>) -> *mut c_char {
     ok_record(result).map(release_string).unwrap_or_else(null_mut)
 }
 
-pub(super) fn unwrap_optional_string(result: Option<Result<String>>) -> *mut c_char {
+pub(super) fn try_release_optional_string(result: Option<Result<String>>) -> *mut c_char {
     ok_record_flatten(result).map(release_string).unwrap_or_else(null_mut)
 }
 

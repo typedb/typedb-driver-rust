@@ -20,7 +20,7 @@
  */
 
 use super::{
-    error::{unwrap_or_null, unwrap_void},
+    error::{try_release, unwrap_void},
     memory::{borrow, borrow_mut, free, release, take_ownership},
 };
 use crate::{Error, Options, Session, Transaction, TransactionType};
@@ -31,7 +31,7 @@ pub extern "C" fn transaction_new(
     type_: TransactionType,
     options: *const Options,
 ) -> *mut Transaction<'static> {
-    unwrap_or_null(borrow(session).transaction_with_options(type_, borrow(options).clone()))
+    try_release(borrow(session).transaction_with_options(type_, borrow(options).clone()))
 }
 
 #[no_mangle]

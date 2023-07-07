@@ -22,14 +22,14 @@
 use std::{ffi::c_char, path::Path};
 
 use super::{
-    error::{unwrap_or_null, unwrap_void},
+    error::{try_release, unwrap_void},
     memory::{borrow, free, release, string_array_view, string_view, take_ownership},
 };
 use crate::{Connection, Credential};
 
 #[no_mangle]
 pub extern "C" fn connection_open_plaintext(address: *const c_char) -> *mut Connection {
-    unwrap_or_null(Connection::new_plaintext(string_view(address)))
+    try_release(Connection::new_plaintext(string_view(address)))
 }
 
 #[no_mangle]
@@ -38,7 +38,7 @@ pub extern "C" fn connection_open_encrypted(
     credential: *const Credential,
 ) -> *mut Connection {
     let addresses: Vec<&str> = string_array_view(addresses).collect();
-    unwrap_or_null(Connection::new_encrypted(&addresses, borrow(credential).clone()))
+    try_release(Connection::new_encrypted(&addresses, borrow(credential).clone()))
 }
 
 #[no_mangle]
@@ -62,7 +62,7 @@ pub extern "C" fn credential_new(
     let password = string_view(password);
     if with_tls {
         let tls_root_ca = unsafe { tls_root_ca.as_ref().map(|str| Path::new(string_view(str))) };
-        unwrap_or_null(Credential::with_tls(username, password, tls_root_ca))
+        try_release(Credential::with_tls(username, password, tls_root_ca))
     } else {
         release(Credential::without_tls(username, password))
     }

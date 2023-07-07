@@ -22,7 +22,7 @@
 use std::{ffi::c_char, ptr::addr_of_mut};
 
 use super::{
-    error::{unwrap_optional, unwrap_or_default, unwrap_or_null, unwrap_void},
+    error::{try_release, try_release_optional, unwrap_or_default, unwrap_void},
     iterator::{iterator_try_next, CIterator},
     memory::{borrow, borrow_mut, free, release_string, string_view},
 };
@@ -74,7 +74,7 @@ pub extern "C" fn logic_manager_put_rule(
     when: *const c_char,
     then: *const c_char,
 ) -> *mut Rule {
-    unwrap_or_null((|| {
+    try_release((|| {
         borrow(transaction).logic().put_rule(
             string_view(label).to_owned(),
             typeql_lang::parse_pattern(string_view(when))?.into_conjunction(),
@@ -85,7 +85,7 @@ pub extern "C" fn logic_manager_put_rule(
 
 #[no_mangle]
 pub extern "C" fn logic_manager_get_rule(transaction: *mut Transaction<'static>, label: *mut c_char) -> *mut Rule {
-    unwrap_optional(borrow(transaction).logic().get_rule(string_view(label).to_owned()).transpose())
+    try_release_optional(borrow(transaction).logic().get_rule(string_view(label).to_owned()).transpose())
 }
 
 pub struct RuleIterator(CIterator<Result<Rule>>);
@@ -102,5 +102,5 @@ pub extern "C" fn rule_iterator_drop(it: *mut RuleIterator) {
 
 #[no_mangle]
 pub extern "C" fn logic_manager_get_rules(transaction: *mut Transaction<'static>) -> *mut RuleIterator {
-    unwrap_or_null(borrow(transaction).logic().get_rules().map(|it| RuleIterator(CIterator(box_stream(it)))))
+    try_release(borrow(transaction).logic().get_rules().map(|it| RuleIterator(CIterator(box_stream(it)))))
 }

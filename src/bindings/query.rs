@@ -22,7 +22,7 @@
 use std::{ffi::c_char, ptr::addr_of_mut};
 
 use super::{
-    error::{unwrap_or_null, unwrap_void},
+    error::{try_release, unwrap_void},
     iterator::{iterator_try_next, CIterator},
     memory::{borrow, free, string_view},
 };
@@ -70,7 +70,7 @@ pub extern "C" fn query_match(
     query: *const c_char,
     options: *const Options,
 ) -> *mut ConceptMapIterator {
-    unwrap_or_null(
+    try_release(
         borrow(transaction)
             .query()
             .match_with_options(string_view(query), borrow(options).clone())
@@ -84,7 +84,7 @@ pub extern "C" fn query_insert(
     query: *const c_char,
     options: *const Options,
 ) -> *mut ConceptMapIterator {
-    unwrap_or_null(
+    try_release(
         borrow(transaction)
             .query()
             .insert_with_options(string_view(query), borrow(options).clone())
@@ -98,7 +98,7 @@ pub extern "C" fn query_update(
     query: *const c_char,
     options: *const Options,
 ) -> *mut ConceptMapIterator {
-    unwrap_or_null(
+    try_release(
         borrow(transaction)
             .query()
             .update_with_options(string_view(query), borrow(options).clone())
@@ -112,9 +112,7 @@ pub extern "C" fn query_match_aggregate(
     query: *const c_char,
     options: *const Options,
 ) -> *mut Numeric {
-    unwrap_or_null(
-        borrow(transaction).query().match_aggregate_with_options(string_view(query), borrow(options).clone()),
-    )
+    try_release(borrow(transaction).query().match_aggregate_with_options(string_view(query), borrow(options).clone()))
 }
 
 pub struct ConceptMapGroupIterator(CIterator<Result<ConceptMapGroup>>);
@@ -135,7 +133,7 @@ pub extern "C" fn query_match_group(
     query: *const c_char,
     options: *const Options,
 ) -> *mut ConceptMapGroupIterator {
-    unwrap_or_null(
+    try_release(
         borrow(transaction)
             .query()
             .match_group_with_options(string_view(query), borrow(options).clone())
@@ -161,7 +159,7 @@ pub extern "C" fn query_match_group_aggregate(
     query: *const c_char,
     options: *const Options,
 ) -> *mut NumericGroupIterator {
-    unwrap_or_null(
+    try_release(
         borrow(transaction)
             .query()
             .match_group_aggregate_with_options(string_view(query), borrow(options).clone())
@@ -187,7 +185,7 @@ pub extern "C" fn query_explain(
     explainable_id: i64,
     options: *const Options,
 ) -> *mut ExplanationIterator {
-    unwrap_or_null(
+    try_release(
         borrow(transaction)
             .query()
             .explain_with_options(explainable_id, borrow(options).clone())

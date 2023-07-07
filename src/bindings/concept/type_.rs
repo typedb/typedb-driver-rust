@@ -34,7 +34,8 @@ use super::{
 use crate::{
     bindings::{
         error::{
-            unwrap_optional_map, unwrap_optional_string, unwrap_or_default, unwrap_or_null, unwrap_string, unwrap_void,
+            try_release, try_release_map_optional, try_release_optional_string, try_release_string, unwrap_or_default,
+            unwrap_void,
         },
         memory::{borrow, borrow_optional, release_string, string_array_view, string_view},
     },
@@ -98,7 +99,7 @@ pub extern "C" fn thing_type_get_owns(
             _ => unreachable!(),
         })
         .collect();
-    unwrap_or_null(
+    try_release(
         borrow_as_thing_type(thing_type)
             .get_owns(borrow(transaction), borrow_optional(value_type).copied(), transitivity, annotations)
             .map(ConceptIterator::attribute_types),
@@ -111,7 +112,7 @@ pub extern "C" fn thing_type_get_owns_overridden(
     thing_type: *const Concept,
     overridden_attribute_type: *const Concept,
 ) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow_as_thing_type(thing_type)
             .get_owns_overridden(borrow(transaction), borrow_as_attribute_type(overridden_attribute_type).clone())
             .transpose(),
@@ -161,7 +162,7 @@ pub extern "C" fn thing_type_get_plays(
     thing_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_thing_type(thing_type).get_plays(borrow(transaction), transitivity).map(ConceptIterator::role_types),
     )
 }
@@ -172,7 +173,7 @@ pub extern "C" fn thing_type_get_plays_overridden(
     thing_type: *const Concept,
     overridden_role_type: *const Concept,
 ) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow_as_thing_type(thing_type)
             .get_plays_overridden(borrow(transaction), borrow_as_role_type(overridden_role_type).clone())
             .transpose(),
@@ -210,7 +211,7 @@ pub extern "C" fn thing_type_get_syntax(
     transaction: *const Transaction<'static>,
     thing_type: *const Concept,
 ) -> *mut c_char {
-    unwrap_string(borrow_as_thing_type(thing_type).get_syntax(borrow(transaction)))
+    try_release_string(borrow_as_thing_type(thing_type).get_syntax(borrow(transaction)))
 }
 
 #[no_mangle]
@@ -218,7 +219,7 @@ pub extern "C" fn entity_type_create(
     transaction: *mut Transaction<'static>,
     entity_type: *const Concept,
 ) -> *mut Concept {
-    unwrap_or_null(borrow_as_entity_type(entity_type).create(borrow(transaction)).map(Concept::Entity))
+    try_release(borrow_as_entity_type(entity_type).create(borrow(transaction)).map(Concept::Entity))
 }
 
 #[no_mangle]
@@ -226,7 +227,7 @@ pub extern "C" fn entity_type_get_supertype(
     transaction: *mut Transaction<'static>,
     entity_type: *const Concept,
 ) -> *mut Concept {
-    unwrap_or_null(borrow_as_entity_type(entity_type).get_supertype(borrow(transaction)).map(Concept::EntityType))
+    try_release(borrow_as_entity_type(entity_type).get_supertype(borrow(transaction)).map(Concept::EntityType))
 }
 
 #[no_mangle]
@@ -246,7 +247,7 @@ pub extern "C" fn entity_type_get_supertypes(
     transaction: *mut Transaction<'static>,
     entity_type: *const Concept,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_entity_type(entity_type).get_supertypes(borrow(transaction)).map(ConceptIterator::entity_types),
     )
 }
@@ -257,7 +258,7 @@ pub extern "C" fn entity_type_get_subtypes(
     entity_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_entity_type(entity_type)
             .get_subtypes(borrow(transaction), transitivity)
             .map(ConceptIterator::entity_types),
@@ -270,7 +271,7 @@ pub extern "C" fn entity_type_get_instances(
     entity_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_entity_type(entity_type)
             .get_instances(borrow(transaction), transitivity)
             .map(ConceptIterator::entities),
@@ -282,7 +283,7 @@ pub extern "C" fn relation_type_create(
     transaction: *mut Transaction<'static>,
     relation_type: *const Concept,
 ) -> *mut Concept {
-    unwrap_or_null(borrow_as_relation_type(relation_type).create(borrow(transaction)).map(Concept::Relation))
+    try_release(borrow_as_relation_type(relation_type).create(borrow(transaction)).map(Concept::Relation))
 }
 
 #[no_mangle]
@@ -290,7 +291,7 @@ pub extern "C" fn relation_type_get_supertype(
     transaction: *mut Transaction<'static>,
     relation_type: *const Concept,
 ) -> *mut Concept {
-    unwrap_or_null(borrow_as_relation_type(relation_type).get_supertype(borrow(transaction)).map(Concept::RelationType))
+    try_release(borrow_as_relation_type(relation_type).get_supertype(borrow(transaction)).map(Concept::RelationType))
 }
 
 #[no_mangle]
@@ -310,7 +311,7 @@ pub extern "C" fn relation_type_get_supertypes(
     transaction: *mut Transaction<'static>,
     relation_type: *const Concept,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_relation_type(relation_type).get_supertypes(borrow(transaction)).map(ConceptIterator::relation_types),
     )
 }
@@ -321,7 +322,7 @@ pub extern "C" fn relation_type_get_subtypes(
     relation_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_relation_type(relation_type)
             .get_subtypes(borrow(transaction), transitivity)
             .map(ConceptIterator::relation_types),
@@ -334,7 +335,7 @@ pub extern "C" fn relation_type_get_instances(
     relation_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_relation_type(relation_type)
             .get_instances(borrow(transaction), transitivity)
             .map(ConceptIterator::relations),
@@ -347,7 +348,7 @@ pub extern "C" fn relation_type_get_relates(
     relation_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_relation_type(relation_type)
             .get_relates(borrow(transaction), transitivity)
             .map(ConceptIterator::role_types),
@@ -360,7 +361,7 @@ pub extern "C" fn relation_type_get_relates_for_role_label(
     relation_type: *const Concept,
     role_label: *const c_char,
 ) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow_as_relation_type(relation_type)
             .get_relates_for_role_label(borrow(transaction), string_view(role_label).to_owned())
             .transpose(),
@@ -374,7 +375,7 @@ pub extern "C" fn relation_type_get_relates_overridden(
     relation_type: *const Concept,
     overridden_role_label: *const c_char,
 ) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow_as_relation_type(relation_type)
             .get_relates_overridden(borrow(transaction), string_view(overridden_role_label).to_owned())
             .transpose(),
@@ -421,7 +422,7 @@ pub extern "C" fn attribute_type_put(
     attribute_type: *const Concept,
     value: *const Value,
 ) -> *mut Concept {
-    unwrap_or_null(
+    try_release(
         borrow_as_attribute_type(attribute_type)
             .put(borrow(transaction), borrow(value).clone())
             .map(Concept::Attribute),
@@ -434,7 +435,7 @@ pub extern "C" fn attribute_type_get(
     attribute_type: *const Concept,
     value: *const Value,
 ) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow_as_attribute_type(attribute_type).get(borrow(transaction), borrow(value).clone()).transpose(),
         Concept::Attribute,
     )
@@ -445,9 +446,7 @@ pub extern "C" fn attribute_type_get_supertype(
     transaction: *mut Transaction<'static>,
     attribute_type: *const Concept,
 ) -> *mut Concept {
-    unwrap_or_null(
-        borrow_as_attribute_type(attribute_type).get_supertype(borrow(transaction)).map(Concept::AttributeType),
-    )
+    try_release(borrow_as_attribute_type(attribute_type).get_supertype(borrow(transaction)).map(Concept::AttributeType))
 }
 
 #[no_mangle]
@@ -467,7 +466,7 @@ pub extern "C" fn attribute_type_get_supertypes(
     transaction: *mut Transaction<'static>,
     attribute_type: *const Concept,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_attribute_type(attribute_type)
             .get_supertypes(borrow(transaction))
             .map(ConceptIterator::attribute_types),
@@ -480,7 +479,7 @@ pub extern "C" fn attribute_type_get_subtypes(
     attribute_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_attribute_type(attribute_type)
             .get_subtypes(borrow(transaction), transitivity)
             .map(ConceptIterator::attribute_types),
@@ -494,7 +493,7 @@ pub extern "C" fn attribute_type_get_subtypes_with_value_type(
     value_type: ValueType,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_attribute_type(attribute_type)
             .get_subtypes_with_value_type(borrow(transaction), value_type, transitivity)
             .map(ConceptIterator::attribute_types),
@@ -507,7 +506,7 @@ pub extern "C" fn attribute_type_get_instances(
     attribute_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_attribute_type(attribute_type)
             .get_instances(borrow(transaction), transitivity)
             .map(ConceptIterator::attributes),
@@ -519,7 +518,7 @@ pub extern "C" fn attribute_type_get_regex(
     transaction: *mut Transaction<'static>,
     attribute_type: *const Concept,
 ) -> *mut c_char {
-    unwrap_optional_string(borrow_as_attribute_type(attribute_type).get_regex(borrow(transaction)).transpose())
+    try_release_optional_string(borrow_as_attribute_type(attribute_type).get_regex(borrow(transaction)).transpose())
 }
 
 #[no_mangle]
@@ -551,7 +550,7 @@ pub extern "C" fn attribute_type_get_owners(
             _ => unreachable!(),
         })
         .collect();
-    unwrap_or_null(
+    try_release(
         borrow_as_attribute_type(attribute_type)
             .get_owners(borrow(transaction), transitivity, annotations)
             .map(ConceptIterator::thing_types),
@@ -573,7 +572,7 @@ pub extern "C" fn role_type_get_relation_type(
     transaction: *mut Transaction<'static>,
     role_type: *const Concept,
 ) -> *mut Concept {
-    unwrap_or_null(
+    try_release(
         borrow_as_role_type(role_type)
             .get_relation_type(borrow(transaction))
             .transpose()
@@ -611,7 +610,7 @@ pub extern "C" fn role_type_get_supertype(
     transaction: *mut Transaction<'static>,
     role_type: *const Concept,
 ) -> *mut Concept {
-    unwrap_or_null(borrow_as_role_type(role_type).get_supertype(borrow(transaction)).map(Concept::RoleType))
+    try_release(borrow_as_role_type(role_type).get_supertype(borrow(transaction)).map(Concept::RoleType))
 }
 
 #[no_mangle]
@@ -619,7 +618,7 @@ pub extern "C" fn role_type_get_supertypes(
     transaction: *mut Transaction<'static>,
     role_type: *const Concept,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(borrow_as_role_type(role_type).get_supertypes(borrow(transaction)).map(ConceptIterator::role_types))
+    try_release(borrow_as_role_type(role_type).get_supertypes(borrow(transaction)).map(ConceptIterator::role_types))
 }
 
 #[no_mangle]
@@ -628,7 +627,7 @@ pub extern "C" fn role_type_get_subtypes(
     role_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_role_type(role_type).get_subtypes(borrow(transaction), transitivity).map(ConceptIterator::role_types),
     )
 }
@@ -638,7 +637,7 @@ pub extern "C" fn role_type_get_relation_types(
     transaction: *mut Transaction<'static>,
     role_type: *const Concept,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_role_type(role_type).get_relation_types(borrow(transaction)).map(ConceptIterator::relation_types),
     )
 }
@@ -649,7 +648,7 @@ pub extern "C" fn role_type_get_player_types(
     role_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_role_type(role_type)
             .get_player_types(borrow(transaction), transitivity)
             .map(ConceptIterator::thing_types),
@@ -662,7 +661,7 @@ pub extern "C" fn role_type_get_relation_instances(
     role_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_role_type(role_type)
             .get_relation_instances(borrow(transaction), transitivity)
             .map(ConceptIterator::relations),
@@ -675,7 +674,7 @@ pub extern "C" fn role_type_get_player_instances(
     role_type: *const Concept,
     transitivity: Transitivity,
 ) -> *mut ConceptIterator {
-    unwrap_or_null(
+    try_release(
         borrow_as_role_type(role_type)
             .get_player_instances(borrow(transaction), transitivity)
             .map(ConceptIterator::things),

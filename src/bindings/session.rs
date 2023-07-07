@@ -22,7 +22,7 @@
 use std::ffi::c_char;
 
 use super::{
-    error::unwrap_or_null,
+    error::try_release,
     memory::{borrow, free, release_string, take_ownership},
 };
 use crate::{Database, Options, Session, SessionType};
@@ -33,7 +33,7 @@ pub extern "C" fn session_new(
     session_type: SessionType,
     options: *const Options,
 ) -> *mut Session {
-    unwrap_or_null(Session::new_with_options(take_ownership(database), session_type, borrow(options).clone()))
+    try_release(Session::new_with_options(take_ownership(database), session_type, borrow(options).clone()))
 }
 
 #[no_mangle]

@@ -23,7 +23,7 @@ use std::ffi::c_char;
 
 use crate::{
     bindings::{
-        error::{unwrap_optional_map, unwrap_or_null},
+        error::{try_release, try_release_map_optional},
         memory::{borrow, string_view},
     },
     common::IID,
@@ -36,7 +36,7 @@ pub extern "C" fn concepts_get_entity_type(
     transaction: *const Transaction<'static>,
     label: *const c_char,
 ) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow(transaction).concept().get_entity_type(string_view(label).to_owned()).transpose(),
         Concept::EntityType,
     )
@@ -47,7 +47,7 @@ pub extern "C" fn concepts_get_relation_type(
     transaction: *const Transaction<'static>,
     label: *const c_char,
 ) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow(transaction).concept().get_relation_type(string_view(label).to_owned()).transpose(),
         Concept::RelationType,
     )
@@ -58,7 +58,7 @@ pub extern "C" fn concepts_get_attribute_type(
     transaction: *const Transaction<'static>,
     label: *const c_char,
 ) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow(transaction).concept().get_attribute_type(string_view(label).to_owned()).transpose(),
         Concept::AttributeType,
     )
@@ -69,9 +69,7 @@ pub extern "C" fn concepts_put_entity_type(
     transaction: *const Transaction<'static>,
     label: *const c_char,
 ) -> *mut Concept {
-    unwrap_or_null(
-        borrow(transaction).concept().put_entity_type(string_view(label).to_owned()).map(Concept::EntityType),
-    )
+    try_release(borrow(transaction).concept().put_entity_type(string_view(label).to_owned()).map(Concept::EntityType))
 }
 
 #[no_mangle]
@@ -79,7 +77,7 @@ pub extern "C" fn concepts_put_relation_type(
     transaction: *const Transaction<'static>,
     label: *const c_char,
 ) -> *mut Concept {
-    unwrap_or_null(
+    try_release(
         borrow(transaction).concept().put_relation_type(string_view(label).to_owned()).map(Concept::RelationType),
     )
 }
@@ -90,7 +88,7 @@ pub extern "C" fn concepts_put_attribute_type(
     label: *const c_char,
     value_type: ValueType,
 ) -> *mut Concept {
-    unwrap_or_null(
+    try_release(
         borrow(transaction)
             .concept()
             .put_attribute_type(string_view(label).to_owned(), value_type)
@@ -104,7 +102,7 @@ fn iid_from_str(str: &str) -> IID {
 
 #[no_mangle]
 pub extern "C" fn concepts_get_entity(transaction: *const Transaction<'static>, iid: *const c_char) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow(transaction).concept().get_entity(iid_from_str(string_view(iid))).transpose(),
         Concept::Entity,
     )
@@ -112,7 +110,7 @@ pub extern "C" fn concepts_get_entity(transaction: *const Transaction<'static>, 
 
 #[no_mangle]
 pub extern "C" fn concepts_get_relation(transaction: *const Transaction<'static>, iid: *const c_char) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow(transaction).concept().get_relation(iid_from_str(string_view(iid))).transpose(),
         Concept::Relation,
     )
@@ -120,7 +118,7 @@ pub extern "C" fn concepts_get_relation(transaction: *const Transaction<'static>
 
 #[no_mangle]
 pub extern "C" fn concepts_get_attribute(transaction: *const Transaction<'static>, iid: *const c_char) -> *mut Concept {
-    unwrap_optional_map(
+    try_release_map_optional(
         borrow(transaction).concept().get_attribute(iid_from_str(string_view(iid))).transpose(),
         Concept::Attribute,
     )

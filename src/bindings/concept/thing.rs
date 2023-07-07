@@ -32,7 +32,7 @@ use super::{
 };
 use crate::{
     bindings::{
-        error::{unwrap_or_default, unwrap_or_null, unwrap_void},
+        error::{try_release, unwrap_or_default, unwrap_void},
         memory::{array_view, borrow, release, release_string, string_array_view},
     },
     concept::{Concept, Value},
@@ -98,7 +98,7 @@ pub extern "C" fn thing_get_has(
             _ => unreachable!(),
         })
         .collect();
-    unwrap_or_null(thing.get_has(transaction, attribute_types, annotations).map(ConceptIterator::attributes))
+    try_release(thing.get_has(transaction, attribute_types, annotations).map(ConceptIterator::attributes))
 }
 
 #[no_mangle]
@@ -131,7 +131,7 @@ pub extern "C" fn thing_get_relations(
 ) -> *mut ConceptIterator {
     let transaction = borrow(transaction);
     let role_types = array_view(role_types).map(|rt| borrow_as_role_type(rt)).cloned().collect();
-    unwrap_or_null(borrow_as_thing(thing).get_relations(transaction, role_types).map(ConceptIterator::relations))
+    try_release(borrow_as_thing(thing).get_relations(transaction, role_types).map(ConceptIterator::relations))
 }
 
 #[no_mangle]
@@ -140,7 +140,7 @@ pub extern "C" fn thing_get_playing(
     thing: *const Concept,
 ) -> *mut ConceptIterator {
     let transaction = borrow(transaction);
-    unwrap_or_null(borrow_as_thing(thing).get_playing(transaction).map(ConceptIterator::role_types))
+    try_release(borrow_as_thing(thing).get_playing(transaction).map(ConceptIterator::role_types))
 }
 
 #[no_mangle]
@@ -177,7 +177,7 @@ pub extern "C" fn relation_get_players_by_role_type(
 ) -> *mut ConceptIterator {
     let transaction = borrow(transaction);
     let role_types = array_view(role_types).map(|rt| borrow_as_role_type(rt)).cloned().collect();
-    unwrap_or_null(
+    try_release(
         borrow_as_relation(relation).get_players_by_role_type(transaction, role_types).map(ConceptIterator::things),
     )
 }
@@ -188,7 +188,7 @@ pub extern "C" fn relation_get_role_players(
     relation: *const Concept,
 ) -> *mut RolePlayerIterator {
     let transaction = borrow(transaction);
-    unwrap_or_null(borrow_as_relation(relation).get_role_players(transaction).map(RolePlayerIterator::new))
+    try_release(borrow_as_relation(relation).get_role_players(transaction).map(RolePlayerIterator::new))
 }
 
 #[no_mangle]
@@ -197,7 +197,7 @@ pub extern "C" fn relation_get_relating(
     relation: *const Concept,
 ) -> *mut ConceptIterator {
     let transaction = borrow(transaction);
-    unwrap_or_null(borrow_as_relation(relation).get_relating(transaction).map(ConceptIterator::role_types))
+    try_release(borrow_as_relation(relation).get_relating(transaction).map(ConceptIterator::role_types))
 }
 
 #[no_mangle]
@@ -208,5 +208,5 @@ pub extern "C" fn attribute_get_owners(
 ) -> *mut ConceptIterator {
     let transaction = borrow(transaction);
     let thing_type = unsafe { thing_type.as_ref().map(|t| borrow_as_thing_type(t).into_thing_type_cloned()) };
-    unwrap_or_null(borrow_as_attribute(attribute).get_owners(transaction, thing_type).map(ConceptIterator::things))
+    try_release(borrow_as_attribute(attribute).get_owners(transaction, thing_type).map(ConceptIterator::things))
 }

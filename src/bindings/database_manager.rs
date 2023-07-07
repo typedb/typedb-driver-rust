@@ -22,7 +22,7 @@
 use std::{ffi::c_char, ptr::addr_of_mut};
 
 use super::{
-    error::{unwrap_or_default, unwrap_or_null, unwrap_void},
+    error::{try_release, unwrap_or_default, unwrap_void},
     iterator::{iterator_next, CIterator},
     memory::{borrow, borrow_mut, free, release, string_view},
 };
@@ -53,7 +53,7 @@ pub extern "C" fn database_iterator_drop(it: *mut DatabaseIterator) {
 
 #[no_mangle]
 pub extern "C" fn databases_all(databases: *mut DatabaseManager) -> *mut DatabaseIterator {
-    unwrap_or_null(borrow_mut(databases).all().map(|dbs| DatabaseIterator(CIterator(box_stream(dbs.into_iter())))))
+    try_release(borrow_mut(databases).all().map(|dbs| DatabaseIterator(CIterator(box_stream(dbs.into_iter())))))
 }
 
 #[no_mangle]
@@ -68,5 +68,5 @@ pub extern "C" fn databases_contains(databases: *mut DatabaseManager, name: *con
 
 #[no_mangle]
 pub extern "C" fn databases_get(databases: *mut DatabaseManager, name: *const c_char) -> *mut Database {
-    unwrap_or_null(borrow_mut(databases).get(string_view(name)))
+    try_release(borrow_mut(databases).get(string_view(name)))
 }
