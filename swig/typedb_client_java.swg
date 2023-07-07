@@ -181,8 +181,8 @@
     } 
 %}
 
-%define %fooiterator(Foo, foo)
-%typemap(javaimports) Foo ## Iterator "
+%define %iterator(Type, function_prefix)
+%typemap(javaimports) Type ## Iterator "
 import java.util.Spliterator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -191,13 +191,13 @@ import static java.util.Spliterator.NONNULL;
 import static java.util.Spliterator.ORDERED;
 import static java.util.Spliterators.spliteratorUnknownSize;
 "
-%typemap(javainterfaces) Foo ## Iterator "java.util.Iterator<Foo>";
-%typemap(javacode) Foo ## Iterator %{
+%typemap(javainterfaces) Type ## Iterator "java.util.Iterator<Type>";
+%typemap(javacode) Type ## Iterator %{
     private boolean isFinished = false;
-    private Foo next = null;
+    private Type next = null;
 
-    private Foo fetchNext() {
-        next = typedb_client_jni.foo ## _iterator_next(this);
+    private Type fetchNext() {
+        next = typedb_client_jni.function_prefix ## _iterator_next(this);
         return next;
     }
 
@@ -215,14 +215,14 @@ import static java.util.Spliterators.spliteratorUnknownSize;
     }
 
     @Override
-    public Foo next() {
+    public Type next() {
         if (next == null && !hasNext()) return null;
-        Foo ret = next;
+        Type ret = next;
         next = null;
         return ret;
     }
 
-    public Stream<Foo> stream() {
+    public Stream<Type> stream() {
         return StreamSupport.stream(
             spliteratorUnknownSize(this, NONNULL | IMMUTABLE | ORDERED),
             false
@@ -231,14 +231,14 @@ import static java.util.Spliterators.spliteratorUnknownSize;
 %}
 %enddef
 
-%fooiterator(Concept, concept)
-%fooiterator(RolePlayer, role_player) 
-%fooiterator(ConceptMap, concept_map)
-%fooiterator(ConceptMapGroup, concept_map_group)
-%fooiterator(NumericGroup, numeric_group)
-%fooiterator(Explanation, explanation)
-%fooiterator(String, string)
-%fooiterator(StringPair, string_pair)
-%fooiterator(Rule, rule)
-%fooiterator(User, user)
-%fooiterator(Database, database)
+%iterator(Concept, concept)
+%iterator(RolePlayer, role_player) 
+%iterator(ConceptMap, concept_map)
+%iterator(ConceptMapGroup, concept_map_group)
+%iterator(NumericGroup, numeric_group)
+%iterator(Explanation, explanation)
+%iterator(String, string)
+%iterator(StringPair, string_pair)
+%iterator(Rule, rule)
+%iterator(User, user)
+%iterator(Database, database)

@@ -35,61 +35,61 @@ extern "C" {
 
 %nodefaultctor;
 
-%define %proxy(Foo, foo)
-struct Foo {};
-%ignore foo ## _drop;
-%extend Foo { ~Foo() { foo ## _drop(self); } }
+%define %dropproxy(Type, function_prefix)
+struct Type {};
+%ignore function_prefix ## _drop;
+%extend Type { ~Type() { function_prefix ## _drop(self); } }
 %enddef
 
-%proxy(Error, error)
+%dropproxy(Error, error)
 
-%proxy(Credential, credential)
-%proxy(Options, options)
+%dropproxy(Credential, credential)
+%dropproxy(Options, options)
 
 #define connection_drop connection_close
 
-%proxy(Connection, connection)
-%proxy(Session, session)
-%proxy(Transaction, transaction)
+%dropproxy(Connection, connection)
+%dropproxy(Session, session)
+%dropproxy(Transaction, transaction)
 
-%proxy(DatabaseManager, database_manager);
-%proxy(Database, database)
-%proxy(DatabaseIterator, database_iterator)
+%dropproxy(DatabaseManager, database_manager);
+%dropproxy(Database, database)
+%dropproxy(DatabaseIterator, database_iterator)
 
-%proxy(UserManager, user_manager);
-%proxy(User, user)
-%proxy(UserIterator, user_iterator)
+%dropproxy(UserManager, user_manager);
+%dropproxy(User, user)
+%dropproxy(UserIterator, user_iterator)
 
 
-%proxy(Concept, concept)
-%proxy(ConceptIterator, concept_iterator)
+%dropproxy(Concept, concept)
+%dropproxy(ConceptIterator, concept_iterator)
 
-%proxy(Value, value)
+%dropproxy(Value, value)
 
-%proxy(RolePlayer, role_player)
-%proxy(RolePlayerIterator, role_player_iterator)
+%dropproxy(RolePlayer, role_player)
+%dropproxy(RolePlayerIterator, role_player_iterator)
 
-%proxy(ConceptMap, concept_map)
-%proxy(ConceptMapIterator, concept_map_iterator)
-%proxy(Explainables, explainables)
-%proxy(Explainable, explainable)
+%dropproxy(ConceptMap, concept_map)
+%dropproxy(ConceptMapIterator, concept_map_iterator)
+%dropproxy(Explainables, explainables)
+%dropproxy(Explainable, explainable)
 
-%proxy(ConceptMapGroup, concept_map_group)
-%proxy(ConceptMapGroupIterator, concept_map_group_iterator)
+%dropproxy(ConceptMapGroup, concept_map_group)
+%dropproxy(ConceptMapGroupIterator, concept_map_group_iterator)
 
-%proxy(StringIterator, string_iterator)
-%proxy(StringPairIterator, string_pair_iterator)
+%dropproxy(StringIterator, string_iterator)
+%dropproxy(StringPairIterator, string_pair_iterator)
 
-%proxy(Numeric, numeric)
+%dropproxy(Numeric, numeric)
 
-%proxy(NumericGroup, numeric_group)
-%proxy(NumericGroupIterator, numeric_group_iterator)
+%dropproxy(NumericGroup, numeric_group)
+%dropproxy(NumericGroupIterator, numeric_group_iterator)
 
-%proxy(Explanation, explanation)
-%proxy(ExplanationIterator, explanation_iterator)
+%dropproxy(Explanation, explanation)
+%dropproxy(ExplanationIterator, explanation_iterator)
 
-%proxy(Rule, rule)
-%proxy(RuleIterator, rule_iterator)
+%dropproxy(Rule, rule)
+%dropproxy(RuleIterator, rule_iterator)
 
 %feature("director") SessionCallbackDirector;
 %inline %{
