@@ -182,54 +182,6 @@
     } 
 %}
 
-%typemap(javaimports) DatabaseIterator "
-import java.util.Spliterator;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
-import static java.util.Spliterator.IMMUTABLE;
-import static java.util.Spliterator.NONNULL;
-import static java.util.Spliterator.ORDERED;
-import static java.util.Spliterators.spliteratorUnknownSize;
-"
-%typemap(javainterfaces) DatabaseIterator "java.util.Iterator<Database>";
-%typemap(javacode) DatabaseIterator %{
-    private boolean isFinished = false;
-    private Database next = null;
-
-    private Database fetchNext() {
-        next = typedb_client_jni.database_iterator_next(this);
-        return next;
-    }
-
-    @Override
-    public boolean hasNext() {
-        if (isFinished) return false;
-        if (next == null) {
-            if (fetchNext() == null) {
-                isFinished = true;
-                return false;
-            }
-        }
-        assert(next != null);
-        return true;
-    }
-
-    @Override
-    public Database next() {
-        if (next == null && !hasNext()) return null;
-        Database ret = next;
-        next = null;
-        return ret;
-    }
-
-    public Stream<Database> stream() {
-        return StreamSupport.stream(
-            spliteratorUnknownSize(this, NONNULL | IMMUTABLE | ORDERED),
-            false
-        );
-    }
-%}
-
 %define %fooiterator(Foo, foo)
 %typemap(javaimports) Foo ## Iterator "
 import java.util.Spliterator;
@@ -290,3 +242,4 @@ import static java.util.Spliterators.spliteratorUnknownSize;
 %fooiterator(StringPair, string_pair)
 %fooiterator(Rule, rule)
 %fooiterator(User, user)
+%fooiterator(Database, database)
