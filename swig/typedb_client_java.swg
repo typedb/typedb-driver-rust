@@ -24,6 +24,9 @@
 %include "various.i"
 %include "enums.swg"
 
+#define PACKAGE_ "com.vaticle.typedb.client.jni"
+#define PACKAGE_PATH_ "com/vaticle/typedb/client/jni"
+
 %typemap(javacode) SWIGTYPE %{
     public long CPtr() {
         return swigCPtr;

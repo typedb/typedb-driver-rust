@@ -21,9 +21,6 @@
 
 %module(directors="1") typedb_client_jni
 %{
-#define PACKAGE_ "com.vaticle.typedb.client.jni"
-#define PACKAGE_PATH_ "com/vaticle/typedb/client/jni"
-
 extern "C" {
 #include "typedb_client.h"
 }
