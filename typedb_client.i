@@ -55,9 +55,13 @@ struct Foo {};                                  \
 %proxy(Transaction, transaction)
 
 %proxy(DatabaseManager, database_manager);
-
 %proxy(Database, database)
 %proxy(DatabaseIterator, database_iterator)
+
+%proxy(UserManager, user_manager);
+%proxy(User, user)
+%proxy(UserIterator, user_iterator)
+
 
 %proxy(Concept, concept)
 %proxy(ConceptIterator, concept_iterator)

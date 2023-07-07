@@ -37,8 +37,8 @@ impl UserManager {
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     pub async fn current_user(&self) -> Result<Option<User>> {
         match self.connection.username() {
-            Some(username) => self.get(username.to_owned()).await,
-            None => Ok(None),
+            Some(username) => self.get(username).await,
+            None => Ok(None), // FIXME error
         }
     }
 
@@ -49,7 +49,8 @@ impl UserManager {
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
-    pub async fn contains(&self, username: String) -> Result<bool> {
+    pub async fn contains(&self, username: impl Into<String>) -> Result<bool> {
+        let username = username.into();
         self.run_any_node(|server_connection: ServerConnection| {
             let username = username.clone();
             async move { server_connection.contains_user(username).await }
@@ -58,7 +59,9 @@ impl UserManager {
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
-    pub async fn create(&self, username: String, password: String) -> Result {
+    pub async fn create(&self, username: impl Into<String>, password: impl Into<String>) -> Result {
+        let username = username.into();
+        let password = password.into();
         self.run_any_node(|server_connection: ServerConnection| {
             let username = username.clone();
             let password = password.clone();
@@ -68,7 +71,8 @@ impl UserManager {
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
-    pub async fn delete(&self, username: String) -> Result {
+    pub async fn delete(&self, username: impl Into<String>) -> Result {
+        let username = username.into();
         self.run_any_node(|server_connection: ServerConnection| {
             let username = username.clone();
             async move { server_connection.delete_user(username).await }
@@ -77,7 +81,8 @@ impl UserManager {
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
-    pub async fn get(&self, username: String) -> Result<Option<User>> {
+    pub async fn get(&self, username: impl Into<String>) -> Result<Option<User>> {
+        let username = username.into();
         self.run_any_node(|server_connection: ServerConnection| {
             let username = username.clone();
             async move { server_connection.get_user(username).await }
@@ -86,7 +91,9 @@ impl UserManager {
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
-    pub async fn set_password(&self, username: String, password: String) -> Result {
+    pub async fn set_password(&self, username: impl Into<String>, password: impl Into<String>) -> Result {
+        let username = username.into();
+        let password = password.into();
         self.run_any_node(|server_connection: ServerConnection| {
             let username = username.clone();
             let password = password.clone();

@@ -289,3 +289,4 @@ import static java.util.Spliterators.spliteratorUnknownSize;
 %fooiterator(String, string)
 %fooiterator(StringPair, string_pair)
 %fooiterator(Rule, rule)
+%fooiterator(User, user)

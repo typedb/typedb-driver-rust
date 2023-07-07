@@ -19,19 +19,35 @@
  * under the License.
  */
 
-mod answer;
-mod common;
-mod concept;
-mod connection;
-mod database;
-mod database_manager;
-mod error;
-mod iterator;
-mod logic;
-mod memory;
-mod options;
-mod query;
-mod session;
-mod transaction;
-mod user;
-mod user_manager;
+use std::ffi::c_char;
+
+use super::{
+    error::unwrap_void,
+    memory::{borrow, free, release_string, string_view},
+};
+use crate::{Connection, User};
+
+#[no_mangle]
+pub extern "C" fn user_drop(user: *mut User) {
+    free(user);
+}
+
+#[no_mangle]
+pub extern "C" fn user_get_username(user: *mut User) -> *mut c_char {
+    release_string(borrow(user).username.clone())
+}
+
+#[no_mangle]
+pub extern "C" fn user_get_password_expiry_seconds(user: *mut User) -> i64 {
+    borrow(user).password_expiry_seconds.unwrap_or(-1)
+}
+
+#[no_mangle]
+pub extern "C" fn user_password_update(
+    user: *mut User,
+    connection: *const Connection,
+    password_old: *const c_char,
+    password_new: *const c_char,
+) {
+    unwrap_void(borrow(user).password_update(borrow(connection), string_view(password_old), string_view(password_new)));
+}
