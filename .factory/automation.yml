@@ -98,7 +98,7 @@ build:
         bazel run @vaticle_dependencies//tool/bazelinstall:remote_cache_setup.sh
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         source tools/start-cluster-servers.sh # use source to receive export vars
-        bazel test //tests --test_env=ROOT_CA=$ROOT_CA --test_arg=-- --test_arg=behaviour::concept --test_arg=--test-threads=1 --test_output=streamed && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
+        bazel test //tests --test_env=ROOT_CA=$ROOT_CA --test_arg=-- --test_arg=behaviour::concept --test_output=streamed && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
         tools/stop-cluster-servers.sh
         exit $TEST_SUCCESS
     test-behaviour-connection:
@@ -111,7 +111,7 @@ build:
         bazel run @vaticle_dependencies//tool/bazelinstall:remote_cache_setup.sh
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         source tools/start-cluster-servers.sh # use source to receive export vars
-        bazel test //tests --test_env=ROOT_CA=$ROOT_CA --test_arg=-- --test_arg=behaviour::connection --test_arg=--test-threads=1 --test_output=streamed && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
+        bazel test //tests --test_env=ROOT_CA=$ROOT_CA --test_arg=-- --test_arg=behaviour::connection --test_output=streamed && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
         tools/stop-cluster-servers.sh
         exit $TEST_SUCCESS
     test-behaviour-typeql:
@@ -125,7 +125,7 @@ build:
         bazel run @vaticle_dependencies//tool/bazelinstall:remote_cache_setup.sh
         bazel run @vaticle_dependencies//distribution/artifact:create-netrc
         source tools/start-cluster-servers.sh # use source to receive export vars
-        bazel test //tests --test_env=ROOT_CA=$ROOT_CA --test_arg=-- --test_arg=behaviour::typeql --test_arg=--test-threads=1 --test_output=streamed && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
+        bazel test //tests --test_env=ROOT_CA=$ROOT_CA --test_arg=-- --test_arg=behaviour::typeql --test_output=streamed && export TEST_SUCCESS=0 || export TEST_SUCCESS=1
         tools/stop-cluster-servers.sh
         exit $TEST_SUCCESS
     deploy-crate-snapshot:
