@@ -19,7 +19,7 @@
  * under the License.
  */
 
-%module(directors="1") typedb_client_jni
+%module(directors="1") typedb_client
 %{
 extern "C" {
 #include "typedb_client.h"

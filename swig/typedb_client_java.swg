@@ -171,7 +171,7 @@
     protected transient boolean swigCMemOwn;
 
     protected $javaclassname(long cPtr, boolean cMemoryOwn) {
-        super(typedb_client_jniJNI.error_code(cPtr, null) + " " + typedb_client_jniJNI.error_message(cPtr, null));
+        super(typedb_clientJNI.error_code(cPtr, null) + " " + typedb_clientJNI.error_message(cPtr, null));
         swigCMemOwn = cMemoryOwn;
         swigCPtr = cPtr;
     }
@@ -197,7 +197,7 @@ import static java.util.Spliterators.spliteratorUnknownSize;
     private Type next = null;
 
     private Type fetchNext() {
-        next = typedb_client_jni.function_prefix ## _iterator_next(this);
+        next = typedb_client.function_prefix ## _iterator_next(this);
         return next;
     }
 
