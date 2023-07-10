@@ -84,21 +84,19 @@ pub enum Error {
 
 impl Error {
     pub fn code(&self) -> String {
-        // FIXME
         match self {
-            Self::Connection(error) => error.to_string().split_once(' ').unwrap().0.to_owned(),
-            Self::Internal(error) => error.to_string().split_once(' ').unwrap().0.to_owned(),
-            Self::TypeQL(error) => error.to_string().split_once(' ').unwrap().0.to_owned(),
-            Self::Other(_error) => "".to_owned(),
+            Self::Connection(error) => error.format_code(),
+            Self::Internal(error) => error.format_code(),
+            Self::TypeQL(_error) => String::new(),
+            Self::Other(_error) => String::new(),
         }
     }
 
     pub fn message(&self) -> String {
-        // FIXME
         match self {
-            Self::Connection(error) => error.to_string().split_once(' ').unwrap().1.to_owned(),
-            Self::Internal(error) => error.to_string().split_once(' ').unwrap().1.to_owned(),
-            Self::TypeQL(error) => error.to_string().split_once(' ').unwrap().1.to_owned(),
+            Self::Connection(error) => error.message(),
+            Self::Internal(error) => error.message(),
+            Self::TypeQL(error) => error.to_string(),
             Self::Other(error) => error.clone(),
         }
     }

@@ -34,6 +34,11 @@ pub extern "C" fn rule_drop(rule: *mut Rule) {
 }
 
 #[no_mangle]
+pub extern "C" fn rule_to_string(rule: *const Rule) -> *mut c_char {
+    release_string(format!("{:?}", borrow(rule)))
+}
+
+#[no_mangle]
 pub extern "C" fn rule_get_label(rule: *const Rule) -> *mut c_char {
     release_string(borrow(rule).label.clone())
 }

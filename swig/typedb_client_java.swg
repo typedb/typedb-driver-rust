@@ -242,3 +242,4 @@ import static java.util.Spliterators.spliteratorUnknownSize;
 %iterator(Rule, rule)
 %iterator(User, user)
 %iterator(Database, database)
+%iterator(SchemaException, schema_exception)

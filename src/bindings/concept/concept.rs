@@ -125,6 +125,11 @@ pub extern "C" fn value_get_date_time_as_millis(value: *const Value) -> i64 {
 }
 
 #[no_mangle]
+pub extern "C" fn value_equals(lhs: *const Value, rhs: *const Value) -> bool {
+    borrow(lhs) == borrow(rhs)
+}
+
+#[no_mangle]
 pub extern "C" fn value_drop(value: *mut Value) {
     free(value);
 }

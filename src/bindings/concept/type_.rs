@@ -45,6 +45,11 @@ use crate::{
 };
 
 #[no_mangle]
+pub extern "C" fn thing_type_is_root(thing_type: *const Concept) -> bool {
+    borrow_as_thing_type(thing_type).is_root()
+}
+
+#[no_mangle]
 pub extern "C" fn thing_type_is_abstract(thing_type: *const Concept) -> bool {
     borrow_as_thing_type(thing_type).is_abstract()
 }
@@ -594,6 +599,11 @@ pub extern "C" fn role_type_get_scope(role_type: *const Concept) -> *mut c_char 
 #[no_mangle]
 pub extern "C" fn role_type_get_name(role_type: *const Concept) -> *mut c_char {
     release_string(borrow_as_role_type(role_type).label.name.clone())
+}
+
+#[no_mangle]
+pub extern "C" fn role_type_is_root(role_type: *const Concept) -> bool {
+    borrow_as_role_type(role_type).is_root
 }
 
 #[no_mangle]

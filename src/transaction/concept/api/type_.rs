@@ -22,17 +22,19 @@
 use crate::{
     common::{box_stream, stream::BoxStream},
     concept::{
-        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, Thing, ThingType,
-        Transitivity, Value, ValueType,
+        Annotation, Attribute, AttributeType, Entity, EntityType, Relation, RelationType, RoleType, RootThingType,
+        Thing, ThingType, Transitivity, Value, ValueType,
     },
     Result, Transaction,
 };
 
 #[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 pub trait ThingTypeAPI: Sync + Send {
-    fn label(&self) -> &String;
+    fn label(&self) -> &str;
 
     fn is_abstract(&self) -> bool;
+
+    fn is_root(&self) -> bool;
 
     fn into_thing_type_cloned(&self) -> ThingType;
 
@@ -164,13 +166,41 @@ pub trait ThingTypeAPI: Sync + Send {
 }
 
 #[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
+impl ThingTypeAPI for RootThingType {
+    fn label(&self) -> &str {
+        Self::LABEL
+    }
+
+    fn is_abstract(&self) -> bool {
+        true
+    }
+
+    fn is_root(&self) -> bool {
+        true
+    }
+
+    fn into_thing_type_cloned(&self) -> ThingType {
+        ThingType::RootThingType(self.clone())
+    }
+
+    #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
+    async fn is_deleted(&self, _transaction: &Transaction<'_>) -> Result<bool> {
+        Ok(false)
+    }
+}
+
+#[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl ThingTypeAPI for EntityType {
-    fn label(&self) -> &String {
+    fn label(&self) -> &str {
         &self.label
     }
 
     fn is_abstract(&self) -> bool {
         self.is_abstract
+    }
+
+    fn is_root(&self) -> bool {
+        self.is_root
     }
 
     fn into_thing_type_cloned(&self) -> ThingType {
@@ -179,7 +209,7 @@ impl ThingTypeAPI for EntityType {
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
-        transaction.concept().transaction_stream.get_entity_type(self.label().clone()).await.map(|res| res.is_none())
+        transaction.concept().transaction_stream.get_entity_type(self.label().to_owned()).await.map(|res| res.is_none())
     }
 }
 
@@ -234,12 +264,16 @@ impl EntityTypeAPI for EntityType {}
 
 #[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl ThingTypeAPI for RelationType {
-    fn label(&self) -> &String {
+    fn label(&self) -> &str {
         &self.label
     }
 
     fn is_abstract(&self) -> bool {
         self.is_abstract
+    }
+
+    fn is_root(&self) -> bool {
+        self.is_root
     }
 
     fn into_thing_type_cloned(&self) -> ThingType {
@@ -248,7 +282,12 @@ impl ThingTypeAPI for RelationType {
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
-        transaction.concept().transaction_stream.get_relation_type(self.label().clone()).await.map(|res| res.is_none())
+        transaction
+            .concept()
+            .transaction_stream
+            .get_relation_type(self.label().to_owned())
+            .await
+            .map(|res| res.is_none())
     }
 }
 
@@ -360,12 +399,16 @@ impl RelationTypeAPI for RelationType {}
 
 #[cfg_attr(not(feature = "sync"), async_trait::async_trait)]
 impl ThingTypeAPI for AttributeType {
-    fn label(&self) -> &String {
+    fn label(&self) -> &str {
         &self.label
     }
 
     fn is_abstract(&self) -> bool {
         self.is_abstract
+    }
+
+    fn is_root(&self) -> bool {
+        self.is_root
     }
 
     fn into_thing_type_cloned(&self) -> ThingType {
@@ -374,7 +417,12 @@ impl ThingTypeAPI for AttributeType {
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool> {
-        transaction.concept().transaction_stream.get_attribute_type(self.label().clone()).await.map(|res| res.is_none())
+        transaction
+            .concept()
+            .transaction_stream
+            .get_attribute_type(self.label().to_owned())
+            .await
+            .map(|res| res.is_none())
     }
 }
 

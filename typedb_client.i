@@ -42,6 +42,8 @@ struct Type {};
 %enddef
 
 %dropproxy(Error, error)
+%dropproxy(SchemaException, schema_exception)
+%dropproxy(SchemaExceptionIterator, schema_exception_iterator)
 
 %dropproxy(Credential, credential)
 %dropproxy(Options, options)

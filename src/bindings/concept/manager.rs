@@ -19,16 +19,17 @@
  * under the License.
  */
 
-use std::ffi::c_char;
+use std::{ffi::c_char, ptr::addr_of_mut};
 
 use crate::{
     bindings::{
         error::{try_release, try_release_map_optional},
-        memory::{borrow, string_view},
+        iterator::{iterator_try_next, CIterator},
+        memory::{borrow, free, release_string, string_view},
     },
-    common::IID,
-    concept::{Concept, ValueType},
-    Transaction,
+    common::{box_stream, IID},
+    concept::{Concept, SchemaException, ValueType},
+    Result, Transaction,
 };
 
 #[no_mangle]
@@ -124,7 +125,41 @@ pub extern "C" fn concepts_get_attribute(transaction: *const Transaction<'static
     )
 }
 
+pub struct SchemaExceptionIterator(CIterator<Result<SchemaException>>);
+
 #[no_mangle]
-pub extern "C" fn concepts_get_schema_exceptions(transaction: *const Transaction<'static>) {
-    borrow(transaction).concept().get_schema_exceptions().ok();
+pub extern "C" fn schema_exception_iterator_next(it: *mut SchemaExceptionIterator) -> *mut SchemaException {
+    unsafe { iterator_try_next(addr_of_mut!((*it).0)) }
+}
+
+#[no_mangle]
+pub extern "C" fn schema_exception_iterator_drop(it: *mut SchemaExceptionIterator) {
+    free(it);
+}
+
+#[no_mangle]
+pub extern "C" fn schema_exception_drop(schema_exception: *mut SchemaException) {
+    free(schema_exception);
+}
+
+#[no_mangle]
+pub extern "C" fn schema_exception_code(schema_exception: *const SchemaException) -> *mut c_char {
+    unsafe { release_string((*schema_exception).code.clone()) }
+}
+
+#[no_mangle]
+pub extern "C" fn schema_exception_message(schema_exception: *const SchemaException) -> *mut c_char {
+    unsafe { release_string((*schema_exception).message.clone()) }
+}
+
+#[no_mangle]
+pub extern "C" fn concepts_get_schema_exceptions(
+    transaction: *const Transaction<'static>,
+) -> *mut SchemaExceptionIterator {
+    try_release(
+        borrow(transaction)
+            .concept()
+            .get_schema_exceptions()
+            .map(|e| SchemaExceptionIterator(CIterator(box_stream(e)))),
+    )
 }

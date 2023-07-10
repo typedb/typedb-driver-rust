@@ -76,6 +76,16 @@ pub extern "C" fn explainables_drop(explainables: *mut Explainables) {
 }
 
 #[no_mangle]
+pub extern "C" fn explainables_equals(lhs: *const Explainables, rhs: *const Explainables) -> bool {
+    borrow(lhs) == borrow(rhs)
+}
+
+#[no_mangle]
+pub extern "C" fn explainables_to_string(explainables: *const Explainables) -> *mut c_char {
+    release_string(format!("{:?}", borrow(explainables)))
+}
+
+#[no_mangle]
 pub extern "C" fn explainables_get_relation(explainables: *const Explainables, var: *const c_char) -> *mut Explainable {
     release_optional(borrow(explainables).relations.get(string_view(var)).cloned())
 }
@@ -138,6 +148,16 @@ pub extern "C" fn explanation_drop(explanation: *mut Explanation) {
 }
 
 #[no_mangle]
+pub extern "C" fn explanation_equals(lhs: *const Explanation, rhs: *const Explanation) -> bool {
+    borrow(lhs) == borrow(rhs)
+}
+
+#[no_mangle]
+pub extern "C" fn explanation_to_string(explanation: *const Explanation) -> *mut c_char {
+    release_string(format!("{:?}", borrow(explanation)))
+}
+
+#[no_mangle]
 pub extern "C" fn explanation_get_rule(explanation: *const Explanation) -> *mut Rule {
     release(borrow(explanation).rule.clone())
 }
@@ -169,6 +189,11 @@ pub extern "C" fn concept_map_group_get_concept_maps(
     release(ConceptMapIterator(CIterator(box_stream(
         borrow(concept_map_group).concept_maps.clone().into_iter().map(Ok),
     ))))
+}
+
+#[no_mangle]
+pub extern "C" fn concept_map_group_to_string(concept_map_group: *const ConceptMapGroup) -> *const c_char {
+    release_string(format!("{:?}", borrow(concept_map_group)))
 }
 
 #[no_mangle]
@@ -222,6 +247,16 @@ pub extern "C" fn numeric_to_string(numeric: *const Numeric) -> *const c_char {
 #[no_mangle]
 pub extern "C" fn numeric_group_drop(numeric_group: *mut NumericGroup) {
     free(numeric_group);
+}
+
+#[no_mangle]
+pub extern "C" fn numeric_group_to_string(numeric_group: *const NumericGroup) -> *const c_char {
+    release_string(format!("{:?}", borrow(numeric_group)))
+}
+
+#[no_mangle]
+pub extern "C" fn numeric_group_equals(lhs: *const NumericGroup, rhs: *const NumericGroup) -> bool {
+    borrow(lhs) == borrow(rhs)
 }
 
 #[no_mangle]
