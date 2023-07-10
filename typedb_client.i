@@ -62,11 +62,11 @@ struct Type {};
 %dropproxy(User, user)
 %dropproxy(UserIterator, user_iterator)
 
-
 %dropproxy(Concept, concept)
 %dropproxy(ConceptIterator, concept_iterator)
 
 %dropproxy(Value, value)
+%dropproxy(Annotation, annotation)
 
 %dropproxy(RolePlayer, role_player)
 %dropproxy(RolePlayerIterator, role_player_iterator)
@@ -202,6 +202,7 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 
 %newobject annotation_new_key;
 %newobject annotation_new_unique;
+%newobject annotation_to_string;
 
 %newobject concept_to_string;
 

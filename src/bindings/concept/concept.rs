@@ -152,6 +152,16 @@ pub extern "C" fn annotation_drop(annotation: *mut Annotation) {
 }
 
 #[no_mangle]
+pub extern "C" fn annotation_to_string(annotation: *const Annotation) -> *mut c_char {
+    release_string(format!("{:?}", borrow(annotation)))
+}
+
+#[no_mangle]
+pub extern "C" fn annotation_equals(lhs: *const Annotation, rhs: *const Annotation) -> bool {
+    borrow(lhs) == borrow(rhs)
+}
+
+#[no_mangle]
 pub extern "C" fn annotation_is_key(annotation: *const Annotation) -> bool {
     *borrow(annotation) == Annotation::Key
 }
