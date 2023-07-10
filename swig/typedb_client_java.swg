@@ -209,3 +209,26 @@ import static java.util.Spliterators.spliteratorUnknownSize;
     return $jnicall;
 }
 
+/* ValueType* needs special handling */
+%typemap(in) enum ValueType * {
+    if ($input >= 0) {
+        $1 = (enum ValueType *) malloc(sizeof(enum ValueType));
+        *$1 = (enum ValueType)$input;
+    }
+}
+
+/* This cleans up the memory we malloc'd before the function call */
+%typemap(freearg) enum ValueType * { free($1); }
+
+/* These 3 typemaps tell SWIG what JNI and Java types to use */
+%typemap(jni) enum ValueType * "jlong"
+%typemap(jtype) enum ValueType * "long"
+%typemap(jstype) enum ValueType * "ValueType"
+
+/* These 2 typemaps handle the conversion of the jtype to jstype typemap type
+      and vice versa */
+%typemap(javain) enum ValueType * "$javainput == null ? -1 : $javainput.swigValue()"
+%typemap(javaout) enum ValueType * {
+    return $jnicall;
+}
+
