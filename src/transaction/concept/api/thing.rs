@@ -19,11 +19,9 @@
  * under the License.
  */
 
-use typeql_lang::pattern::Annotation;
-
 use crate::{
     common::{box_stream, stream::BoxStream, IID},
-    concept::{Attribute, AttributeType, Entity, Relation, RoleType, Thing, ThingType},
+    concept::{Annotation, Attribute, AttributeType, Entity, Relation, RoleType, Thing, ThingType},
     Result, Transaction,
 };
 

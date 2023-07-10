@@ -21,8 +21,6 @@
 
 use std::ffi::c_char;
 
-use typeql_lang::pattern::Annotation;
-
 use super::{
     concept::{
         borrow_as_attribute, borrow_as_attribute_type, borrow_as_entity, borrow_as_relation, borrow_as_role_type,
@@ -33,9 +31,9 @@ use super::{
 use crate::{
     bindings::{
         error::{try_release, unwrap_or_default, unwrap_void},
-        memory::{array_view, borrow, release, release_string, string_array_view},
+        memory::{array_view, borrow, release, release_string},
     },
-    concept::{Concept, Value},
+    concept::{Annotation, Concept, Value},
     transaction::concept::api::{AttributeAPI, RelationAPI},
     Transaction,
 };
@@ -85,19 +83,12 @@ pub extern "C" fn thing_get_has(
     transaction: *mut Transaction<'static>,
     thing: *const Concept,
     attribute_types: *const *const Concept,
-    annotations: *const *const c_char,
+    annotations: *const *const Annotation,
 ) -> *mut ConceptIterator {
     let transaction = borrow(transaction);
     let thing = borrow_as_thing(thing);
     let attribute_types = array_view(attribute_types).map(|at| borrow_as_attribute_type(at)).cloned().collect();
-    let annotations = string_array_view(annotations)
-        .map(|anno| match anno {
-            // FIXME TypeQL?
-            "@key" => Annotation::Key,
-            "@unique" => Annotation::Unique,
-            _ => unreachable!(),
-        })
-        .collect();
+    let annotations = array_view(annotations).copied().collect();
     try_release(thing.get_has(transaction, attribute_types, annotations).map(ConceptIterator::attributes))
 }
 

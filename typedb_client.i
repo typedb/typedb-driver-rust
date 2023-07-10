@@ -174,6 +174,8 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 %newobject explainables_get_relations_keys;
 %newobject explainables_get_attributes_keys;
 %newobject explainables_get_ownerships_keys;
+%newobject explainables_to_string;
+%newobject explanation_to_string;
 
 %newobject explainable_get_conjunction;
 
@@ -198,6 +200,9 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 %newobject value_new_date_time_from_millis;
 %newobject value_get_string;
 
+%newobject annotation_new_key;
+%newobject annotation_new_unique;
+
 %newobject concept_to_string;
 
 %newobject concepts_get_entity_type;
@@ -209,6 +214,7 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 %newobject concepts_get_entity;
 %newobject concepts_get_relation;
 %newobject concepts_get_attribute;
+%newobject concepts_get_schema_exceptions;
 
 %newobject concept_iterator_next;
 
@@ -223,8 +229,6 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 %newobject relation_get_type;
 %newobject attribute_get_type;
 
-%newobject attribute_get_value;
-
 %newobject thing_get_has;
 %newobject thing_get_relations;
 %newobject thing_get_playing;
@@ -233,6 +237,7 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 %newobject relation_get_role_players;
 %newobject relation_get_relating;
 
+%newobject attribute_get_value;
 %newobject attribute_get_owners;
 
 %newobject thing_type_get_label;
@@ -297,9 +302,14 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 %newobject error_code;
 %newobject error_message;
 
+%newobject schema_exception_code;
+%newobject schema_exception_iterator_next;
+%newobject schema_exception_message;
+
 %newobject rule_get_label;
 %newobject rule_get_when;
 %newobject rule_get_then;
+%newobject rule_to_string;
 
 %newobject logic_manager_put_rule;
 %newobject logic_manager_get_rule;
@@ -328,5 +338,13 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 %newobject session_get_database_name;
 
 %newobject transaction_new;
+
+%newobject users_all;
+%newobject users_current_user;
+%newobject users_get;
+
+%newobject user_get_username;
+%newobject user_iterator_next;
+%newobject user_manager_new;
 
 %include "typedb_client.h"

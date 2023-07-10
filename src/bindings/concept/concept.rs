@@ -25,7 +25,9 @@ use chrono::NaiveDateTime;
 
 use crate::{
     bindings::memory::{borrow, borrow_mut, free, release, release_string, string_view},
-    concept::{Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, Value},
+    concept::{
+        Annotation, Attribute, AttributeType, Concept, Entity, EntityType, Relation, RelationType, RoleType, Value,
+    },
     transaction::concept::api::{ThingAPI, ThingTypeAPI},
 };
 
@@ -52,6 +54,11 @@ pub extern "C" fn value_new_string(string: *const c_char) -> *mut Value {
 #[no_mangle]
 pub extern "C" fn value_new_date_time_from_millis(millis: i64) -> *mut Value {
     release(Value::DateTime(NaiveDateTime::from_timestamp_millis(millis).unwrap()))
+}
+
+#[no_mangle]
+pub extern "C" fn value_drop(value: *mut Value) {
+    free(value);
 }
 
 #[no_mangle]
@@ -130,8 +137,28 @@ pub extern "C" fn value_equals(lhs: *const Value, rhs: *const Value) -> bool {
 }
 
 #[no_mangle]
-pub extern "C" fn value_drop(value: *mut Value) {
-    free(value);
+pub extern "C" fn annotation_new_key() -> *mut Annotation {
+    release(Annotation::Key)
+}
+
+#[no_mangle]
+pub extern "C" fn annotation_new_unique() -> *mut Annotation {
+    release(Annotation::Unique)
+}
+
+#[no_mangle]
+pub extern "C" fn annotation_drop(annotation: *mut Annotation) {
+    free(annotation);
+}
+
+#[no_mangle]
+pub extern "C" fn annotation_is_key(annotation: *const Annotation) -> bool {
+    *borrow(annotation) == Annotation::Key
+}
+
+#[no_mangle]
+pub extern "C" fn annotation_is_unique(annotation: *const Annotation) -> bool {
+    *borrow(annotation) == Annotation::Unique
 }
 
 #[no_mangle]

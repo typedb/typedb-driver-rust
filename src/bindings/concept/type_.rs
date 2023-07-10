@@ -21,8 +21,6 @@
 
 use std::ffi::c_char;
 
-use typeql_lang::pattern::Annotation;
-
 use super::{
     concept::{
         borrow_as_attribute_type, borrow_as_attribute_type_mut, borrow_as_entity_type, borrow_as_entity_type_mut,
@@ -37,9 +35,9 @@ use crate::{
             try_release, try_release_map_optional, try_release_optional_string, try_release_string, unwrap_or_default,
             unwrap_void,
         },
-        memory::{borrow, borrow_optional, release_string, string_array_view, string_view},
+        memory::{array_view, borrow, borrow_optional, release_string, string_view},
     },
-    concept::{Concept, Transitivity, Value, ValueType},
+    concept::{Annotation, Concept, Transitivity, Value, ValueType},
     transaction::concept::api::{AttributeTypeAPI, EntityTypeAPI, RelationTypeAPI, RoleTypeAPI},
     Transaction,
 };
@@ -94,16 +92,9 @@ pub extern "C" fn thing_type_get_owns(
     thing_type: *const Concept,
     value_type: *const ValueType,
     transitivity: Transitivity,
-    annotations: *const *const c_char,
+    annotations: *const *const Annotation,
 ) -> *mut ConceptIterator {
-    let annotations = string_array_view(annotations)
-        .map(|anno| match anno {
-            // FIXME TypeQL?
-            "@key" => Annotation::Key,
-            "@unique" => Annotation::Unique,
-            _ => unreachable!(),
-        })
-        .collect();
+    let annotations = array_view(annotations).copied().collect();
     try_release(
         borrow_as_thing_type(thing_type)
             .get_owns(borrow(transaction), borrow_optional(value_type).copied(), transitivity, annotations)
@@ -131,16 +122,9 @@ pub extern "C" fn thing_type_set_owns(
     thing_type: *mut Concept,
     attribute_type: *const Concept,
     overridden_attribute_type: *const Concept,
-    annotations: *const *const c_char,
+    annotations: *const *const Annotation,
 ) {
-    let annotations = string_array_view(annotations)
-        .map(|anno| match anno {
-            // FIXME TypeQL?
-            "@key" => Annotation::Key,
-            "@unique" => Annotation::Unique,
-            _ => unreachable!(),
-        })
-        .collect();
+    let annotations = array_view(annotations).copied().collect();
     unwrap_void(borrow_as_thing_type_mut(thing_type).set_owns(
         borrow(transaction),
         borrow_as_attribute_type(attribute_type).clone(),
@@ -545,16 +529,9 @@ pub extern "C" fn attribute_type_get_owners(
     transaction: *mut Transaction<'static>,
     attribute_type: *const Concept,
     transitivity: Transitivity,
-    annotations: *const *const c_char,
+    annotations: *const *const Annotation,
 ) -> *mut ConceptIterator {
-    let annotations = string_array_view(annotations)
-        .map(|anno| match anno {
-            // FIXME TypeQL?
-            "@key" => Annotation::Key,
-            "@unique" => Annotation::Unique,
-            _ => unreachable!(),
-        })
-        .collect();
+    let annotations = array_view(annotations).copied().collect();
     try_release(
         borrow_as_attribute_type(attribute_type)
             .get_owners(borrow(transaction), transitivity, annotations)
