@@ -32,8 +32,10 @@ use crate::{
 };
 
 generic_step_impl! {
+
 #[step(expr = "set time-zone is: {word}")]
 async fn set_time_zone(context: &mut Context, timezone: String) {
     env::set_var("TZ", timezone);
 }
+
 }
