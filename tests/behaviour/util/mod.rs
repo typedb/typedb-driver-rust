@@ -23,7 +23,7 @@ use std::collections::HashMap;
 
 mod steps;
 
-use chrono::{NaiveDateTime, NaiveTime};
+use chrono::{NaiveDateTime, NaiveTime, NaiveDate};
 use cucumber::gherkin::Step;
 use futures::{
     stream::{self, StreamExt},
@@ -141,7 +141,9 @@ fn value_equals_str(value: &Value, expected: &str) -> bool {
             if expected.contains(":") {
                 val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%dT%H:%M:%S").unwrap()
             } else {
-                val == &NaiveDateTime::parse_from_str(expected, "%Y-%m-%d").unwrap()
+                let my_date=NaiveDate::parse_from_str(expected,"%Y-%m-%d").unwrap();
+                let my_time=NaiveTime::from_hms_opt(0, 0, 0).unwrap();
+                val == &NaiveDateTime::new(my_date, my_time)
             }
         }
     }
