@@ -22,8 +22,8 @@
 use std::ffi::c_char;
 
 use super::{
-    error::try_release,
-    memory::{borrow, free, release_string, take_ownership},
+    error::{try_release, unwrap_void},
+    memory::{borrow, borrow_mut, free, release_string, take_ownership},
 };
 use crate::{Database, Options, Session, SessionType};
 
@@ -44,6 +44,16 @@ pub extern "C" fn session_drop(session: *mut Session) {
 #[no_mangle]
 pub extern "C" fn session_get_database_name(session: *const Session) -> *mut c_char {
     release_string(borrow(session).database_name().to_owned())
+}
+
+#[no_mangle]
+pub extern "C" fn session_is_open(session: *const Session) -> bool {
+    borrow(session).is_open()
+}
+
+#[no_mangle]
+pub extern "C" fn session_force_close(session: *mut Session) {
+    unwrap_void(borrow_mut(session).force_close())
 }
 
 #[no_mangle]
