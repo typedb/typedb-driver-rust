@@ -117,8 +117,13 @@ impl Connection {
         Err(ConnectionError::UnableToConnect())?
     }
 
+    pub fn is_open(&self) -> bool {
+        self.background_runtime.is_open()
+    }
+
     pub fn force_close(self) -> Result {
-        let result = self.server_connections.values().map(ServerConnection::force_close).try_collect().map_err(Into::into);
+        let result =
+            self.server_connections.values().map(ServerConnection::force_close).try_collect().map_err(Into::into);
         self.background_runtime.force_close().and(result)
     }
 

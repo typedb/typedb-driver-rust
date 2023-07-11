@@ -47,6 +47,11 @@ pub extern "C" fn connection_close(connection: *mut Connection) {
 }
 
 #[no_mangle]
+pub extern "C" fn connection_is_open(connection: *const Connection) -> bool {
+    borrow(connection).is_open()
+}
+
+#[no_mangle]
 pub extern "C" fn connection_force_close(connection: *mut Connection) {
     unwrap_void(take_ownership(connection).force_close());
 }
