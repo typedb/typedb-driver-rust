@@ -118,8 +118,8 @@ impl Connection {
     }
 
     pub fn force_close(self) -> Result {
-        self.server_connections.values().map(ServerConnection::force_close).try_collect()?;
-        self.background_runtime.force_close()
+        let result = self.server_connections.values().map(ServerConnection::force_close).try_collect().map_err(Into::into);
+        self.background_runtime.force_close().and(result)
     }
 
     pub(crate) fn server_count(&self) -> usize {
