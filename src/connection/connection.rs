@@ -121,7 +121,7 @@ impl Connection {
         self.background_runtime.is_open()
     }
 
-    pub fn force_close(self) -> Result {
+    pub fn force_close(&self) -> Result {
         let result =
             self.server_connections.values().map(ServerConnection::force_close).try_collect().map_err(Into::into);
         self.background_runtime.force_close().and(result)

@@ -23,7 +23,7 @@ use std::{ffi::c_char, path::Path};
 
 use super::{
     error::{try_release, unwrap_void},
-    memory::{borrow, free, release, string_array_view, string_view, take_ownership},
+    memory::{borrow, free, release, string_array_view, string_view},
 };
 use crate::{Connection, Credential};
 
@@ -53,7 +53,7 @@ pub extern "C" fn connection_is_open(connection: *const Connection) -> bool {
 
 #[no_mangle]
 pub extern "C" fn connection_force_close(connection: *mut Connection) {
-    unwrap_void(take_ownership(connection).force_close());
+    unwrap_void(borrow(connection).force_close());
 }
 
 #[no_mangle]
