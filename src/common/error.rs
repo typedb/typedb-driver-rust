@@ -26,6 +26,8 @@ use typeql_lang::error_messages;
 
 use crate::common::RequestID;
 
+use super::address::Address;
+
 error_messages! { ConnectionError
     code: "CXN", type: "Connection Error",
     ConnectionIsClosed() =
@@ -68,7 +70,7 @@ error_messages! { InternalError
         3: "Unexpected request type for remote procedure call: {}.",
     UnexpectedResponseType(String) =
         4: "Unexpected response type for remote procedure call: {}.",
-    UnknownConnectionAddress(String) =
+    UnknownConnectionAddress(Address) =
         5: "Received unrecognized address from the server: {}.",
     EnumOutOfBounds(i32, &'static str) =
         6: "Value '{}' is out of bounds for enum '{}'.",

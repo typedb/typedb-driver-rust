@@ -67,6 +67,18 @@ impl Database {
         self.name.as_str()
     }
 
+    pub fn replicas_info(&self) -> Vec<ReplicaInfo> {
+        self.replicas.read().unwrap().iter().map(Replica::to_info).collect()
+    }
+
+    pub fn primary_replica_info(&self) -> Option<ReplicaInfo> {
+		self.primary_replica().map(|replica| replica.to_info())
+    }
+
+    pub fn preferred_replica_info(&self) -> Option<ReplicaInfo> {
+		self.preferred_replica().map(|replica| replica.to_info())
+    }
+
     pub(super) fn connection(&self) -> &Connection {
         &self.connection
     }
@@ -235,6 +247,10 @@ impl Database {
         self.replicas.read().unwrap().iter().filter(|r| r.is_primary).max_by_key(|r| r.term).cloned()
     }
 
+    fn preferred_replica(&self) -> Option<Replica> {
+        self.replicas.read().unwrap().iter().filter(|r| r.is_preferred).max_by_key(|r| r.term).cloned()
+    }
+
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn wait_for_primary_replica_selection() {
         // FIXME: blocking sleep! Can't do agnostic async sleep.
@@ -279,6 +295,10 @@ impl Replica {
                 Ok(Self::new(database_info.name.clone(), replica, server_connection))
             })
             .try_collect()
+    }
+
+    fn to_info(&self) -> ReplicaInfo {
+		ReplicaInfo { address: self.address.clone(), is_primary: self.is_primary, is_preferred: self.is_preferred, term: self.term }
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]

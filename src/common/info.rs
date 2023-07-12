@@ -40,9 +40,9 @@ pub(crate) struct DatabaseInfo {
 }
 
 #[derive(Debug)]
-pub(crate) struct ReplicaInfo {
-    pub(crate) address: Address,
-    pub(crate) is_primary: bool,
-    pub(crate) is_preferred: bool,
-    pub(crate) term: i64,
+pub struct ReplicaInfo {
+    pub address: Address,
+    pub is_primary: bool,
+    pub is_preferred: bool,
+    pub term: i64,
 }
