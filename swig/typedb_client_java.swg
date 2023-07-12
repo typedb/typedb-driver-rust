@@ -29,10 +29,12 @@
 
 %typemap(javacode) SWIGTYPE %{
     public $javaclassname released() {
+        long cptr = swigCPtr;
         if (swigCMemOwn) {
+            swigCPtr = 0;
             swigCMemOwn = false;
         }
-        return this;
+        return new $javaclassname(cptr, false);
     }
 
     public boolean isOwned() {
