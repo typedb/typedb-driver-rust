@@ -173,6 +173,11 @@ pub extern "C" fn explanation_get_condition(explanation: *const Explanation) -> 
 }
 
 #[no_mangle]
+pub extern "C" fn explanation_get_mapped_variables(explanation: *const Explanation) -> *mut StringIterator {
+    release(StringIterator(CIterator(box_stream(borrow(explanation).variable_mapping.keys().cloned()))))
+}
+
+#[no_mangle]
 pub extern "C" fn explanation_get_mapping(explanation: *const Explanation, var: *const c_char) -> *mut StringIterator {
     release(StringIterator(CIterator(box_stream(
         borrow(explanation).variable_mapping.get(string_view(var)).into_iter().flat_map(|v| v.into_iter()).cloned(),
