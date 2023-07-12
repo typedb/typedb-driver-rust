@@ -19,13 +19,17 @@
  * under the License.
  */
 
-use std::ffi::c_char;
+use std::{ffi::c_char, ptr::addr_of_mut};
 
 use super::{
     error::{try_release_string, unwrap_void},
-    memory::{borrow, borrow_mut, free, release_string, take_ownership},
+    iterator::{iterator_next, CIterator},
+    memory::{borrow, borrow_mut, free, release, release_optional, release_string, take_ownership},
 };
-use crate::Database;
+use crate::{
+    common::{box_stream, info::ReplicaInfo},
+    Database,
+};
 
 #[no_mangle]
 pub extern "C" fn database_drop(database: *mut Database) {
@@ -55,4 +59,56 @@ pub extern "C" fn database_type_schema(database: *mut Database) -> *mut c_char {
 #[no_mangle]
 pub extern "C" fn database_rule_schema(database: *mut Database) -> *mut c_char {
     try_release_string(borrow_mut(database).rule_schema())
+}
+
+pub struct ReplicaInfoIterator(CIterator<ReplicaInfo>);
+
+#[no_mangle]
+pub extern "C" fn replica_info_iterator_next(it: *mut ReplicaInfoIterator) -> *mut ReplicaInfo {
+    unsafe { iterator_next(addr_of_mut!((*it).0)) }
+}
+
+#[no_mangle]
+pub extern "C" fn replica_info_iterator_drop(it: *mut ReplicaInfoIterator) {
+    free(it);
+}
+
+#[no_mangle]
+pub extern "C" fn database_get_replicas_info(database: *const Database) -> *mut ReplicaInfoIterator {
+    release(ReplicaInfoIterator(CIterator(box_stream(borrow(database).replicas_info().into_iter()))))
+}
+
+#[no_mangle]
+pub extern "C" fn database_get_primary_replica_info(database: *const Database) -> *mut ReplicaInfo {
+    release_optional(borrow(database).primary_replica_info())
+}
+
+#[no_mangle]
+pub extern "C" fn database_get_preferred_replica_info(database: *const Database) -> *mut ReplicaInfo {
+    release_optional(borrow(database).preferred_replica_info())
+}
+
+#[no_mangle]
+pub extern "C" fn replica_info_drop(replica_info: *mut ReplicaInfo) {
+    free(replica_info);
+}
+
+#[no_mangle]
+pub extern "C" fn replica_info_get_address(replica_info: *const ReplicaInfo) -> *mut c_char {
+    release_string(borrow(replica_info).address.to_string())
+}
+
+#[no_mangle]
+pub extern "C" fn replica_info_is_primary(replica_info: *const ReplicaInfo) -> bool {
+    borrow(replica_info).is_primary
+}
+
+#[no_mangle]
+pub extern "C" fn replica_info_is_preferred(replica_info: *const ReplicaInfo) -> bool {
+    borrow(replica_info).is_preferred
+}
+
+#[no_mangle]
+pub extern "C" fn replica_info_get_term(replica_info: *const ReplicaInfo) -> i64 {
+    borrow(replica_info).term
 }

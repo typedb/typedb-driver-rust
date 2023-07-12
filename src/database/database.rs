@@ -72,11 +72,11 @@ impl Database {
     }
 
     pub fn primary_replica_info(&self) -> Option<ReplicaInfo> {
-		self.primary_replica().map(|replica| replica.to_info())
+        self.primary_replica().map(|replica| replica.to_info())
     }
 
     pub fn preferred_replica_info(&self) -> Option<ReplicaInfo> {
-		self.preferred_replica().map(|replica| replica.to_info())
+        self.preferred_replica().map(|replica| replica.to_info())
     }
 
     pub(super) fn connection(&self) -> &Connection {
@@ -298,7 +298,12 @@ impl Replica {
     }
 
     fn to_info(&self) -> ReplicaInfo {
-		ReplicaInfo { address: self.address.clone(), is_primary: self.is_primary, is_preferred: self.is_preferred, term: self.term }
+        ReplicaInfo {
+            address: self.address.clone(),
+            is_primary: self.is_primary,
+            is_preferred: self.is_preferred,
+            term: self.term,
+        }
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]

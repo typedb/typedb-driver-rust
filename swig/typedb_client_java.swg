@@ -147,6 +147,7 @@ import static java.util.Spliterators.spliteratorUnknownSize;
 %iterator(Rule, rule)
 %iterator(User, user)
 %iterator(Database, database)
+%iterator(ReplicaInfo, replica_info)
 %iterator(SchemaException, schema_exception)
 
 %define %array(Type)

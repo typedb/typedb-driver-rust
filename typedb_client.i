@@ -57,6 +57,8 @@ struct Type {};
 %dropproxy(DatabaseManager, database_manager);
 %dropproxy(Database, database)
 %dropproxy(DatabaseIterator, database_iterator)
+%dropproxy(ReplicaInfo, replica_info)
+%dropproxy(ReplicaInfoIterator, replica_info_iterator)
 
 %dropproxy(UserManager, user_manager);
 %dropproxy(User, user)
@@ -296,6 +298,13 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 %newobject database_manager_new;
 %newobject database_iterator_next;
 
+%newobject database_get_preferred_replica_info;
+%newobject database_get_primary_replica_info;
+%newobject database_get_replicas_info;
+
+%newobject replica_info_get_address;
+%newobject replica_info_iterator_next;
+
 %newobject databases_all;
 %newobject databases_get;
 
@@ -333,6 +342,7 @@ void transaction_on_close_register(const Transaction* transaction, TransactionCa
 
 %newobject concept_map_group_iterator_next;
 %newobject numeric_group_iterator_next;
+%newobject explanation_get_mapping;
 %newobject explanation_iterator_next;
 
 %newobject session_new;
