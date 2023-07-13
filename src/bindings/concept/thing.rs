@@ -143,7 +143,7 @@ pub extern "C" fn relation_add_role_player(
 ) {
     let transaction = borrow(transaction);
     let role_type = borrow_as_role_type(role_type).clone();
-    let player = borrow_as_thing(player).into_thing_cloned();
+    let player = borrow_as_thing(player).to_thing_cloned();
     unwrap_void(borrow_as_relation(relation).add_role_player(transaction, role_type, player))
 }
 
@@ -156,7 +156,7 @@ pub extern "C" fn relation_remove_role_player(
 ) {
     let transaction = borrow(transaction);
     let role_type = borrow_as_role_type(role_type).clone();
-    let player = borrow_as_thing(player).into_thing_cloned();
+    let player = borrow_as_thing(player).to_thing_cloned();
     unwrap_void(borrow_as_relation(relation).remove_role_player(transaction, role_type, player))
 }
 
@@ -198,6 +198,6 @@ pub extern "C" fn attribute_get_owners(
     thing_type: *const Concept,
 ) -> *mut ConceptIterator {
     let transaction = borrow(transaction);
-    let thing_type = unsafe { thing_type.as_ref().map(|t| borrow_as_thing_type(t).into_thing_type_cloned()) };
+    let thing_type = unsafe { thing_type.as_ref().map(|t| borrow_as_thing_type(t).to_thing_type_cloned()) };
     try_release(borrow_as_attribute(attribute).get_owners(transaction, thing_type).map(ConceptIterator::things))
 }

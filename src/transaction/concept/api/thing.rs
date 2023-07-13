@@ -31,7 +31,7 @@ pub trait ThingAPI: Sync + Send {
 
     fn is_inferred(&self) -> bool;
 
-    fn into_thing_cloned(&self) -> Thing;
+    fn to_thing_cloned(&self) -> Thing;
 
     #[cfg(not(feature = "sync"))]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
@@ -41,7 +41,7 @@ pub trait ThingAPI: Sync + Send {
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn delete(&self, transaction: &Transaction<'_>) -> Result {
-        transaction.concept().transaction_stream.thing_delete(self.into_thing_cloned()).await
+        transaction.concept().transaction_stream.thing_delete(self.to_thing_cloned()).await
     }
 
     fn get_has(
@@ -53,18 +53,18 @@ pub trait ThingAPI: Sync + Send {
         transaction
             .concept()
             .transaction_stream
-            .thing_get_has(self.into_thing_cloned(), attribute_types, annotations)
+            .thing_get_has(self.to_thing_cloned(), attribute_types, annotations)
             .map(box_stream)
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
-        transaction.concept().transaction_stream.thing_set_has(self.into_thing_cloned(), attribute).await
+        transaction.concept().transaction_stream.thing_set_has(self.to_thing_cloned(), attribute).await
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn unset_has(&self, transaction: &Transaction<'_>, attribute: Attribute) -> Result {
-        transaction.concept().transaction_stream.thing_unset_has(self.into_thing_cloned(), attribute).await
+        transaction.concept().transaction_stream.thing_unset_has(self.to_thing_cloned(), attribute).await
     }
 
     fn get_relations(
@@ -72,15 +72,11 @@ pub trait ThingAPI: Sync + Send {
         transaction: &Transaction<'_>,
         role_types: Vec<RoleType>,
     ) -> Result<BoxStream<Result<Relation>>> {
-        transaction
-            .concept()
-            .transaction_stream
-            .thing_get_relations(self.into_thing_cloned(), role_types)
-            .map(box_stream)
+        transaction.concept().transaction_stream.thing_get_relations(self.to_thing_cloned(), role_types).map(box_stream)
     }
 
     fn get_playing(&self, transaction: &Transaction<'_>) -> Result<BoxStream<Result<RoleType>>> {
-        transaction.concept().transaction_stream.thing_get_playing(self.into_thing_cloned()).map(box_stream)
+        transaction.concept().transaction_stream.thing_get_playing(self.to_thing_cloned()).map(box_stream)
     }
 }
 
@@ -102,7 +98,7 @@ impl ThingAPI for Thing {
         }
     }
 
-    fn into_thing_cloned(&self) -> Thing {
+    fn to_thing_cloned(&self) -> Thing {
         self.clone()
     }
 
@@ -126,7 +122,7 @@ impl ThingAPI for Entity {
         self.is_inferred
     }
 
-    fn into_thing_cloned(&self) -> Thing {
+    fn to_thing_cloned(&self) -> Thing {
         Thing::Entity(self.clone())
     }
 
@@ -152,7 +148,7 @@ impl ThingAPI for Relation {
         self.is_inferred
     }
 
-    fn into_thing_cloned(&self) -> Thing {
+    fn to_thing_cloned(&self) -> Thing {
         Thing::Relation(self.clone())
     }
 
@@ -212,7 +208,7 @@ impl ThingAPI for Attribute {
         self.is_inferred
     }
 
-    fn into_thing_cloned(&self) -> Thing {
+    fn to_thing_cloned(&self) -> Thing {
         Thing::Attribute(self.clone())
     }
 

@@ -36,7 +36,7 @@ pub trait ThingTypeAPI: Sync + Send {
 
     fn is_root(&self) -> bool;
 
-    fn into_thing_type_cloned(&self) -> ThingType;
+    fn to_thing_type_cloned(&self) -> ThingType;
 
     #[cfg(not(feature = "sync"))]
     async fn is_deleted(&self, transaction: &Transaction<'_>) -> Result<bool>;
@@ -46,22 +46,22 @@ pub trait ThingTypeAPI: Sync + Send {
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn delete(&mut self, transaction: &Transaction<'_>) -> Result {
-        transaction.concept().transaction_stream.thing_type_delete(self.into_thing_type_cloned()).await
+        transaction.concept().transaction_stream.thing_type_delete(self.to_thing_type_cloned()).await
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_label(&mut self, transaction: &Transaction<'_>, new_label: String) -> Result {
-        transaction.concept().transaction_stream.thing_type_set_label(self.into_thing_type_cloned(), new_label).await
+        transaction.concept().transaction_stream.thing_type_set_label(self.to_thing_type_cloned(), new_label).await
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn set_abstract(&mut self, transaction: &Transaction<'_>) -> Result {
-        transaction.concept().transaction_stream.thing_type_set_abstract(self.into_thing_type_cloned()).await
+        transaction.concept().transaction_stream.thing_type_set_abstract(self.to_thing_type_cloned()).await
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn unset_abstract(&mut self, transaction: &Transaction<'_>) -> Result {
-        transaction.concept().transaction_stream.thing_type_unset_abstract(self.into_thing_type_cloned()).await
+        transaction.concept().transaction_stream.thing_type_unset_abstract(self.to_thing_type_cloned()).await
     }
 
     fn get_owns(
@@ -74,7 +74,7 @@ pub trait ThingTypeAPI: Sync + Send {
         transaction
             .concept()
             .transaction_stream
-            .thing_type_get_owns(self.into_thing_type_cloned(), value_type, transitivity, annotations)
+            .thing_type_get_owns(self.to_thing_type_cloned(), value_type, transitivity, annotations)
             .map(box_stream)
     }
 
@@ -87,7 +87,7 @@ pub trait ThingTypeAPI: Sync + Send {
         transaction
             .concept()
             .transaction_stream
-            .thing_type_get_owns_overridden(self.into_thing_type_cloned(), overridden_attribute_type)
+            .thing_type_get_owns_overridden(self.to_thing_type_cloned(), overridden_attribute_type)
             .await
     }
 
@@ -102,7 +102,7 @@ pub trait ThingTypeAPI: Sync + Send {
         transaction
             .concept()
             .transaction_stream
-            .thing_type_set_owns(self.into_thing_type_cloned(), attribute_type, overridden_attribute_type, annotations)
+            .thing_type_set_owns(self.to_thing_type_cloned(), attribute_type, overridden_attribute_type, annotations)
             .await
     }
 
@@ -111,7 +111,7 @@ pub trait ThingTypeAPI: Sync + Send {
         transaction
             .concept()
             .transaction_stream
-            .thing_type_unset_owns(self.into_thing_type_cloned(), attribute_type)
+            .thing_type_unset_owns(self.to_thing_type_cloned(), attribute_type)
             .await
     }
 
@@ -123,7 +123,7 @@ pub trait ThingTypeAPI: Sync + Send {
         transaction
             .concept()
             .transaction_stream
-            .thing_type_get_plays(self.into_thing_type_cloned(), transitivity)
+            .thing_type_get_plays(self.to_thing_type_cloned(), transitivity)
             .map(box_stream)
     }
 
@@ -136,7 +136,7 @@ pub trait ThingTypeAPI: Sync + Send {
         transaction
             .concept()
             .transaction_stream
-            .thing_type_get_plays_overridden(self.into_thing_type_cloned(), overridden_role_type)
+            .thing_type_get_plays_overridden(self.to_thing_type_cloned(), overridden_role_type)
             .await
     }
 
@@ -150,18 +150,18 @@ pub trait ThingTypeAPI: Sync + Send {
         transaction
             .concept()
             .transaction_stream
-            .thing_type_set_plays(self.into_thing_type_cloned(), role_type, overridden_role_type)
+            .thing_type_set_plays(self.to_thing_type_cloned(), role_type, overridden_role_type)
             .await
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn unset_plays(&mut self, transaction: &Transaction<'_>, role_type: RoleType) -> Result {
-        transaction.concept().transaction_stream.thing_type_unset_plays(self.into_thing_type_cloned(), role_type).await
+        transaction.concept().transaction_stream.thing_type_unset_plays(self.to_thing_type_cloned(), role_type).await
     }
 
     #[cfg_attr(feature = "sync", maybe_async::must_be_sync)]
     async fn get_syntax(&self, transaction: &Transaction<'_>) -> Result<String> {
-        transaction.concept().transaction_stream.thing_type_get_syntax(self.into_thing_type_cloned()).await
+        transaction.concept().transaction_stream.thing_type_get_syntax(self.to_thing_type_cloned()).await
     }
 }
 
@@ -179,7 +179,7 @@ impl ThingTypeAPI for RootThingType {
         true
     }
 
-    fn into_thing_type_cloned(&self) -> ThingType {
+    fn to_thing_type_cloned(&self) -> ThingType {
         ThingType::RootThingType(self.clone())
     }
 
@@ -203,7 +203,7 @@ impl ThingTypeAPI for EntityType {
         self.is_root
     }
 
-    fn into_thing_type_cloned(&self) -> ThingType {
+    fn to_thing_type_cloned(&self) -> ThingType {
         ThingType::EntityType(self.clone())
     }
 
@@ -276,7 +276,7 @@ impl ThingTypeAPI for RelationType {
         self.is_root
     }
 
-    fn into_thing_type_cloned(&self) -> ThingType {
+    fn to_thing_type_cloned(&self) -> ThingType {
         ThingType::RelationType(self.clone())
     }
 
@@ -411,7 +411,7 @@ impl ThingTypeAPI for AttributeType {
         self.is_root
     }
 
-    fn into_thing_type_cloned(&self) -> ThingType {
+    fn to_thing_type_cloned(&self) -> ThingType {
         ThingType::AttributeType(self.clone())
     }
 
