@@ -41,7 +41,7 @@ fn ok_record<T>(result: Result<T>) -> Option<T> {
 }
 
 fn ok_record_flatten<T>(result: Option<Result<T>>) -> Option<T> {
-    result.map(ok_record).flatten()
+    result.and_then(ok_record)
 }
 
 pub(super) fn try_release<T>(result: Result<T>) -> *mut T {
