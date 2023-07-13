@@ -31,8 +31,8 @@ pub enum Numeric {
 impl fmt::Display for Numeric {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Long(long) => write!(f, "{}", long),
-            Self::Double(double) => write!(f, "{}", double),
+            Self::Long(long) => write!(f, "{long}"),
+            Self::Double(double) => write!(f, "{double}"),
             Self::NaN => write!(f, "NaN"),
         }
     }
