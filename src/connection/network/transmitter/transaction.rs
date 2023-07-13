@@ -102,6 +102,10 @@ impl TransactionTransmitter {
         self.is_open.load()
     }
 
+    pub(in crate::connection) fn shutdown_sink(&self) -> &UnboundedSender<()> {
+        &self.shutdown_sink
+    }
+
     pub(in crate::connection) fn force_close(&self) {
         if self.is_open.compare_exchange(true, false).is_ok() {
             self.shutdown_sink.send(()).ok();

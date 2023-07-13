@@ -45,15 +45,9 @@ pub struct Transaction<'a> {
     _lifetime_guard: PhantomData<&'a ()>,
 }
 
-impl Drop for Transaction<'_> {
-    // FIXME remove when session fixme is addressed
-    fn drop(&mut self) {
-        self.force_close()
-    }
-}
-
 impl Transaction<'_> {
-    pub(super) fn new(transaction_stream: Arc<TransactionStream>) -> Self {
+    pub(super) fn new(transaction_stream: TransactionStream) -> Self {
+        let transaction_stream = Arc::new(transaction_stream);
         Transaction {
             type_: transaction_stream.type_(),
             options: transaction_stream.options().clone(),

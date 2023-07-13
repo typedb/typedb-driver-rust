@@ -332,7 +332,7 @@ impl ServerConnection {
         transaction_type: TransactionType,
         options: Options,
         network_latency: Duration,
-    ) -> Result<TransactionStream> {
+    ) -> Result<(TransactionStream, UnboundedSender<()>)> {
         match self
             .request(Request::Transaction(TransactionRequest::Open {
                 session_id,
@@ -344,7 +344,9 @@ impl ServerConnection {
         {
             Response::TransactionOpen { request_sink, response_source } => {
                 let transmitter = TransactionTransmitter::new(&self.background_runtime, request_sink, response_source);
-                Ok(TransactionStream::new(transaction_type, options, transmitter))
+                let transmitter_shutdown_sink = transmitter.shutdown_sink().clone();
+                let transaction_stream = TransactionStream::new(transaction_type, options, transmitter);
+                Ok((transaction_stream, transmitter_shutdown_sink))
             }
             other => Err(InternalError::UnexpectedResponseType(format!("{other:?}")).into()),
         }

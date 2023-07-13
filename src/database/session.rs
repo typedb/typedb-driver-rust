@@ -19,7 +19,7 @@
  * under the License.
  */
 
-use std::sync::{Arc, RwLock};
+use std::sync::RwLock;
 
 use crossbeam::atomic::AtomicCell;
 use log::warn;
@@ -108,7 +108,7 @@ impl Session {
             return Err(ConnectionError::SessionIsClosed().into());
         }
 
-        let (session_info, transaction_stream) = self
+        let (session_info, (transaction_stream, shutdown_sink)) = self
             .database
             .run_failsafe(|database, _, is_first_run| {
                 let session_info = self.server_session_info.read().unwrap().clone();
@@ -138,13 +138,8 @@ impl Session {
 
         *self.server_session_info.write().unwrap() = session_info;
 
-        let transaction_stream = Arc::new(transaction_stream);
-        self.on_close({
-            // FIXME this callback should not share ownership of transaction_stream
-            // it should instead have a channel directly to the listener
-            // current configuration makes it so the stream isn't closed when the transaction is dropped
-            let transaction_stream = transaction_stream.clone();
-            move || transaction_stream.force_close()
+        self.on_close(move || {
+            shutdown_sink.send(()).ok();
         });
         Ok(Transaction::new(transaction_stream))
     }
