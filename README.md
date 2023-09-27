@@ -1,4 +1,8 @@
-# TypeDB Client for Rust (under development)
+# THIS REPOSITORY HAS BEEN ARCHIVED. Please visit: [@vaticle/typedb-driver/rust](https://github.com/vaticle/typedb-driver/tree/development/rust)
+
+---
+
+# TypeDB Client for Rust
 
 [![Factory](https://factory.vaticle.com/api/status/vaticle/typedb-client-rust/badge.svg)](https://factory.vaticle.com/vaticle/typedb-client-rust)
 [![Discord](https://img.shields.io/discord/665254494820368395?color=7389D8&label=chat&logo=discord&logoColor=ffffff)](https://vaticle.com/discord)
